@@ -1,0 +1,185 @@
+import { Database, type DatabaseOptions } from "bun:sqlite";
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { openEncryptedDatabaseSync, TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
+import { createMigrationRunner } from "@khoralabs/sqlite-migrate";
+import * as sqliteVec from "sqlite-vec";
+import m001Initial from "./migrations/0.0.0-0.1.0/001-initial";
+import m002AdditiveColumns from "./migrations/0.1.0-0.2.0/001-additive-columns";
+import m003FtsPorterRebuild from "./migrations/0.2.0-0.3.0/001-fts-porter-rebuild";
+
+const memoriesMigrations = [m001Initial, m002AdditiveColumns, m003FtsPorterRebuild];
+
+export function loadSqliteVec(db: Database): void {
+  try {
+    sqliteVec.load(db);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/dynamic extension loading|not support.*extension/i.test(msg)) {
+      throw new Error(
+        `${msg}\n\n` +
+          "sqlite-vec requires SQLite built with extension loading. Bun's bundled SQLite often does not support it.\n" +
+          "Install Homebrew SQLite and point Bun at it, e.g.:\n" +
+          "  brew install sqlite\n" +
+          '  export SQLITE_CUSTOM_LIB="$(brew --prefix sqlite)/lib/libsqlite3.dylib"\n' +
+          "(macOS). On Linux, install libsqlite3 (distro package) and set SQLITE_CUSTOM_LIB to the\n" +
+          "  shared library path if needed (e.g. /usr/lib/x86_64-linux-gnu/libsqlite3.so.0).\n" +
+          "  See SQLITE_CUSTOM_LIB in apps/matchmaking/.env.example.",
+      );
+    }
+    throw e;
+  }
+}
+
+export type OpenMemoriesDatabaseOptions = DatabaseOptions & {
+  sqlCipherKey: string;
+};
+
+export const SQLITE_CUSTOM_LIB_ENV = "SQLITE_CUSTOM_LIB";
+
+let didConfigureCustomSqlite = false;
+
+/** Resolve `$(brew --prefix sqlite)/lib/libsqlite3.dylib` when Homebrew sqlite is installed. */
+function tryHomebrewSqliteDylibPath(): string | undefined {
+  if (process.platform !== "darwin") return undefined;
+  try {
+    const prefix = execFileSync("brew", ["--prefix", "sqlite"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (prefix.length === 0) return undefined;
+    const p = join(prefix, "lib", "libsqlite3.dylib");
+    return existsSync(p) ? p : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function ensureCustomSqliteForExtensions(): void {
+  if (didConfigureCustomSqlite) return;
+  didConfigureCustomSqlite = true;
+
+  const fromEnv = process.env[SQLITE_CUSTOM_LIB_ENV]?.trim();
+  const candidates: string[] = [];
+  if (fromEnv) candidates.push(fromEnv);
+
+  const brewSqlite = tryHomebrewSqliteDylibPath();
+  if (brewSqlite !== undefined) candidates.push(brewSqlite);
+
+  if (process.platform === "darwin") {
+    candidates.push(
+      "/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib",
+      "/usr/local/opt/sqlite/lib/libsqlite3.dylib",
+      "/opt/homebrew/opt/sqlite3/lib/libsqlite3.dylib",
+      "/usr/local/opt/sqlite3/lib/libsqlite3.dylib",
+    );
+  }
+
+  if (process.platform === "linux") {
+    candidates.push(
+      "/usr/lib/x86_64-linux-gnu/libsqlite3.so.0",
+      "/usr/lib/x86_64-linux-gnu/libsqlite3.so",
+      "/usr/lib/aarch64-linux-gnu/libsqlite3.so.0",
+      "/usr/lib/aarch64-linux-gnu/libsqlite3.so",
+      "/lib/x86_64-linux-gnu/libsqlite3.so.0",
+      "/lib/aarch64-linux-gnu/libsqlite3.so.0",
+    );
+  }
+
+  for (const p of candidates) {
+    if (p.length > 0 && existsSync(p)) {
+      Database.setCustomSQLite(p);
+      return;
+    }
+  }
+}
+
+export type MemoriesSqlitePragmaOptions = {
+  /** KiB of page cache, supplied to `PRAGMA cache_size` as a negative value. Default 65536 (~64 MiB). */
+  cacheSizeKiB?: number;
+  /** Bytes for `PRAGMA mmap_size`. Default 268435456 (256 MiB). Set to 0 to disable. */
+  mmapSizeBytes?: number;
+  /** ms for `PRAGMA busy_timeout`. Default 5000. */
+  busyTimeoutMs?: number;
+  /** Pages for `PRAGMA wal_autocheckpoint`. Default 1000 (SQLite default — set explicitly for clarity). */
+  walAutocheckpointPages?: number;
+};
+
+/**
+ * Apply production-tuned SQLite pragmas: WAL + NORMAL sync, busy_timeout, mmap, cache,
+ * temp_store=MEMORY, and an explicit wal_autocheckpoint. Idempotent; safe to call on
+ * connections that already have these set. Foreign keys are enforced (`memories-core`
+ * relies on FK cascades) for parity with previous behavior.
+ *
+ * Notes on `synchronous = NORMAL`: with WAL journaling this is the documented sweet
+ * spot — a crash can lose the most recent committed transaction but cannot corrupt
+ * the database. `FULL` only adds one extra `fsync` per commit and is unnecessary here.
+ */
+export function configureMemoriesSqlitePragmas(
+  db: Database,
+  opts: MemoriesSqlitePragmaOptions = {},
+): void {
+  const cacheSizeKiB = opts.cacheSizeKiB ?? 65536;
+  const mmapSizeBytes = opts.mmapSizeBytes ?? 268435456;
+  const busyTimeoutMs = opts.busyTimeoutMs ?? 5000;
+  const walAutocheckpointPages = opts.walAutocheckpointPages ?? 1000;
+
+  db.run("PRAGMA journal_mode = WAL;");
+  db.run("PRAGMA synchronous = NORMAL;");
+  db.run("PRAGMA foreign_keys = ON;");
+  db.run(`PRAGMA busy_timeout = ${busyTimeoutMs};`);
+  db.run(`PRAGMA cache_size = -${cacheSizeKiB};`);
+  db.run(`PRAGMA mmap_size = ${mmapSizeBytes};`);
+  db.run("PRAGMA temp_store = MEMORY;");
+  db.run(`PRAGMA wal_autocheckpoint = ${walAutocheckpointPages};`);
+}
+
+/**
+ * Open a SQLCipher-protected Memories database.
+ */
+export function openMemoriesDatabase(
+  filename: string,
+  options: OpenMemoriesDatabaseOptions,
+): Database {
+  ensureCustomSqliteForExtensions();
+  const { sqlCipherKey, ...dbOptions } = options;
+  const db = openEncryptedDatabaseSync(filename, { create: true, ...dbOptions }, sqlCipherKey);
+  configureMemoriesSqlitePragmas(db);
+  loadSqliteVec(db);
+  initMemoriesSchema(db);
+  return db;
+}
+
+/** Standard test key; use in unit/integration tests only. */
+export function openTestMemoriesDatabase(filename = ":memory:"): Database {
+  return openMemoriesDatabase(filename, { sqlCipherKey: TEST_SQLCIPHER_KEY });
+}
+
+export function openMemoriesDatabaseReadonly(filename: string): Database {
+  ensureCustomSqliteForExtensions();
+  const db = new Database(filename, { readonly: true });
+  db.run("PRAGMA busy_timeout = 5000;");
+  db.run("PRAGMA mmap_size = 268435456;");
+  db.run("PRAGMA cache_size = -65536;");
+  db.run("PRAGMA temp_store = MEMORY;");
+  loadSqliteVec(db);
+  return db;
+}
+
+export function initMemoriesSchema(db: Database): void {
+  configureMemoriesSqlitePragmas(db);
+  createMigrationRunner().runSync(db, memoriesMigrations);
+}
+
+export function vectorToBlob(vector: Float32Array): Uint8Array {
+  return new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength);
+}
+
+export function blobToVector(blob: Uint8Array | Buffer): Float32Array {
+  return new Float32Array(
+    blob.buffer,
+    blob.byteOffset,
+    blob.byteLength / Float32Array.BYTES_PER_ELEMENT,
+  );
+}
