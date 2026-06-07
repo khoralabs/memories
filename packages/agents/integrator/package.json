@@ -1,8 +1,23 @@
 {
   "name": "@khoralabs/memories-integrator",
-  "module": "src/index.ts",
+  "version": "0.1.0",
+  "description": "Memory integrator agent: search and structured merge plans.",
+  "license": "MIT",
   "type": "module",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/agents/integrator"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/agents/integrator#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",

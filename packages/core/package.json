@@ -1,8 +1,23 @@
 {
   "name": "@khoralabs/memories-core",
-  "module": "index.ts",
+  "version": "0.1.0",
+  "description": "Logic layer and contracts for knowledge-graph memory store.",
+  "license": "MIT",
   "type": "module",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/core#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",

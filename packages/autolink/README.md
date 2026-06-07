@@ -1,6 +1,6 @@
 # @khoralabs/memories-autolink
 
-Host-side lexical / retrieval autolinking for **[@khoralabs/memories-core](https://github.com/)** graphs. This package does **not** change core merge or search semantics; it composes `search` / `searchAsync` results into `mergeMemory` edge rows under a small **retrieval-link ontology**.
+Host-side lexical / retrieval autolinking for **@khoralabs/memories-core** graphs. This package does **not** change core merge or search semantics; it composes `search` / `searchAsync` results into `mergeMemory` edge rows under a small **retrieval-link ontology**.
 
 ## Ontology composition
 

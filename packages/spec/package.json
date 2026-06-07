@@ -1,6 +1,24 @@
 {
   "name": "@khoralabs/memories-spec",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Smithy wire model for memories persistence.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/spec"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/spec#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "model",
+    "smithy-build.json",
+    "README.md"
+  ],
   "scripts": {
     "validate": "smithy validate model && smithy build"
   }

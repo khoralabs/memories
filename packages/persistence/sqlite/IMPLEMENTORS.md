@@ -1,8 +1,8 @@
 # Memory persistence implementor’s guide
 
-This document describes the **operational contract** for [`MemoriesPersistence`](../memories-core/src/persistence/types.ts). Method names and types live in `@khoralabs/memories-core`; behavior and ordering are specified here.
+This document describes the **operational contract** for [`MemoriesPersistence`](../../core/src/persistence/types.ts). Method names and types live in `@khoralabs/memories-core`; behavior and ordering are specified here.
 
-The reference SQLite implementation is [`./src/persistence.ts`](./src/persistence.ts). The wire model is also described in [`packages/memories-spec`](../memories-spec/model/persistence.smithy) (Smithy).
+The reference SQLite implementation is [`./src/persistence.ts`](./src/persistence.ts). The wire model is also described in [`packages/spec`](../../spec/model/persistence.smithy) (Smithy).
 
 ## Relational row shapes (Zod)
 
@@ -10,16 +10,16 @@ Canonical **table Zod schemas**, the composed document schema (`memoriesPersiste
 
 ## Smithy capability modules
 
-[`persistence.smithy`](../memories-spec/model/persistence.smithy) defines **module** services (subsets of operations) plus a single aggregate **`MemoriesPersistenceService`** with the full operation list. Use modules to see what a minimal backend can omit; use the aggregate for a “full adapter” contract or codegen.
+[`persistence.smithy`](../../spec/model/persistence.smithy) defines **module** services (subsets of operations) plus a single aggregate **`MemoriesPersistenceService`** with the full operation list. Use modules to see what a minimal backend can omit; use the aggregate for a “full adapter” contract or codegen.
 
 | Smithy service | Role | TypeScript (approx.) | When omitted / `MemoriesBackendCapabilities` |
 | ---------------- | ---- | -------------------- | --------------------------------------------- |
-| `MemoriesPersistenceCore` | Lexical mutation, catalog, edges, search-meta text path, lexical search, hydrate | [`MemoriesMutation`](../memories-core/src/persistence/types.ts) (minus vector + optional label-props sync) + lexical half of [`MemoriesRetrieval`](../memories-core/src/persistence/types.ts) | Baseline for any storage implementation. |
+| `MemoriesPersistenceCore` | Lexical mutation, catalog, edges, search-meta text path, lexical search, hydrate | [`MemoriesMutation`](../../core/src/persistence/types.ts) (minus vector + optional label-props sync) + lexical half of [`MemoriesRetrieval`](../../core/src/persistence/types.ts) | Baseline for any storage implementation. |
 | `MemoriesPersistenceVector` | Vector features, meta-vector upsert, vector search, embedding dimensions | Vector methods on mutation/retrieval + `listVectorEmbeddingIndexDimensions` | Omit when `vectorSearch` is `false`. |
-| `MemoriesPersistenceNeighbors` | Neighbor listing for search | [`MemoriesNeighborIndex`](../memories-core/src/persistence/types.ts) | Omit when `neighborIndex` is `false`. |
+| `MemoriesPersistenceNeighbors` | Neighbor listing for search | [`MemoriesNeighborIndex`](../../core/src/persistence/types.ts) | Omit when `neighborIndex` is `false`. |
 | `MemoriesPersistenceLabelProps` | `SyncLabelPropsSearchFeatures` | Optional `syncLabelPropsSearchFeatures?` on mutation | Omit if label-props search chunks are unsupported. |
-| `MemoriesPersistenceReads` | Prefetch / export reads | [`MemoriesPersistenceReads`](../memories-core/src/persistence/types.ts) except `listVectorEmbeddingIndexDimensions` (that method is grouped under **Vector** in Smithy) | Thin stores may skip; most backends implement with Core. |
-| *(graph topology)* | Namespace edge lists, node labels/properties, incident edges; per-memory labels/properties; load edge by id; load full graph node; node/edge label writes | [`MemoriesGraph`](../memories-core/src/persistence/types.ts) = [`MemoriesGraphIndex`](../memories-core/src/persistence/types.ts) + [`MemoriesGraphMutation`](../memories-core/src/persistence/types.ts) on [`MemoriesPersistence`](../memories-core/src/persistence/types.ts) | Reads return empty when `graphIndex` is `false`. Per-entity reads: `loadNodeLabelsForMemory`, `loadNodePropertiesForMemory`, `loadGraphEdge`, [`loadGraphNode`](../memories-core/src/persistence/types.ts). |
+| `MemoriesPersistenceReads` | Prefetch / export reads | [`MemoriesPersistenceReads`](../../core/src/persistence/types.ts) except `listVectorEmbeddingIndexDimensions` (that method is grouped under **Vector** in Smithy) | Thin stores may skip; most backends implement with Core. |
+| *(graph topology)* | Namespace edge lists, node labels/properties, incident edges; per-memory labels/properties; load edge by id; load full graph node; node/edge label writes | [`MemoriesGraph`](../../core/src/persistence/types.ts) = [`MemoriesGraphIndex`](../../core/src/persistence/types.ts) + [`MemoriesGraphMutation`](../../core/src/persistence/types.ts) on [`MemoriesPersistence`](../../core/src/persistence/types.ts) | Reads return empty when `graphIndex` is `false`. Per-entity reads: `loadNodeLabelsForMemory`, `loadNodePropertiesForMemory`, `loadGraphEdge`, [`loadGraphNode`](../../core/src/persistence/types.ts). |
 
 **`loadGraphNode`** is the preferred single-call read for one memory’s graph node (labels, parsed `nodes.properties`, and stable `nodeId`). The split helpers `loadNodeLabelsForMemory` / `loadNodePropertiesForMemory` remain for narrow call sites that only need one piece.
 
@@ -27,7 +27,7 @@ Graph topology is part of **`MemoriesPersistence`** (not a separate core interfa
 
 ## ID conventions
 
-Stable string primary keys are derived in [`../memories-core/src/models/ids.ts`](../memories-core/src/models/ids.ts). The logic layer uses:
+Stable string primary keys are derived in [`../../core/src/models/ids.ts`](../../core/src/models/ids.ts). The logic layer uses:
 
 - `ids.memory(namespace, key)` and `ids.node(namespace, key)` for the primary memory row and its graph node.
 - `ids.nodeLabel(kind)` / `ids.edgeLabel(kind)` hash the **catalog kind string only** (not assignment props).
@@ -40,14 +40,14 @@ Implementations must use the same derivation if they need to match the reference
 - **Catalog** (`node_labels`, `edge_labels`): one row per **label kind**. Columns: **`kind`**, **`description`**, optional **`schema`** (JSON text: JSON Schema for that kind’s `props`, often exported from Zod via `z.toJSONSchema()`).
 - **Assignments** (`node_label_assignments`, `edge_label_assignments`): one row per **(entity, catalog label)**; store **`props`** as JSON (object). Upserts replace props on re-merge.
 
-Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../memories-core/src/api/merge-memory.ts)); the reference store **optionally** validates `props` with **Ajv** against the catalog `schema` when `schema` is non-null (root `$schema` from Zod is stripped before compile—see `validate-props.ts`).
+Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../../core/src/api/merge-memory.ts)); the reference store **optionally** validates `props` with **Ajv** against the catalog `schema` when `schema` is non-null (root `$schema` from Zod is stripped before compile—see `validate-props.ts`).
 
 ## Transactions: `withTransaction`
 
 - **Purpose:** All merge and delete mutations run inside a single transaction.
 - **Reference (SQLite):** Implemented as `db.transaction(fn)()`. On uncaught exception, SQLite rolls back the transaction.
 - **Nested calls:** Avoid nesting `withTransaction` unless your driver documents safe re-entrancy; the reference path does not nest.
-- **Async / remote:** For backends that need asynchronous commits, see [`MemoriesPersistenceAsync`](../memories-core/src/persistence/async-types.ts) and async entry points (`mergeMemoryAsync`, `searchAsync`, `deleteMemoryAsync`, `MemoriesClientAsync`).
+- **Async / remote:** For backends that need asynchronous commits, see [`MemoriesPersistenceAsync`](../../core/src/persistence/async-types.ts) and async entry points (`mergeMemoryAsync`, `searchAsync`, `deleteMemoryAsync`, `MemoriesClientAsync`).
 
 ## `clearMemorySubtree` vs `deleteMemoryRootRows`
 
@@ -95,11 +95,11 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
   - `{ kind: "exactScope"; scopes }` — match attachments where **`scope_id`** is exactly one of the listed scope ids.
   - `{ kind: "unscoped" }` — entire DB (requires `unscopedSearch`).
 - Optional **`memoryIds`** allowlist is **intersected** with scope predicates when both apply.
-- **Hydration:** `hydrateSourceMapHits` expands ids to full [`HydratedSourceMapHit`](../memories-core/src/models/neighbor-search-types.ts) rows: **`labels`** are node assignments when `graph` is **node**, edge assignments when `graph` is **edge**; **`graph`** discriminates attachment (`MemoryGraphAssociation`).
+- **Hydration:** `hydrateSourceMapHits` expands ids to full [`HydratedSourceMapHit`](../../core/src/models/neighbor-search-types.ts) rows: **`labels`** are node assignments when `graph` is **node**, edge assignments when `graph` is **edge**; **`graph`** discriminates attachment (`MemoryGraphAssociation`).
 
 ## Neighbors
 
-- `listNeighborsForMemory` returns graph neighbors for a memory `key`, optionally filtered by [`NeighborFilter`](../memories-core/src/models/neighbor-search-types.ts) (edge kinds, directions, node-label kinds on the neighbor). Neighbors may live in **any primary namespace** (`nodes.memory_id` → `memories`).
+- `listNeighborsForMemory` returns graph neighbors for a memory `key`, optionally filtered by [`NeighborFilter`](../../core/src/models/neighbor-search-types.ts) (edge kinds, directions, node-label kinds on the neighbor). Neighbors may live in **any primary namespace** (`nodes.memory_id` → `memories`).
 - Each row includes **`labels`** as structured instances and **`edge.label`** as a single `{ kind, props }` for the chosen incident edge label (when multiple kinds exist on one edge, the reference filters/picks per constraint).
 - When `neighborIndex` capability is `false`, search **ignores** neighbor expansion (treats `neighbors` option as off).
 - Neighbor **sub-search** reuses the same lexical/vector arms, scoped to neighbor memory ids.
@@ -112,7 +112,7 @@ Optional property on the persistence object:
 capabilities?: Partial<MemoriesBackendCapabilities>;
 ```
 
-[`resolveMemoriesBackendCapabilities`](../memories-core/src/persistence/types.ts) merges with [`DEFAULT_MEMORIES_BACKEND_CAPABILITIES`](../memories-core/src/persistence/types.ts) (lexical, vector, neighbor, and multi-namespace search on; **unscoped** off). Set flags to declare MVP backends:
+[`resolveMemoriesBackendCapabilities`](../../core/src/persistence/types.ts) merges with [`DEFAULT_MEMORIES_BACKEND_CAPABILITIES`](../../core/src/persistence/types.ts) (lexical, vector, neighbor, and multi-namespace search on; **unscoped** off). Set flags to declare MVP backends:
 
 | Flag | When `false`, logic layer … |
 | ----------------------- | ------------------------------------------------------------------------------------------- |
@@ -127,16 +127,16 @@ Thin adapters that only support one namespace per query should set **`multiNames
 
 ## Search-meta (hybrid chunk)
 
-- Reserved `source_key`: [`MEMORY_SEARCH_META_SOURCE_KEY`](../memories-core/src/search-meta-constants.ts) (`__mem_search_meta__`).
+- Reserved `source_key`: [`MEMORY_SEARCH_META_SOURCE_KEY`](../../core/src/search-meta-constants.ts) (`__mem_search_meta__`).
 - `syncMemorySearchMeta` rebuilds canonical text for the meta chunk from **node label kinds** and **incident edge kinds** (topology line); optional `metaVector` on the primary memory during merge.
-- Merge pipeline: [`upsertMemorySearchMetaVector`](../memories-core/src/persistence/facade.ts) updates vectors for multiple keys in a transaction. The `@khoralabs/memories-core/helpers` function `mergeLogicalMemoryWithMergeSlice` **skips** this batch entirely when `vectorSearch` is `false` (no embed RPC). If you need vectors stored without vector retrieval, extend the caller. Reference SQLite expects vector search for meta retrieval.
+- Merge pipeline: [`upsertMemorySearchMetaVector`](../../core/src/persistence/facade.ts) updates vectors for multiple keys in a transaction. The `@khoralabs/memories-core/helpers` function `mergeLogicalMemoryWithMergeSlice` **skips** this batch entirely when `vectorSearch` is `false` (no embed RPC). If you need vectors stored without vector retrieval, extend the caller. Reference SQLite expects vector search for meta retrieval.
 
 ## Label-props search chunks (optional)
 
 - **Purpose:** Lexical index for **ontology `props`** on node and edge label **assignments** without stuffing raw JSON into the topology meta line. Topology meta (`node:…` / `edge …`) still lists **kinds** only.
-- **Reserved keys:** [`memoryNodeLabelPropsSourceKey`](../memories-core/src/search-meta-constants.ts) (`__mem_nl_props__/…`) per `node_label_assignments._id`, and [`memoryEdgeLabelPropsSourceKey`](../memories-core/src/search-meta-constants.ts) (`__mem_edge_props__/…`) per **`edge_label_assignments._id`** (one chunk per assignment with non-empty props), on **each** endpoint memory.
-- **Contract:** [`syncLabelPropsSearchFeatures?`](../memories-core/src/persistence/types.ts) runs after `syncMemorySearchMeta` for each memory key in the merge invalidation set (see `mergeMemory`). It should **remove** prior `__mem_nl_props__*` / `__mem_edge_props__*` `source_map` rows for that memory, then insert fresh `text_features` (+ FTS) from **`kind` + `props`** on assignment rows (join catalog for `kind` if stored only by `label_id`).
-- **Human-readable text:** Use [`formatLabelPropsForSearch`](../memories-core/src/models/label-props-search-text.ts) with an optional per-app [`LabelPropsSearchFormatter`](../memories-core/src/models/label-props-search-text.ts). Reference SQLite passes an optional formatter from [`createMemoriesPersistence`](./src/strategies/sqlite/persistence.ts) options.
+- **Reserved keys:** [`memoryNodeLabelPropsSourceKey`](../../core/src/search-meta-constants.ts) (`__mem_nl_props__/…`) per `node_label_assignments._id`, and [`memoryEdgeLabelPropsSourceKey`](../../core/src/search-meta-constants.ts) (`__mem_edge_props__/…`) per **`edge_label_assignments._id`** (one chunk per assignment with non-empty props), on **each** endpoint memory.
+- **Contract:** [`syncLabelPropsSearchFeatures?`](../../core/src/persistence/types.ts) runs after `syncMemorySearchMeta` for each memory key in the merge invalidation set (see `mergeMemory`). It should **remove** prior `__mem_nl_props__*` / `__mem_edge_props__*` `source_map` rows for that memory, then insert fresh `text_features` (+ FTS) from **`kind` + `props`** on assignment rows (join catalog for `kind` if stored only by `label_id`).
+- **Human-readable text:** Use [`formatLabelPropsForSearch`](../../core/src/models/label-props-search-text.ts) with an optional per-app [`LabelPropsSearchFormatter`](../../core/src/models/label-props-search-text.ts). Reference SQLite passes an optional formatter from [`createMemoriesPersistence`](./src/persistence.ts) options.
 - **Vectors:** Not indexed on these chunks in v1 (optional follow-up).
 
 ## Visualization (optional)
@@ -145,6 +145,6 @@ Thin adapters that only support one namespace per query should set **`multiNames
 
 ## Async persistence
 
-[`MemoriesPersistenceAsync`](../memories-core/src/persistence/async-types.ts) mirrors the sync interface with `Promise`-returning methods and `withTransaction(fn: () => Promise<T>): Promise<T>`. Use `MemoriesClientAsync` and `mergeMemoryAsync` / `searchAsync` / `deleteMemoryAsync` when implementing remote or non-blocking stores.
+[`MemoriesPersistenceAsync`](../../core/src/persistence/async-types.ts) mirrors the sync interface with `Promise`-returning methods and `withTransaction(fn: () => Promise<T>): Promise<T>`. Use `MemoriesClientAsync` and `mergeMemoryAsync` / `searchAsync` / `deleteMemoryAsync` when implementing remote or non-blocking stores.
 
 **Note:** `wrapSyncMemoriesPersistenceAsAsync` does not support a real async transaction—use native async backends for `mergeMemoryAsync` inside `withTransaction`.

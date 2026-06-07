@@ -1,8 +1,23 @@
 {
   "name": "@khoralabs/memories-tools",
-  "module": "src/index.ts",
+  "version": "0.1.0",
+  "description": "Hybrid memory_search toolkit for agent sessions.",
+  "license": "MIT",
   "type": "module",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/agents/tools"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/agents/tools#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",
