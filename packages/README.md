@@ -98,7 +98,7 @@ ids.vectorFeature(sourceMapId)// vf_*
 
 ## 2. SQLite schema and search
 
-### DDL snapshot
+### Schema
 
 [`persistence/sqlite/src/schema.ts`](persistence/sqlite/src/schema.ts)
 
@@ -140,11 +140,7 @@ ids.vectorFeature(sourceMapId)// vf_*
 
 ### Migrations
 
-[`persistence/sqlite/src/migrations/`](persistence/sqlite/src/migrations/):
-
-- `0.0.0-0.1.0` — initial schema + FTS
-- `0.1.0-0.2.0` — `source_maps.content_hash`
-- `0.2.0-0.3.0` — FTS porter rebuild
+[`persistence/sqlite/src/migrations/0.0.0-0.1.0/001-initial.ts`](persistence/sqlite/src/migrations/0.0.0-0.1.0/001-initial.ts) — initial schema, indexes, and FTS5 (`porter unicode61`).
 
 ---
 

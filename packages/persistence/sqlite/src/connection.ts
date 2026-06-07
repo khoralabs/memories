@@ -6,10 +6,8 @@ import { openEncryptedDatabaseSync, TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite
 import { createMigrationRunner } from "@khoralabs/sqlite-migrate";
 import * as sqliteVec from "sqlite-vec";
 import m001Initial from "./migrations/0.0.0-0.1.0/001-initial";
-import m002AdditiveColumns from "./migrations/0.1.0-0.2.0/001-additive-columns";
-import m003FtsPorterRebuild from "./migrations/0.2.0-0.3.0/001-fts-porter-rebuild";
 
-const memoriesMigrations = [m001Initial, m002AdditiveColumns, m003FtsPorterRebuild];
+const memoriesMigrations = [m001Initial];
 
 export function loadSqliteVec(db: Database): void {
   try {

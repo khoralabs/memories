@@ -22,25 +22,10 @@ function trackingRows(
 }
 
 describe("memories sqlite migrations", () => {
-  test("legacy memories table without kind/edge_id gets columns added and tracking rows recorded", () => {
+  test("initial migration creates the current schema and records tracking", () => {
     ensureCustomSqliteForExtensions();
     const db = new Database(":memory:");
     loadSqliteVec(db);
-
-    db.run(`
-      CREATE TABLE source_maps (
-        _id TEXT PRIMARY KEY NOT NULL
-      );
-      CREATE TABLE memories (
-        _id TEXT PRIMARY KEY NOT NULL,
-        ns_prefix_1 TEXT,
-        ns_prefix_2 TEXT,
-        ns_prefix_3 TEXT,
-        ns_prefix_4 TEXT,
-        ns_prefix_5 TEXT,
-        ns_prefix_6 TEXT
-      );
-    `);
 
     initMemoriesSchema(db);
 
@@ -52,50 +37,13 @@ describe("memories sqlite migrations", () => {
     expect(memories.has("edge_id")).toBe(true);
 
     const rows = trackingRows(db);
-    const names = rows.map((r) => `${r.from_version}->${r.to_version}/${r.name}`);
-    expect(names).toContain("0.0.0->0.1.0/001-initial");
-    expect(names).toContain("0.1.0->0.2.0/001-additive-columns");
-    expect(names).toContain("0.2.0->0.3.0/001-fts-porter-rebuild");
-  });
+    expect(rows).toEqual([{ from_version: "0.0.0", to_version: "0.1.0", name: "001-initial" }]);
 
-  test("fts-porter-rebuild migration recreates a non-porter FTS table", () => {
-    ensureCustomSqliteForExtensions();
-    const db = new Database(":memory:");
-    loadSqliteVec(db);
-
-    db.run(`
-      CREATE TABLE text_features (
-        _id TEXT PRIMARY KEY NOT NULL,
-        memory_id TEXT,
-        source_map_id TEXT,
-        text TEXT
-      );
-      CREATE VIRTUAL TABLE text_features_fts USING fts5(
-        text_feature_id UNINDEXED,
-        memory_id UNINDEXED,
-        source_map_id UNINDEXED,
-        text,
-        tokenize = 'unicode61'
-      );
-    `);
-    db.run(
-      `INSERT INTO text_features (_id, memory_id, source_map_id, text) VALUES ('t1', 'm1', 's1', 'porter loves facts')`,
-    );
-
-    initMemoriesSchema(db);
-
-    const sql = db
+    const ftsSql = db
       .query<{ sql: string | null }, []>(
         "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'text_features_fts'",
       )
       .get()?.sql;
-    expect(sql ?? "").toMatch(/\bporter\b/i);
-
-    const row = db
-      .query<{ text_feature_id: string }, []>(
-        "SELECT text_feature_id FROM text_features_fts WHERE text_feature_id = 't1'",
-      )
-      .get();
-    expect(row?.text_feature_id).toBe("t1");
+    expect(ftsSql ?? "").toMatch(/\bporter\b/i);
   });
 });

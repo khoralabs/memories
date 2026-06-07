@@ -1,14 +1,4 @@
-/**
- * Frozen DDL snapshot for the memories SQLite strategy.
- *
- * Originally derived from `memoriesPersistenceDocumentSchema` via a Zod-to-DDL helper.
- * The Zod schemas remain the source of truth for row TypeScript types and for
- * `documentValidator` runtime checks at merge time; this DDL is intentionally a
- * frozen artifact so the SQLite strategy doesn't carry schema-generation tooling.
- *
- * If the Zod row schemas change in a way that affects on-disk shape, add a new
- * migration under `./migrations/<from>-<to>/` rather than editing this file.
- */
+/** SQLite DDL for the memories reference store. On-disk shape changes ship as new migrations. */
 export const MEMORIES_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS "edge_labels" (
   "kind" TEXT NOT NULL,
