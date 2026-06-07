@@ -5,8 +5,9 @@ SQLite-backed implementation of the memories **persistence** contract (`Memories
 ## Exports
 
 - **`createMemoriesPersistence(db, options?)`** — returns a sync `MemoriesPersistence` bound to a `bun:sqlite` `Database` opened with the memories schema (see `openMemoriesDatabase` in this package). Implements **`MemoriesGraph`** (reads + writes; topology reads are gated by `graphIndex`, default `true`).
-- **Visualization / layout** — optional `createMemoriesVisualization` (mean embeddings + text/edge previews), `buildNamespaceGraphLayout` / `buildNamespaceSubtreeGraphLayout` (UMAP + layout types), and low-level preview helpers.
-- **DB helpers** — `openMemoriesDatabase`, `openMemoriesDatabaseReadonly`, `openTestMemoriesDatabase`, `ensureCustomSqliteForExtensions`, schema init, and vec table utilities.
+- **DB helpers** — `openMemoriesDatabase`, `openMemoriesDatabaseReadonly`, `openTestMemoriesDatabase`, `ensureCustomSqliteForExtensions`, `blobToVector`, schema init, and vec table utilities.
+
+Graph study / UMAP layout / UI previews live in [`@khoralabs/sqlite-graph-projections`](../sqlite-graph-projections) (optional; pulls in `umap-js`).
 
 ## Client usage
 

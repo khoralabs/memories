@@ -16,6 +16,7 @@
     },
     "packages/agents/adapter": {
       "name": "@khoralabs/memories-adapter",
+      "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
         "@khoralabs/agent-capabilities": "^0.1.0",
@@ -34,6 +35,7 @@
     },
     "packages/agents/integrator": {
       "name": "@khoralabs/memories-integrator",
+      "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
         "@khoralabs/agent-capabilities": "^0.1.0",
@@ -52,6 +54,7 @@
     },
     "packages/agents/investigator": {
       "name": "@khoralabs/memories-investigator",
+      "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
         "@khoralabs/agent-capabilities": "^0.1.0",
@@ -70,6 +73,7 @@
     },
     "packages/agents/tools": {
       "name": "@khoralabs/memories-tools",
+      "version": "0.1.0",
       "dependencies": {
         "@khoralabs/agent-capabilities": "^0.1.0",
         "@khoralabs/agent-capabilities-ai-sdk": "^0.1.0",
@@ -86,6 +90,7 @@
     },
     "packages/autolink": {
       "name": "@khoralabs/memories-autolink",
+      "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
         "zod": "^4",
@@ -99,6 +104,7 @@
     },
     "packages/core": {
       "name": "@khoralabs/memories-core",
+      "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
         "@khoralabs/sourcemaps": "^0.1.0",
@@ -111,6 +117,7 @@
         "@khoralabs/memories-autolink": "workspace:*",
         "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-sqlite": "workspace:*",
+        "@khoralabs/sqlite-graph-projections": "workspace:*",
         "@types/bun": "latest",
         "zod": "^4.2",
       },
@@ -120,6 +127,7 @@
     },
     "packages/ontologies": {
       "name": "@khoralabs/memories-ontologies",
+      "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
         "zod": "^4.2",
@@ -133,14 +141,28 @@
     },
     "packages/persistence/sqlite": {
       "name": "@khoralabs/memories-sqlite",
+      "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
         "@khoralabs/sqlite-crypto": "^0.1.0",
         "@khoralabs/sqlite-migrate": "^0.1.0",
         "ajv": "^8",
         "sqlite-vec": "^0.1.9",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/persistence/sqlite-graph-projections": {
+      "name": "@khoralabs/sqlite-graph-projections",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-sqlite": "workspace:*",
         "umap-js": "^1.4.0",
-        "zod": "^4",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -151,7 +173,7 @@
     },
     "packages/react/graph": {
       "name": "@khoralabs/memories-react-graph",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "dependencies": {
         "@chenglou/pretext": "^0.0.6",
         "@radix-ui/react-slot": "^1.2.3",
@@ -184,6 +206,7 @@
     },
     "packages/spec": {
       "name": "@khoralabs/memories-spec",
+      "version": "0.1.0",
     },
   },
   "packages": {
@@ -252,6 +275,8 @@
     "@khoralabs/sourcemaps": ["@khoralabs/sourcemaps@0.1.0", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-9eXXrtxYeOCGpKdcEWoGtLVzHfi3zF+6s//LPv4SFWoy9tJtGu1hLdW9gGFhtbRfTHDxMb1/RHblk7NREqQdwQ=="],
 
     "@khoralabs/sqlite-crypto": ["@khoralabs/sqlite-crypto@0.1.0", "", {}, "sha512-HTpnQtwaPQDD0J5fwk9w8o47cs1HrhTBYEL5SKUlEMuvUdcqC/JgEZzwMqeT7wIZQLPdrBuPoHJMyrAkyVJGDw=="],
+
+    "@khoralabs/sqlite-graph-projections": ["@khoralabs/sqlite-graph-projections@workspace:packages/persistence/sqlite-graph-projections"],
 
     "@khoralabs/sqlite-migrate": ["@khoralabs/sqlite-migrate@0.1.0", "", {}, "sha512-mGkPR6WposZArUh1k4A1s2VwyOtGJUPlKkUY+DYjZ8pkhgJ6mEhHQOlRQJNOAXKlJETsdVy4iPTeyuvzPl/zFg=="],
 

@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { MemoriesPersistence } from "@khoralabs/memories-core";
-import { loadMeanEmbeddingsForNamespace } from "../visualization/projection";
+import { loadMeanEmbeddingsForNamespace } from "../mean-embeddings";
 import {
   LABEL_PROPERTY_SYNTH_DIM,
   labelPropertySyntheticEmbedding,

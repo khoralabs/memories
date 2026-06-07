@@ -1,23 +1,22 @@
 {
-  "name": "@khoralabs/memories-sqlite",
+  "name": "@khoralabs/sqlite-graph-projections",
   "version": "0.1.0",
-  "description": "SQLite reference backend for memories persistence (FTS5 + sqlite-vec).",
+  "description": "SQLite graph study projections: UMAP layout, mean embeddings, and UI previews for memories.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/persistence/sqlite"
+    "directory": "packages/persistence/sqlite-graph-projections"
   },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/persistence/sqlite#readme",
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/persistence/sqlite-graph-projections#readme",
   "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
   "files": [
     "src",
-    "README.md",
-    "IMPLEMENTORS.md"
+    "README.md"
   ],
   "exports": {
     ".": {
@@ -28,10 +27,11 @@
   },
   "dependencies": {
     "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/sqlite-crypto": "^0.1.0",
-    "@khoralabs/sqlite-migrate": "^0.1.0",
-    "ajv": "^8",
-    "sqlite-vec": "^0.1.9"
+    "@khoralabs/memories-sqlite": "workspace:*",
+    "umap-js": "^1.4.0"
+  },
+  "scripts": {
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"

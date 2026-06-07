@@ -15,6 +15,16 @@ import type { DbCtx } from "./models/context";
 import { insertEdgeLabelAssignment } from "./models/edge-label-assignments";
 import { ensureEdgeLabel } from "./models/edge-labels";
 import { insertEdge } from "./models/edges";
+import {
+  listIncidentGraphEdgesForMemory as listIncidentGraphEdgesQuery,
+  loadGraphEdge as loadGraphEdgeQuery,
+  loadGraphEdgesForNamespace as loadGraphEdgesQuery,
+  loadGraphNode as loadGraphNodeQuery,
+  loadNodeLabelsForMemory as loadNodeLabelsForMemoryQuery,
+  loadNodeLabelsForNamespace as loadNodeLabelsQuery,
+  loadNodePropertiesForMemory as loadNodePropertiesForMemoryQuery,
+  loadNodePropertiesForNamespace as loadNodePropertiesQuery,
+} from "./models/graph-index";
 import { syncLabelPropsSearchFeatures as syncLabelPropsSearchFeaturesImpl } from "./models/label-props-search";
 import { listSourceMapsForMemory as listSourceMapsForMemoryQuery } from "./models/list-source-maps-for-memory";
 import { listTextFeatureExportRowsForMemory as listTextFeatureExportRowsForMemoryQuery } from "./models/list-text-feature-export-rows";
@@ -59,16 +69,6 @@ import { insertSourceMap, updateSourceMapContentHash } from "./models/source-map
 import { insertLexicalFeature } from "./models/text-features";
 import { insertVectorFeature } from "./models/vector-features";
 import { listVectorEmbeddingIndexDimensions as listVectorEmbeddingIndexDimensionsQuery } from "./models/vector-index-dimensions";
-import {
-  listIncidentGraphEdgesForMemory as listIncidentGraphEdgesQuery,
-  loadGraphEdge as loadGraphEdgeQuery,
-  loadGraphEdgesForNamespace as loadGraphEdgesQuery,
-  loadGraphNode as loadGraphNodeQuery,
-  loadNodeLabelsForMemory as loadNodeLabelsForMemoryQuery,
-  loadNodeLabelsForNamespace as loadNodeLabelsQuery,
-  loadNodePropertiesForMemory as loadNodePropertiesForMemoryQuery,
-  loadNodePropertiesForNamespace as loadNodePropertiesQuery,
-} from "./visualization/projection";
 
 export class MemoriesPersistence implements IMemoriesPersistence {
   readonly capabilities: MemoriesBackendCapabilities = {

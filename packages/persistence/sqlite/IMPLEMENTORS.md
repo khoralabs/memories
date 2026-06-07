@@ -139,9 +139,9 @@ Thin adapters that only support one namespace per query should set **`multiNames
 - **Human-readable text:** Use [`formatLabelPropsForSearch`](../../core/src/models/label-props-search-text.ts) with an optional per-app [`LabelPropsSearchFormatter`](../../core/src/models/label-props-search-text.ts). Reference SQLite passes an optional formatter from [`createMemoriesPersistence`](./src/persistence.ts) options.
 - **Vectors:** Not indexed on these chunks in v1 (optional follow-up).
 
-## Visualization (optional)
+## Graph projections (optional)
 
-**`@khoralabs/memories-sqlite`** exposes a thin [`MemoriesVisualization`](./src/visualization.ts) class (mean-pooled embeddings per memory, `loadMemoryTextPreview`, `loadEdgePreview`). UMAP graph layout is [`buildNamespaceGraphLayout`](./src/graph/build-namespace-graph-layout.ts), which uses **`MemoriesPersistence`** for topology and projection SQL for embeddings. Previews and projection helpers live under [`./src/visualization/`](./src/visualization/).
+**`@khoralabs/sqlite-graph-projections`** (separate package) provides UMAP layout, mean-pooled embeddings, and UI preview helpers. It reads the same tables via a shared `Database` handle and **`MemoriesPersistence`** graph-index methods implemented in [`./src/models/graph-index.ts`](./src/models/graph-index.ts).
 
 ## Async persistence
 

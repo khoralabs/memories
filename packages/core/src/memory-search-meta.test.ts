@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  createMemoriesPersistence,
-  loadMeanEmbeddingsForNamespace,
-  openTestMemoriesDatabase,
-} from "@khoralabs/memories-sqlite";
+import { createMemoriesPersistence, openTestMemoriesDatabase } from "@khoralabs/memories-sqlite";
+import { loadMeanEmbeddingsForNamespace } from "@khoralabs/sqlite-graph-projections";
 import {
   buildCanonicalMemorySearchMetaText,
   mergeMemory,

@@ -14,8 +14,8 @@ import {
 } from "@khoralabs/memories-core";
 import type { Edge, Memory } from "@khoralabs/memories-core/persistence";
 import { vectorVecTableName } from "../search-indexes";
-import { loadGraphEdge } from "../visualization/projection";
 import type { DbCtx } from "./context";
+import { loadGraphEdge } from "./graph-index";
 
 export type {
   HydratedNeighbor,

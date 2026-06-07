@@ -4,8 +4,8 @@ import {
   MEMORY_SEARCH_META_SOURCE_KEY,
 } from "@khoralabs/memories-core/search-meta-constants";
 import { blobToVector } from "../connection";
-import { loadGraphEdge } from "../visualization/projection";
 import type { DbCtx } from "./context";
+import { loadGraphEdge } from "./graph-index";
 import { insertSourceMap } from "./source-maps";
 import { insertLexicalFeature } from "./text-features";
 import { insertVectorFeature } from "./vector-features";

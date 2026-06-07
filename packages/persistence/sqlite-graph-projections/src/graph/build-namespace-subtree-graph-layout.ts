@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { MemoriesPersistence, OntologyLabelInstance } from "@khoralabs/memories-core";
-import { listNamespacesUnderPrefix } from "../models/list-namespaces-under-prefix";
-import { loadMeanEmbeddingsForNamespace } from "../visualization/projection";
+import { listNamespacesUnderPrefix } from "@khoralabs/memories-sqlite";
+import { loadMeanEmbeddingsForNamespace } from "../mean-embeddings";
 import {
   LABEL_PROPERTY_SYNTH_DIM,
   labelPropertySyntheticEmbedding,

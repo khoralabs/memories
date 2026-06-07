@@ -8,6 +8,7 @@ Knowledge-graph memory store for agents and apps: hybrid lexical + vector search
 |---------|------|------|
 | `@khoralabs/memories-core` | [`packages/core`](packages/core) | Contracts, `MemoriesClient`, merge/search/delete, IDs, provenance |
 | `@khoralabs/memories-sqlite` | [`packages/persistence/sqlite`](packages/persistence/sqlite) | Reference SQLite backend (FTS5 + sqlite-vec) |
+| `@khoralabs/sqlite-graph-projections` | [`packages/persistence/sqlite-graph-projections`](packages/persistence/sqlite-graph-projections) | Optional UMAP layout + graph study projections |
 | `@khoralabs/memories-ontologies` | [`packages/ontologies`](packages/ontologies) | Default ontology vocabulary (people, places, facts, …) |
 | `@khoralabs/memories-autolink` | [`packages/autolink`](packages/autolink) | Search-then-link graph integration |
 | `@khoralabs/memories-spec` | [`packages/spec`](packages/spec) | Smithy wire model for persistence |

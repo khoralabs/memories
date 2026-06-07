@@ -19,10 +19,10 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
     │ (reference backend)  │
     └───────────┬──────────┘
                 │
-    ┌───────────▼──────────────────────────────────────────────┐
-    │ agents/* (adapter, integrator, investigator, tools)        │
-    │ autolink, ontologies, react/graph, spec (Smithy)           │
-    └────────────────────────────────────────────────────────────┘
+    ┌───────────▼──────────┐     ┌─────────────────────────────┐
+    │ sqlite-graph-        │     │ agents/*, autolink,         │
+    │ projections (opt.)   │     │ ontologies, react/graph, spec │
+    └──────────────────────┘     └─────────────────────────────┘
 ```
 
 ### Packages in this repo
@@ -31,6 +31,7 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
 |---------|------|------|
 | `@khoralabs/memories-core` | [`core/`](core) | Contracts, merge/search/delete APIs, IDs, provenance, helpers |
 | `@khoralabs/memories-sqlite` | [`persistence/sqlite/`](persistence/sqlite) | Reference sync `MemoriesPersistence` (FTS5 + sqlite-vec) |
+| `@khoralabs/sqlite-graph-projections` | [`persistence/sqlite-graph-projections/`](persistence/sqlite-graph-projections) | Optional UMAP layout + mean embeddings + UI previews |
 | `@khoralabs/memories-ontologies` | [`ontologies/`](ontologies) | Default personal/agent ontology vocabulary |
 | `@khoralabs/memories-spec` | [`spec/`](spec) | Smithy wire model |
 | `@khoralabs/memories-autolink` | [`autolink/`](autolink) | Search-then-link graph integration |
