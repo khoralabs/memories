@@ -42,12 +42,19 @@ export function deleteMemory(ctx: MutationCtx, params: DeleteMemoryParams): void
         edgeId: assoc.edgeId,
       });
     }
-    persistence.appendProvenanceEvent(op, {
+    const { root_hex } = persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "DELETE_MEMORY",
       namespace: params.namespace,
       memory_key: params.key,
       memory_id: assoc.memoryId,
+    });
+    persistence.appendContentOutbox?.(op, {
+      root_hex,
+      event_type: "DELETE_MEMORY",
+      namespace: params.namespace,
+      memoryKey: params.key,
+      entries: [],
     });
   });
 }

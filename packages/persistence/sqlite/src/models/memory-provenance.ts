@@ -33,7 +33,10 @@ export function getProvenanceTimestampMsForRootHex(
   return row?._ts_created;
 }
 
-export function appendProvenanceEvent(ctx: DbCtx, event: MemoryProvenanceEvent): void {
+export function appendProvenanceEvent(
+  ctx: DbCtx,
+  event: MemoryProvenanceEvent,
+): { root_hex: string } {
   const { db, now, stmts } = ctx;
   const head = getProvenanceHeadRootHex(db);
   const { parent_root_hex, root_hex } = nextProvenanceRoot(head, event);
@@ -49,4 +52,5 @@ export function appendProvenanceEvent(ctx: DbCtx, event: MemoryProvenanceEvent):
     event_json: eventJson,
   });
   stmts.insertMemoryProvenance.run(rowId, now, parent_root_hex, root_hex, event_type, eventJson);
+  return { root_hex };
 }

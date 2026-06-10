@@ -37,7 +37,14 @@ describe("memories sqlite migrations", () => {
     expect(memories.has("edge_id")).toBe(true);
 
     const rows = trackingRows(db);
-    expect(rows).toEqual([{ from_version: "0.0.0", to_version: "0.1.0", name: "001-initial" }]);
+    expect(rows).toEqual([
+      { from_version: "0.0.0", to_version: "0.1.0", name: "001-initial" },
+      { from_version: "0.1.0", to_version: "0.2.0", name: "001-add-content-outbox" },
+    ]);
+
+    const outbox = tableColumns(db, "memory_content_outbox");
+    expect(outbox.has("root_hex")).toBe(true);
+    expect(outbox.has("text")).toBe(true);
 
     const ftsSql = db
       .query<{ sql: string | null }, []>(

@@ -11,6 +11,13 @@ import type {
 } from "@khoralabs/memories-core";
 import type { SourceMap, TextFeatureExportRow } from "@khoralabs/memories-core/persistence";
 import type { MemoryProvenanceEvent } from "@khoralabs/memories-core/provenance";
+import {
+  appendDeleteOutboxEntry,
+  appendMergeOutboxEntries,
+  type ContentAtRootHit,
+  getMemoryContentAtRootHex as getMemoryContentAtRootHexQuery,
+  reconstructStoreAtRootHex as reconstructStoreAtRootHexQuery,
+} from "./models/content-outbox";
 import type { DbCtx } from "./models/context";
 import { insertEdgeLabelAssignment } from "./models/edge-label-assignments";
 import { ensureEdgeLabel } from "./models/edge-labels";
@@ -198,8 +205,52 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return getProvenanceTsForRootHexQuery(this.db, rootHex);
   }
 
-  appendProvenanceEvent(op: MemoryOpContext, event: MemoryProvenanceEvent): void {
-    insertProvenanceRow(this.ctx(op), event);
+  appendProvenanceEvent(op: MemoryOpContext, event: MemoryProvenanceEvent): { root_hex: string } {
+    return insertProvenanceRow(this.ctx(op), event);
+  }
+
+  appendContentOutbox(
+    op: MemoryOpContext,
+    input: {
+      root_hex: string;
+      event_type: "MERGE_MEMORY" | "DELETE_MEMORY";
+      namespace: string;
+      memoryKey: string;
+      entries: ReadonlyArray<{ sourceKey: string; text?: string }>;
+    },
+  ): void {
+    const ctx = this.ctx(op);
+    if (input.event_type === "DELETE_MEMORY") {
+      appendDeleteOutboxEntry(ctx, {
+        root_hex: input.root_hex,
+        namespace: input.namespace,
+        memoryKey: input.memoryKey,
+      });
+    } else {
+      appendMergeOutboxEntries(ctx, {
+        root_hex: input.root_hex,
+        namespace: input.namespace,
+        memoryKey: input.memoryKey,
+        entries: input.entries,
+      });
+    }
+  }
+
+  /** Reconstruct the text content of one memory as of the given provenance chain link. */
+  getMemoryContentAtRootHex(
+    rootHex: string,
+    namespace: string,
+    memoryKey: string,
+  ): ContentAtRootHit[] {
+    return getMemoryContentAtRootHexQuery(this.db, rootHex, namespace, memoryKey);
+  }
+
+  /**
+   * Reconstruct the text content of every memory in the store as of the given chain link.
+   * Scans the full outbox — use {@link getMemoryContentAtRootHex} for single-key lookups.
+   */
+  reconstructStoreAtRootHex(rootHex: string): ContentAtRootHit[] {
+    return reconstructStoreAtRootHexQuery(this.db, rootHex);
   }
 
   updateSourceMapContentHash(

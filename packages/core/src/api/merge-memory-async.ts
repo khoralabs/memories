@@ -87,6 +87,7 @@ async function mergeMemoryAsyncNode(
     await persistence.replaceMemoryScopes(op, { memoryId, scopeIds });
 
     const contentHashes: Record<string, string> = {};
+    const textEntries: Array<{ sourceKey: string; text?: string }> = [];
     for (const raw of params.content) {
       const item = zMergeMemoryContentItem.parse(raw);
       const { sourceMapId } = await persistence.insertSourceMap(op, {
@@ -117,6 +118,7 @@ async function mergeMemoryAsyncNode(
         text: item.text,
         vector: vec,
       });
+      textEntries.push({ sourceKey: item.key, text: item.text });
     }
 
     const labelByKind = new Map(params.labels.map((l) => [l.kind, l] as const));
@@ -217,7 +219,7 @@ async function mergeMemoryAsyncNode(
       Object.keys(contentHashes).length > 0
         ? Object.fromEntries(Object.entries(contentHashes).sort(([a], [b]) => a.localeCompare(b)))
         : undefined;
-    await persistence.appendProvenanceEvent(op, {
+    const { root_hex } = await persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "MERGE_MEMORY",
       namespace,
@@ -225,6 +227,13 @@ async function mergeMemoryAsyncNode(
       memory_id: memoryId,
       source_keys: sourceKeysSorted,
       ...(sortedHashes !== undefined ? { content_hashes: sortedHashes } : {}),
+    });
+    await persistence.appendContentOutbox?.(op, {
+      root_hex,
+      event_type: "MERGE_MEMORY",
+      namespace,
+      memoryKey: params.key,
+      entries: textEntries,
     });
   });
 
@@ -299,6 +308,7 @@ async function mergeMemoryAsyncEdge(
     await persistence.replaceMemoryScopes(op, { memoryId, scopeIds });
 
     const contentHashes: Record<string, string> = {};
+    const textEntries: Array<{ sourceKey: string; text?: string }> = [];
     for (const raw of params.content) {
       const item = zMergeMemoryContentItem.parse(raw);
       const { sourceMapId } = await persistence.insertSourceMap(op, {
@@ -329,6 +339,7 @@ async function mergeMemoryAsyncEdge(
         text: item.text,
         vector: vec,
       });
+      textEntries.push({ sourceKey: item.key, text: item.text });
     }
 
     const edgeLabelId = await persistence.ensureEdgeLabel(op, {
@@ -380,7 +391,7 @@ async function mergeMemoryAsyncEdge(
       Object.keys(contentHashes).length > 0
         ? Object.fromEntries(Object.entries(contentHashes).sort(([a], [b]) => a.localeCompare(b)))
         : undefined;
-    await persistence.appendProvenanceEvent(op, {
+    const { root_hex } = await persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "MERGE_MEMORY",
       namespace,
@@ -388,6 +399,13 @@ async function mergeMemoryAsyncEdge(
       memory_id: memoryId,
       source_keys: sourceKeysSorted,
       ...(sortedHashes !== undefined ? { content_hashes: sortedHashes } : {}),
+    });
+    await persistence.appendContentOutbox?.(op, {
+      root_hex,
+      event_type: "MERGE_MEMORY",
+      namespace,
+      memoryKey: params.key,
+      entries: textEntries,
     });
   });
 

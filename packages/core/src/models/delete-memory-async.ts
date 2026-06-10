@@ -43,12 +43,19 @@ export async function deleteMemoryAsync(
         edgeId: assoc.edgeId,
       });
     }
-    await persistence.appendProvenanceEvent(op, {
+    const { root_hex } = await persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "DELETE_MEMORY",
       namespace: params.namespace,
       memory_key: params.key,
       memory_id: assoc.memoryId,
+    });
+    await persistence.appendContentOutbox?.(op, {
+      root_hex,
+      event_type: "DELETE_MEMORY",
+      namespace: params.namespace,
+      memoryKey: params.key,
+      entries: [],
     });
   });
 }

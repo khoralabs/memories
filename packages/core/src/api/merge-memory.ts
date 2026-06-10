@@ -163,8 +163,13 @@ function insertContentItems(
   op: MemoryOpContext,
   memoryId: string,
   content: MergeMemoryContentItem[],
-): { contentHashes: Record<string, string>; sourceKeysSorted: string[] } {
+): {
+  contentHashes: Record<string, string>;
+  sourceKeysSorted: string[];
+  textEntries: Array<{ sourceKey: string; text?: string }>;
+} {
   const contentHashes: Record<string, string> = {};
+  const textEntries: Array<{ sourceKey: string; text?: string }> = [];
   for (const raw of content) {
     const item = zMergeMemoryContentItem.parse(raw);
     const { sourceMapId } = persistence.insertSourceMap(op, {
@@ -195,11 +200,12 @@ function insertContentItems(
       text: item.text,
       vector: vec,
     });
+    textEntries.push({ sourceKey: item.key, text: item.text });
   }
   const sourceKeysSorted = content
     .map((raw) => zMergeMemoryContentItem.parse(raw).key)
     .sort((a, b) => a.localeCompare(b));
-  return { contentHashes, sourceKeysSorted };
+  return { contentHashes, sourceKeysSorted, textEntries };
 }
 
 /**
@@ -243,7 +249,7 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
     const scopeIds = [...new Set([namespace, ...(params.attachScopes ?? [])])];
     persistence.replaceMemoryScopes(op, { memoryId, scopeIds });
 
-    const { contentHashes, sourceKeysSorted } = insertContentItems(
+    const { contentHashes, sourceKeysSorted, textEntries } = insertContentItems(
       persistence,
       op,
       memoryId,
@@ -345,7 +351,7 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       Object.keys(contentHashes).length > 0
         ? Object.fromEntries(Object.entries(contentHashes).sort(([a], [b]) => a.localeCompare(b)))
         : undefined;
-    persistence.appendProvenanceEvent(op, {
+    const { root_hex } = persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "MERGE_MEMORY",
       namespace,
@@ -353,6 +359,13 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       memory_id: memoryId,
       source_keys: sourceKeysSorted,
       ...(sortedHashes !== undefined ? { content_hashes: sortedHashes } : {}),
+    });
+    persistence.appendContentOutbox?.(op, {
+      root_hex,
+      event_type: "MERGE_MEMORY",
+      namespace,
+      memoryKey: params.key,
+      entries: textEntries,
     });
   });
 
@@ -428,7 +441,7 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
     const scopeIds = [...new Set([namespace, ...(params.attachScopes ?? [])])];
     persistence.replaceMemoryScopes(op, { memoryId, scopeIds });
 
-    const { contentHashes, sourceKeysSorted } = insertContentItems(
+    const { contentHashes, sourceKeysSorted, textEntries } = insertContentItems(
       persistence,
       op,
       memoryId,
@@ -478,7 +491,7 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       Object.keys(contentHashes).length > 0
         ? Object.fromEntries(Object.entries(contentHashes).sort(([a], [b]) => a.localeCompare(b)))
         : undefined;
-    persistence.appendProvenanceEvent(op, {
+    const { root_hex } = persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "MERGE_MEMORY",
       namespace,
@@ -486,6 +499,13 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       memory_id: memoryId,
       source_keys: sourceKeysSorted,
       ...(sortedHashes !== undefined ? { content_hashes: sortedHashes } : {}),
+    });
+    persistence.appendContentOutbox?.(op, {
+      root_hex,
+      event_type: "MERGE_MEMORY",
+      namespace,
+      memoryKey: params.key,
+      entries: textEntries,
     });
   });
 

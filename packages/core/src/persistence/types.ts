@@ -228,8 +228,26 @@ export interface MemoriesMutationCore {
   /**
    * Append one provenance row advancing the linear chain. Must run inside {@link withTransaction}.
    * Stores canonical JSON of `event` in `memory_provenance.event_json`.
+   * Returns the new chain head `root_hex`.
    */
-  appendProvenanceEvent(op: MemoryOpContext, event: MemoryProvenanceEvent): void;
+  appendProvenanceEvent(op: MemoryOpContext, event: MemoryProvenanceEvent): { root_hex: string };
+
+  /**
+   * Write raw content to the append-only outbox so point-in-time reconstruction is possible.
+   * Must be called inside the same transaction as {@link appendProvenanceEvent}, immediately after.
+   * For `MERGE_MEMORY` pass one entry per user content item. For `DELETE_MEMORY` pass `entries: []`.
+   * Omitting this method is valid (outbox stays empty); reconstruction will simply return no rows.
+   */
+  appendContentOutbox?(
+    op: MemoryOpContext,
+    input: {
+      root_hex: string;
+      event_type: "MERGE_MEMORY" | "DELETE_MEMORY";
+      namespace: string;
+      memoryKey: string;
+      entries: ReadonlyArray<{ sourceKey: string; text?: string }>;
+    },
+  ): void;
 
   /**
    * Persist {@link computeSourceMapContentHash} for one source map row (merge transaction).

@@ -12,6 +12,11 @@ export {
   openTestMemoriesDatabase,
   vectorToBlob,
 } from "./connection";
+export {
+  type ContentAtRootHit,
+  getMemoryContentAtRootHex,
+  reconstructStoreAtRootHex,
+} from "./models/content-outbox";
 export { listMemoryNamespaces } from "./models/list-memory-namespaces";
 export { listNamespacesUnderPrefix } from "./models/list-namespaces-under-prefix";
 export {
