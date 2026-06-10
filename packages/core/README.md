@@ -26,7 +26,8 @@ Logic layer and contracts for the memories knowledge graph: typed ontology, merg
 2. Upsert memory + graph node/edge
 3. Per content item: source map → lexical and/or vector features → content hash
 4. Label assignments, edges, `syncMemorySearchMeta`, optional label-props search text
-5. `appendProvenanceEvent` — linear hash chain
+5. `appendProvenanceEvent` — advances the linear hash chain; returns `{ root_hex }`
+6. `appendContentOutbox?` — writes raw text to the append-only outbox (optional; SQLite implements this for point-in-time reconstruction)
 
 ## Search
 

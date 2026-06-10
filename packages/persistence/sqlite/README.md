@@ -6,6 +6,7 @@ SQLite-backed implementation of the memories **persistence** contract (`Memories
 
 - **`createMemoriesPersistence(db, options?)`** — returns a sync `MemoriesPersistence` bound to a `bun:sqlite` `Database` opened with the memories schema (see `openMemoriesDatabase` in this package). Implements **`MemoriesGraph`** (reads + writes; topology reads are gated by `graphIndex`, default `true`).
 - **DB helpers** — `openMemoriesDatabase`, `openMemoriesDatabaseReadonly`, `openTestMemoriesDatabase`, `ensureCustomSqliteForExtensions`, `blobToVector`, schema init, and vec table utilities.
+- **Provenance reconstruction** — `getMemoryContentAtRootHex(db, rootHex, namespace, key)` returns the text content of one memory as it existed at a given chain link. `reconstructStoreAtRootHex(db, rootHex)` returns the same for every memory in the store (full audit; use sparingly). Both are also available as methods on the `MemoriesPersistence` instance. Content is sourced from the `memory_content_outbox` table written atomically alongside each merge/delete.
 
 Graph study / UMAP layout / UI previews live in [`@khoralabs/sqlite-graph-projections`](../sqlite-graph-projections) (optional; pulls in `umap-js`).
 

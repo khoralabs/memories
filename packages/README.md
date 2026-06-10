@@ -93,7 +93,8 @@ ids.vectorFeature(sourceMapId)// vf_*
 4. Label assignments, edge inserts
 5. `syncMemorySearchMeta` — synthetic topology chunk (`__mem_search_meta__`)
 6. Optional `syncLabelPropsSearchFeatures` — ontology props chunks
-7. `appendProvenanceEvent` — linear hash chain
+7. `appendProvenanceEvent` — advances the linear hash chain; returns `{ root_hex }`
+8. Optional `appendContentOutbox` — writes raw text content alongside the provenance row for point-in-time reconstruction (SQLite implements this)
 
 ---
 
@@ -115,7 +116,8 @@ ids.vectorFeature(sourceMapId)// vf_*
 | `node_labels`, `edge_labels` | Ontology catalog |
 | `node_label_assignments`, `edge_label_assignments` | Instance props |
 | `scopes`, `scope_edges`, `scope_closure`, `memory_scopes` | DAG visibility |
-| `memory_provenance` | Append-only mutation chain |
+| `memory_provenance` | Append-only mutation chain (hash-linked) |
+| `memory_content_outbox` | Raw text per source key per merge/delete event, keyed by `root_hex` |
 
 ### Virtual/index tables
 
@@ -141,7 +143,10 @@ ids.vectorFeature(sourceMapId)// vf_*
 
 ### Migrations
 
-[`persistence/sqlite/src/migrations/0.0.0-0.1.0/001-initial.ts`](persistence/sqlite/src/migrations/0.0.0-0.1.0/001-initial.ts) — initial schema, indexes, and FTS5 (`porter unicode61`).
+| Migration | Change |
+|-----------|--------|
+| `0.0.0-0.1.0/001-initial` | Initial schema, indexes, FTS5 (`porter unicode61`) |
+| `0.1.0-0.2.0/001-add-content-outbox` | `memory_content_outbox` table for point-in-time text reconstruction |
 
 ---
 
