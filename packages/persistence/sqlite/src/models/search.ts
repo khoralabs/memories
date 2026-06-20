@@ -13,6 +13,7 @@ import {
   type SearchNamespaceScope,
 } from "@khoralabs/memories-core";
 import type { Edge, Memory } from "@khoralabs/memories-core/persistence";
+import { vectorToBlob } from "../connection";
 import { vectorVecTableName } from "../search-indexes";
 import type { DbCtx } from "./context";
 import { loadGraphEdge } from "./graph-index";
@@ -260,6 +261,27 @@ export function searchVectorSourceMapIds(
   if (input.scope.kind === "scopeDag" && input.scope.roots.length === 0) return [];
   if (input.scope.kind === "exactScope" && input.scope.scopes.length === 0) return [];
 
+  // For unscoped searches with no allowlist there is no pre-filter benefit, so use the
+  // vec0 MATCH path (SIMD-optimised chunked scan). For all scoped searches and allowlist
+  // searches use the scalar vec_distance_cosine path: the scope filter sits in WHERE and
+  // is resolved before any distance is computed, making the scan O(n_namespace) not O(n_total).
+  if (input.scope.kind === "unscoped" && input.memoryIds === undefined) {
+    return searchVectorVec0Unscoped(ctx, input);
+  }
+  return searchVectorScoped(ctx, input);
+}
+
+/** vec0 MATCH path — only used for unscoped queries with no memoryIds allowlist. */
+function searchVectorVec0Unscoped(
+  ctx: DbCtx,
+  input: {
+    scope: SearchNamespaceScope;
+    vector: number[];
+    limit: number;
+    maxVectorDistance?: number;
+    asOfTimestampMs?: number;
+  },
+): string[] {
   const tableName = vectorVecTableName(input.vector.length);
   const exists = ctx.db
     .query<{ name: string }, [string]>(
@@ -268,24 +290,17 @@ export function searchVectorSourceMapIds(
     .get(tableName);
   if (!exists) return [];
 
-  /** Global vec0 top-k may miss a small allowlist; widen k when scoped. */
-  const knnK =
-    input.memoryIds !== undefined ? Math.min(Math.max(input.limit * 40, 100), 2048) : input.limit;
-
-  const { sql: innerWhere, bindings: scopeBindings } = memoriesWhereClauseFromScope(
-    input.scope,
-    input.memoryIds,
-    input.asOfTimestampMs,
-  );
-  const scopeClause = `AND m._id IN (SELECT _id FROM memories WHERE ${innerWhere})`;
-
   const maxD = input.maxVectorDistance;
   const distanceClause = maxD !== undefined && Number.isFinite(maxD) ? `AND knn.distance <= ?` : "";
 
-  const params: SQLQueryBindings[] = [JSON.stringify(input.vector), knnK, ...scopeBindings];
-  if (distanceClause) {
-    params.push(maxD as number);
-  }
+  // Only join memories when asOf filtering is required.
+  const needsMemoriesJoin = input.asOfTimestampMs !== undefined;
+  const memoriesJoin = needsMemoriesJoin ? `JOIN memories m ON m._id = vf.memory_id` : "";
+  const asOfClause = needsMemoriesJoin ? `AND m._ts_created <= ?` : "";
+
+  const params: SQLQueryBindings[] = [JSON.stringify(input.vector), input.limit];
+  if (distanceClause) params.push(maxD as number);
+  if (needsMemoriesJoin) params.push(input.asOfTimestampMs as number);
 
   const rows = ctx.db
     .query<{ sourceMapId: string }, SQLQueryBindings[]>(
@@ -298,11 +313,66 @@ export function searchVectorSourceMapIds(
        SELECT vf.source_map_id AS sourceMapId
        FROM knn
        JOIN vector_features vf ON vf._id = knn.vector_feature_id
-       JOIN memories m ON m._id = vf.memory_id
+       ${memoriesJoin}
        WHERE 1 = 1
-       ${scopeClause}
        ${distanceClause}
+       ${asOfClause}
        ORDER BY knn.distance ASC`,
+    )
+    .all(...params);
+  return rows.map((row) => row.sourceMapId);
+}
+
+/**
+ * Scalar vec_distance_cosine path for scoped/allowlist searches.
+ *
+ * The scope filter is a WHERE predicate on `vector_features` evaluated before any distance
+ * is computed. With the `idx_vector_features_memory_id` index the planner resolves the
+ * in-scope memory ids first, then only scores those vectors — O(n_namespace) not O(n_total).
+ *
+ * The `length(vf.vector) = ?` predicate filters to the correct embedding dimension without
+ * requiring a per-dimension shadow table lookup.
+ */
+function searchVectorScoped(
+  ctx: DbCtx,
+  input: {
+    scope: SearchNamespaceScope;
+    vector: number[];
+    limit: number;
+    memoryIds?: string[];
+    maxVectorDistance?: number;
+    asOfTimestampMs?: number;
+  },
+): string[] {
+  const queryVec = vectorToBlob(new Float32Array(input.vector));
+  const expectedByteLen = input.vector.length * Float32Array.BYTES_PER_ELEMENT;
+
+  const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
+    input.scope,
+    input.memoryIds,
+    input.asOfTimestampMs,
+  );
+
+  const maxD = input.maxVectorDistance;
+  const distClause = maxD !== undefined && Number.isFinite(maxD) ? "WHERE dist <= ?" : "";
+
+  const params: SQLQueryBindings[] = [queryVec, expectedByteLen, ...memBindings];
+  if (distClause) params.push(maxD as number);
+  params.push(input.limit);
+
+  const rows = ctx.db
+    .query<{ sourceMapId: string }, SQLQueryBindings[]>(
+      `WITH scoped AS (
+         SELECT vf.source_map_id AS sourceMapId,
+                vec_distance_cosine(vf.vector, ?) AS dist
+         FROM vector_features vf
+         WHERE length(vf.vector) = ?
+           AND ${memFilter}
+       )
+       SELECT sourceMapId FROM scoped
+       ${distClause}
+       ORDER BY dist ASC
+       LIMIT ?`,
     )
     .all(...params);
   return rows.map((row) => row.sourceMapId);
