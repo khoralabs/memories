@@ -1,4 +1,5 @@
 import type { AgentRegistry } from "@khoralabs/agent-capabilities";
+import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type { LabelSchemaMap, MemoriesClient, MemoriesClientAsync } from "@khoralabs/memories-core";
 import type { EmbeddingModel } from "@khoralabs/memories-tools";
 import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "@khoralabs/memories-tools";
@@ -76,6 +77,7 @@ export class MemoryAdapterClient<
     memorySearchBudgetMax?: number;
     /** Per-call override of any constructor field (e.g. different registry/namespace in a loop). */
     overrides?: MemoryAdapterExpandOverrides<TNode, TEdge>;
+    telemetry?: AgentTelemetry;
   }): Promise<MemoryAdapterSessionOutput> {
     const o = args.overrides ?? {};
     const maxSteps =
@@ -105,6 +107,7 @@ export class MemoryAdapterClient<
         namespace,
         ...(memorySearchBudgetMax !== undefined ? { memorySearchBudgetMax } : {}),
       },
+      ...(args.telemetry ? { hooks: args.telemetry.sessionHooks } : {}),
     });
 
     return session.start<MemoryAdapterSessionInput<TDomain>, MemoryAdapterSessionOutput>({
