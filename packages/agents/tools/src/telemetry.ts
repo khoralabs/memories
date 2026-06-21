@@ -1,7 +1,12 @@
 /** Structured log payloads for hybrid memory search toolkit and text embedding. */
 
+type MemoriesTelemetryContext = {
+  /** Store provenance chain head at event time (`memory_provenance.root_hex`, or `""` when empty). */
+  memoriesProvenanceRootHex: string;
+};
+
 export type MemoriesLogPayloadMap = {
-  "memories.toolkit.toolCall": {
+  "memories.toolkit.toolCall": MemoriesTelemetryContext & {
     processTimeMs: number;
     toolName: string;
     ok: boolean;
@@ -9,14 +14,14 @@ export type MemoriesLogPayloadMap = {
     outputSummary?: { hitCount: number; memoryKeys: string[] };
     error?: unknown;
   };
-  "memories.toolkit.memory_search": {
+  "memories.toolkit.memory_search": MemoriesTelemetryContext & {
     processTimeMs: number;
     embedMs: number;
     searchMs: number;
     embedCacheHit: boolean;
     hitCount: number;
   };
-  "memories.embed.textChunks": {
+  "memories.embed.textChunks": MemoriesTelemetryContext & {
     processTimeMs: number;
     textCount: number;
     model: string;

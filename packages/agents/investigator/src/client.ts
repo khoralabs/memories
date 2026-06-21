@@ -2,7 +2,7 @@ import type { AgentRegistry } from "@khoralabs/agent-capabilities";
 import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type { LabelSchemaMap, MemoriesClient, MemoriesClientAsync } from "@khoralabs/memories-core";
 import type { EmbeddingModel } from "@khoralabs/memories-tools";
-import { DEFAULT_INVESTIGATOR_MAX_STEPS } from "@khoralabs/memories-tools";
+import { DEFAULT_INVESTIGATOR_MAX_STEPS, memoryAgentSessionHooks } from "@khoralabs/memories-tools";
 import type { LanguageModel } from "ai";
 import type { InvestigatorPipelineGeneration } from "./create-investigator-agent.js";
 import {
@@ -119,7 +119,9 @@ export class MemoryInvestigatorClient<
         ...(memorySearchExtensions !== undefined ? { memorySearchExtensions } : {}),
         ...(memorySearchBudgetMax !== undefined ? { memorySearchBudgetMax } : {}),
       },
-      ...(args.telemetry ? { hooks: args.telemetry.sessionHooks } : {}),
+      ...(args.telemetry
+        ? { hooks: await memoryAgentSessionHooks({ client, telemetry: args.telemetry }) }
+        : {}),
     });
 
     return session.start<MemoryInvestigatorSessionInput, MemoryInvestigatorSessionOutput>({

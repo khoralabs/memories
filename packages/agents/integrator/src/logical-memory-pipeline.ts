@@ -1,4 +1,5 @@
 import { type AgentRegistry, createAgentRegistry } from "@khoralabs/agent-capabilities";
+import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type {
   LabelSchemaMap,
   MemoriesClient,
@@ -105,6 +106,7 @@ export async function processLogicalMemoryWithIntegrator<
   registry?: AgentRegistry;
   /** Caps {@code memory_search} per integrator run when set. */
   memorySearchBudgetMax?: number;
+  telemetry?: AgentTelemetry;
 }): Promise<{
   processedLogicalMemory: ProcessedLogicalMemory;
   plan: IntegratorPlanWire;
@@ -150,6 +152,7 @@ export async function processLogicalMemoryWithIntegrator<
     ...(args.memorySearchBudgetMax !== undefined
       ? { memorySearchBudgetMax: args.memorySearchBudgetMax }
       : {}),
+    ...(args.telemetry !== undefined ? { telemetry: args.telemetry } : {}),
   });
 
   const slice = integratorWireToMergeSlice(client.ontology, plan);

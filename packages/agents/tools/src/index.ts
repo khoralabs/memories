@@ -10,6 +10,12 @@ export {
   embedTextChunks,
 } from "@khoralabs/memories-core/helpers";
 export {
+  createMemoriesAgentTelemetry,
+  MEMORIES_PROVENANCE_ROOT_HEX_ATTR,
+  MEMORIES_PROVENANCE_ROOT_HEX_LOG_FIELD,
+  memoryAgentSessionHooks,
+} from "./agent-telemetry.js";
+export {
   DEFAULT_INVESTIGATOR_MAX_STEPS,
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
 } from "./memory-agent-defaults.js";

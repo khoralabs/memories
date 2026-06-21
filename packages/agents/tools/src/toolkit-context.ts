@@ -45,7 +45,7 @@ export type MemorySearchSessionContextSlice<
   affordances?: RegisteredAgentAffordances;
 };
 
-async function getMemoriesProvenanceHeadRootHex(client: {
+export async function getMemoriesProvenanceHeadRootHex(client: {
   persistence: {
     getProvenanceHeadRootHex?: () => string | undefined | Promise<string | undefined>;
   };
