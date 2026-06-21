@@ -128,12 +128,16 @@ export function createMemoryIntegratorSessionRunner<
     });
 
     const messages = [buildMemoryIntegratorUserMessage({ content })];
+    const generateOpts = {
+      messages,
+      ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
+    };
     let generation: IntegratorPipelineGeneration;
     try {
-      generation = await integratorAgent.generate({ messages });
+      generation = await integratorAgent.generate(generateOpts);
     } catch (e) {
       if (NoOutputGeneratedError.isInstance(e) || NoObjectGeneratedError.isInstance(e)) {
-        generation = await integratorAgent.generate({ messages });
+        generation = await integratorAgent.generate(generateOpts);
       } else {
         throw e;
       }

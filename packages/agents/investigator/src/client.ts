@@ -81,6 +81,7 @@ export class MemoryInvestigatorClient<
     memorySearchBudgetMax?: number;
     overrides?: MemoryInvestigatorInvestigateOverrides<TNode, TEdge>;
     telemetry?: AgentTelemetry;
+    signal?: AbortSignal;
   }): Promise<{
     answer: InvestigatorAnswerWire;
     generation: InvestigatorPipelineGeneration;
@@ -119,6 +120,7 @@ export class MemoryInvestigatorClient<
         ...(memorySearchExtensions !== undefined ? { memorySearchExtensions } : {}),
         ...(memorySearchBudgetMax !== undefined ? { memorySearchBudgetMax } : {}),
       },
+      ...(args.signal !== undefined ? { signal: args.signal } : {}),
       ...(args.telemetry
         ? { hooks: await memoryAgentSessionHooks({ client, telemetry: args.telemetry }) }
         : {}),

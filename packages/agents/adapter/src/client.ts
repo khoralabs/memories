@@ -81,6 +81,7 @@ export class MemoryAdapterClient<
     /** Per-call override of any constructor field (e.g. different registry/namespace in a loop). */
     overrides?: MemoryAdapterExpandOverrides<TNode, TEdge>;
     telemetry?: AgentTelemetry;
+    signal?: AbortSignal;
   }): Promise<MemoryAdapterSessionOutput> {
     const o = args.overrides ?? {};
     const maxSteps =
@@ -110,6 +111,7 @@ export class MemoryAdapterClient<
         namespace,
         ...(memorySearchBudgetMax !== undefined ? { memorySearchBudgetMax } : {}),
       },
+      ...(args.signal !== undefined ? { signal: args.signal } : {}),
       ...(args.telemetry
         ? { hooks: await memoryAgentSessionHooks({ client, telemetry: args.telemetry }) }
         : {}),

@@ -131,7 +131,10 @@ export function createMemoryAdapterSessionRunner<
     });
 
     const messages = [buildMemoryAdapterUserMessage({ ingest, domainPayload })];
-    const generation = await adapterAgent.generate({ messages });
+    const generation = await adapterAgent.generate({
+      messages,
+      ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
+    });
 
     const v = parseAdapterGenerationToExpandedMemoryWire(context.client.ontology, generation);
 

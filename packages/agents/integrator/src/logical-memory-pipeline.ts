@@ -107,6 +107,7 @@ export async function processLogicalMemoryWithIntegrator<
   /** Caps {@code memory_search} per integrator run when set. */
   memorySearchBudgetMax?: number;
   telemetry?: AgentTelemetry;
+  signal?: AbortSignal;
 }): Promise<{
   processedLogicalMemory: ProcessedLogicalMemory;
   plan: IntegratorPlanWire;
@@ -153,6 +154,7 @@ export async function processLogicalMemoryWithIntegrator<
       ? { memorySearchBudgetMax: args.memorySearchBudgetMax }
       : {}),
     ...(args.telemetry !== undefined ? { telemetry: args.telemetry } : {}),
+    ...(args.signal !== undefined ? { signal: args.signal } : {}),
   });
 
   const slice = integratorWireToMergeSlice(client.ontology, plan);

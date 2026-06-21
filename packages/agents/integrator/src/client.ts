@@ -83,6 +83,7 @@ export class MemoryIntegratorClient<
     /** Per-call override of any constructor field (e.g. different registry/namespace in a loop). */
     overrides?: MemoryIntegratorIntegrateOverrides<TNode, TEdge>;
     telemetry?: AgentTelemetry;
+    signal?: AbortSignal;
   }): Promise<{
     plan: IntegratorPlanWire;
     generation: IntegratorPipelineGeneration;
@@ -115,6 +116,7 @@ export class MemoryIntegratorClient<
         namespace,
         ...(memorySearchBudgetMax !== undefined ? { memorySearchBudgetMax } : {}),
       },
+      ...(args.signal !== undefined ? { signal: args.signal } : {}),
       ...(args.telemetry
         ? { hooks: await memoryAgentSessionHooks({ client, telemetry: args.telemetry }) }
         : {}),

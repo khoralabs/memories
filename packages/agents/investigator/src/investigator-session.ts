@@ -128,12 +128,16 @@ export function createMemoryInvestigatorSessionRunner<
     });
 
     const messages = [buildMemoryInvestigatorUserMessage({ question })];
+    const generateOpts = {
+      messages,
+      ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
+    };
     let generation: InvestigatorPipelineGeneration;
     try {
-      generation = await investigatorAgent.generate({ messages });
+      generation = await investigatorAgent.generate(generateOpts);
     } catch (e) {
       if (NoOutputGeneratedError.isInstance(e) || NoObjectGeneratedError.isInstance(e)) {
-        generation = await investigatorAgent.generate({ messages });
+        generation = await investigatorAgent.generate(generateOpts);
       } else {
         throw e;
       }

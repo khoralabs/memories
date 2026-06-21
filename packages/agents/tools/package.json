@@ -26,9 +26,9 @@
     }
   },
   "dependencies": {
-    "@khoralabs/agent-capabilities": "^0.1.0",
-    "@khoralabs/agent-capabilities-ai-sdk": "^0.1.0",
-    "@khoralabs/agent-capabilities-otel": "^0.1.0",
+    "@khoralabs/agent-capabilities": "^0.1.1",
+    "@khoralabs/agent-capabilities-ai-sdk": "^0.1.1",
+    "@khoralabs/agent-capabilities-otel": "^0.1.1",
     "@khoralabs/memories-core": "workspace:*",
     "ai": "^6",
     "zod": "^4"

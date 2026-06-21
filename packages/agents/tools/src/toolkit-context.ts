@@ -40,6 +40,8 @@ export type MemorySearchSessionContextSlice<
    * {@link attachMemorySearchSessionLayer} sets this from {@link MemoriesPersistence.getProvenanceHeadRootHex}.
    */
   memoriesSnapshotRootHex?: string;
+  /** Set by {@link @khoralabs/agent-capabilities!createAgentRegistry} when {@code signal} is configured. */
+  abortSignal?: AbortSignal;
   toolkitCtx?: ToolkitContext<MemorySearchEnv>;
   runtime?: ToolRuntimeContext<MemorySearchEnv>;
   affordances?: RegisteredAgentAffordances;
@@ -77,6 +79,7 @@ function memorySearchContextBuildArgs<TNode extends ZodLabelMap, TEdge extends Z
     ...(context.memoriesSnapshotRootHex !== undefined
       ? { memoriesSnapshotRootHex: context.memoriesSnapshotRootHex }
       : {}),
+    ...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
   };
 }
 
@@ -96,6 +99,7 @@ export function buildMemorySearchToolkitAndRuntime<
   agentName?: string;
   memorySearchBudgetMax?: number;
   memoriesSnapshotRootHex?: string;
+  abortSignal?: AbortSignal;
 }): { toolkitCtx: ToolkitContext<MemorySearchEnv>; runtime: ToolRuntimeContext<MemorySearchEnv> } {
   return {
     toolkitCtx: buildMemorySearchToolkitContext(args),
@@ -179,12 +183,14 @@ export function buildMemorySearchToolkitContext<
   agentName?: string;
   memorySearchBudgetMax?: number;
   memoriesSnapshotRootHex?: string;
+  abortSignal?: AbortSignal;
 }): ToolkitContext<MemorySearchEnv> {
   return {
     env: toMemorySearchEnv(args),
     namespace: args.namespace,
     agentId: args.agentId,
     agentName: args.agentName,
+    ...(args.abortSignal !== undefined ? { abortSignal: args.abortSignal } : {}),
   };
 }
 
@@ -201,11 +207,13 @@ export function buildMemorySearchToolRuntimeContext<
   agentName?: string;
   memorySearchBudgetMax?: number;
   memoriesSnapshotRootHex?: string;
+  abortSignal?: AbortSignal;
 }): ToolRuntimeContext<MemorySearchEnv> {
   return {
     env: toMemorySearchEnv(args),
     namespace: args.namespace,
     agentId: args.agentId,
     agentName: args.agentName,
+    ...(args.abortSignal !== undefined ? { abortSignal: args.abortSignal } : {}),
   };
 }

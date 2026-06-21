@@ -19,9 +19,9 @@
       "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
-        "@khoralabs/agent-capabilities": "^0.1.0",
-        "@khoralabs/agent-capabilities-ai-sdk": "^0.1.0",
-        "@khoralabs/agent-capabilities-otel": "^0.1.0",
+        "@khoralabs/agent-capabilities": "^0.1.1",
+        "@khoralabs/agent-capabilities-ai-sdk": "^0.1.1",
+        "@khoralabs/agent-capabilities-otel": "^0.1.1",
         "@khoralabs/memories-core": "workspace:*",
         "@khoralabs/memories-tools": "workspace:*",
         "ai": "^6",
@@ -39,9 +39,9 @@
       "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
-        "@khoralabs/agent-capabilities": "^0.1.0",
-        "@khoralabs/agent-capabilities-ai-sdk": "^0.1.0",
-        "@khoralabs/agent-capabilities-otel": "^0.1.0",
+        "@khoralabs/agent-capabilities": "^0.1.1",
+        "@khoralabs/agent-capabilities-ai-sdk": "^0.1.1",
+        "@khoralabs/agent-capabilities-otel": "^0.1.1",
         "@khoralabs/memories-core": "workspace:*",
         "@khoralabs/memories-tools": "workspace:*",
         "ai": "^6",
@@ -59,9 +59,9 @@
       "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
-        "@khoralabs/agent-capabilities": "^0.1.0",
-        "@khoralabs/agent-capabilities-ai-sdk": "^0.1.0",
-        "@khoralabs/agent-capabilities-otel": "^0.1.0",
+        "@khoralabs/agent-capabilities": "^0.1.1",
+        "@khoralabs/agent-capabilities-ai-sdk": "^0.1.1",
+        "@khoralabs/agent-capabilities-otel": "^0.1.1",
         "@khoralabs/memories-core": "workspace:*",
         "@khoralabs/memories-tools": "workspace:*",
         "ai": "^6",
@@ -78,9 +78,9 @@
       "name": "@khoralabs/memories-tools",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/agent-capabilities": "^0.1.0",
-        "@khoralabs/agent-capabilities-ai-sdk": "^0.1.0",
-        "@khoralabs/agent-capabilities-otel": "^0.1.0",
+        "@khoralabs/agent-capabilities": "^0.1.1",
+        "@khoralabs/agent-capabilities-ai-sdk": "^0.1.1",
+        "@khoralabs/agent-capabilities-otel": "^0.1.1",
         "@khoralabs/memories-core": "workspace:*",
         "ai": "^6",
         "zod": "^4",
@@ -252,11 +252,11 @@
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.11", "", {}, "sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg=="],
 
-    "@khoralabs/agent-capabilities": ["@khoralabs/agent-capabilities@0.1.0", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-/xKc0/MuxH8NGPP6Kav1J/iCciBgFbpbgPP/BiHKWIfoiMMZcUf/rP6542BQBv++BFb2P4BRixumko/aVwlBtw=="],
+    "@khoralabs/agent-capabilities": ["@khoralabs/agent-capabilities@0.1.1", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-JigiwTSewgyICse9eL8AvOcBgdzNkVtv4UyGPWQJEWRLQEutMziOnDqutAQ2W1gGu4LsP+EunhcJrXQv74Ofdg=="],
 
-    "@khoralabs/agent-capabilities-ai-sdk": ["@khoralabs/agent-capabilities-ai-sdk@0.1.0", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.1.0", "ai": "^6" }, "peerDependencies": { "typescript": "^5" } }, "sha512-flk0KF54z0DiKPnSQEz9dxAicMdMYfyyT7M0ScxQvK8EC4yiNdqj5ivm1uTUsWLNGcm3FPzv6CB17slLqck92A=="],
+    "@khoralabs/agent-capabilities-ai-sdk": ["@khoralabs/agent-capabilities-ai-sdk@0.1.1", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.1.0", "ai": "^6" }, "peerDependencies": { "typescript": "^5" } }, "sha512-Ps6lelpvWVRklrgURbk+kGDCzYJAEpW0TTs3ie3jkCP6vjVYlU/T1kmdd5gwar5+kTusQodiX1FDExQfQ2qAJQ=="],
 
-    "@khoralabs/agent-capabilities-otel": ["@khoralabs/agent-capabilities-otel@0.1.0", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.1.0", "@opentelemetry/api": "^1.9.0", "pino": "^9.6.0" }, "peerDependencies": { "typescript": "^5" } }, "sha512-rPdHWmAtx9f88Sr7LooITLLY8UnpvrxGF65CeP5VtiqFWADGQm/U6d5kNAdC/po7cpvZ5qp2qJpnLAttagt4fA=="],
+    "@khoralabs/agent-capabilities-otel": ["@khoralabs/agent-capabilities-otel@0.1.1", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.1.0", "@opentelemetry/api": "^1.9.0", "pino": "^9.6.0" }, "peerDependencies": { "typescript": "^5" } }, "sha512-dsJSsS4IONrmwsWp/sqLwZVkzvHwr1mf9sZXNF2z9ELp6Bs+7e5HM7FMnN9JvhlAx63CI8YQuDhVOHRcrPt+zw=="],
 
     "@khoralabs/memories-adapter": ["@khoralabs/memories-adapter@workspace:packages/agents/adapter"],
 
