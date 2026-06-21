@@ -21,7 +21,7 @@ import {
 export type MemoryIntegratorToolSet = MemorySearchToolSet;
 
 const zIntegratorSearchComplete = z.object({
-  ready: z.literal(true).describe("Set true when memory_search is complete."),
+  ready: z.boolean().describe("Set to true when memory_search is complete."),
 });
 
 export type IntegratorSearchStructuredOutput = ReturnType<
