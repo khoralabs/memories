@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { defineOntology } from "@khoralabs/memories-core";
 import z from "zod";
-import { type IntegratorPlanWire, parseIntegratorPlanWire, zIntegratorPlanWire } from "./integrator-output.js";
+import {
+  type IntegratorPlanWire,
+  parseIntegratorPlanWire,
+  zIntegratorPlanWire,
+} from "./integrator-output.js";
 import { integratorWireToMergeSlice } from "./to-merge-slice.js";
 
 describe("MemoryIntegratorPlan schema + merge mapping", () => {
