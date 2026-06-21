@@ -50,7 +50,25 @@ export type MemorySearchEnv = {
    * Drives runtime {@code memory_search} tool identity and optional as-of search when the backend supports it.
    */
   memoriesSnapshotRootHex?: string;
+  /**
+   * When set, {@link memorySearchTool} adds each hit and neighbor {@code memory_key} after every search.
+   */
+  discoveredMemoryKeys?: Set<string>;
 };
+
+/** Record slim search hit keys (and neighbor keys) into a session accumulator. */
+export function recordDiscoveredMemoryKeys(
+  hits: MemorySearchHit[],
+  discoveredMemoryKeys: Set<string> | undefined,
+): void {
+  if (discoveredMemoryKeys === undefined) return;
+  for (const hit of hits) {
+    discoveredMemoryKeys.add(hit.memory_key);
+    for (const neighbor of hit.neighbors ?? []) {
+      discoveredMemoryKeys.add(neighbor.memory_key);
+    }
+  }
+}
 
 /** Tool key used with {@link memorySearchRuntimeToolAugments} / runtime identity. */
 export const MEMORY_SEARCH_TOOL_NAME = "memory_search" as const;
@@ -179,6 +197,8 @@ const memorySearchTool = tool<
       },
       parsed as HybridMemorySearchInput,
     );
+
+    recordDiscoveredMemoryKeys(slim, env.discoveredMemoryKeys);
 
     const budget = env.memorySearchBudget;
     if (budget !== undefined) {

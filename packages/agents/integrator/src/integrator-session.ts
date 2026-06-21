@@ -10,16 +10,33 @@ import {
   type MemorySearchSessionContextSlice,
   type ZodLabelMap,
 } from "@khoralabs/memories-tools";
-import { type LanguageModel, NoObjectGeneratedError, NoOutputGeneratedError } from "ai";
-import type { IntegratorPipelineGeneration } from "./create-integrator-agent.js";
-import { createMemoryIntegratorAgent } from "./create-integrator-agent.js";
+import {
+  generateObject,
+  type LanguageModel,
+  type ModelMessage,
+  NoObjectGeneratedError,
+  NoOutputGeneratedError,
+} from "ai";
+import type {
+  IntegratorPlanGeneration,
+  IntegratorSearchGeneration,
+} from "./create-integrator-agent.js";
+import { createMemoryIntegratorSearchAgent } from "./create-integrator-agent.js";
 import {
   buildMemoryIntegratorAgentId,
   type DefineMemoryIntegratorIdentityOptions,
   defineMemoryIntegratorIdentity,
 } from "./identity.js";
-import { type IntegratorPlanWire, parseIntegratorPlanWire } from "./integrator-output.js";
-import { buildMemoryIntegratorUserMessage } from "./messages.js";
+import { memoryIntegratorPlanPhaseInstruction } from "./instructions.js";
+import {
+  type IntegratorPlanWire,
+  parseIntegratorPlanWire,
+  zIntegratorPlanWire,
+} from "./integrator-output.js";
+import {
+  buildMemoryIntegratorPlanUserMessage,
+  buildMemoryIntegratorUserMessage,
+} from "./messages.js";
 
 export type MemoryIntegratorSessionContext<
   TNode extends ZodLabelMap,
@@ -35,9 +52,20 @@ export type MemoryIntegratorSessionInput = {
 };
 
 export type MemoryIntegratorSessionOutput = {
-  generation: IntegratorPipelineGeneration;
+  searchGeneration: IntegratorSearchGeneration;
+  planGeneration: IntegratorPlanGeneration;
+  /** Plan-phase generation (backward compatible alias). */
+  generation: IntegratorPlanGeneration;
   plan: IntegratorPlanWire;
+  discoveredMemoryKeys: string[];
 };
+
+function collectSearchPhaseMessages(
+  userMessage: ModelMessage,
+  searchGeneration: IntegratorSearchGeneration,
+): ModelMessage[] {
+  return [userMessage, ...searchGeneration.steps.flatMap((step) => step.response.messages)];
+}
 
 /**
  * Full static definition: identity (capabilities hash) + session registration for {@link AgentRegistry.register}.
@@ -66,6 +94,7 @@ export async function getMemoryIntegratorAgentDefinition(
           await attachMemorySearchSessionLayer({
             agent,
             context,
+            trackDiscoveredMemoryKeys: true,
           });
           void input;
         },
@@ -118,34 +147,77 @@ export function createMemoryIntegratorSessionRunner<
       );
     }
 
-    const integratorAgent = createMemoryIntegratorAgent({
+    const searchAgent = createMemoryIntegratorSearchAgent({
       model,
       identity: agent,
       affordances: context.affordances,
       runtime: context.runtime,
       maxSteps,
-      ontology: client.ontology,
     });
 
-    const messages = [buildMemoryIntegratorUserMessage({ content })];
-    const generateOpts = {
-      messages,
+    const userMessage = buildMemoryIntegratorUserMessage({ content });
+    const searchGenerateOpts = {
+      messages: [userMessage],
       ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
     };
-    let generation: IntegratorPipelineGeneration;
+
+    let searchGeneration: IntegratorSearchGeneration;
     try {
-      generation = await integratorAgent.generate(generateOpts);
+      searchGeneration = await searchAgent.generate(searchGenerateOpts);
     } catch (e) {
       if (NoOutputGeneratedError.isInstance(e) || NoObjectGeneratedError.isInstance(e)) {
-        generation = await integratorAgent.generate(generateOpts);
+        searchGeneration = await searchAgent.generate(searchGenerateOpts);
       } else {
         throw e;
       }
     }
 
-    const raw = generation.output as unknown;
-    const plan = parseIntegratorPlanWire(client.ontology, raw);
+    const discoveredMemoryKeys = [...(context.runtime.env.discoveredMemoryKeys ?? [])].sort(
+      (a, b) => a.localeCompare(b),
+    );
 
-    return { generation, plan };
+    const planSchema = zIntegratorPlanWire(client.ontology, {
+      allowedMemoryKeys: discoveredMemoryKeys,
+    });
+    const planSystem = [
+      context.affordances.instructions.trim(),
+      memoryIntegratorPlanPhaseInstruction,
+    ]
+      .filter((s) => s.length > 0)
+      .join("\n\n");
+    const planMessages = [
+      ...collectSearchPhaseMessages(userMessage, searchGeneration),
+      buildMemoryIntegratorPlanUserMessage({ allowedMemoryKeys: discoveredMemoryKeys }),
+    ];
+    const planGenerateOpts = {
+      model,
+      schema: planSchema,
+      system: planSystem,
+      messages: planMessages,
+      ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
+    };
+
+    let planGeneration: IntegratorPlanGeneration;
+    try {
+      planGeneration = await generateObject(planGenerateOpts);
+    } catch (e) {
+      if (NoOutputGeneratedError.isInstance(e) || NoObjectGeneratedError.isInstance(e)) {
+        planGeneration = await generateObject(planGenerateOpts);
+      } else {
+        throw e;
+      }
+    }
+
+    const plan = parseIntegratorPlanWire(client.ontology, planGeneration.object, {
+      allowedMemoryKeys: discoveredMemoryKeys,
+    });
+
+    return {
+      searchGeneration,
+      planGeneration,
+      generation: planGeneration,
+      plan,
+      discoveredMemoryKeys,
+    };
   };
 }

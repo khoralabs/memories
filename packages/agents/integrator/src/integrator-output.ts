@@ -2,6 +2,10 @@ import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-cor
 import { Output } from "ai";
 import z from "zod";
 
+export type IntegratorPlanWireOptions = {
+  allowedMemoryKeys?: readonly string[];
+};
+
 /** Sorted ontology label kind strings (stable for schema + parsing). */
 export function integratorLabelKindsFromOntology<
   TNode extends LabelSchemaMap,
@@ -42,12 +46,29 @@ function zNodeLabelsObjectFromOntology<TNode extends LabelSchemaMap, TEdge exten
     );
 }
 
+function zIntegratorEdgeMemoryKey(options?: IntegratorPlanWireOptions): z.ZodType<string> {
+  const allowed = options?.allowedMemoryKeys;
+  if (allowed === undefined) {
+    return z
+      .string()
+      .describe("Existing memory key (memory_search or host context; do not invent).");
+  }
+  if (allowed.length === 0) {
+    return z.never().describe("No neighbor keys were discovered — edges must be empty.");
+  }
+  const sorted = [...allowed].sort((a, b) => a.localeCompare(b));
+  return z
+    .enum(sorted as [string, ...string[]])
+    .describe("Neighbor memory key from memory_search results (exact match required).");
+}
+
 /**
  * One edge row: `memory` + `direction` + exactly one optional field matching an ontology edge kind (payload = that kind's schema).
  * Same pattern as node labels; no `kind` + loose `data` union.
  */
 function zIntegratorEdgeItemKeyed<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ontology: OntologyDefinition<TNode, TEdge>,
+  options?: IntegratorPlanWireOptions,
 ): z.ZodType {
   const edgeKinds = integratorLabelKindsFromOntology(ontology).edge;
   if (edgeKinds.length === 0) {
@@ -68,9 +89,7 @@ function zIntegratorEdgeItemKeyed<TNode extends LabelSchemaMap, TEdge extends La
   }
 
   const base = z.object({
-    memory: z
-      .string()
-      .describe("Existing memory key (memory_search or host context; do not invent)."),
+    memory: zIntegratorEdgeMemoryKey(options),
     direction: z
       .enum(["in", "out"])
       .describe(
@@ -98,6 +117,7 @@ function zIntegratorEdgeItemKeyed<TNode extends LabelSchemaMap, TEdge extends La
 /** Wire format for LLM JSON: flat node label object + keyed edge rows. */
 export function zIntegratorPlanWire<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ontology: OntologyDefinition<TNode, TEdge>,
+  options?: IntegratorPlanWireOptions,
 ) {
   const { edge } = integratorLabelKindsFromOntology(ontology);
 
@@ -106,11 +126,13 @@ export function zIntegratorPlanWire<TNode extends LabelSchemaMap, TEdge extends 
   const edgesSchema =
     edge.length === 0
       ? z.array(z.never()).describe("No edge label kinds — must be empty [].")
-      : z
-          .array(zIntegratorEdgeItemKeyed(ontology))
-          .describe(
-            "Edges to existing neighbor memory keys; each item sets exactly one edge kind payload.",
-          );
+      : options?.allowedMemoryKeys !== undefined && options.allowedMemoryKeys.length === 0
+        ? z.array(z.never()).describe("No neighbor keys discovered — edges must be empty [].")
+        : z
+            .array(zIntegratorEdgeItemKeyed(ontology, options))
+            .describe(
+              "Edges to existing neighbor memory keys; each item sets exactly one edge kind payload.",
+            );
 
   return z.object({
     nodeLabels: nodeLabelsSchema,
@@ -141,20 +163,24 @@ export type IntegratorPlanWire = {
 export function integratorPlanOutputFromOntology<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
->(ontology: OntologyDefinition<TNode, TEdge>) {
+>(ontology: OntologyDefinition<TNode, TEdge>, options?: IntegratorPlanWireOptions) {
   return Output.object({
     name: "MemoryIntegratorPlan",
     description:
       "MemoryIntegratorPlan: nodeLabels is an object with optional keys per ontology node kind; each edge row sets memory, direction, and exactly one optional field named for an ontology edge kind (that field's value is the payload).",
-    schema: zIntegratorPlanWire(ontology),
+    schema: zIntegratorPlanWire(ontology, options),
   });
 }
+
+/** Alias for phase-2 plan generation with search-derived neighbor keys. */
+export const buildIntegratorPlanOutput = integratorPlanOutputFromOntology;
 
 export type IntegratorPlanStructuredOutput = ReturnType<typeof integratorPlanOutputFromOntology>;
 
 export function parseIntegratorPlanWire<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ontology: OntologyDefinition<TNode, TEdge>,
   data: unknown,
+  options?: IntegratorPlanWireOptions,
 ): IntegratorPlanWire {
-  return zIntegratorPlanWire(ontology).parse(data) as IntegratorPlanWire;
+  return zIntegratorPlanWire(ontology, options).parse(data) as IntegratorPlanWire;
 }

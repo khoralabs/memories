@@ -60,6 +60,7 @@ export async function getMemoriesProvenanceHeadRootHex(client: {
 
 function memorySearchContextBuildArgs<TNode extends ZodLabelMap, TEdge extends ZodLabelMap>(
   context: MemorySearchSessionContextSlice<TNode, TEdge>,
+  trackDiscoveredMemoryKeys?: boolean,
 ) {
   return {
     client: context.client,
@@ -80,6 +81,7 @@ function memorySearchContextBuildArgs<TNode extends ZodLabelMap, TEdge extends Z
       ? { memoriesSnapshotRootHex: context.memoriesSnapshotRootHex }
       : {}),
     ...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
+    ...(trackDiscoveredMemoryKeys ? { trackDiscoveredMemoryKeys: true as const } : {}),
   };
 }
 
@@ -98,6 +100,7 @@ export function buildMemorySearchToolkitAndRuntime<
   agentId?: string;
   agentName?: string;
   memorySearchBudgetMax?: number;
+  trackDiscoveredMemoryKeys?: boolean;
   memoriesSnapshotRootHex?: string;
   abortSignal?: AbortSignal;
 }): { toolkitCtx: ToolkitContext<MemorySearchEnv>; runtime: ToolRuntimeContext<MemorySearchEnv> } {
@@ -118,11 +121,12 @@ export async function attachMemorySearchSessionLayer<
 >(args: {
   agent: RegisteredAgent;
   context: MemorySearchSessionContextSlice<TNode, TEdge>;
+  trackDiscoveredMemoryKeys?: boolean;
 }): Promise<void> {
   const { agent, context: ctx } = args;
   ctx.memoriesSnapshotRootHex =
     ctx.memoriesSnapshotRootHex ?? (await getMemoriesProvenanceHeadRootHex(ctx.client)) ?? "";
-  const shared = memorySearchContextBuildArgs<TNode, TEdge>(ctx);
+  const shared = memorySearchContextBuildArgs<TNode, TEdge>(ctx, args.trackDiscoveredMemoryKeys);
   const { toolkitCtx, runtime } = buildMemorySearchToolkitAndRuntime(shared);
   ctx.toolkitCtx = toolkitCtx;
   ctx.runtime = runtime;
@@ -143,6 +147,7 @@ export function toMemorySearchEnv<TNode extends ZodLabelMap, TEdge extends ZodLa
   embeddingCache?: Map<string, number[]>;
   /** When set, initializes {@link MemorySearchEnv.memorySearchBudget} with {@code used: 0}. */
   memorySearchBudgetMax?: number;
+  trackDiscoveredMemoryKeys?: boolean;
   memoriesSnapshotRootHex?: string;
 }): MemorySearchEnv {
   const memorySearchBudget =
@@ -167,6 +172,7 @@ export function toMemorySearchEnv<TNode extends ZodLabelMap, TEdge extends ZodLa
     ...(args.memoriesSnapshotRootHex !== undefined
       ? { memoriesSnapshotRootHex: args.memoriesSnapshotRootHex }
       : {}),
+    ...(args.trackDiscoveredMemoryKeys ? { discoveredMemoryKeys: new Set<string>() } : {}),
   };
 }
 
@@ -182,6 +188,7 @@ export function buildMemorySearchToolkitContext<
   agentId?: string;
   agentName?: string;
   memorySearchBudgetMax?: number;
+  trackDiscoveredMemoryKeys?: boolean;
   memoriesSnapshotRootHex?: string;
   abortSignal?: AbortSignal;
 }): ToolkitContext<MemorySearchEnv> {
@@ -206,6 +213,7 @@ export function buildMemorySearchToolRuntimeContext<
   agentId?: string;
   agentName?: string;
   memorySearchBudgetMax?: number;
+  trackDiscoveredMemoryKeys?: boolean;
   memoriesSnapshotRootHex?: string;
   abortSignal?: AbortSignal;
 }): ToolRuntimeContext<MemorySearchEnv> {

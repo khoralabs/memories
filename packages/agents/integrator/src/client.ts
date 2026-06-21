@@ -87,6 +87,7 @@ export class MemoryIntegratorClient<
   }): Promise<{
     plan: IntegratorPlanWire;
     generation: IntegratorPipelineGeneration;
+    discoveredMemoryKeys: string[];
   }> {
     const o = args.overrides ?? {};
     const maxSteps =
@@ -122,10 +123,16 @@ export class MemoryIntegratorClient<
         : {}),
     });
 
-    return session.start<MemoryIntegratorSessionInput, MemoryIntegratorSessionOutput>({
-      content: args.content,
-      maxSteps,
-    });
+    return session
+      .start<MemoryIntegratorSessionInput, MemoryIntegratorSessionOutput>({
+        content: args.content,
+        maxSteps,
+      })
+      .then((result) => ({
+        plan: result.plan,
+        generation: result.generation,
+        discoveredMemoryKeys: result.discoveredMemoryKeys,
+      }));
   }
 
   static integratorAgentId(namespace: string): string {

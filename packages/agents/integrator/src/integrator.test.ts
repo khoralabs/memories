@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { defineOntology } from "@khoralabs/memories-core";
 import z from "zod";
-import { parseIntegratorPlanWire, zIntegratorPlanWire } from "./integrator-output.js";
+import { type IntegratorPlanWire, parseIntegratorPlanWire, zIntegratorPlanWire } from "./integrator-output.js";
 import { integratorWireToMergeSlice } from "./to-merge-slice.js";
 
 describe("MemoryIntegratorPlan schema + merge mapping", () => {
@@ -127,6 +127,55 @@ describe("MemoryIntegratorPlan schema + merge mapping", () => {
             direction: "out",
           },
         ],
+      }),
+    ).toThrow();
+  });
+
+  test("allowedMemoryKeys enum accepts listed keys and rejects others", () => {
+    const ontology = defineOntology({
+      nodeLabels: { fact: z.object({}) },
+      edgeLabels: { references: z.object({ context: z.string().optional() }) },
+    });
+    const schema = zIntegratorPlanWire(ontology, {
+      allowedMemoryKeys: ["beliefs/s1/b1", "documents/doc-1"],
+    });
+    const parsed = schema.parse({
+      nodeLabels: {},
+      edges: [
+        {
+          memory: "beliefs/s1/b1",
+          direction: "out",
+          references: { context: "related" },
+        },
+      ],
+    }) as IntegratorPlanWire;
+    expect(parsed.edges[0]?.memory).toBe("beliefs/s1/b1");
+    expect(() =>
+      schema.parse({
+        nodeLabels: {},
+        edges: [
+          {
+            memory: "invented_slug",
+            direction: "out",
+            references: { context: "nope" },
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  test("empty allowedMemoryKeys forces edges: []", () => {
+    const ontology = defineOntology({
+      nodeLabels: { fact: z.object({}) },
+      edgeLabels: { references: z.object({}) },
+    });
+    const schema = zIntegratorPlanWire(ontology, { allowedMemoryKeys: [] });
+    const parsed = schema.parse({ nodeLabels: {}, edges: [] });
+    expect(parsed.edges).toEqual([]);
+    expect(() =>
+      schema.parse({
+        nodeLabels: {},
+        edges: [{ memory: "any", direction: "out", references: {} }],
       }),
     ).toThrow();
   });
