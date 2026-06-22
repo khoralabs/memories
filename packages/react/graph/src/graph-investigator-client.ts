@@ -72,6 +72,7 @@ export function createJobStreamInvestigatorClient(options: {
   startJob: (input: { namespace: string; question: string }) => Promise<{ jobId: string }>;
   streamUrl: (jobId: string) => string;
   parseEvent: (data: string) => JobStreamInvestigationEvent | null;
+  fetchCompleteAnswer?: (jobId: string) => Promise<InvestigatorAnswer | null | undefined>;
   cancelJob?: (jobId: string) => void | Promise<void>;
   credentials?: RequestCredentials;
   initialProgressMessage?: string;
@@ -90,6 +91,35 @@ export function createJobStreamInvestigatorClient(options: {
           source.close();
           source = null;
         }
+      };
+
+      const finishComplete = (answer: InvestigatorAnswer) => {
+        if (cancelled || completed) return;
+        completed = true;
+        cleanup();
+        callbacks.onComplete(answer);
+      };
+
+      const finishError = (message: string) => {
+        if (cancelled || completed) return;
+        cleanup();
+        callbacks.onError(message);
+      };
+
+      const recoverFromJob = async (): Promise<boolean> => {
+        if (cancelled || completed || jobId === null || options.fetchCompleteAnswer === undefined) {
+          return false;
+        }
+        try {
+          const answer = await options.fetchCompleteAnswer(jobId);
+          if (answer !== null && answer !== undefined) {
+            finishComplete(answer);
+            return true;
+          }
+        } catch {
+          // fall through
+        }
+        return false;
       };
 
       void (async () => {
@@ -113,22 +143,25 @@ export function createJobStreamInvestigatorClient(options: {
             }
 
             if (parsed.type === "error") {
-              cleanup();
-              callbacks.onError(parsed.error);
+              finishError(parsed.error);
               return;
             }
 
             if (parsed.type === "complete") {
-              completed = true;
-              cleanup();
-              callbacks.onComplete(parsed.answer);
+              finishComplete(parsed.answer);
             }
           };
 
           source.onerror = () => {
-            if (cancelled || jobId === null || completed) return;
-            cleanup();
-            callbacks.onError("Investigation stream failed");
+            if (cancelled || completed) return;
+            setTimeout(() => {
+              void (async () => {
+                if (cancelled || completed) return;
+                const recovered = await recoverFromJob();
+                if (recovered || cancelled || completed) return;
+                finishError("Investigation stream failed");
+              })();
+            }, 150);
           };
         } catch (err) {
           if (cancelled) return;
