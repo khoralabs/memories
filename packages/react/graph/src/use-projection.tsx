@@ -601,6 +601,7 @@ export function GraphProjectionProvider({
   const [fetchedPayload, setFetchedPayload] = useState<GraphPayload | null>(null);
   const [graphLoading, setGraphLoading] = useState(true);
   const [graphError, setGraphError] = useState<string | null>(null);
+  const graphLoadSeqRef = useRef(0);
 
   const [knownNamespaces, setKnownNamespaces] = useState<string[]>([]);
   const [knownProfiles, setKnownProfiles] = useState<MemoriesGraphProfileEntry[]>([]);
@@ -650,6 +651,7 @@ export function GraphProjectionProvider({
   }, [reloadNamespaces]);
 
   const loadGraph = useCallback(async () => {
+    const loadSeq = ++graphLoadSeqRef.current;
     setGraphLoading(true);
     setGraphError(null);
     const ns = namespace.trim();
@@ -657,6 +659,7 @@ export function GraphProjectionProvider({
       const scopeParam = scope === "subtree" ? "&scope=subtree" : "";
       const res = await fetch(`${apiBase}/graph?namespace=${encodeURIComponent(ns)}${scopeParam}`);
       const json = (await res.json()) as GraphPayload & { error?: string };
+      if (loadSeq !== graphLoadSeqRef.current) return;
       if (!res.ok) {
         setFetchedPayload(null);
         setGraphError(json.error ?? res.statusText);
@@ -676,11 +679,14 @@ export function GraphProjectionProvider({
       };
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          if (loadSeq !== graphLoadSeqRef.current) return;
           setFetchedPayload(payload);
           setGraphLoading(false);
+          setGraphError(null);
         });
       });
     } catch (e) {
+      if (loadSeq !== graphLoadSeqRef.current) return;
       setFetchedPayload(null);
       setGraphError(String(e));
       setGraphLoading(false);
