@@ -83,6 +83,7 @@ export function createJobStreamInvestigatorClient(options: {
       let jobId: string | null = null;
       let source: EventSource | null = null;
       let cancelled = false;
+      let completed = false;
 
       const cleanup = () => {
         if (source !== null) {
@@ -118,13 +119,14 @@ export function createJobStreamInvestigatorClient(options: {
             }
 
             if (parsed.type === "complete") {
+              completed = true;
               cleanup();
               callbacks.onComplete(parsed.answer);
             }
           };
 
           source.onerror = () => {
-            if (cancelled || jobId === null) return;
+            if (cancelled || jobId === null || completed) return;
             cleanup();
             callbacks.onError("Investigation stream failed");
           };
