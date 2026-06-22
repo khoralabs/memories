@@ -9,23 +9,17 @@ import {
   useState,
 } from "react";
 import { LoaderWithMessage } from "./components/loader-with-message.js";
+import type { GraphInvestigatorClient } from "./graph-investigator-client.js";
+import type { InvestigatorAnswer } from "./graph-investigator-types.js";
 import { GraphOverlayContainer } from "./graph-overlay-container.js";
 import type { GraphSearchState } from "./projection-types.js";
 import { unifiedMarkdown } from "./unified-markdown.js";
 import { useMemoriesGraphChrome, useProjection } from "./use-projection.js";
 
-const INVESTIGATE_PATH = "/investigate";
-
-export type InvestigatorCitation = {
-  memory_key: string;
-  rationale?: string;
-};
-
-export type InvestigatorAnswer = {
-  answer: string;
-  citations?: InvestigatorCitation[];
-  follow_up_queries?: string[];
-};
+export type {
+  InvestigatorAnswer,
+  InvestigatorCitation,
+} from "./graph-investigator-types.js";
 
 export type GraphInvestigatorValue = {
   deepEnabled: boolean;
@@ -33,11 +27,16 @@ export type GraphInvestigatorValue = {
   query: string;
   setQuery: (q: string) => void;
   loading: boolean;
+  progressMessage: string | null;
   answer: InvestigatorAnswer | null;
   error: string | null;
   submit: () => void;
   reset: () => void;
 };
+
+export type GraphInvestigatorProviderProps = PropsWithChildren<{
+  client: GraphInvestigatorClient;
+}>;
 
 const GraphInvestigatorContext = createContext<GraphInvestigatorValue | null>(null);
 
@@ -49,12 +48,8 @@ export function useGraphInvestigator(): GraphInvestigatorValue {
   return ctx;
 }
 
-/**
- * Deep-search state for the memory investigator. Must be a descendant of `GraphProjectionProvider`
- * so the live `namespace` from chrome drives the request target.
- */
 function citationsToGraphSearchState(
-  citations: readonly InvestigatorCitation[],
+  citations: readonly { memory_key: string; rationale?: string }[],
 ): GraphSearchState | null {
   const relevantKeys = new Set<string>();
   const hitSnippetByKey = new Map<string, string>();
@@ -74,26 +69,23 @@ function citationsToGraphSearchState(
   };
 }
 
-export function GraphInvestigatorProvider({ children }: PropsWithChildren) {
-  const { apiBase, namespace, setSearchQuery, setGraphSearchOverride } = useMemoriesGraphChrome();
+export function GraphInvestigatorProvider({ client, children }: GraphInvestigatorProviderProps) {
+  const { namespace, setSearchQuery, setGraphSearchOverride } = useMemoriesGraphChrome();
 
   const [deepEnabled, setDeepEnabledState] = useState(false);
   const [query, setQueryState] = useState("");
   const [loading, setLoading] = useState(false);
+  const [progressMessage, setProgressMessage] = useState<string | null>(null);
   const [answer, setAnswer] = useState<InvestigatorAnswer | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const inFlightRef = useRef<AbortController | null>(null);
+  const sessionRef = useRef<ReturnType<GraphInvestigatorClient["startInvestigation"]> | null>(null);
 
-  const cancelInFlight = useCallback(() => {
-    if (inFlightRef.current) {
-      inFlightRef.current.abort();
-      inFlightRef.current = null;
-    }
+  const cancelActiveSession = useCallback(() => {
+    sessionRef.current?.cancel();
+    sessionRef.current = null;
   }, []);
 
-  // Keep chrome's search-driven graph filter in sync with the input only while in graph mode.
-  // In deep mode the typed query is for the investigator; the graph should not dim/filter.
   const setQuery = useCallback(
     (q: string) => {
       setQueryState(q);
@@ -108,89 +100,87 @@ export function GraphInvestigatorProvider({ children }: PropsWithChildren) {
       if (v) {
         setSearchQuery("");
       } else {
-        cancelInFlight();
+        cancelActiveSession();
         setLoading(false);
+        setProgressMessage(null);
         setAnswer(null);
         setError(null);
         setGraphSearchOverride(null);
         setSearchQuery(query);
       }
     },
-    [cancelInFlight, query, setGraphSearchOverride, setSearchQuery],
+    [cancelActiveSession, query, setGraphSearchOverride, setSearchQuery],
   );
 
   const reset = useCallback(() => {
-    cancelInFlight();
+    cancelActiveSession();
     setQueryState("");
     setLoading(false);
+    setProgressMessage(null);
     setAnswer(null);
     setError(null);
     setGraphSearchOverride(null);
     if (!deepEnabled) setSearchQuery("");
-  }, [cancelInFlight, deepEnabled, setGraphSearchOverride, setSearchQuery]);
+  }, [cancelActiveSession, deepEnabled, setGraphSearchOverride, setSearchQuery]);
 
   const submit = useCallback(() => {
     const trimmed = query.trim();
     if (!trimmed) return;
-    cancelInFlight();
-    const ac = new AbortController();
-    inFlightRef.current = ac;
-    setLoading(true);
-    setError(null);
-    setAnswer(null);
-    setGraphSearchOverride(null);
-    void (async () => {
-      try {
-        const res = await fetch(`${apiBase}${INVESTIGATE_PATH}`, {
-          method: "POST",
-          signal: ac.signal,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ namespace, question: trimmed }),
-        });
-        const json = (await res.json()) as InvestigatorAnswer & { error?: string };
-        if (ac.signal.aborted) return;
-        if (!res.ok || json.error) {
-          setAnswer(null);
-          setError(json.error ?? res.statusText);
-          return;
-        }
-        setAnswer({
-          answer: json.answer,
-          ...(json.citations !== undefined ? { citations: json.citations } : {}),
-          ...(json.follow_up_queries !== undefined
-            ? { follow_up_queries: json.follow_up_queries }
-            : {}),
-        });
-        if (json.citations && json.citations.length > 0) {
-          setGraphSearchOverride(citationsToGraphSearchState(json.citations));
-        }
-      } catch (e) {
-        if (ac.signal.aborted) return;
-        setError(String(e));
-      } finally {
-        if (inFlightRef.current === ac) inFlightRef.current = null;
-        if (!ac.signal.aborted) setLoading(false);
-      }
-    })();
-  }, [apiBase, cancelInFlight, namespace, query, setGraphSearchOverride]);
 
-  // Drop stale state from a previous namespace; in-flight requests are aborted so their
-  // resolution can't surface against the now-current namespace.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on namespace change
+    cancelActiveSession();
+    setLoading(true);
+    setProgressMessage(null);
+    setError(null);
+    setAnswer(null);
+    setGraphSearchOverride(null);
+
+    sessionRef.current = client.startInvestigation(
+      { namespace, question: trimmed },
+      {
+        onProgress: (message) => {
+          setProgressMessage(message);
+        },
+        onComplete: (payload) => {
+          sessionRef.current = null;
+          setAnswer({
+            answer: payload.answer,
+            ...(payload.citations !== undefined ? { citations: payload.citations } : {}),
+            ...(payload.follow_up_queries !== undefined
+              ? { follow_up_queries: payload.follow_up_queries }
+              : {}),
+          });
+          if (payload.citations && payload.citations.length > 0) {
+            setGraphSearchOverride(citationsToGraphSearchState(payload.citations));
+          }
+          setLoading(false);
+          setProgressMessage(null);
+        },
+        onError: (message) => {
+          sessionRef.current = null;
+          setAnswer(null);
+          setError(message);
+          setLoading(false);
+          setProgressMessage(null);
+        },
+      },
+    );
+  }, [cancelActiveSession, client, namespace, query, setGraphSearchOverride]);
+
   useEffect(() => {
-    cancelInFlight();
+    cancelActiveSession();
     setLoading(false);
+    setProgressMessage(null);
     setAnswer(null);
     setError(null);
     setGraphSearchOverride(null);
-  }, [cancelInFlight, namespace, setGraphSearchOverride]);
+  }, [cancelActiveSession, setGraphSearchOverride]);
 
   useEffect(
     () => () => {
-      cancelInFlight();
+      cancelActiveSession();
       setGraphSearchOverride(null);
     },
-    [cancelInFlight, setGraphSearchOverride],
+    [cancelActiveSession, setGraphSearchOverride],
   );
 
   const value = useMemo(
@@ -200,12 +190,24 @@ export function GraphInvestigatorProvider({ children }: PropsWithChildren) {
       query,
       setQuery,
       loading,
+      progressMessage,
       answer,
       error,
       submit,
       reset,
     }),
-    [deepEnabled, setDeepEnabled, query, setQuery, loading, answer, error, submit, reset],
+    [
+      deepEnabled,
+      setDeepEnabled,
+      query,
+      setQuery,
+      loading,
+      progressMessage,
+      answer,
+      error,
+      submit,
+      reset,
+    ],
   );
 
   return (
@@ -213,9 +215,8 @@ export function GraphInvestigatorProvider({ children }: PropsWithChildren) {
   );
 }
 
-/** Renders the investigator answer (or loading / error). Returns null when idle. */
 export function GraphInvestigatorAnswer() {
-  const { loading, answer, error } = useGraphInvestigator();
+  const { loading, progressMessage, answer, error } = useGraphInvestigator();
   const { points, setSelected } = useProjection();
 
   const pointByKey = useMemo(() => {
@@ -234,7 +235,7 @@ export function GraphInvestigatorAnswer() {
   }, [answer]);
 
   if (loading) {
-    return <LoaderWithMessage>Investigating…</LoaderWithMessage>;
+    return <LoaderWithMessage>{progressMessage ?? "Investigating…"}</LoaderWithMessage>;
   }
   if (error) {
     return <div className="text-sm text-destructive whitespace-pre-wrap">{error}</div>;
@@ -290,10 +291,6 @@ export function GraphInvestigatorAnswer() {
   );
 }
 
-/**
- * Floating overlay shell for {@link GraphInvestigatorAnswer}. Renders nothing when there is no
- * loading / answer / error so the scene stays uncluttered.
- */
 export function GraphInvestigatorAnswerOverlay({ className }: { className?: string }) {
   const { loading, answer, error } = useGraphInvestigator();
   if (!loading && !answer && !error) return null;

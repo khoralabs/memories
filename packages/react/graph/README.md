@@ -12,7 +12,8 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. Expects graph l
 | `GraphProjectionProvider` / `useProjection` | Projection + chrome context from host |
 | `GraphSearch` | Search input with hybrid query + optional deep-search toggle |
 | `GraphNamespaceSelector` | Namespace picker |
-| `GraphInvestigatorProvider` / `GraphInvestigatorAnswer` | Investigator Q&A overlay |
+| `GraphInvestigatorProvider` / `GraphInvestigatorAnswer` | Investigator Q&A overlay (requires a `GraphInvestigatorClient`) |
+| `createSyncInvestigatorClient` / `createJobStreamInvestigatorClient` | Built-in client factories for sync POST or job+SSE backends |
 | `GraphPreviewDock` | Selected memory preview panel |
 | `GraphLoading`, `GraphFetchError` | Loading and error states |
 | `buildNamespaceGraphLayout` consumers | Use layout types from `@khoralabs/sqlite-graph-projections` in the host |
@@ -45,6 +46,28 @@ function MemoriesGraphPage() {
 ```
 
 See `src/graph-search.tsx`, `src/scene.tsx`, and `src/use-projection.tsx` for prop shapes.
+
+### Investigator client
+
+`GraphInvestigatorProvider` is transport-agnostic: pass a `GraphInvestigatorClient` that starts an investigation and reports progress, completion, or errors via callbacks.
+
+```tsx
+import {
+  GraphInvestigatorProvider,
+  createSyncInvestigatorClient,
+} from "@khoralabs/memories-react-graph";
+
+const client = createSyncInvestigatorClient({
+  investigateUrl: "/api/memories/investigate",
+});
+
+<GraphInvestigatorProvider client={client}>
+  <GraphSearch />
+  <GraphInvestigatorAnswerOverlay />
+</GraphInvestigatorProvider>
+```
+
+For async job + SSE backends, use `createJobStreamInvestigatorClient` with host-specific `startJob`, `streamUrl`, and `parseEvent` hooks (see Exedra's `createExedraInvestigatorClient` for an example).
 
 ## Development
 

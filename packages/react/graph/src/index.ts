@@ -17,11 +17,19 @@ export {
   GraphInvestigatorAnswer,
   GraphInvestigatorAnswerOverlay,
   GraphInvestigatorProvider,
+  type GraphInvestigatorProviderProps,
   type GraphInvestigatorValue,
   type InvestigatorAnswer,
   type InvestigatorCitation,
   useGraphInvestigator,
 } from "./graph-investigator.js";
+export {
+  createJobStreamInvestigatorClient,
+  createSyncInvestigatorClient,
+  type GraphInvestigatorClient,
+  type GraphInvestigatorSession,
+  type JobStreamInvestigationEvent,
+} from "./graph-investigator-client.js";
 export { GraphLoading } from "./graph-loading.js";
 export {
   GraphNamespaceSelector,
