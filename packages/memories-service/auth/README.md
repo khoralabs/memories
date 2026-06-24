@@ -1,15 +1,16 @@
 # @khoralabs/memories-service-auth
 
-To install dependencies:
+Authorization strategies for the Memories database service HTTP adapter.
 
-```bash
-bun install
+Supported schemes in this workstream:
+
+- `none`
+- `server-admin`
+
+Configure at startup:
+
+```text
+MEMORIES_SERVICE_AUTH=none
+MEMORIES_SERVICE_AUTH=server-admin
+MEMORIES_SERVICE_ADMIN_TOKEN=your-token
 ```
-
-To run:
-
-```bash
-bun run src/index.ts
-```
-
-This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

@@ -1,15 +1,24 @@
 # @khoralabs/memories-service-http
 
-To install dependencies:
+HTTP adapter for `@khoralabs/memories-service`.
 
-```bash
-bun install
+Wire with `@khoralabs/memories-service-storage-sqlite` for local hosting:
+
+```ts
+import { createLocalSqliteServiceStack } from "@khoralabs/memories-service-storage-sqlite";
+import { createMemoriesServiceHttpServer } from "@khoralabs/memories-service-http";
+
+const { service } = createLocalSqliteServiceStack({ dataDir, sqlCipherKey });
+createMemoriesServiceHttpServer({ service, auth, port: 3000 });
 ```
 
-To run:
+Management routes:
 
-```bash
-bun run src/index.ts
-```
+- `GET /databases`
+- `POST /databases/open`
+- `POST /databases/exists`
+- `POST /databases/checkpoint`
+- `POST /databases/close`
+- `DELETE /databases`
 
-This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+Database ids are passed in JSON bodies as `{ kind, ownerKey }`.

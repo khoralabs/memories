@@ -131,6 +131,10 @@
     },
     "packages/memories-service/auth": {
       "name": "@khoralabs/memories-service-auth",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-service": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -140,6 +144,10 @@
     },
     "packages/memories-service/client": {
       "name": "@khoralabs/memories-service-client",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-service": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -149,7 +157,17 @@
     },
     "packages/memories-service/http": {
       "name": "@khoralabs/memories-service-http",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-service": "workspace:*",
+        "@khoralabs/memories-service-auth": "workspace:*",
+        "@khoralabs/memories-service-storage-sqlite": "workspace:*",
+      },
       "devDependencies": {
+        "@khoralabs/memories-service": "workspace:*",
+        "@khoralabs/memories-service-auth": "workspace:*",
+        "@khoralabs/memories-service-storage-sqlite": "workspace:*",
+        "@khoralabs/sqlite-crypto": "^0.1.0",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -158,7 +176,29 @@
     },
     "packages/memories-service/service": {
       "name": "@khoralabs/memories-service",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-core": "workspace:*",
+        "lru-cache": "^11.5.1",
+      },
       "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/memories-service/storage-sqlite": {
+      "name": "@khoralabs/memories-service-storage-sqlite",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-service": "workspace:*",
+        "@khoralabs/memories-sqlite": "workspace:*",
+        "@khoralabs/sqlite-crypto": "^0.1.0",
+      },
+      "devDependencies": {
+        "@khoralabs/sqlite-crypto": "^0.1.0",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -315,6 +355,8 @@
     "@khoralabs/memories-service-client": ["@khoralabs/memories-service-client@workspace:packages/memories-service/client"],
 
     "@khoralabs/memories-service-http": ["@khoralabs/memories-service-http@workspace:packages/memories-service/http"],
+
+    "@khoralabs/memories-service-storage-sqlite": ["@khoralabs/memories-service-storage-sqlite@workspace:packages/memories-service/storage-sqlite"],
 
     "@khoralabs/memories-spec": ["@khoralabs/memories-spec@workspace:packages/spec"],
 
@@ -625,6 +667,8 @@
     "lie": ["lie@3.3.0", "", { "dependencies": { "immediate": "~3.0.5" } }, "sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ=="],
 
     "longest-streak": ["longest-streak@3.1.0", "", {}, "sha512-9Ri+o0JYgehTaVBBDoMqIl8GXtbWg711O3srftcHhZ0dqnETqLaoIK0x17fUw9rFSlK/0NlsKe0Ahhyl5pXE2g=="],
+
+    "lru-cache": ["lru-cache@11.5.1", "", {}, "sha512-RPimw/7aMdv2oqRrxKwvZXcPfwBrn/JZ2xYcY9Hus/6LaS3VOAKVWKWgNLCFSiOm1ESXinjsDlidVU7JlnCN2A=="],
 
     "lucide-react": ["lucide-react@0.545.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-7r1/yUuflQDSt4f1bpn5ZAocyIxcTyVyBBChSVtBKn5M+392cPmI5YJMWOJKk/HUWGm5wg83chlAZtCcGbEZtw=="],
 

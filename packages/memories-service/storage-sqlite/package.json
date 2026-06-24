@@ -1,13 +1,13 @@
 {
-  "name": "@khoralabs/memories-service-http",
+  "name": "@khoralabs/memories-service-storage-sqlite",
   "version": "0.1.0",
-  "description": "HTTP adapter for the Memories database service.",
+  "description": "Local SQLCipher file backend and SQLite placement registry for the Memories database service.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/http"
+    "directory": "packages/memories-service/storage-sqlite"
   },
   "files": [
     "src",
@@ -21,14 +21,12 @@
     }
   },
   "dependencies": {
+    "@khoralabs/memories-core": "workspace:*",
     "@khoralabs/memories-service": "workspace:*",
-    "@khoralabs/memories-service-auth": "workspace:*",
-    "@khoralabs/memories-service-storage-sqlite": "workspace:*"
+    "@khoralabs/memories-sqlite": "workspace:*",
+    "@khoralabs/sqlite-crypto": "^0.1.0"
   },
   "devDependencies": {
-    "@khoralabs/memories-service": "workspace:*",
-    "@khoralabs/memories-service-auth": "workspace:*",
-    "@khoralabs/memories-service-storage-sqlite": "workspace:*",
     "@khoralabs/sqlite-crypto": "^0.1.0",
     "@types/bun": "latest"
   },

@@ -1,0 +1,58 @@
+import path from "node:path";
+import {
+  createBackendResolver,
+  createMemoriesDatabaseService,
+  type MemoriesDatabaseOntologyStore,
+  type MemoriesDatabasePlacementStore,
+  type MemoriesDatabaseService,
+  type SqliteBackendStrategy,
+} from "@khoralabs/memories-service";
+import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-sqlite";
+import { createLocalSqliteBackendFactory } from "./local-sqlite-backend";
+import { createSqliteOntologyStore } from "./ontology-registry";
+import { createSqlitePlacementStore } from "./placement-registry";
+
+export type CreateLocalSqliteServiceStackOptions = {
+  dataDir: string;
+  sqlCipherKey: string;
+  registryPath?: string;
+  ontologyRegistryPath?: string;
+  maxCached?: number;
+};
+
+export type LocalSqliteServiceStack = {
+  service: MemoriesDatabaseService;
+  placement: MemoriesDatabasePlacementStore;
+  ontology: MemoriesDatabaseOntologyStore;
+  defaultStrategy: SqliteBackendStrategy;
+};
+
+export function createLocalSqliteServiceStack(
+  opts: CreateLocalSqliteServiceStackOptions,
+): LocalSqliteServiceStack {
+  ensureCustomSqliteForExtensions();
+  const defaultStrategy: SqliteBackendStrategy = {
+    kind: "sqlite",
+    dataDir: opts.dataDir,
+    sqlCipherKey: opts.sqlCipherKey,
+  };
+  const registryPath = opts.registryPath ?? path.join(opts.dataDir, "registry", "placements.db");
+  const ontologyRegistryPath =
+    opts.ontologyRegistryPath ?? path.join(opts.dataDir, "registry", "ontologies.db");
+  const placement = createSqlitePlacementStore({
+    registryPath,
+    sqlCipherKey: opts.sqlCipherKey,
+    defaultStrategy,
+  });
+  const ontology = createSqliteOntologyStore({
+    registryPath: ontologyRegistryPath,
+    sqlCipherKey: opts.sqlCipherKey,
+  });
+  const factory = createLocalSqliteBackendFactory();
+  const resolver = createBackendResolver({ placement, factory });
+  const service = createMemoriesDatabaseService({
+    resolver,
+    maxCached: opts.maxCached,
+  });
+  return { service, placement, ontology, defaultStrategy };
+}
