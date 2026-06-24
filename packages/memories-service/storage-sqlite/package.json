@@ -24,7 +24,8 @@
     "@khoralabs/memories-core": "workspace:*",
     "@khoralabs/memories-service": "workspace:*",
     "@khoralabs/memories-sqlite": "workspace:*",
-    "@khoralabs/sqlite-crypto": "^0.1.0"
+    "@khoralabs/sqlite-crypto": "^0.1.0",
+    "@khoralabs/sqlite-graph-projections": "workspace:*"
   },
   "devDependencies": {
     "@khoralabs/sqlite-crypto": "^0.1.0",

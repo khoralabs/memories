@@ -5,6 +5,7 @@ export type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabaseHandle,
   SqliteBackendStrategy,
+  SqliteDatabaseContext,
   StrategyCapabilities,
 } from "./backend";
 export {

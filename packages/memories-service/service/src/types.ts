@@ -11,8 +11,11 @@ export type DatabaseListFilter = {
   kind?: DatabaseKind;
 };
 
+import type { MemoriesDatabaseHandle } from "./backend";
+
 export type MemoriesDatabaseService = {
   open(id: MemoriesDatabaseId): Promise<MemoriesPersistenceAsync>;
+  getHandle(id: MemoriesDatabaseId): Promise<MemoriesDatabaseHandle>;
   exists(id: MemoriesDatabaseId): Promise<boolean>;
   list(filter?: DatabaseListFilter): Promise<MemoriesDatabaseId[]>;
   delete(id: MemoriesDatabaseId): Promise<void>;

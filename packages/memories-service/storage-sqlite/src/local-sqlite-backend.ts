@@ -67,6 +67,7 @@ function openLocalDatabase(
 function createHandle(opened: OpenedLocalDatabase): MemoriesDatabaseHandle {
   return {
     persistence: wrapSyncMemoriesPersistenceAsAsync(opened.persistence),
+    sqlite: { db: opened.db, syncPersistence: opened.persistence },
     async close() {
       opened.db.close();
     },

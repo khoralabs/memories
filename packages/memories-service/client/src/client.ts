@@ -75,6 +75,25 @@ export class MemoriesServiceClient {
     await this.request("DELETE", "/databases", id);
   }
 
+  async postJson<T>(path: string, body: unknown): Promise<T> {
+    const response = await this.requestJson("POST", path, body);
+    return (await response.json()) as T;
+  }
+
+  private async requestJson(method: string, path: string, body?: unknown): Promise<Response> {
+    const init = await this.auth.applyAuth({
+      method,
+      headers: { "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
+    if (!response.ok) {
+      const errorBody = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(errorBody.error ?? `Request failed with status ${response.status}`);
+    }
+    return response;
+  }
+
   private async request(
     method: string,
     path: string,

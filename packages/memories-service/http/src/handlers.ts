@@ -9,6 +9,22 @@ import {
   type MemoriesDatabaseAccessStrategy,
 } from "@khoralabs/memories-service-auth";
 
+import {
+  handleDatabaseCapabilities,
+  handleDatabaseDeleteMemory,
+  handleDatabaseEdgePreview,
+  handleDatabaseEnsureScopeChain,
+  handleDatabaseFindMemoryId,
+  handleDatabaseGraph,
+  handleDatabaseLoadMemoryNamespaceKey,
+  handleDatabaseMerge,
+  handleDatabaseNamespaces,
+  handleDatabaseProvenanceHead,
+  handleDatabaseSearch,
+  handleDatabaseSourceMapTextPreview,
+  handleDatabaseVectorDimensions,
+} from "./persistence-handlers";
+
 export type DatabaseIdBody = {
   kind: DatabaseKind;
   ownerKey: string;
@@ -106,6 +122,97 @@ export async function handleMemoriesServiceHttpRequest(
       await authorize(opts.auth, req, "manage", id);
       await opts.service.delete(id);
       return jsonResponse({ ok: true, database: id });
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/search") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseSearch(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/merge") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "write", id);
+      return handleDatabaseMerge(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/delete-memory") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "write", id);
+      return handleDatabaseDeleteMemory(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/provenance/head") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseProvenanceHead(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/capabilities") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseCapabilities(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/namespaces") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseNamespaces(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/graph") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseGraph(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/edge-preview") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseEdgePreview(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/source-map/text-preview") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseSourceMapTextPreview(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/vector-dimensions") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseVectorDimensions(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/ensure-scope-chain") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "write", id);
+      return handleDatabaseEnsureScopeChain(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/find-memory-id") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseFindMemoryId(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/load-memory-namespace-key") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseLoadMemoryNamespaceKey(opts.service, body);
     }
 
     return jsonResponse({ error: "Not found" }, 404);

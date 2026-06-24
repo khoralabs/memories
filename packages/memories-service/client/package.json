@@ -21,9 +21,12 @@
     }
   },
   "dependencies": {
+    "@khoralabs/memories-core": "workspace:*",
     "@khoralabs/memories-service": "workspace:*"
   },
   "devDependencies": {
+    "@khoralabs/memories-core": "workspace:*",
+    "@khoralabs/memories-service": "workspace:*",
     "@types/bun": "latest"
   },
   "peerDependencies": {

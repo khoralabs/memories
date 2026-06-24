@@ -14,6 +14,14 @@ export {
   type SqlitePlacementStoreOptions,
 } from "./placement-registry";
 export {
+  type GraphScope,
+  listDatabaseNamespaces,
+  listDatabaseVectorDimensions,
+  loadDatabaseEdgePreview,
+  loadDatabaseGraphLayout,
+  loadDatabaseSourceMapTextPreview,
+} from "./read-endpoints";
+export {
   type CreateLocalSqliteServiceStackOptions,
   createLocalSqliteServiceStack,
   type LocalSqliteServiceStack,

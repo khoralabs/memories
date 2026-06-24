@@ -1,5 +1,7 @@
+import type { Database } from "bun:sqlite";
 import type {
   MemoriesBackendCapabilities,
+  MemoriesPersistence,
   MemoriesPersistenceAsync,
 } from "@khoralabs/memories-core/persistence";
 import {
@@ -44,10 +46,17 @@ export function resolveStrategyCapabilities(
   return resolveMemoriesBackendCapabilities({ capabilities: partial });
 }
 
+export type SqliteDatabaseContext = {
+  db: Database;
+  syncPersistence: MemoriesPersistence;
+};
+
 export type MemoriesDatabaseHandle = {
   persistence: MemoriesPersistenceAsync;
   close(): Promise<void>;
   checkpoint?(): Promise<void>;
+  /** Present for SQLite backends; required for graph reads and sync mutations. */
+  sqlite?: SqliteDatabaseContext;
 };
 
 export type MemoriesDatabaseBackend = {

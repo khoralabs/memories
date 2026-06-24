@@ -41,6 +41,10 @@ export function createMemoriesDatabaseService(
       return handle.persistence;
     },
 
+    async getHandle(id: MemoriesDatabaseId): Promise<MemoriesDatabaseHandle> {
+      return getOrOpen(id);
+    },
+
     async exists(id: MemoriesDatabaseId): Promise<boolean> {
       const validated = validateMemoriesDatabaseId(id);
       const backend = await opts.resolver.resolve(validated);
