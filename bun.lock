@@ -129,6 +129,42 @@
         "typescript": "^5",
       },
     },
+    "packages/memories-service/auth": {
+      "name": "@khoralabs/memories-service-auth",
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/memories-service/client": {
+      "name": "@khoralabs/memories-service-client",
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/memories-service/http": {
+      "name": "@khoralabs/memories-service-http",
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/memories-service/service": {
+      "name": "@khoralabs/memories-service",
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/ontologies": {
       "name": "@khoralabs/memories-ontologies",
       "version": "0.1.0",
@@ -271,6 +307,14 @@
     "@khoralabs/memories-ontologies": ["@khoralabs/memories-ontologies@workspace:packages/ontologies"],
 
     "@khoralabs/memories-react-graph": ["@khoralabs/memories-react-graph@workspace:packages/react/graph"],
+
+    "@khoralabs/memories-service": ["@khoralabs/memories-service@workspace:packages/memories-service/service"],
+
+    "@khoralabs/memories-service-auth": ["@khoralabs/memories-service-auth@workspace:packages/memories-service/auth"],
+
+    "@khoralabs/memories-service-client": ["@khoralabs/memories-service-client@workspace:packages/memories-service/client"],
+
+    "@khoralabs/memories-service-http": ["@khoralabs/memories-service-http@workspace:packages/memories-service/http"],
 
     "@khoralabs/memories-spec": ["@khoralabs/memories-spec@workspace:packages/spec"],
 
