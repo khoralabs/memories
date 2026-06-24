@@ -18,10 +18,7 @@ export type CreateMemoriesDatabaseServiceOptions = {
     error: unknown,
     context: { id: MemoriesDatabaseId; operation: "close" | "delete" | "release" },
   ) => void;
-  onEvictionCloseError?: (
-    error: unknown,
-    context: { id: MemoriesDatabaseId },
-  ) => void;
+  onEvictionCloseError?: (error: unknown, context: { id: MemoriesDatabaseId }) => void;
 };
 
 const DEFAULT_MAX_CACHED = 64;

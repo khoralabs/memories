@@ -76,4 +76,28 @@ describe("sqlite placement registry", () => {
     expect(await service.exists(id)).toBe(true);
     expect(resolveLocalSqliteDatabasePath(orgDataDir, id).includes("/v1/organization/")).toBe(true);
   });
+
+  test("service.list includes databases routed through placement overrides", async () => {
+    const dataDir = makeTempDataDir();
+    const orgDataDir = path.join(dataDir, "org-host");
+    const { service, placement } = createLocalSqliteServiceStack({
+      dataDir,
+      sqlCipherKey: TEST_SQLCIPHER_KEY,
+    });
+    const defaultId = { kind: "account", ownerKey: "default-owner" };
+    const overrideId = { kind: "organization", ownerKey: "org-hosted" };
+
+    await service.open(defaultId);
+    await placement.setStrategy(overrideId, {
+      kind: "sqlite",
+      dataDir: orgDataDir,
+      sqlCipherKey: TEST_SQLCIPHER_KEY,
+    });
+    await service.open(overrideId);
+
+    const listed = await service.list();
+    expect(listed.sort((a, b) => a.ownerKey.localeCompare(b.ownerKey))).toEqual(
+      [defaultId, overrideId].sort((a, b) => a.ownerKey.localeCompare(b.ownerKey)),
+    );
+  });
 });

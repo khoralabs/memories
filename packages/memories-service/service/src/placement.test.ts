@@ -10,21 +10,22 @@ import {
 
 function createMockBackend(
   strategy: SqliteBackendStrategy,
-  label: string,
+  databases: MemoriesDatabaseId[],
 ): MemoriesDatabaseBackend {
   return {
     strategy,
     async open(id) {
       return {
-        persistence: { label: `${label}:${id.ownerKey}` } as never,
+        persistence: { ownerKey: id.ownerKey } as never,
         async close() {},
       };
     },
-    async exists() {
-      return true;
+    async exists(id) {
+      return databases.some((entry) => entry.kind === id.kind && entry.ownerKey === id.ownerKey);
     },
-    async list() {
-      return [];
+    async list(filter) {
+      if (filter?.kind === undefined) return [...databases];
+      return databases.filter((entry) => entry.kind === filter.kind);
     },
     async delete() {},
     async checkpoint() {},
@@ -51,10 +52,10 @@ describe("backend resolver with placement overrides", () => {
     const factory: MemoriesDatabaseBackendFactory = {
       create(strategy) {
         const local = strategy as SqliteBackendStrategy;
-        return createMockBackend(
-          local,
-          local.dataDir === overrideStrategy.dataDir ? "override" : "default",
-        );
+        if (local.dataDir === overrideStrategy.dataDir) {
+          return createMockBackend(local, [id]);
+        }
+        return createMockBackend(local, [{ kind: "account", ownerKey: "default-only" }]);
       },
     };
 
@@ -64,5 +65,100 @@ describe("backend resolver with placement overrides", () => {
 
     expect(defaultBackend.strategy).toEqual(defaultStrategy);
     expect(overrideBackend.strategy).toEqual(overrideStrategy);
+  });
+
+  test("list merges default backend ids with placement overrides", async () => {
+    const defaultStrategy: SqliteBackendStrategy = {
+      kind: "sqlite",
+      dataDir: "/default",
+      sqlCipherKey: "default-key",
+    };
+    const overrideStrategy: SqliteBackendStrategy = {
+      kind: "sqlite",
+      dataDir: "/override",
+      sqlCipherKey: "override-key",
+    };
+    const defaultId = { kind: "account", ownerKey: "default-only" };
+    const overrideId = { kind: "organization", ownerKey: "org-hosted" };
+    const overrideOnlyId = { kind: "organization", ownerKey: "override-only" };
+
+    const placement = createInMemoryPlacementStore({ defaultStrategy });
+    await placement.setStrategy(overrideId, overrideStrategy);
+
+    const factory: MemoriesDatabaseBackendFactory = {
+      create(strategy) {
+        const local = strategy as SqliteBackendStrategy;
+        if (local.dataDir === overrideStrategy.dataDir) {
+          return createMockBackend(local, [overrideId, overrideOnlyId]);
+        }
+        return createMockBackend(local, [defaultId]);
+      },
+    };
+
+    const resolver = createBackendResolver({ placement, factory });
+    const listed = await resolver.list();
+
+    expect(listed.sort((a, b) => a.ownerKey.localeCompare(b.ownerKey))).toEqual(
+      [defaultId, overrideId, overrideOnlyId].sort((a, b) => a.ownerKey.localeCompare(b.ownerKey)),
+    );
+  });
+
+  test("list deduplicates ids present in both default and override backends", async () => {
+    const defaultStrategy: SqliteBackendStrategy = {
+      kind: "sqlite",
+      dataDir: "/default",
+      sqlCipherKey: "default-key",
+    };
+    const overrideStrategy: SqliteBackendStrategy = {
+      kind: "sqlite",
+      dataDir: "/override",
+      sqlCipherKey: "override-key",
+    };
+    const sharedId = { kind: "account", ownerKey: "shared" };
+
+    const placement = createInMemoryPlacementStore({ defaultStrategy });
+    await placement.setStrategy(sharedId, overrideStrategy);
+
+    const factory: MemoriesDatabaseBackendFactory = {
+      create(strategy) {
+        const local = strategy as SqliteBackendStrategy;
+        return createMockBackend(local, [sharedId]);
+      },
+    };
+
+    const resolver = createBackendResolver({ placement, factory });
+    expect(await resolver.list()).toEqual([sharedId]);
+  });
+
+  test("list honors kind filter across default and override backends", async () => {
+    const defaultStrategy: SqliteBackendStrategy = {
+      kind: "sqlite",
+      dataDir: "/default",
+      sqlCipherKey: "default-key",
+    };
+    const overrideStrategy: SqliteBackendStrategy = {
+      kind: "sqlite",
+      dataDir: "/override",
+      sqlCipherKey: "override-key",
+    };
+    const accountDefault = { kind: "account", ownerKey: "acct-default" };
+    const orgDefault = { kind: "organization", ownerKey: "org-default" };
+    const orgOverride = { kind: "organization", ownerKey: "org-override" };
+
+    const placement = createInMemoryPlacementStore({ defaultStrategy });
+    await placement.setStrategy(orgOverride, overrideStrategy);
+
+    const factory: MemoriesDatabaseBackendFactory = {
+      create(strategy) {
+        const local = strategy as SqliteBackendStrategy;
+        if (local.dataDir === overrideStrategy.dataDir) {
+          return createMockBackend(local, [orgOverride]);
+        }
+        return createMockBackend(local, [accountDefault, orgDefault]);
+      },
+    };
+
+    const resolver = createBackendResolver({ placement, factory });
+    expect(await resolver.list({ kind: "organization" })).toEqual([orgDefault, orgOverride]);
   });
 });

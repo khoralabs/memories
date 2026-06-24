@@ -7,6 +7,7 @@ import {
 } from "./backend";
 import type { MemoriesDatabasePlacementStore } from "./placement";
 import type { DatabaseListFilter, MemoriesDatabaseId } from "./types";
+import { cacheKeyForId } from "./validate";
 
 export type MemoriesDatabaseBackendResolver = {
   resolve(id: MemoriesDatabaseId): Promise<MemoriesDatabaseBackend>;
@@ -18,6 +19,17 @@ export type CreateBackendResolverOptions = {
   factory: MemoriesDatabaseBackendFactory;
   backendCacheSize?: number;
 };
+
+function addListedDatabase(
+  seen: Set<string>,
+  results: MemoriesDatabaseId[],
+  id: MemoriesDatabaseId,
+): void {
+  const key = cacheKeyForId(id);
+  if (seen.has(key)) return;
+  seen.add(key);
+  results.push(id);
+}
 
 export function createBackendResolver(
   opts: CreateBackendResolverOptions,
@@ -44,9 +56,36 @@ export function createBackendResolver(
       return backendForStrategy(strategy);
     },
     async list(filter) {
-      const strategy = await opts.placement.getDefaultStrategy();
-      const backend = await backendForStrategy(strategy);
-      return backend.list(filter);
+      const defaultStrategy = await opts.placement.getDefaultStrategy();
+      const defaultBackend = await backendForStrategy(defaultStrategy);
+      const defaultStrategyKey = strategyCacheKey(defaultStrategy);
+
+      const seen = new Set<string>();
+      const results: MemoriesDatabaseId[] = [];
+
+      for (const id of await defaultBackend.list(filter)) {
+        addListedDatabase(seen, results, id);
+      }
+
+      const overrides = await opts.placement.listOverrides(filter);
+      const overrideStrategies = new Map<string, (typeof overrides)[number]["strategy"]>();
+
+      for (const override of overrides) {
+        addListedDatabase(seen, results, override.id);
+        const strategyKey = strategyCacheKey(override.strategy);
+        if (strategyKey !== defaultStrategyKey) {
+          overrideStrategies.set(strategyKey, override.strategy);
+        }
+      }
+
+      for (const strategy of overrideStrategies.values()) {
+        const backend = await backendForStrategy(strategy);
+        for (const id of await backend.list(filter)) {
+          addListedDatabase(seen, results, id);
+        }
+      }
+
+      return results;
     },
   };
 }
