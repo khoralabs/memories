@@ -2,7 +2,7 @@ import { LRUCache } from "lru-cache";
 
 import type { MemoriesDatabaseHandle } from "./backend";
 import type { MemoriesDatabaseId } from "./types";
-import { cacheKeyForId } from "./validate";
+import { cacheKeyForId, validateMemoriesDatabaseId } from "./validate";
 
 export type CachedConnection = {
   id: MemoriesDatabaseId;
@@ -13,13 +13,19 @@ export type ConnectionCache = LRUCache<string, CachedConnection>;
 
 export type CreateConnectionCacheOptions = {
   max: number;
+  onEvictionCloseError?: (error: unknown, entry: CachedConnection) => void;
 };
+
+const explicitlyClosedHandles = new WeakSet<MemoriesDatabaseHandle>();
 
 export function createConnectionCache(opts: CreateConnectionCacheOptions): ConnectionCache {
   return new LRUCache<string, CachedConnection>({
     max: opts.max,
     dispose: (entry) => {
-      void entry.handle.close().catch(() => undefined);
+      if (explicitlyClosedHandles.has(entry.handle)) return;
+      void entry.handle.close().catch((error) => {
+        opts.onEvictionCloseError?.(error, entry);
+      });
     },
   });
 }
@@ -41,4 +47,22 @@ export function setCachedConnection(
 
 export function deleteCachedConnection(cache: ConnectionCache, id: MemoriesDatabaseId): void {
   cache.delete(cacheKeyForId(id));
+}
+
+export async function releaseCachedConnection(
+  cache: ConnectionCache,
+  id: MemoriesDatabaseId,
+): Promise<boolean> {
+  const validated = validateMemoriesDatabaseId(id);
+  const key = cacheKeyForId(validated);
+  const entry = cache.get(key);
+  if (entry === undefined) return false;
+
+  if (entry.handle.checkpoint !== undefined) {
+    await entry.handle.checkpoint();
+  }
+  await entry.handle.close();
+  explicitlyClosedHandles.add(entry.handle);
+  cache.delete(key);
+  return true;
 }

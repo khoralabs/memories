@@ -3,8 +3,8 @@ import type { MemoriesPersistenceAsync } from "@khoralabs/memories-core/persiste
 import type { MemoriesDatabaseHandle } from "./backend";
 import {
   createConnectionCache,
-  deleteCachedConnection,
   getCachedConnection,
+  releaseCachedConnection,
   setCachedConnection,
 } from "./connection-cache";
 import type { MemoriesDatabaseBackendResolver } from "./resolver";
@@ -14,6 +14,14 @@ import { validateMemoriesDatabaseId } from "./validate";
 export type CreateMemoriesDatabaseServiceOptions = {
   resolver: MemoriesDatabaseBackendResolver;
   maxCached?: number;
+  onLifecycleError?: (
+    error: unknown,
+    context: { id: MemoriesDatabaseId; operation: "close" | "delete" | "release" },
+  ) => void;
+  onEvictionCloseError?: (
+    error: unknown,
+    context: { id: MemoriesDatabaseId },
+  ) => void;
 };
 
 const DEFAULT_MAX_CACHED = 64;
@@ -22,7 +30,16 @@ export function createMemoriesDatabaseService(
   opts: CreateMemoriesDatabaseServiceOptions,
 ): MemoriesDatabaseService {
   const maxCached = opts.maxCached ?? DEFAULT_MAX_CACHED;
-  const cache = createConnectionCache({ max: maxCached });
+  const cache = createConnectionCache({
+    max: maxCached,
+    onEvictionCloseError: (error, entry) => {
+      opts.onEvictionCloseError?.(error, { id: entry.id });
+    },
+  });
+
+  async function releaseCachedHandle(id: MemoriesDatabaseId): Promise<void> {
+    await releaseCachedConnection(cache, id);
+  }
 
   async function getOrOpen(id: MemoriesDatabaseId): Promise<MemoriesDatabaseHandle> {
     const validated = validateMemoriesDatabaseId(id);
@@ -57,9 +74,14 @@ export function createMemoriesDatabaseService(
 
     async delete(id: MemoriesDatabaseId): Promise<void> {
       const validated = validateMemoriesDatabaseId(id);
-      deleteCachedConnection(cache, validated);
-      const backend = await opts.resolver.resolve(validated);
-      await backend.delete(validated);
+      try {
+        await releaseCachedHandle(validated);
+        const backend = await opts.resolver.resolve(validated);
+        await backend.delete(validated);
+      } catch (error) {
+        opts.onLifecycleError?.(error, { id: validated, operation: "delete" });
+        throw error;
+      }
     },
 
     async checkpoint(id: MemoriesDatabaseId): Promise<void> {
@@ -75,9 +97,14 @@ export function createMemoriesDatabaseService(
 
     async close(id: MemoriesDatabaseId): Promise<void> {
       const validated = validateMemoriesDatabaseId(id);
-      deleteCachedConnection(cache, validated);
-      const backend = await opts.resolver.resolve(validated);
-      await backend.close(validated);
+      try {
+        await releaseCachedHandle(validated);
+        const backend = await opts.resolver.resolve(validated);
+        await backend.close(validated);
+      } catch (error) {
+        opts.onLifecycleError?.(error, { id: validated, operation: "close" });
+        throw error;
+      }
     },
   };
 }

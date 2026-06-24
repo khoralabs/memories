@@ -21,6 +21,7 @@ export {
   createConnectionCache,
   deleteCachedConnection,
   getCachedConnection,
+  releaseCachedConnection,
   setCachedConnection,
 } from "./connection-cache";
 export {

@@ -65,13 +65,17 @@ function openLocalDatabase(
 }
 
 function createHandle(opened: OpenedLocalDatabase): MemoriesDatabaseHandle {
+  let closed = false;
   return {
     persistence: wrapSyncMemoriesPersistenceAsAsync(opened.persistence),
     sqlite: { db: opened.db, syncPersistence: opened.persistence },
     async close() {
+      if (closed) return;
+      closed = true;
       opened.db.close();
     },
     async checkpoint() {
+      if (closed) return;
       getMemoriesSqliteDatabase(opened.persistence).run("PRAGMA wal_checkpoint(TRUNCATE);");
     },
   };
