@@ -26,16 +26,16 @@ afterEach(() => {
   }
 });
 
-function createTestService() {
+function createTestStack() {
   return createLocalSqliteServiceStack({
     dataDir: makeTempDataDir(),
     sqlCipherKey: TEST_SQLCIPHER_KEY,
-  }).service;
+  });
 }
 
 describe("memories service http handlers", () => {
   test("lists databases with none auth", async () => {
-    const service = createTestService();
+    const { service } = createTestStack();
     await service.open({ kind: "account", ownerKey: "owner-a" });
 
     const response = await handleMemoriesServiceHttpRequest(
@@ -51,7 +51,7 @@ describe("memories service http handlers", () => {
   });
 
   test("requires admin token for server-admin auth", async () => {
-    const service = createTestService();
+    const { service } = createTestStack();
     const auth = createServerAdminAuthStrategy({ adminToken: "admin-secret" });
 
     const unauthorized = await handleMemoriesServiceHttpRequest(
@@ -70,7 +70,7 @@ describe("memories service http handlers", () => {
   });
 
   test("opens database via POST body id", async () => {
-    const service = createTestService();
+    const { service } = createTestStack();
     const response = await handleMemoriesServiceHttpRequest(
       new Request("http://localhost/databases/open", {
         method: "POST",

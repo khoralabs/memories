@@ -1,6 +1,7 @@
 import type {
   DatabaseKind,
   MemoriesDatabaseId,
+  MemoriesDatabaseOntologyStore,
   MemoriesDatabaseService,
 } from "@khoralabs/memories-service";
 import {
@@ -8,7 +9,14 @@ import {
   type DatabaseAction,
   type MemoriesDatabaseAccessStrategy,
 } from "@khoralabs/memories-service-auth";
-
+import {
+  handleDatabaseOntologyCurrent,
+  handleDatabaseOntologyHistory,
+  handleDatabaseOntologyLink,
+  handleOntologyGet,
+  handleOntologyListDatabases,
+  handleOntologyRegister,
+} from "./ontology-handlers";
 import {
   handleDatabaseCapabilities,
   handleDatabaseDeleteMemory,
@@ -53,7 +61,15 @@ export class HttpError extends Error {
 export type MemoriesServiceHttpOptions = {
   service: MemoriesDatabaseService;
   auth: MemoriesDatabaseAccessStrategy;
+  ontology?: MemoriesDatabaseOntologyStore;
 };
+
+function requireOntology(opts: MemoriesServiceHttpOptions): MemoriesDatabaseOntologyStore {
+  if (opts.ontology === undefined) {
+    throw new HttpError("Ontology registry is not configured", 501);
+  }
+  return opts.ontology;
+}
 
 async function readJsonBody(req: Request): Promise<unknown> {
   const text = await req.text();
@@ -213,6 +229,45 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseLoadMemoryNamespaceKey(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/ontologies/register") {
+      await authorize(opts.auth, req, "manage");
+      const body = await readJsonBody(req);
+      return handleOntologyRegister(requireOntology(opts), body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/ontologies/get") {
+      await authorize(opts.auth, req, "read");
+      const body = await readJsonBody(req);
+      return handleOntologyGet(requireOntology(opts), body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/ontologies/databases") {
+      await authorize(opts.auth, req, "manage");
+      const body = await readJsonBody(req);
+      return handleOntologyListDatabases(requireOntology(opts), body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/ontology/link") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "write", id);
+      return handleDatabaseOntologyLink(requireOntology(opts), body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/ontology/current") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseOntologyCurrent(requireOntology(opts), body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/ontology/history") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseOntologyHistory(requireOntology(opts), body);
     }
 
     return jsonResponse({ error: "Not found" }, 404);

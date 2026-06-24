@@ -38,20 +38,21 @@ function createTestStack() {
   });
 }
 
-async function postJson(url: string, body: unknown, service = createTestStack().service) {
+async function postJson(url: string, body: unknown, stack = createTestStack()) {
   return handleMemoriesServiceHttpRequest(
     new Request(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),
-    { service, auth: createNoneAuthStrategy() },
+    { service: stack.service, ontology: stack.ontology, auth: createNoneAuthStrategy() },
   );
 }
 
 describe("memories service persistence http handlers", () => {
   test("search, merge, delete, provenance, capabilities", async () => {
-    const { service } = createTestStack();
+    const stack = createTestStack();
+    const { service } = stack;
     const database = { kind: "account", ownerKey: "owner-a" };
     await service.open(database);
 
@@ -67,7 +68,7 @@ describe("memories service persistence http handlers", () => {
           labels: [],
         },
       },
-      service,
+      stack,
     );
     expect(mergeRes.status).toBe(200);
 
@@ -81,30 +82,26 @@ describe("memories service persistence http handlers", () => {
           options: { topK: 5, arms: { lexical: 1, vector: 0 } },
         },
       },
-      service,
+      stack,
     );
     expect(searchRes.status).toBe(200);
     const searchBody = (await searchRes.json()) as { hits: unknown[] };
     expect(searchBody.hits.length).toBeGreaterThan(0);
 
-    const capsRes = await postJson(
-      "http://localhost/databases/capabilities",
-      { database },
-      service,
-    );
+    const capsRes = await postJson("http://localhost/databases/capabilities", { database }, stack);
     expect(capsRes.status).toBe(200);
 
     const provRes = await postJson(
       "http://localhost/databases/provenance/head",
       { database },
-      service,
+      stack,
     );
     expect(provRes.status).toBe(200);
 
     const deleteRes = await postJson(
       "http://localhost/databases/delete-memory",
       { database, namespace: "user/a", key: "note-1" },
-      service,
+      stack,
     );
     expect(deleteRes.status).toBe(200);
   });
@@ -127,7 +124,7 @@ describe("memories service persistence http handlers", () => {
     const namespacesRes = await postJson(
       "http://localhost/databases/namespaces",
       { database },
-      service,
+      stack,
     );
     expect(namespacesRes.status).toBe(200);
     const namespacesBody = (await namespacesRes.json()) as { namespaces: string[] };
@@ -136,14 +133,14 @@ describe("memories service persistence http handlers", () => {
     const graphRes = await postJson(
       "http://localhost/databases/graph",
       { database, namespace: "ns/a", scope: "exact" },
-      service,
+      stack,
     );
     expect(graphRes.status).toBe(200);
 
     const dimsRes = await postJson(
       "http://localhost/databases/vector-dimensions",
       { database },
-      service,
+      stack,
     );
     expect(dimsRes.status).toBe(200);
   });
@@ -158,6 +155,7 @@ describe("remote memories client over http", () => {
       fetch(req) {
         return handleMemoriesServiceHttpRequest(req, {
           service: stack.service,
+          ontology: stack.ontology,
           auth: createNoneAuthStrategy(),
         });
       },
