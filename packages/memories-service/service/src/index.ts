@@ -44,6 +44,7 @@ export {
 } from "./ontology-registry";
 export {
   createReversibleOwnerKeyEncoder,
+  DATABASE_FILENAME,
   OWNER_KEY_ENCODING_VERSION,
   type OwnerKeyEncoder,
   resolveEncodedDatabasePath,

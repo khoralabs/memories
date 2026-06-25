@@ -14,9 +14,9 @@ import type {
 } from "@khoralabs/memories-service";
 import {
   createReversibleOwnerKeyEncoder,
+  DATABASE_FILENAME,
   OWNER_KEY_ENCODING_VERSION,
   resolveEncodedDatabasePath,
-  validateDatabaseKind,
   validateMemoriesDatabaseId,
 } from "@khoralabs/memories-service";
 import {
@@ -113,25 +113,19 @@ export function createLocalSqliteBackend(strategy: SqliteBackendStrategy): Memor
       const versionDir = path.join(validatedStrategy.dataDir, OWNER_KEY_ENCODING_VERSION);
       if (!existsSync(versionDir)) return [];
 
-      const kinds = filter?.kind
-        ? [validateDatabaseKind(filter.kind)]
-        : readdirSync(versionDir, { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .map((entry) => entry.name);
-
       const ids: MemoriesDatabaseId[] = [];
-      for (const kind of kinds) {
-        const kindDir = path.join(versionDir, kind);
-        if (!existsSync(kindDir)) continue;
-        for (const encodedEntry of readdirSync(kindDir, { withFileTypes: true })) {
-          if (!encodedEntry.isDirectory()) continue;
-          const filePath = path.join(kindDir, encodedEntry.name, `${encodedEntry.name}.db`);
-          if (!existsSync(filePath)) continue;
-          ids.push({
-            kind,
-            ownerKey: encoder.decodeOwnerKey(encodedEntry.name),
-          });
+      for (const encodedEntry of readdirSync(versionDir, { withFileTypes: true })) {
+        if (!encodedEntry.isDirectory()) continue;
+        let decoded: MemoriesDatabaseId;
+        try {
+          decoded = encoder.decodeDatabaseId(encodedEntry.name);
+        } catch {
+          continue;
         }
+        if (filter?.kind !== undefined && decoded.kind !== filter.kind) continue;
+        const filePath = path.join(versionDir, encodedEntry.name, DATABASE_FILENAME);
+        if (!existsSync(filePath)) continue;
+        ids.push(decoded);
       }
       return ids;
     },

@@ -36,7 +36,10 @@ describe("local sqlite backend", () => {
     expect(await service.exists(id)).toBe(true);
 
     const dbPath = resolveLocalSqliteDatabasePath(dataDir, id);
-    expect(dbPath.includes("/v1/account/")).toBe(true);
+    expect(dbPath.endsWith("/v1/")).toBe(false);
+    expect(dbPath.includes("/v1/")).toBe(true);
+    expect(dbPath.endsWith("/database.db")).toBe(true);
+    expect(dbPath.includes("/account/")).toBe(false);
 
     const listed = await service.list({ kind: "account" });
     expect(listed).toEqual([id]);
@@ -55,6 +58,28 @@ describe("local sqlite backend", () => {
     await service.delete(id);
     expect(await service.exists(id)).toBe(false);
     expect(await service.list()).toEqual([]);
+  });
+
+  test("same owner key with different kinds uses separate folders", async () => {
+    const dataDir = makeTempDataDir();
+    const { service } = createLocalSqliteServiceStack({
+      dataDir,
+      sqlCipherKey: TEST_SQLCIPHER_KEY,
+    });
+    const ownerKey = "shared-owner";
+    const account = { kind: "account", ownerKey };
+    const organization = { kind: "organization", ownerKey };
+
+    await service.open(account);
+    await service.open(organization);
+
+    const accountPath = resolveLocalSqliteDatabasePath(dataDir, account);
+    const organizationPath = resolveLocalSqliteDatabasePath(dataDir, organization);
+    expect(accountPath).not.toBe(organizationPath);
+
+    expect(await service.list({ kind: "account" })).toEqual([account]);
+    expect(await service.list({ kind: "organization" })).toEqual([organization]);
+    expect(await service.list()).toHaveLength(2);
   });
 
   test("LRU evicts least-recently-used connection when maxCached is exceeded", async () => {

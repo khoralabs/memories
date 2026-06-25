@@ -2,11 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-sqlite";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 
 import { resolveLocalSqliteDatabasePath } from "./local-sqlite-backend";
 import { createSqlitePlacementStore } from "./placement-registry";
 import { createLocalSqliteServiceStack } from "./stack";
+
+ensureCustomSqliteForExtensions();
 
 const tempDirs: string[] = [];
 
@@ -74,7 +77,10 @@ describe("sqlite placement registry", () => {
 
     await service.open(id);
     expect(await service.exists(id)).toBe(true);
-    expect(resolveLocalSqliteDatabasePath(orgDataDir, id).includes("/v1/organization/")).toBe(true);
+    const dbPath = resolveLocalSqliteDatabasePath(orgDataDir, id);
+    expect(dbPath.includes("/v1/")).toBe(true);
+    expect(dbPath.endsWith("/database.db")).toBe(true);
+    expect(dbPath.includes("/organization/")).toBe(false);
   });
 
   test("service.list includes databases routed through placement overrides", async () => {

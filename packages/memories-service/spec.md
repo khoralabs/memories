@@ -29,11 +29,13 @@ type MemoriesDatabaseId = {
 
 ### File layout
 
-The default sqlite backend encodes owner keys reversibly and writes versioned paths:
+The default sqlite backend encodes the full database id reversibly and writes flat versioned paths:
 
 ```text
-{dataDir}/v1/{kind}/{base64url(ownerKey)}/{base64url(ownerKey)}.db
+{dataDir}/v1/{base64url([kind, ownerKey])}/database.db
 ```
+
+`kind` is logical identity and filter metadata for the service API, not a storage grouping on disk.
 
 Helpers live in `@khoralabs/memories-service`: `createReversibleOwnerKeyEncoder()`, `resolveEncodedDatabasePath()`, `OWNER_KEY_ENCODING_VERSION`.
 
