@@ -10,6 +10,9 @@ Cross-database ontology catalog and per-database link history. **Core registry i
 - Append-only `database_ontology_links` table (FK `ontology_hash`)
 - `MemoriesDatabaseOntologyStore` with register, link, history, and shape queries
 - Wired into `createLocalSqliteServiceStack` at `{dataDir}/registry/ontologies.db`
+- **HTTP routes:** `/ontologies/*`, `/databases/ontology/*`
+- **Client helpers:** `MemoriesOntologyClient`, `ensureDatabaseOntologyLink`, `storedOntologyFromDefinition`
+- **Exedra phase 1:** registers and links `exedraMemoriesOntology` on database open; warns on hash mismatch
 
 ## Registry vs per-database catalog
 
@@ -17,15 +20,15 @@ Cross-database ontology catalog and per-database link history. **Core registry i
 |-------|----------|---------|
 | Service ontology registry | `ontologies.db` | Record which ontology shape a database uses; query by hash or label kinds |
 | Per-database label catalog | `node_labels` / `edge_labels` inside each `.db` | Materialized at merge time from `MemoriesClient` ontology |
-| Runtime ontology | Host TypeScript (`defineOntology`) | Validates merges; not read from registry today |
+| Runtime ontology | Host TypeScript (`defineOntology`) | Validates merges; registry is audit/discovery in phase 1 |
 
 Changing a database's registered ontology does **not** migrate existing graph rows. Node and edge values are semantic; hosts treat ontology changes as forward-only vocabulary updates.
 
-## Deferred
+## Deferred (phase 2+)
 
-- HTTP admin routes for register/link/query
+- Enforcing that merge-time ontology matches `getCurrentLink(id)` (block or reject mismatched merges)
+- Requiring ontology hash on merge HTTP requests
 - Rehydrating `OntologyDefinition` from stored JSON Schema back to Standard Schema
-- Enforcing that merge-time ontology matches `getCurrentLink(id)`
 - Namespace policy registry
 
 See [../spec.md](../spec.md) for the current API.

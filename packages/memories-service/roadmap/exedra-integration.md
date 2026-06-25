@@ -1,49 +1,35 @@
 # Exedra integration
 
-Migrate Exedra from inline database management to `@khoralabs/memories-service` packages.
+Migrate Exedra from inline SQLite database management to `@khoralabs/memories-service` over HTTP.
 
-**Status:** Packages exist; Exedra still uses its own store and path helpers.
+**Status:** Code migration shipped in Exedra. Remaining work is operational wiring (dev stack, env docs, tests, backup paths), not core APIs.
 
-## Current Exedra layout
+## What shipped
 
-```text
-{EXEDRA_DATA_DIR}/memories/organizations/{orgDid}/{orgDid}.db
-{EXEDRA_DATA_DIR}/memories/accounts/{accountDid}/{accountDid}.db
-```
+Exedra now calls a hosted memories service via `EXEDRA_MEMORIES_SERVICE_URL` (optional `EXEDRA_MEMORIES_SERVICE_TOKEN`):
 
-Relevant Exedra files:
+| Area | Exedra location | Notes |
+|------|-----------------|-------|
+| Service client | `app/src/server/memories/service-client.ts` | `openOrgMemoriesService`, `openUserMemoriesService`, ontology link on open |
+| App routes | `org-routes.ts`, `user-routes.ts`, `me-routes.ts`, `api-handlers.ts` | Graph/search via `RemoteMemoriesReadClient` |
+| Internal APIs | `http/internal-memories.ts`, `internal-documents.ts` | Merge/search via `RemoteMemoriesClientAsync` |
+| Workflows | `workflows/shared/http-memories-client-async.ts`, `integrate-memory/*` | Remote client over HTTP |
+| Bootstrap | `bootstrap.ts`, `seed-onboarding.ts` | Scope chains via service read endpoints |
+| Local store | `store.ts` | Deprecated; throws without service URL |
 
-- `app/src/server/memories/store.ts` — lazy open/cache
-- `app/src/server/storage/paths.ts` — principal → path
-- `app/src/server/memories/paths.ts` — org/account specialization
-- `app/src/server/memories/access.ts` — authorization outside Memories repo
+Khora vendors packages from `memories/packages/memories-service` at `khora/vendor/memories/packages/memories-service`.
 
-## Target wiring
+## Database layout
 
-```ts
-const { service } = createLocalSqliteServiceStack({
-  dataDir: exedraDataDir,
-  sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY!,
-});
-```
-
-Replace `store.ts` open/cache with `service.open()`. Keep namespace builders and access policy in Exedra; use `app-policy` auth when that strategy ships.
-
-## Path compatibility
-
-Default service layout uses opaque encoded owner keys:
+Canonical hosted layout (no legacy path migration required):
 
 ```text
 {dataDir}/v1/{kind}/{base64url(ownerKey)}/{base64url(ownerKey)}.db
 ```
 
-Exedra today uses readable DID paths. Migration options:
+Exedra maps principals to `{ kind: "organization" | "account", ownerKey: did }`.
 
-1. **Compatibility encoder** — reproduce `{kind}/{did}/{did}.db` under `v1` or a dedicated preset
-2. **One-time migration** — copy databases from old paths to encoded layout
-3. **Placement override** — point existing principals at a custom `dataDir` preset during rollout
-
-The core package exports `createReversibleOwnerKeyEncoder()` and `resolveEncodedDatabasePath()`. A compatibility preset can live in Exedra or a small adapter package.
+Legacy helpers in `app/src/server/storage/paths.ts` and `memories/paths.ts` remain for Litestream backup paths and should be updated separately.
 
 ## Routing layers (preserve distinction)
 
@@ -51,17 +37,27 @@ The core package exports `createReversibleOwnerKeyEncoder()` and `resolveEncoded
 |-------|-------|---------|
 | Database routing | Memories service | Which principal database |
 | Namespace routing | Exedra app | Org, team, session scope inside a database |
+| User authorization | Exedra app | Session, grants, namespace read/write before calling service |
 
-## Suggested migration steps
+Exedra calls the memories service with `server-admin` (or `none` in local test). User-facing policy stays in Exedra `access.ts`; `app-policy` auth in the service is roadmap work.
 
-1. Wire `createLocalSqliteServiceStack` in Exedra behind a feature flag
-2. Map org/account DIDs to `{ kind: "organization" | "account", ownerKey: did }`
-3. Choose path compatibility strategy and migrate data if needed
-4. Remove duplicate open/cache logic from `store.ts`
-5. Adopt `app-policy` auth in the HTTP adapter if Exedra exposes management routes
-6. Defer DID principal auth until a decentralized client exists
+## Remaining before production rollout
 
-## Non-goals for Exedra migration
+1. **Dev stack** — add memories-service to `scripts/dev.ts` (like authz/chat)
+2. **Env docs** — document `EXEDRA_MEMORIES_SERVICE_URL` / `EXEDRA_MEMORIES_SERVICE_TOKEN` in `.env.example`
+3. **Tests** — shared test helper (`test-memories-service.ts` exists; extend to onboarding/seed/route tests)
+4. **Backup** — point Litestream at the service data dir (`v1/...` layout), not legacy `{did}/{did}.db` paths
+5. **Vendor sync** — keep `khora/vendor/memories` in sync with the `memories` repo
+
+## Non-goals
 
 - Moving team/session namespace design into memories-service
 - Changing Exedra's ontology or graph projections
+- Exposing the memories service directly to browsers (Exedra remains the policy boundary)
+
+## Related roadmap
+
+- [http-memory-apis.md](./http-memory-apis.md) — shipped HTTP persistence and read routes
+- [app-policy-auth.md](./app-policy-auth.md) — only needed if the service is exposed beyond Exedra
+- [placement-admin-api.md](./placement-admin-api.md) — HTTP placement overrides for org self-hosted backends
+- [ontology-registry.md](./ontology-registry.md) — phase 2 merge enforcement

@@ -1,48 +1,102 @@
 # HTTP memory APIs
 
-Expose Memories persistence operations over HTTP, beyond today's management-only routes.
+Database-scoped persistence and read operations over HTTP.
 
-**Status:** HTTP adapter exposes database lifecycle only (`/databases`, `/databases/open`, etc.). No search, merge, or graph routes. No remote `MemoriesPersistenceAsync` in the client package.
+**Status:** Shipped. `@khoralabs/memories-service-http` exposes lifecycle, persistence, SQLite read, and ontology routes. `@khoralabs/memories-service-client` provides `createRemoteMemoriesClientAsync`, `createRemoteMemoriesReadClient`, and ontology helpers.
 
 ## Two client stories
 
 | Client | Purpose | Status |
 |--------|---------|--------|
 | Management | List/open/delete/checkpoint databases | Shipped (`MemoriesServiceClient`) |
-| Runtime persistence | Search, merge, read graph inside a database | Not shipped |
+| Runtime persistence | Search, merge, delete memory, provenance head | Shipped (`RemoteMemoriesClientAsync`) |
+| Graph / index reads | Namespaces, graph layout, edge preview, snippets, vector dims | Shipped (`RemoteMemoriesReadClient`) |
+| Ontology registry | Register, link, query ontologies | Shipped (`MemoriesOntologyClient`, `ensureDatabaseOntologyLink`) |
 
-## Possible HTTP surface
+## HTTP surface
 
-Early sketch from the original research (not implemented):
+Database ids are passed in JSON bodies as `{ kind, ownerKey }` (same as management routes).
+
+### Lifecycle
 
 ```text
-POST /databases/open                    # shipped
-POST /databases/{...}/memories/search   # proposed
-POST /databases/{...}/memories/merge    # proposed
-GET  /databases/{...}/memories/graph    # proposed
+GET    /databases
+POST   /databases/open
+POST   /databases/exists
+POST   /databases/checkpoint
+POST   /databases/close
+DELETE /databases
 ```
 
-Prefer stable paths with database id in the JSON body (same as management routes) rather than embedding raw owner keys in URLs.
+### Persistence (MemoriesClientAsync)
+
+```text
+POST /databases/search
+POST /databases/merge
+POST /databases/delete-memory
+POST /databases/provenance/head
+POST /databases/capabilities
+```
+
+### SQLite read endpoints (Exedra UI / workflows)
+
+```text
+POST /databases/namespaces
+POST /databases/graph
+POST /databases/edge-preview
+POST /databases/source-map/text-preview
+POST /databases/vector-dimensions
+POST /databases/ensure-scope-chain
+POST /databases/find-memory-id
+POST /databases/load-memory-namespace-key
+```
+
+### Ontology registry
+
+```text
+POST /ontologies/register
+POST /ontologies/get
+POST /ontologies/databases
+POST /databases/ontology/link
+POST /databases/ontology/current
+POST /databases/ontology/history
+```
+
+## Runtime clients
+
+```ts
+import {
+  createRemoteMemoriesClientAsync,
+  createRemoteMemoriesReadClient,
+  ensureDatabaseOntologyLink,
+  MemoriesServiceClient,
+} from "@khoralabs/memories-service-client";
+
+const client = await createRemoteMemoriesClientAsync({
+  baseUrl,
+  database: { kind: "account", ownerKey: "owner-a" },
+  ontology,
+  auth: createBearerTokenAuthProvider(token),
+});
+
+await client.search({ namespace, content, options });
+await client.mergeMemory(params);
+
+const reads = createRemoteMemoriesReadClient({ baseUrl, database, auth });
+await reads.listNamespaces();
+await reads.getGraphLayout(namespace, "exact");
+```
+
+Exedra uses these clients from `service-client.ts` (app) and `ExedraHttpMemoriesClientAsync` (workflows).
 
 ## Auth interaction
 
-Memory routes need `read` / `write` authorization per database and optionally per namespace. DID grants and app-policy both use the existing `namespace?` field on `authorize()`.
+Today, memory routes use the same auth strategy as management (`none` or `server-admin`). Namespace authorization stays in the host app (Exedra) before calling the service.
 
-Implement management routes first (done), then add memory routes once a host needs remote persistence without embedding the service in-process.
-
-## Runtime persistence client
-
-Optional `@khoralabs/memories-service-client` extension:
-
-```ts
-// proposed
-createRemoteMemoriesPersistence(client, databaseId): MemoriesPersistenceAsync
-```
-
-Maps core persistence methods to HTTP calls. Only worth building when Exedra or another host consumes it.
+Future `app-policy` auth would add per-database and per-namespace checks inside the HTTP adapter. See [app-policy-auth.md](./app-policy-auth.md).
 
 ## Open questions
 
-- Fine-grained persistence ops vs higher-level memory APIs only?
 - Streaming for large merge payloads?
 - Provenance verification across nodes vs per-database hash chain only?
+- Passing ontology hash on merge requests for strict registry enforcement?

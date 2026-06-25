@@ -8,9 +8,9 @@ Reusable packages for managing many Memories databases per principal. Extracted 
 |---------|------|
 | `@khoralabs/memories-service` | Backend-agnostic database lifecycle: ids, validation, placement interfaces, resolver, LRU connection cache |
 | `@khoralabs/memories-service-storage-sqlite` | Local SQLCipher file backend, SQLite placement registry, and ontology registry |
-| `@khoralabs/memories-service-http` | HTTP management adapter |
+| `@khoralabs/memories-service-http` | HTTP adapter (lifecycle, persistence, reads, ontology) |
 | `@khoralabs/memories-service-auth` | HTTP auth strategies (`none`, `server-admin`) |
-| `@khoralabs/memories-service-client` | Typed management HTTP client |
+| `@khoralabs/memories-service-client` | Management HTTP client, remote `MemoriesClientAsync`, read client, ontology helpers |
 
 The core service depends only on `@khoralabs/memories-core` and `lru-cache`. SQLite and HTTP auth live in sibling packages.
 
@@ -87,6 +87,8 @@ Resolver behavior:
 2. Fall back to `placement.getDefaultStrategy()`
 3. Return a backend from `factory.create(strategy)`, cached by canonical strategy JSON
 
+`resolver.list(filter)` merges databases from the default backend, non-default override backends, and explicit placement override ids (deduplicated by `{ kind, ownerKey }`).
+
 Only the `sqlite` strategy is implemented today. Other shapes use the open `{ kind: string; ... }` branch when a backend package adds them.
 
 Backup, restore, and replication stay backend-specific. The service does not define a generic protocol across heterogeneous backends.
@@ -131,7 +133,7 @@ Helpers: `ontologyToStoredJsonSchema()` (from runtime `defineOntology`), `canoni
 
 Namespaces remain client-defined at merge time. There is no namespace policy registry in this phase.
 
-See [roadmap/ontology-registry.md](./roadmap/ontology-registry.md) for deferred HTTP admin and runtime rehydration from stored JSON.
+See [roadmap/ontology-registry.md](./roadmap/ontology-registry.md) for phase-2 merge enforcement and runtime rehydration from stored JSON.
 
 ## Service API
 
@@ -153,7 +155,7 @@ createMemoriesDatabaseService({
 });
 ```
 
-Open connections are cached by database id. Eviction calls `handle.close()` on the backend. `close(id)` drops the cache entry; `delete(id)` closes the cache entry then deletes storage.
+Open connections are cached by database id. LRU eviction calls `handle.close()` best-effort. Explicit `close(id)` and `delete(id)` await checkpoint and handle close before removing cache entries and storage files.
 
 ## Local hosting
 
@@ -195,7 +197,9 @@ const service = createMemoriesDatabaseService({ resolver });
 
 ## HTTP surface
 
-Management routes only. Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding stays stable across owner-key schemes.
+Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding stays stable across owner-key schemes.
+
+### Lifecycle
 
 | Method | Path | Action | Auth action |
 |--------|------|--------|-------------|
@@ -206,7 +210,41 @@ Management routes only. Database ids are passed in JSON bodies as `{ kind, owner
 | `POST` | `/databases/close` | Close cached connection | `manage` |
 | `DELETE` | `/databases` | Delete database | `manage` |
 
-Memory search, merge, and graph APIs are not exposed over HTTP yet.
+### Persistence
+
+| Method | Path | Action | Auth action |
+|--------|------|--------|-------------|
+| `POST` | `/databases/search` | Hybrid search | `read` |
+| `POST` | `/databases/merge` | Merge memory node/edge | `write` |
+| `POST` | `/databases/delete-memory` | Delete memory by namespace/key | `write` |
+| `POST` | `/databases/provenance/head` | Provenance head root hex | `read` |
+| `POST` | `/databases/capabilities` | Backend capabilities for database | `read` |
+
+### SQLite read endpoints
+
+| Method | Path | Action | Auth action |
+|--------|------|--------|-------------|
+| `POST` | `/databases/namespaces` | List namespaces | `read` |
+| `POST` | `/databases/graph` | Graph layout for namespace | `read` |
+| `POST` | `/databases/edge-preview` | Edge preview | `read` |
+| `POST` | `/databases/source-map/text-preview` | Source map text preview | `read` |
+| `POST` | `/databases/vector-dimensions` | Vector index dimensions | `read` |
+| `POST` | `/databases/ensure-scope-chain` | Ensure scope chain paths | `write` |
+| `POST` | `/databases/find-memory-id` | Resolve memory id by key | `read` |
+| `POST` | `/databases/load-memory-namespace-key` | Load namespace/key by memory id | `read` |
+
+### Ontology registry
+
+| Method | Path | Action | Auth action |
+|--------|------|--------|-------------|
+| `POST` | `/ontologies/register` | Register ontology schema | `manage` |
+| `POST` | `/ontologies/get` | Get ontology by hash | `read` |
+| `POST` | `/ontologies/databases` | List databases by hash or label kinds | `read` |
+| `POST` | `/databases/ontology/link` | Link database to ontology hash | `manage` |
+| `POST` | `/databases/ontology/current` | Current ontology link | `read` |
+| `POST` | `/databases/ontology/history` | Link history | `read` |
+
+See [roadmap/http-memory-apis.md](./roadmap/http-memory-apis.md) for client usage.
 
 ## Authorization
 
@@ -237,7 +275,13 @@ One scheme per service instance. See [roadmap/decentralized-principal-auth.md](.
 
 `MemoriesServiceClient` wraps the management HTTP API. Auth providers: `createNoAuthProvider()`, `createBearerTokenAuthProvider(token)`.
 
-There is no remote `MemoriesPersistenceAsync` client yet.
+Runtime clients:
+
+- `createRemoteMemoriesClientAsync()` — `MemoriesClientAsync` over HTTP (search, merge, delete-memory, provenance head)
+- `createRemoteMemoriesReadClient()` — graph/index reads (namespaces, graph layout, edge preview, snippets, vector dimensions, scope chains)
+- `MemoriesOntologyClient`, `ensureDatabaseOntologyLink()` — ontology register/link over HTTP
+
+Exedra consumes these from `service-client.ts` and workflow adapters. See [roadmap/exedra-integration.md](./roadmap/exedra-integration.md).
 
 ## Non-goals
 
@@ -251,10 +295,11 @@ There is no remote `MemoriesPersistenceAsync` client yet.
 
 Planned work lives in [roadmap/](./roadmap/). Highlights:
 
-- [Decentralized principal auth](./roadmap/decentralized-principal-auth.md) — DID request proofs, grants, portable credentials, revocation
+- [Exedra integration](./roadmap/exedra-integration.md) — code shipped; dev stack, tests, backup paths remain
 - [App policy auth](./roadmap/app-policy-auth.md) — delegate authorization to the embedding application
-- [Remote backends](./roadmap/remote-backends.md) — libSQL, remote nodes, principal-registered endpoints
-- [HTTP memory APIs](./roadmap/http-memory-apis.md) — search, merge, graph over HTTP
-- [Exedra integration](./roadmap/exedra-integration.md) — migrate Exedra onto these packages
 - [Placement admin API](./roadmap/placement-admin-api.md) — HTTP routes for per-principal backend overrides
-- [Ontology registry extensions](./roadmap/ontology-registry.md) — HTTP admin, runtime rehydration, merge enforcement
+- [Ontology registry extensions](./roadmap/ontology-registry.md) — merge enforcement, runtime rehydration
+- [Remote backends](./roadmap/remote-backends.md) — libSQL, remote nodes, principal-registered endpoints
+- [Decentralized principal auth](./roadmap/decentralized-principal-auth.md) — DID request proofs, grants, portable credentials, revocation
+
+Shipped: [HTTP memory APIs](./roadmap/http-memory-apis.md) (persistence, reads, remote client).

@@ -1,15 +1,15 @@
 # Roadmap
 
-Feature plans for `@khoralabs/memories-service` and sibling packages. Each file describes work that is **not** shipped yet.
+Feature plans for `@khoralabs/memories-service` and sibling packages.
 
-| Feature | File | Summary |
-|---------|------|---------|
-| Ontology registry extensions | [ontology-registry.md](./ontology-registry.md) | HTTP admin, runtime rehydration, merge enforcement (core registry shipped) |
-| Decentralized principal auth | [decentralized-principal-auth.md](./decentralized-principal-auth.md) | DID request signatures, delegation grants, portable credentials, revocation logs |
-| App policy auth | [app-policy-auth.md](./app-policy-auth.md) | Host app decides access; Exedra-shaped team/session/namespace policy |
-| Remote backends | [remote-backends.md](./remote-backends.md) | libSQL/Turso, remote Memories nodes, principal-registered endpoints |
-| HTTP memory APIs | [http-memory-apis.md](./http-memory-apis.md) | Search, merge, graph routes and runtime persistence client |
-| Exedra integration | [exedra-integration.md](./exedra-integration.md) | Replace Exedra's inline store with these packages |
-| Placement admin API | [placement-admin-api.md](./placement-admin-api.md) | HTTP routes to read/write per-principal backend strategies |
+| Feature | File | Summary | Status |
+|---------|------|---------|--------|
+| HTTP memory APIs | [http-memory-apis.md](./http-memory-apis.md) | Search, merge, graph reads, remote client | **Shipped** |
+| Exedra integration | [exedra-integration.md](./exedra-integration.md) | Exedra hosted-service wiring | **Code shipped**; ops/tests remain |
+| Ontology registry extensions | [ontology-registry.md](./ontology-registry.md) | HTTP admin, merge enforcement, rehydration | HTTP + phase-1 link **shipped** |
+| App policy auth | [app-policy-auth.md](./app-policy-auth.md) | Host app decides access | Not implemented |
+| Remote backends | [remote-backends.md](./remote-backends.md) | libSQL/Turso, remote nodes | Not implemented |
+| Placement admin API | [placement-admin-api.md](./placement-admin-api.md) | HTTP routes for backend overrides | Not implemented |
+| Decentralized principal auth | [decentralized-principal-auth.md](./decentralized-principal-auth.md) | DID signatures, grants, credentials | Not implemented |
 
 Current implementation reference: [../spec.md](../spec.md).
