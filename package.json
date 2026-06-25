@@ -11,12 +11,16 @@
     "format:check": "biome check .",
     "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/autolink/tsconfig.json && tsc --noEmit -p packages/persistence/sqlite/tsconfig.json && tsc --noEmit -p packages/persistence/sqlite-graph-projections/tsconfig.json && tsc --noEmit -p packages/react/graph/tsconfig.json && tsc --noEmit -p packages/agents/adapter/tsconfig.json && tsc --noEmit -p packages/agents/integrator/tsconfig.json && tsc --noEmit -p packages/agents/investigator/tsconfig.json && tsc --noEmit -p packages/agents/tools/tsconfig.json && tsc --noEmit -p packages/memories-service/service/tsconfig.json && tsc --noEmit -p packages/memories-service/auth/tsconfig.json && tsc --noEmit -p packages/memories-service/http/tsconfig.json && tsc --noEmit -p packages/memories-service/client/tsconfig.json && tsc --noEmit -p packages/memories-service/storage-sqlite/tsconfig.json",
     "test": "bun test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "context": "bun run scripts/context.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@types/bun": "latest",
+    "@types/parse-gitignore": "^1.0.2",
     "husky": "^9.1.7",
+    "minimatch": "^10.2.5",
+    "parse-gitignore": "^2.0.0",
     "typescript": "^5"
   },
   "peerDependencies": {
