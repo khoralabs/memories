@@ -1,10 +1,19 @@
-export { createTursoClients, type TursoClients, type TursoCredentials } from "./client";
-export { MEMORIES_SCHEMA_VERSION, migrations } from "./migrations";
+export {
+  createTursoClients,
+  queryOne as readQueryOne,
+  type TursoClients,
+  type TursoCredentials,
+} from "./client";
+export {
+  getCurrentSchemaVersion,
+  MEMORIES_SCHEMA_VERSION,
+  migrateMemoriesTursoServerless,
+  migrations,
+} from "./migrations";
 export {
   createMemoriesTursoServerlessPersistence,
   type MemoriesTursoServerlessOptions,
   MemoriesTursoServerlessPersistence,
-  migrateMemoriesTursoServerless,
 } from "./persistence";
 export {
   CONTENT_OUTBOX_SQL,

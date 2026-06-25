@@ -216,6 +216,21 @@
         "typescript": "^5",
       },
     },
+    "packages/memories-service/storage-turso-serverless": {
+      "name": "@khoralabs/memories-service-storage-turso-serverless",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-service": "workspace:*",
+        "@khoralabs/memories-turso-serverless": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/ontologies": {
       "name": "@khoralabs/memories-ontologies",
       "version": "0.1.0",
@@ -383,6 +398,8 @@
     "@khoralabs/memories-service-http": ["@khoralabs/memories-service-http@workspace:packages/memories-service/http"],
 
     "@khoralabs/memories-service-storage-sqlite": ["@khoralabs/memories-service-storage-sqlite@workspace:packages/memories-service/storage-sqlite"],
+
+    "@khoralabs/memories-service-storage-turso-serverless": ["@khoralabs/memories-service-storage-turso-serverless@workspace:packages/memories-service/storage-turso-serverless"],
 
     "@khoralabs/memories-spec": ["@khoralabs/memories-spec@workspace:packages/spec"],
 

@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   createBackendResolver,
   createMemoriesDatabaseService,
+  type MemoriesDatabaseBackendFactory,
   type MemoriesDatabaseOntologyStore,
   type MemoriesDatabasePlacementStore,
   type MemoriesDatabaseService,
@@ -17,6 +18,8 @@ export type CreateLocalSqliteServiceStackOptions = {
   sqlCipherKey: string;
   registryPath?: string;
   ontologyRegistryPath?: string;
+  /** Override the node backend factory; defaults to the local SQLite node backend. */
+  backendFactory?: MemoriesDatabaseBackendFactory;
   maxCached?: number;
 };
 
@@ -48,7 +51,7 @@ export function createLocalSqliteServiceStack(
     registryPath: ontologyRegistryPath,
     sqlCipherKey: opts.sqlCipherKey,
   });
-  const factory = createLocalSqliteBackendFactory();
+  const factory = opts.backendFactory ?? createLocalSqliteBackendFactory();
   const resolver = createBackendResolver({ placement, factory });
   const service = createMemoriesDatabaseService({
     resolver,

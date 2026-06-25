@@ -7,13 +7,20 @@ export type {
   SqliteBackendStrategy,
   SqliteDatabaseContext,
   StrategyCapabilities,
+  TursoServerlessBackendStrategy,
 } from "./backend";
 export {
   DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
   DEFAULT_SQLITE_STRATEGY_CAPABILITIES,
+  DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES,
   resolveStrategyCapabilities,
   strategyCacheKey,
 } from "./backend";
+export {
+  type CompositeBackendFactoryMap,
+  createCompositeBackendFactory,
+  UnknownBackendStrategyError,
+} from "./backend-factory";
 export {
   type CachedConnection,
   type ConnectionCache,

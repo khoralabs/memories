@@ -4,7 +4,6 @@ import path from "node:path";
 import type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabasePlacementStore,
-  SqliteBackendStrategy,
 } from "@khoralabs/memories-service";
 import { validateMemoriesDatabaseId } from "@khoralabs/memories-service";
 import { openEncryptedDatabaseSync } from "@khoralabs/sqlite-crypto";
@@ -41,7 +40,7 @@ function serializeStrategy(strategy: MemoriesDatabaseBackendStrategy): {
 export type SqlitePlacementStoreOptions = {
   registryPath: string;
   sqlCipherKey: string;
-  defaultStrategy: SqliteBackendStrategy;
+  defaultStrategy: MemoriesDatabaseBackendStrategy;
 };
 
 export function createSqlitePlacementStore(

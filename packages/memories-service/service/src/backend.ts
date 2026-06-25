@@ -25,6 +25,17 @@ export const DEFAULT_SQLITE_STRATEGY_CAPABILITIES: MemoriesBackendCapabilities =
   asOfTimestampMsSearch: true,
 };
 
+/** Capabilities of the Turso serverless backend (`@khoralabs/memories-turso-serverless`). */
+export const DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES: MemoriesBackendCapabilities = {
+  lexicalSearch: true,
+  vectorSearch: true,
+  neighborIndex: true,
+  graphIndex: true,
+  multiNamespaceSearch: true,
+  unscopedSearch: true,
+  asOfTimestampMsSearch: true,
+};
+
 export type SqliteBackendStrategy = {
   kind: "sqlite";
   dataDir: string;
@@ -32,8 +43,19 @@ export type SqliteBackendStrategy = {
   capabilities?: StrategyCapabilities;
 };
 
+/** Remote Turso Cloud database accessed via `@tursodatabase/serverless`. */
+export type TursoServerlessBackendStrategy = {
+  kind: "turso-serverless";
+  /** Turso database URL. Supports `{ownerKey}` and `{kind}` placeholders for per-principal databases. */
+  url: string;
+  authToken?: string;
+  remoteEncryptionKey?: string;
+  capabilities?: StrategyCapabilities;
+};
+
 export type MemoriesDatabaseBackendStrategy =
   | SqliteBackendStrategy
+  | TursoServerlessBackendStrategy
   | ({ kind: string; capabilities?: StrategyCapabilities } & Record<string, unknown>);
 
 export function resolveStrategyCapabilities(
@@ -42,6 +64,9 @@ export function resolveStrategyCapabilities(
   const partial = strategy.capabilities;
   if (strategy.kind === "sqlite") {
     return { ...DEFAULT_SQLITE_STRATEGY_CAPABILITIES, ...partial };
+  }
+  if (strategy.kind === "turso-serverless") {
+    return { ...DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES, ...partial };
   }
   return resolveMemoriesBackendCapabilities({ capabilities: partial });
 }

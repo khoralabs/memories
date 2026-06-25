@@ -41,7 +41,11 @@ Helpers live in `@khoralabs/memories-service`: `createReversibleOwnerKeyEncoder(
 
 ## Backend and placement
 
-The service routes each database id to a backend through a resolver and placement store.
+The service routes each database id to a per-node backend through a resolver and placement
+store. The placement/ontology registries are the **control plane**; the selected
+backend strategy is the **node data plane**. These are intentionally independent:
+a SQLite-backed registry can place nodes on SQLite or Turso, and a future
+Turso-backed registry should be able to do the same.
 
 ```ts
 import type { MemoriesBackendCapabilities } from "@khoralabs/memories-core/persistence";
@@ -83,6 +87,15 @@ Each strategy advertises what its opened database supports: hybrid search arms, 
 
 Hosts can read placement strategies before opening a database to decide whether agent workloads (vector search, graph expansion, integrator merges) are viable on that backend.
 
+Mixed node strategies are enabled by a composite backend factory:
+
+```ts
+const factory = createCompositeBackendFactory({
+  sqlite: createLocalSqliteBackendFactory(),
+  "turso-serverless": createTursoServerlessBackendFactory(),
+});
+```
+
 Resolver behavior:
 
 1. Read per-principal override from `placement.getStrategy(id)`
@@ -91,7 +104,9 @@ Resolver behavior:
 
 `resolver.list(filter)` merges databases from the default backend, non-default override backends, and explicit placement override ids (deduplicated by `{ kind, ownerKey }`).
 
-Only the `sqlite` strategy is implemented today. Other shapes use the open `{ kind: string; ... }` branch when a backend package adds them.
+The registry implementation should not determine the node strategy set. A deployment may
+use SQLite registries with mixed SQLite/Turso nodes today, and later replace the
+registry/control plane with Turso while keeping the same per-node strategy model.
 
 Backup, restore, and replication stay backend-specific. The service does not define a generic protocol across heterogeneous backends.
 
