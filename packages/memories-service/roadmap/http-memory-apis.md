@@ -38,7 +38,7 @@ POST /databases/provenance/head
 POST /databases/capabilities
 ```
 
-### SQLite read endpoints (Exedra UI / workflows)
+### SQLite read endpoints (host UI / workflows)
 
 ```text
 POST /databases/namespaces
@@ -87,11 +87,11 @@ await reads.listNamespaces();
 await reads.getGraphLayout(namespace, "exact");
 ```
 
-Exedra uses these clients from `service-client.ts` (app) and `ExedraHttpMemoriesClientAsync` (workflows).
+Hosts use these clients from backend services, app routes, and workflow adapters.
 
 ## Auth interaction
 
-Today, memory routes use the same auth strategy as management (`none` or `server-admin`). Namespace authorization stays in the host app (Exedra) before calling the service.
+Today, memory routes use the same auth strategy as management (`none` or `server-admin`). Namespace authorization stays in the host app before calling the service.
 
 Future `app-policy` auth would add per-database and per-namespace checks inside the HTTP adapter. See [app-policy-auth.md](./app-policy-auth.md).
 

@@ -12,7 +12,7 @@ Cross-database ontology catalog and per-database link history. **Core registry i
 - Wired into `createLocalSqliteServiceStack` at `{dataDir}/registry/ontologies.db`
 - **HTTP routes:** `/ontologies/*`, `/databases/ontology/*`
 - **Client helpers:** `MemoriesOntologyClient`, `ensureDatabaseOntologyLink`, `storedOntologyFromDefinition`
-- **Exedra phase 1:** registers and links `exedraMemoriesOntology` on database open; warns on hash mismatch
+- **Host phase 1:** register and link the host ontology on database open; warn on hash mismatch
 
 ## Registry vs per-database catalog
 

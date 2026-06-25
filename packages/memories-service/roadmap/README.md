@@ -5,7 +5,6 @@ Feature plans for `@khoralabs/memories-service` and sibling packages.
 | Feature | File | Summary | Status |
 |---------|------|---------|--------|
 | HTTP memory APIs | [http-memory-apis.md](./http-memory-apis.md) | Search, merge, graph reads, remote client | **Shipped** |
-| Exedra integration | [exedra-integration.md](./exedra-integration.md) | Exedra hosted-service wiring | **Code shipped**; ops/tests remain |
 | Ontology registry extensions | [ontology-registry.md](./ontology-registry.md) | HTTP admin, merge enforcement, rehydration | HTTP + phase-1 link **shipped** |
 | App policy auth | [app-policy-auth.md](./app-policy-auth.md) | Host app decides access | Not implemented |
 | Remote backends | [remote-backends.md](./remote-backends.md) | libSQL/Turso, remote nodes | Not implemented |

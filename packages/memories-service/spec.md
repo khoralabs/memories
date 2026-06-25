@@ -1,6 +1,6 @@
 # Memories Service
 
-Reusable packages for managing many Memories databases per principal. Extracted from Exedra's hosting pattern: route requests to the right database, cache open connections, and keep authorization outside the core service.
+Reusable packages for managing many Memories databases per principal: route requests to the right database, cache open connections, and keep authorization outside the core service.
 
 ## Packages
 
@@ -25,7 +25,7 @@ type MemoriesDatabaseId = {
 };
 ```
 
-`ownerKey` is opaque. Exedra can pass a DID; other hosts can pass tenant ids, UUIDs, or external handles. The service validates ids but does not interpret owner-key semantics.
+`ownerKey` is opaque. Hosts can pass DIDs, tenant ids, UUIDs, or external handles. The service validates ids but does not interpret owner-key semantics.
 
 ### File layout
 
@@ -281,12 +281,12 @@ Runtime clients:
 - `createRemoteMemoriesReadClient()` — graph/index reads (namespaces, graph layout, edge preview, snippets, vector dimensions, scope chains)
 - `MemoriesOntologyClient`, `ensureDatabaseOntologyLink()` — ontology register/link over HTTP
 
-Exedra consumes these from `service-client.ts` and workflow adapters. See [roadmap/exedra-integration.md](./roadmap/exedra-integration.md).
+Hosts consume these from service clients, backend routes, or workflow adapters.
 
 ## Non-goals
 
 - Namespace policy registry (namespaces stay client-defined at merge time)
-- Exedra-specific team/session namespace builders
+- Host-specific team/session namespace builders
 - Grant storage or delegation in the core service
 - Assuming every database lives on the same filesystem
 - Rehydrating `defineOntology()` from stored JSON (hosts keep TS ontology; registry is for discovery and audit)
@@ -295,7 +295,6 @@ Exedra consumes these from `service-client.ts` and workflow adapters. See [roadm
 
 Planned work lives in [roadmap/](./roadmap/). Highlights:
 
-- [Exedra integration](./roadmap/exedra-integration.md) — code shipped; dev stack, tests, backup paths remain
 - [App policy auth](./roadmap/app-policy-auth.md) — delegate authorization to the embedding application
 - [Placement admin API](./roadmap/placement-admin-api.md) — HTTP routes for per-principal backend overrides
 - [Ontology registry extensions](./roadmap/ontology-registry.md) — merge enforcement, runtime rehydration

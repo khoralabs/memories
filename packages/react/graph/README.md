@@ -67,7 +67,7 @@ const client = createSyncInvestigatorClient({
 </GraphInvestigatorProvider>
 ```
 
-For async job + SSE backends, use `createJobStreamInvestigatorClient` with host-specific `startJob`, `streamUrl`, and `parseEvent` hooks (see Exedra's `createExedraInvestigatorClient` for an example).
+For async job + SSE backends, use `createJobStreamInvestigatorClient` with host-specific `startJob`, `streamUrl`, and `parseEvent` hooks.
 
 ## Development
 

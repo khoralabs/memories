@@ -42,4 +42,4 @@ const reads = createRemoteMemoriesReadClient({ baseUrl, database, auth });
 await reads.listNamespaces();
 ```
 
-See [../roadmap/http-memory-apis.md](../roadmap/http-memory-apis.md) and [../roadmap/exedra-integration.md](../roadmap/exedra-integration.md).
+See [../roadmap/http-memory-apis.md](../roadmap/http-memory-apis.md).
