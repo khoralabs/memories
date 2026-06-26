@@ -258,6 +258,7 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 | `POST` | `/ontologies/get` | Get ontology by hash | `read` |
 | `POST` | `/ontologies/databases` | List databases by hash or label kinds | `read` |
 | `POST` | `/databases/ontology/link` | Link database to ontology hash | `manage` |
+| `POST` | `/databases/hash` | Current ontology hash for database | `read` |
 | `POST` | `/databases/ontology/current` | Current ontology link | `read` |
 | `POST` | `/databases/ontology/history` | Link history | `read` |
 

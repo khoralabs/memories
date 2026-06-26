@@ -8,6 +8,7 @@ export {
   parseDatabaseIdBody,
 } from "./handlers";
 export {
+  handleDatabaseHash,
   handleDatabaseOntologyCurrent,
   handleDatabaseOntologyHistory,
   handleDatabaseOntologyLink,

@@ -39,6 +39,6 @@ createMemoriesServiceHttpServer({
 });
 ```
 
-**Ontology:** `POST /ontologies/register`, `get`, `databases`; `POST /databases/ontology/link`, `current`, `history`
+**Ontology:** `POST /ontologies/register`, `get`, `databases`; `POST /databases/hash`; `POST /databases/ontology/link`, `current`, `history`
 
 Full route list: [../spec.md](../spec.md) and [../roadmap/http-memory-apis.md](../roadmap/http-memory-apis.md).

@@ -58,6 +58,7 @@ POST /ontologies/register
 POST /ontologies/get
 POST /ontologies/databases
 POST /databases/ontology/link
+POST /databases/hash
 POST /databases/ontology/current
 POST /databases/ontology/history
 ```

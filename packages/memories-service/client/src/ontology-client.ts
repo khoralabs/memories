@@ -3,6 +3,7 @@ import type { MemoriesDatabaseId, StoredOntologyJsonSchema } from "@khoralabs/me
 import { hashStoredOntology, ontologyToStoredJsonSchema } from "@khoralabs/memories-service";
 
 import type { MemoriesServiceClient } from "./client";
+import type { DatabaseHashRequest, DatabaseHashResponse } from "./wire";
 
 export type StoredOntologyFromDefinitionMetadata = {
   $id?: string;
@@ -79,6 +80,12 @@ export class MemoriesOntologyClient {
       link: { hash: string; linkedAtMs: number } | null;
     }>("/databases/ontology/current", { database });
     return response.link ?? undefined;
+  }
+
+  async getDatabaseHash(database: MemoriesDatabaseId): Promise<string | undefined> {
+    const body: DatabaseHashRequest = { database };
+    const response = await this.#client.postJson<DatabaseHashResponse>("/databases/hash", body);
+    return response.hash ?? undefined;
   }
 
   async listLinkHistory(database: MemoriesDatabaseId) {

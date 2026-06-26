@@ -81,6 +81,11 @@ export type DatabaseScopedBody<T> = {
   database: { kind: string; ownerKey: string };
 } & T;
 
+export type DatabaseHashRequest = {
+  database: { kind: string; ownerKey: string };
+};
+export type DatabaseHashResponse = { hash: string | null };
+
 export type DatabaseSearchRequest = DatabaseScopedBody<{ params: SearchParamsWire }>;
 export type DatabaseSearchResponse = { hits: SearchHitWire[] };
 

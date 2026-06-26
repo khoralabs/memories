@@ -35,6 +35,11 @@ await ensureDatabaseOntologyLink({
   schema: storedOntologyFromDefinition(ontology),
 });
 
+const ontologyClient = new MemoriesOntologyClient({
+  serviceClient: new MemoriesServiceClient({ baseUrl, auth }),
+});
+const currentHash = await ontologyClient.getDatabaseHash(database);
+
 const memories = await createRemoteMemoriesClientAsync({ baseUrl, database, ontology, auth });
 await memories.search({ namespace, content, options });
 

@@ -12,6 +12,7 @@ import {
   type MemoriesDatabaseAccessStrategy,
 } from "@khoralabs/memories-service-auth";
 import {
+  handleDatabaseHash,
   handleDatabaseOntologyCurrent,
   handleDatabaseOntologyHistory,
   handleDatabaseOntologyLink,
@@ -267,6 +268,13 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseOntologyCurrent(requireOntology(opts), body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/hash") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return handleDatabaseHash(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ontology/history") {

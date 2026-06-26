@@ -92,6 +92,15 @@ export async function handleDatabaseOntologyCurrent(
   return Response.json({ database, link: link ?? null });
 }
 
+export async function handleDatabaseHash(
+  ontology: MemoriesDatabaseOntologyStore,
+  body: unknown,
+): Promise<Response> {
+  const database = parseDatabaseIdBody((body as Record<string, unknown>).database);
+  const link = await ontology.getCurrentLink(database);
+  return Response.json({ database, hash: link?.hash ?? null });
+}
+
 export async function handleDatabaseOntologyHistory(
   ontology: MemoriesDatabaseOntologyStore,
   body: unknown,

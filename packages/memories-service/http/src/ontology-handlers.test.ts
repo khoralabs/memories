@@ -89,6 +89,19 @@ describe("ontology http handlers", () => {
     };
     expect(currentBody.link?.hash).toBe(hash);
 
+    const hashRes = await postJson("http://localhost/databases/hash", { database }, stack);
+    expect(hashRes.status).toBe(200);
+    expect(await hashRes.json()).toEqual({ database, hash });
+
+    const unlinked = { kind: "account", ownerKey: "unlinked" };
+    const unlinkedHashRes = await postJson(
+      "http://localhost/databases/hash",
+      { database: unlinked },
+      stack,
+    );
+    expect(unlinkedHashRes.status).toBe(200);
+    expect(await unlinkedHashRes.json()).toEqual({ database: unlinked, hash: null });
+
     const historyRes = await postJson(
       "http://localhost/databases/ontology/history",
       { database },
@@ -144,6 +157,7 @@ describe("ontology http handlers", () => {
       const ontologyClient = new MemoriesOntologyClient({ serviceClient });
       const current = await ontologyClient.getCurrentLink(database);
       expect(current?.hash).toBe(first.hash);
+      await expect(ontologyClient.getDatabaseHash(database)).resolves.toBe(first.hash);
     } finally {
       server.stop(true);
     }
