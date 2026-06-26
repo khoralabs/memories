@@ -197,7 +197,7 @@
         "typescript": "^5",
       },
     },
-    "packages/memories-service/storage-sqlite": {
+    "packages/memories-service/storage/sqlite": {
       "name": "@khoralabs/memories-service-storage-sqlite",
       "version": "0.1.0",
       "dependencies": {
@@ -215,7 +215,7 @@
         "typescript": "^5",
       },
     },
-    "packages/memories-service/storage-turso-serverless": {
+    "packages/memories-service/storage/turso-serverless": {
       "name": "@khoralabs/memories-service-storage-turso-serverless",
       "version": "0.1.0",
       "dependencies": {
@@ -430,9 +430,9 @@
 
     "@khoralabs/memories-service-http": ["@khoralabs/memories-service-http@workspace:packages/memories-service/http"],
 
-    "@khoralabs/memories-service-storage-sqlite": ["@khoralabs/memories-service-storage-sqlite@workspace:packages/memories-service/storage-sqlite"],
+    "@khoralabs/memories-service-storage-sqlite": ["@khoralabs/memories-service-storage-sqlite@workspace:packages/memories-service/storage/sqlite"],
 
-    "@khoralabs/memories-service-storage-turso-serverless": ["@khoralabs/memories-service-storage-turso-serverless@workspace:packages/memories-service/storage-turso-serverless"],
+    "@khoralabs/memories-service-storage-turso-serverless": ["@khoralabs/memories-service-storage-turso-serverless@workspace:packages/memories-service/storage/turso-serverless"],
 
     "@khoralabs/memories-spec": ["@khoralabs/memories-spec@workspace:packages/spec"],
 
