@@ -2,7 +2,6 @@ import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-c
 import {
   buildNamespaceGraphLayoutFromSource,
   buildNamespaceSubtreeGraphLayoutFromSource,
-  collectNamespaceSubtreeUmapInput,
   collectNamespaceUmapInput,
   createMemoriesVisualizationFromSource,
   type NamespaceUmapInput,
@@ -14,7 +13,6 @@ export {
   buildNamespaceGraphLayoutFromSource,
   buildNamespaceGraphLayoutFromUmapInput,
   buildNamespaceSubtreeGraphLayoutFromSource,
-  collectNamespaceSubtreeUmapInput,
   collectNamespaceUmapInput,
   createMemoriesVisualizationFromSource,
   createSeededRandom,
@@ -100,11 +98,10 @@ export function collectTursoUmapInput(
   input: CollectTursoUmapInputOptions,
 ): Promise<NamespaceUmapInput> {
   const source = createTursoGraphProjectionSource(queryClient);
-  const options = { provenanceHeadRootHex: input.provenanceHeadRootHex };
-  if (input.scope === "subtree") {
-    return collectNamespaceSubtreeUmapInput(source, persistence, input.namespace, options);
-  }
-  return collectNamespaceUmapInput(source, persistence, input.namespace, options);
+  return collectNamespaceUmapInput(source, persistence, input.namespace, {
+    provenanceHeadRootHex: input.provenanceHeadRootHex,
+    scope: input.scope,
+  });
 }
 
 export function createTursoMemoriesVisualization(

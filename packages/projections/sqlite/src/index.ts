@@ -8,7 +8,6 @@ import type {
 } from "@khoralabs/memories-persistence-core";
 import {
   buildNamespaceGraphLayoutFromRows,
-  collectNamespaceSubtreeUmapInput,
   collectNamespaceUmapInput,
   type GraphLayoutEdge,
   type NamespaceGraphLayout,
@@ -28,7 +27,6 @@ export {
   buildNamespaceGraphLayoutFromSource,
   buildNamespaceGraphLayoutFromUmapInput,
   buildNamespaceSubtreeGraphLayoutFromSource,
-  collectNamespaceSubtreeUmapInput,
   collectNamespaceUmapInput,
   createMemoriesVisualizationFromSource,
   createSeededRandom,
@@ -187,11 +185,10 @@ export function collectSqliteUmapInput(
   input: CollectSqliteUmapInputOptions,
 ): Promise<NamespaceUmapInput> {
   const source = createSqliteGraphProjectionSource(db);
-  const options = { provenanceHeadRootHex: input.provenanceHeadRootHex };
-  if (input.scope === "subtree") {
-    return collectNamespaceSubtreeUmapInput(source, persistence, input.namespace, options);
-  }
-  return collectNamespaceUmapInput(source, persistence, input.namespace, options);
+  return collectNamespaceUmapInput(source, persistence, input.namespace, {
+    provenanceHeadRootHex: input.provenanceHeadRootHex,
+    scope: input.scope,
+  });
 }
 
 export function loadEdgePreview(

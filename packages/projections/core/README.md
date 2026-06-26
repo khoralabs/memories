@@ -8,7 +8,7 @@ Strategy-neutral graph projection code for Memories: source interfaces, layout m
 - `GraphProjectionGraphReads` — graph read shape consumed from `MemoriesPersistence` / `MemoriesPersistenceAsync`.
 - `buildNamespaceGraphLayoutFromSource` — builds one namespace layout from a source and graph reads.
 - `buildNamespaceSubtreeGraphLayoutFromSource` — builds a subtree layout with qualified `namespace::key` node ids.
-- `collectNamespaceUmapInput` / `collectNamespaceSubtreeUmapInput` — run storage-local reads and return JSON-safe UMAP input rows without running UMAP.
+- `collectNamespaceUmapInput` — run storage-local reads for exact namespaces or subtrees and return JSON-safe UMAP input rows without running UMAP.
 - `encodeUmapInput` / `decodeUmapInput` / `validateUmapInput` — optional gzip transport helpers for sending UMAP input to workers.
 - `buildNamespaceGraphLayoutFromUmapInput` — run UMAP from a collected input payload.
 - `createMemoriesVisualizationFromSource` — async facade for layout and preview calls.
@@ -39,6 +39,8 @@ import {
 // service/storage-local process
 const input = await collectNamespaceUmapInput(source, persistence, "app/user-1");
 const payload = await encodeUmapInput(input, { compression: "gzip" });
+
+// For subtree collection, pass { scope: "subtree" }.
 
 // external worker process
 const decoded = await decodeUmapInput(payload, { compression: "gzip" });

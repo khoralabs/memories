@@ -33,6 +33,7 @@ export type NamespaceUmapInput = {
 };
 
 export type CollectUmapInputOptions = {
+  scope?: UmapInputScope;
   provenanceHeadRootHex?: string;
 };
 
@@ -225,6 +226,47 @@ export async function collectNamespaceUmapInput(
   namespace: string,
   options: CollectUmapInputOptions = {},
 ): Promise<NamespaceUmapInput> {
+  const scope = options.scope ?? "exact";
+  if (scope === "subtree") {
+    const namespaces = await source.listNamespacesUnderPrefix(namespace);
+    const chunks = await Promise.all(
+      namespaces.map(async (namespace) => {
+        const [edges, embeddings, labelsByKey, propertiesByKey] = await Promise.all([
+          graphReads.loadGraphEdgesForNamespace(namespace),
+          source.loadMeanEmbeddingsForNamespace(namespace),
+          graphReads.loadNodeLabelsForNamespace(namespace),
+          graphReads.loadNodePropertiesForNamespace(namespace),
+        ]);
+        return {
+          edges: qualifyEdges(namespace, edges),
+          embeddings: qualifyEmbeddings(namespace, embeddings),
+          labelsByKey: qualifyMap(namespace, labelsByKey),
+          propertiesByKey: qualifyMap(namespace, propertiesByKey),
+        };
+      }),
+    );
+
+    const labelsByKey = new Map<string, OntologyLabelInstance[]>();
+    const propertiesByKey = new Map<string, Record<string, unknown> | null>();
+    for (const chunk of chunks) {
+      for (const [key, labels] of chunk.labelsByKey) labelsByKey.set(key, labels);
+      for (const [key, props] of chunk.propertiesByKey) propertiesByKey.set(key, props);
+    }
+
+    return {
+      version: UMAP_INPUT_VERSION,
+      namespace,
+      scope,
+      edges: chunks.flatMap((chunk) => chunk.edges),
+      embeddings: chunks.flatMap((chunk) => chunk.embeddings),
+      labelsByKey: serializeMap(labelsByKey),
+      propertiesByKey: serializeMap(propertiesByKey),
+      ...(options.provenanceHeadRootHex !== undefined
+        ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
+        : {}),
+    };
+  }
+
   const [edges, embeddings, labelsByKey, propertiesByKey] = await Promise.all([
     graphReads.loadGraphEdgesForNamespace(namespace),
     source.loadMeanEmbeddingsForNamespace(namespace),
@@ -237,51 +279,6 @@ export async function collectNamespaceUmapInput(
     scope: "exact",
     edges: edges.map(toLayoutEdge),
     embeddings,
-    labelsByKey: serializeMap(labelsByKey),
-    propertiesByKey: serializeMap(propertiesByKey),
-    ...(options.provenanceHeadRootHex !== undefined
-      ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
-      : {}),
-  };
-}
-
-export async function collectNamespaceSubtreeUmapInput(
-  source: GraphProjectionSource,
-  graphReads: GraphProjectionGraphReads,
-  prefix: string,
-  options: CollectUmapInputOptions = {},
-): Promise<NamespaceUmapInput> {
-  const namespaces = await source.listNamespacesUnderPrefix(prefix);
-  const chunks = await Promise.all(
-    namespaces.map(async (namespace) => {
-      const [edges, embeddings, labelsByKey, propertiesByKey] = await Promise.all([
-        graphReads.loadGraphEdgesForNamespace(namespace),
-        source.loadMeanEmbeddingsForNamespace(namespace),
-        graphReads.loadNodeLabelsForNamespace(namespace),
-        graphReads.loadNodePropertiesForNamespace(namespace),
-      ]);
-      return {
-        edges: qualifyEdges(namespace, edges),
-        embeddings: qualifyEmbeddings(namespace, embeddings),
-        labelsByKey: qualifyMap(namespace, labelsByKey),
-        propertiesByKey: qualifyMap(namespace, propertiesByKey),
-      };
-    }),
-  );
-
-  const labelsByKey = new Map<string, OntologyLabelInstance[]>();
-  const propertiesByKey = new Map<string, Record<string, unknown> | null>();
-  for (const chunk of chunks) {
-    for (const [key, labels] of chunk.labelsByKey) labelsByKey.set(key, labels);
-    for (const [key, props] of chunk.propertiesByKey) propertiesByKey.set(key, props);
-  }
-
-  return {
-    version: UMAP_INPUT_VERSION,
-    namespace: prefix,
-    scope: "subtree",
-    edges: chunks.flatMap((chunk) => chunk.edges),
-    embeddings: chunks.flatMap((chunk) => chunk.embeddings),
     labelsByKey: serializeMap(labelsByKey),
     propertiesByKey: serializeMap(propertiesByKey),
     ...(options.provenanceHeadRootHex !== undefined

@@ -37,7 +37,6 @@ The core package combines source rows and graph reads through:
 - `buildNamespaceGraphLayoutFromSource(source, persistence, namespace, options?)`
 - `buildNamespaceSubtreeGraphLayoutFromSource(source, persistence, prefix, options?)`
 - `collectNamespaceUmapInput(source, persistence, namespace, options?)`
-- `collectNamespaceSubtreeUmapInput(source, persistence, prefix, options?)`
 - `buildNamespaceGraphLayoutFromUmapInput(input, options?)`
 - `createMemoriesVisualizationFromSource(source, persistence)`
 

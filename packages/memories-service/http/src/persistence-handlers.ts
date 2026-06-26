@@ -8,7 +8,6 @@ import {
   searchAsync,
 } from "@khoralabs/memories-core";
 import {
-  collectNamespaceSubtreeUmapInput,
   collectNamespaceUmapInput,
   encodeUmapInput,
   type NamespaceUmapInput,
@@ -327,14 +326,15 @@ export async function handleDatabaseUmapInput(
       ? ((await handle.persistence.getProvenanceHeadRootHex()) ?? undefined)
       : undefined;
 
-  const input: NamespaceUmapInput =
-    scope === "subtree"
-      ? await collectNamespaceSubtreeUmapInput(source, handle.persistence, namespace, {
-          provenanceHeadRootHex,
-        })
-      : await collectNamespaceUmapInput(source, handle.persistence, namespace, {
-          provenanceHeadRootHex,
-        });
+  const input: NamespaceUmapInput = await collectNamespaceUmapInput(
+    source,
+    handle.persistence,
+    namespace,
+    {
+      provenanceHeadRootHex,
+      scope,
+    },
+  );
   const payload = await encodeUmapInput(input, { compression });
   return responseFromEncodedUmapInput(payload, compression);
 }

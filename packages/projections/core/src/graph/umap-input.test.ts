@@ -3,7 +3,6 @@ import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source
 import { buildNamespaceGraphLayoutFromSource } from "./build-namespace-graph-layout";
 import {
   buildNamespaceGraphLayoutFromUmapInput,
-  collectNamespaceSubtreeUmapInput,
   collectNamespaceUmapInput,
   decodeUmapInput,
   encodeUmapInput,
@@ -74,7 +73,7 @@ describe("NamespaceUmapInput", () => {
   });
 
   test("collects subtree input with qualified keys", async () => {
-    const input = await collectNamespaceSubtreeUmapInput(source, graphReads, "root");
+    const input = await collectNamespaceUmapInput(source, graphReads, "root", { scope: "subtree" });
 
     expect(input.scope).toBe("subtree");
     expect(input.edges.map((edge) => edge.fromKey)).toEqual(["root/a::m1", "root/b::m1"]);
