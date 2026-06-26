@@ -1,6 +1,6 @@
 # @khoralabs/memories-autolink
 
-Host-side lexical / retrieval autolinking for **@khoralabs/memories-core** graphs. This package does **not** change core merge or search semantics; it composes `search` / `searchAsync` results into `mergeMemory` edge rows under a small **retrieval-link ontology**.
+Host-side lexical / retrieval linking for **@khoralabs/memories-core** graphs. This package does **not** change core merge or search semantics; it composes `search` / `searchAsync` results into `mergeMemory` edge rows under the **retrieval similarity ontology**.
 
 ## Ontology composition
 
@@ -8,37 +8,39 @@ Host-side lexical / retrieval autolinking for **@khoralabs/memories-core** graph
 2. Merge in the retrieval fragment:
 
 ```ts
-import { defineOntology } from "@khoralabs/memories-core";
-import { canonicalOntology } from "@khoralabs/memories-ontologies";
-import { mergeOntologies } from "@khoralabs/memories-core/helpers";
-import { retrievalAutolinkOntology } from "@khoralabs/memories-autolink";
+import {
+  canonicalOntology,
+  defineOntology,
+  mergeOntologies,
+  retrievalSimilarityOntology,
+} from "@khoralabs/memories-ontologies";
 
-export const appOntology = mergeOntologies(canonicalOntology, retrievalAutolinkOntology);
+export const appOntology = mergeOntologies(canonicalOntology, retrievalSimilarityOntology);
 ```
 
 Or spread manually:
 
 ```ts
 defineOntology({
-  nodeLabels: { ...canonicalOntology.nodeLabels, ...retrievalAutolinkOntology.nodeLabels },
-  edgeLabels: { ...canonicalOntology.edgeLabels, ...retrievalAutolinkOntology.edgeLabels },
+  nodeLabels: { ...canonicalOntology.nodeLabels, ...retrievalSimilarityOntology.nodeLabels },
+  edgeLabels: { ...canonicalOntology.edgeLabels, ...retrievalSimilarityOntology.edgeLabels },
 });
 ```
 
-On **kind collision**, the **last** argument to `mergeOntologies` from `@khoralabs/memories-core/helpers` wins (arguments are merged left to right).
+On **kind collision**, the **last** argument to `mergeOntologies` wins (arguments are merged left to right).
 
 ## Pure planner
 
 `computeLexicalLinkMergeSlice(sourceMemoryKey, searchHits, options)` maps ranked `SearchHit[]` to a `{ labels?, edges? }` patch:
 
-- Edges use kind `retrieval_autolink` with `similarityScore`, `searchConfig` (JSON-stable snapshot), optional `rank`, `hitMemoryKey`, `hitSourceKey`.
-- Optional node label `retrieval_bootstrap` when `tagSourceNode: true` and at least one edge is emitted.
+- Edges use kind `retrieval_similarity` with `similarityScore`, `searchConfig` (JSON-stable snapshot), optional `rank`, `hitMemoryKey`, `hitSourceKey`.
+- Optional node label `retrieval_seed` when `tagSourceNode: true` and at least one edge is emitted.
 
 `normalizeSearchConfigSnapshot` builds `searchConfig` from the same inputs you pass to search (namespace, content mode, `options.*`).
 
 ## Idempotency
 
-Storage derives a stable `edgeId` from endpoints, edge label kind, and merge id-parts. Re-running merge for the same focal key, neighbor key, and `retrieval_autolink` kind **updates** the existing edge row (see Convex `insertEdgeImpl`). Safe to re-run autolink as long as props remain JSON-serializable.
+Storage derives a stable `edgeId` from endpoints, edge label kind, and merge id-parts. Re-running merge for the same focal key, neighbor key, and `retrieval_similarity` kind **updates** the existing edge row. Safe to re-run retrieval linking as long as props remain JSON-serializable.
 
 ## Optional one-shot integrate
 

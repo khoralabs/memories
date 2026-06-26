@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@khoralabs/memories-core": "workspace:*",
-    "zod": "^4"
+    "@khoralabs/memories-ontologies": "workspace:*"
   },
   "scripts": {
     "test": "bun test"

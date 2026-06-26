@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { Memory, SearchHit } from "@khoralabs/memories-core";
 import {
   computeLexicalLinkMergeSlice,
-  RETRIEVAL_AUTOLINK_EDGE_KIND,
-  RETRIEVAL_BOOTSTRAP_NODE_KIND,
+  RETRIEVAL_SEED_NODE_KIND,
+  RETRIEVAL_SIMILARITY_EDGE_KIND,
 } from "./index.js";
 
 function nodeMemory(key: string): Memory {
@@ -117,14 +117,15 @@ describe("computeLexicalLinkMergeSlice", () => {
     expect(patch.edges?.[0]?.memory_key).toBe("edge-m");
   });
 
-  test("tagSourceNode adds bootstrap label when edges exist", () => {
+  test("tagSourceNode adds seed label when edges exist", () => {
     const patch = computeLexicalLinkMergeSlice("src", [nodeHit(nodeMemory("n1"), 1)], {
       ...cfg,
       tagSourceNode: true,
     });
     expect(patch.labels?.length).toBe(1);
-    expect(patch.labels?.[0]?.kind).toBe(RETRIEVAL_BOOTSTRAP_NODE_KIND);
-    expect(patch.edges?.[0]?.label.kind).toBe(RETRIEVAL_AUTOLINK_EDGE_KIND);
+    expect(patch.labels?.[0]?.kind).toBe(RETRIEVAL_SEED_NODE_KIND);
+    expect(patch.labels?.[0]?.props).toEqual({ source: "lexical_search" });
+    expect(patch.edges?.[0]?.label.kind).toBe(RETRIEVAL_SIMILARITY_EDGE_KIND);
   });
 
   test("returns empty patch when nothing links", () => {

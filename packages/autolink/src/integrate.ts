@@ -34,7 +34,7 @@ export type IntegrateNewMemoryArgs<
  * then merges the focal node with user content/labels/edges plus the patch.
  * Works with sync {@link MemoriesClient} or {@link MemoriesClientAsync} (awaited uniformly).
  *
- * Requires a merged ontology that includes {@link retrievalAutolinkOntology} kinds.
+ * Requires a merged ontology that includes the retrieval similarity ontology kinds.
  */
 export async function integrateNewMemoryIntoGraph<
   TNode extends LabelSchemaMap,

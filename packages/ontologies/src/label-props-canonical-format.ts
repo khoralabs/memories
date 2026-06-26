@@ -3,6 +3,7 @@ import { canonicalEntityLabelPropsSearchFormatter } from "./families/entities";
 import { canonicalKnowledgeLabelPropsSearchFormatter } from "./families/knowledge";
 import { canonicalPreferenceLabelPropsSearchFormatter } from "./families/preferences";
 import { canonicalRelationLabelPropsSearchFormatter } from "./families/relations";
+import { canonicalRetrievalLabelPropsSearchFormatter } from "./families/retrieval";
 import { canonicalTemporalLabelPropsSearchFormatter } from "./families/temporal";
 
 const canonicalFamilyLabelPropsSearchFormatters = [
@@ -11,6 +12,7 @@ const canonicalFamilyLabelPropsSearchFormatters = [
   canonicalTemporalLabelPropsSearchFormatter,
   canonicalKnowledgeLabelPropsSearchFormatter,
   canonicalRelationLabelPropsSearchFormatter,
+  canonicalRetrievalLabelPropsSearchFormatter,
 ] as const;
 
 /** Readable lines for canonical ontology kinds; return "" to use generic {@link propsToHumanSearchText}. */

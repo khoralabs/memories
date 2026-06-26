@@ -1,18 +1,18 @@
 import type { EdgeLabelInstance, NodeLabelInstance, SearchHit } from "@khoralabs/memories-core";
 import {
-  RETRIEVAL_AUTOLINK_EDGE_KIND,
-  RETRIEVAL_BOOTSTRAP_NODE_KIND,
-  type RetrievalAutolinkEdgeLabels,
-  type RetrievalAutolinkNodeLabels,
-  zRetrievalAutolinkEdgeProps,
+  RETRIEVAL_SEED_NODE_KIND,
+  RETRIEVAL_SIMILARITY_EDGE_KIND,
+  type RetrievalSimilarityEdgeLabels,
+  type RetrievalSimilarityNodeLabels,
+  zRetrievalSimilarityEdgeProps,
 } from "./ontology.js";
 
 export type LexicalLinkMergePatch = {
-  labels?: NodeLabelInstance<RetrievalAutolinkNodeLabels>[];
+  labels?: NodeLabelInstance<RetrievalSimilarityNodeLabels>[];
   edges?: Array<{
     memory_key: string;
     direction: "in" | "out";
-    label: EdgeLabelInstance<RetrievalAutolinkEdgeLabels>;
+    label: EdgeLabelInstance<RetrievalSimilarityEdgeLabels>;
     properties?: Record<string, unknown>;
   }>;
 };
@@ -25,7 +25,7 @@ export type ComputeLexicalLinkOptions = {
   minSimilarityScore?: number;
   /** When true (default), ignore hits whose primary memory is an edge memory. */
   skipEdgeMemories?: boolean;
-  /** When true, add {@link RETRIEVAL_BOOTSTRAP_NODE_KIND} on the source if at least one edge is emitted. */
+  /** When true, add {@link RETRIEVAL_SEED_NODE_KIND} on the source if at least one edge is emitted. */
   tagSourceNode?: boolean;
 };
 
@@ -36,7 +36,7 @@ type AggregatedHit = {
 };
 
 /**
- * Pure: from ranked search hits, build a merge patch (retrieval autolink edges + optional bootstrap node label).
+ * Pure: from ranked search hits, build a merge patch (retrieval similarity edges + optional seed node label).
  * No I/O. Deterministic: sort by descending score, then neighbor key.
  */
 export function computeLexicalLinkMergeSlice(
@@ -81,7 +81,7 @@ export function computeLexicalLinkMergeSlice(
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (r === undefined) continue;
-    const props = zRetrievalAutolinkEdgeProps.parse({
+    const props = zRetrievalSimilarityEdgeProps.parse({
       similarityScore: r.score,
       searchConfig: frozenConfig,
       rank: i,
@@ -91,15 +91,15 @@ export function computeLexicalLinkMergeSlice(
     edges.push({
       memory_key: r.memoryKey,
       direction: "out",
-      label: { kind: RETRIEVAL_AUTOLINK_EDGE_KIND, props },
+      label: { kind: RETRIEVAL_SIMILARITY_EDGE_KIND, props },
     });
   }
 
   const labels: NonNullable<LexicalLinkMergePatch["labels"]> = [];
   if ((options.tagSourceNode ?? false) && edges.length > 0) {
     labels.push({
-      kind: RETRIEVAL_BOOTSTRAP_NODE_KIND,
-      props: { source: "lexical_autolink" },
+      kind: RETRIEVAL_SEED_NODE_KIND,
+      props: { source: "lexical_search" },
     });
   }
 

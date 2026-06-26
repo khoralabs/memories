@@ -55,6 +55,11 @@
       "import": "./src/families/relations.ts",
       "default": "./src/families/relations.ts"
     },
+    "./families/retrieval": {
+      "types": "./src/families/retrieval.ts",
+      "import": "./src/families/retrieval.ts",
+      "default": "./src/families/retrieval.ts"
+    },
     "./families/temporal": {
       "types": "./src/families/temporal.ts",
       "import": "./src/families/temporal.ts",

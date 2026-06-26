@@ -4,7 +4,7 @@ Ontology contracts, merge helpers, and default vocabulary families for personal 
 
 ## Exports
 
-- **Canonical families** — grouped shape maps and formatters such as `canonicalEntityNodeLabelShapes`, `canonicalKnowledgeNodeLabelShapes`, `canonicalTemporalNodeLabelShapes`, `canonicalRelationEdgeLabelShapes`, and `canonicalEntityLabelPropsSearchFormatter`.
+- **Canonical families** — grouped shape maps and formatters such as `canonicalEntityNodeLabelShapes`, `canonicalKnowledgeNodeLabelShapes`, `canonicalTemporalNodeLabelShapes`, `canonicalRelationEdgeLabelShapes`, `canonicalRetrievalEdgeLabelShapes`, and `canonicalEntityLabelPropsSearchFormatter`.
 - **Individual canonical shapes** — Zod schemas such as `personNodeLabelShape`, `factNodeLabelShape`, and `referencesEdgeLabelShape` for assembling only the ontology pieces your implementation needs.
 - **`canonicalOntology`** — deprecated compatibility export assembled from the family maps.
 - **`canonicalLabelPropsSearchFormatter`** — formatter for canonical ontology kinds in label-props search text.

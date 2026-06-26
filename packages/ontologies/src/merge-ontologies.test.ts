@@ -10,14 +10,14 @@ describe("mergeOntologies", () => {
       edgeLabels: { relates: z.object({}) },
     });
     const retrieval = defineOntology({
-      nodeLabels: { retrieval_bootstrap: z.object({ query: z.string() }) },
-      edgeLabels: { retrieval_autolink: z.object({ score: z.number() }) },
+      nodeLabels: { retrieval_seed: z.object({ query: z.string() }) },
+      edgeLabels: { retrieval_similarity: z.object({ score: z.number() }) },
     });
     const merged = mergeOntologies(base, retrieval);
     expect(merged.nodeLabels).toHaveProperty("fact");
-    expect(merged.nodeLabels).toHaveProperty("retrieval_bootstrap");
+    expect(merged.nodeLabels).toHaveProperty("retrieval_seed");
     expect(merged.edgeLabels).toHaveProperty("relates");
-    expect(merged.edgeLabels).toHaveProperty("retrieval_autolink");
+    expect(merged.edgeLabels).toHaveProperty("retrieval_similarity");
   });
 
   test("merges three layers; last key wins on collision", () => {

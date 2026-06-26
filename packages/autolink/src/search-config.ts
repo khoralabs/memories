@@ -10,7 +10,7 @@ export type SearchConfigSnapshotInput = {
 
 /**
  * Normalizes search call parameters into a JSON-stable object stored on each
- * {@link RETRIEVAL_AUTOLINK_EDGE_KIND} edge (`searchConfig` prop).
+ * retrieval similarity edge (`searchConfig` prop).
  */
 export function normalizeSearchConfigSnapshot(
   input: SearchConfigSnapshotInput,

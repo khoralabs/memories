@@ -1,12 +1,15 @@
 export { type IntegrateNewMemoryArgs, integrateNewMemoryIntoGraph } from "./integrate.js";
 export {
-  RETRIEVAL_AUTOLINK_EDGE_KIND,
-  RETRIEVAL_BOOTSTRAP_NODE_KIND,
-  type RetrievalAutolinkOntology,
-  retrievalAutolinkOntology,
-  zRetrievalAutolinkEdgeProps,
-  zRetrievalBootstrapNodeProps,
+  canonicalRetrievalEdgeLabelShapes,
+  canonicalRetrievalLabelPropsSearchFormatter,
+  canonicalRetrievalNodeLabelShapes,
+  RETRIEVAL_SEED_NODE_KIND,
+  RETRIEVAL_SIMILARITY_EDGE_KIND,
+  type RetrievalSimilarityOntology,
+  retrievalSimilarityOntology,
   zRetrievalSearchConfig,
+  zRetrievalSeedNodeProps,
+  zRetrievalSimilarityEdgeProps,
 } from "./ontology.js";
 export {
   type ComputeLexicalLinkOptions,
