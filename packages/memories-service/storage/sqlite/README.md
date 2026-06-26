@@ -1,45 +1,148 @@
 # @khoralabs/memories-service-storage-sqlite
 
-Local SQLCipher backend, SQLite placement registry, and ontology registry for `@khoralabs/memories-service`.
+Local SQLCipher file backend, SQLite placement registry, and SQLite ontology registry for `@khoralabs/memories-service`.
 
-Turnkey hosting:
+## Turnkey setup
 
 ```ts
-import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 import { createLocalSqliteServiceStack } from "@khoralabs/memories-service-storage-sqlite";
 
 const { service, placement, ontology, defaultStrategy } = createLocalSqliteServiceStack({
   dataDir: "./data/memories",
-  sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY ?? TEST_SQLCIPHER_KEY,
+  sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY!,
   maxCached: 8,
 });
 ```
 
-Registries:
+This wires:
 
-- `{dataDir}/registry/placements.db` — per-principal backend strategies
-- `{dataDir}/registry/ontologies.db` — content-addressed ontology JSON Schemas and append-only database links
+- Default strategy `{ kind: "sqlite", dataDir, sqlCipherKey }`
+- Placement registry at `{dataDir}/registry/placements.db`
+- Ontology registry at `{dataDir}/registry/ontologies.db`
+- `createBackendResolver` + `createMemoriesDatabaseService` from `@khoralabs/memories-service`
 
-The SQLite registries are one control-plane implementation. Node storage can be
-heterogeneous by passing a composite backend factory:
+`registryPath` and `ontologyRegistryPath` can be overridden independently:
+
+```ts
+createLocalSqliteServiceStack({
+  dataDir: "./data/memories",
+  sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY!,
+  registryPath: "./config/placements.db",
+  ontologyRegistryPath: "./config/ontologies.db",
+});
+```
+
+## Heterogeneous node backends
+
+Pass a custom `backendFactory` to mix SQLite and Turso nodes under the same placement registry:
 
 ```ts
 import { createCompositeBackendFactory } from "@khoralabs/memories-service";
 import { createTursoServerlessBackendFactory } from "@khoralabs/memories-service-storage-turso-serverless";
 
-const mixedFactory = createCompositeBackendFactory({
-  sqlite: createLocalSqliteBackendFactory(),
-  "turso-serverless": createTursoServerlessBackendFactory(),
-});
-
-const stack = createLocalSqliteServiceStack({
+const { service, placement } = createLocalSqliteServiceStack({
   dataDir: "./data/memories",
   sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY!,
-  backendFactory: mixedFactory,
+  backendFactory: createCompositeBackendFactory({
+    sqlite: createLocalSqliteBackendFactory(),
+    "turso-serverless": createTursoServerlessBackendFactory(),
+  }),
 });
+
+// Route one principal to Turso:
+await placement.setStrategy(
+  { kind: "account", ownerKey: "alice" },
+  {
+    kind: "turso-serverless",
+    url: "libsql://alice-db.my-org.turso.io",
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  },
+);
 ```
 
-The same node strategies could be selected by a different placement registry
-implementation, such as a future Turso-backed registry/control plane.
+## Standalone factories
 
-See [../spec.md](../spec.md) for the full design.
+Use individual factories when you manage resolver and service wiring yourself:
+
+```ts
+import {
+  createLocalSqliteBackendFactory,
+  createSqlitePlacementStore,
+  createSqliteOntologyStore,
+} from "@khoralabs/memories-service-storage-sqlite";
+import { createBackendResolver, createMemoriesDatabaseService } from "@khoralabs/memories-service";
+
+const placement = createSqlitePlacementStore({
+  registryPath: "./data/registry/placements.db",
+  sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY!,
+  defaultStrategy: { kind: "sqlite", dataDir: "./data/memories", sqlCipherKey: "..." },
+});
+
+const ontology = createSqliteOntologyStore({
+  registryPath: "./data/registry/ontologies.db",
+  sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY!,
+});
+
+const resolver = createBackendResolver({
+  placement,
+  factory: createLocalSqliteBackendFactory(),
+});
+
+const service = createMemoriesDatabaseService({ resolver, maxCached: 32 });
+```
+
+## File layout
+
+```
+{dataDir}/
+  v1/{base64url([kind, ownerKey])}/database.db   ← principal database (+ -wal, -shm)
+  registry/
+    placements.db    ← placement strategy overrides
+    ontologies.db    ← content-addressed ontology schemas + links
+```
+
+`kind` is logical identity only. Use `resolveLocalSqliteDatabasePath(dataDir, id)` to compute the path for any `MemoriesDatabaseId`.
+
+## SQLite-specific read helpers
+
+The `handle.sqlite` context (available from `service.getHandle(id)`) exposes a raw `Database` and the sync `MemoriesPersistence`. Pass it to read helpers from this package:
+
+```ts
+import {
+  listDatabaseNamespaces,
+  listDatabaseVectorDimensions,
+  loadDatabaseGraphLayout,
+  loadDatabaseEdgePreview,
+  loadDatabaseSourceMapTextPreview,
+} from "@khoralabs/memories-service-storage-sqlite";
+
+const handle = await service.getHandle(id);
+const ctx = handle.sqlite!;
+
+const namespaces = listDatabaseNamespaces(ctx);
+const dims = listDatabaseVectorDimensions(ctx);
+const layout = loadDatabaseGraphLayout(ctx, "org/team", "subtree"); // "exact" | "subtree"
+const preview = loadDatabaseEdgePreview(ctx, "org/team", edgeId);
+const text = loadDatabaseSourceMapTextPreview(ctx, sourceMapId, 500);
+```
+
+These are the same helpers used by the HTTP read endpoints in `@khoralabs/memories-service-http`.
+
+## Registries
+
+**Placement registry** (`placements.db`):
+- `placement_defaults` — singleton default strategy row.
+- `placement_overrides` — per-principal strategy overrides, primary key `(kind, owner_key)`.
+
+**Ontology registry** (`ontologies.db`):
+- `ontologies` — append-only via `INSERT OR IGNORE`; primary key `ontology_hash` (SHA-256 hex).
+- `database_ontology_links` — append-only link history per database; current link is the latest `(linked_at_ms, link_id)` row.
+
+Both registries are SQLCipher-encrypted with the same `sqlCipherKey` as the node databases.
+
+## Related packages
+
+- `@khoralabs/memories-service` — resolver, placement interface, connection cache
+- `@khoralabs/memories-service-storage-turso-serverless` — Turso Cloud node backend
+- `@khoralabs/memories-sqlite` — underlying SQLite persistence implementation
+- `@khoralabs/memories-projections-sqlite` — graph layout and preview helpers

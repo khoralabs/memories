@@ -1,29 +1,33 @@
 # @khoralabs/memories-service-storage-turso-serverless
 
-Turso Cloud **node backend** for the Memories database service. It maps a placement
-strategy `{ kind: "turso-serverless", url, authToken }` to a remote Turso-backed
-memory node.
+Turso Cloud **node backend** for the Memories database service. Maps a placement strategy `{ kind: "turso-serverless", url, authToken }` to a remote Turso-backed memory node.
 
-This package is not a placement or ontology registry. The registry/control plane
-is supplied by the host through the `@khoralabs/memories-service` placement and
-ontology interfaces. That control plane may be backed by SQLite today, Turso in
-the future, or another storage implementation entirely.
+This package is a **node data plane only**. It does not include a placement or ontology registry. The control plane is supplied by the host — typically `createSqlitePlacementStore` from `@khoralabs/memories-service-storage-sqlite`, though any `MemoriesDatabasePlacementStore` implementation works.
 
 ## Strategy
 
 ```ts
 type TursoServerlessBackendStrategy = {
   kind: "turso-serverless";
-  /** Supports `{ownerKey}` and `{kind}` placeholders for per-principal Turso databases. */
+  /** Turso database URL. Supports `{ownerKey}` and `{kind}` placeholders. */
   url: string;
   authToken?: string;
   remoteEncryptionKey?: string;
+  capabilities?: Partial<MemoriesBackendCapabilities>;
 };
 ```
 
-Example URL template (one Turso database per principal):
+## URL templates
+
+The `url` field supports two placeholders for per-principal database routing. Both are `encodeURIComponent`-escaped before substitution:
+
+| Placeholder | Value |
+|-------------|-------|
+| `{ownerKey}` | `id.ownerKey` |
+| `{kind}` | `id.kind` |
 
 ```ts
+// One Turso database per principal, named by ownerKey:
 {
   kind: "turso-serverless",
   url: "libsql://memories-{ownerKey}.my-org.turso.io",
@@ -31,7 +35,11 @@ Example URL template (one Turso database per principal):
 }
 ```
 
-Or store a full URL per principal via placement overrides:
+For principals whose ownerKey contains special characters, use a full URL per-principal via placement overrides instead.
+
+## Per-principal overrides
+
+Store a fully resolved URL for each principal via `placement.setStrategy`:
 
 ```ts
 await placement.setStrategy(
@@ -44,10 +52,7 @@ await placement.setStrategy(
 );
 ```
 
-## Mixed Node Wiring
-
-The example below uses SQLite-backed registries for the control plane, but the
-same backend factory works with any placement registry implementation.
+## Wiring with SQLite registries
 
 ```ts
 import { createBackendResolver, createCompositeBackendFactory } from "@khoralabs/memories-service";
@@ -81,33 +86,37 @@ const factory = createCompositeBackendFactory({
 const resolver = createBackendResolver({ placement, factory });
 ```
 
-Now the same placement registry can mix node strategies:
+## Credentials helpers
+
+`resolveTursoDatabaseUrl` and `resolveTursoCredentials` are exported for hosts that need to construct credentials independently:
 
 ```ts
-await placement.setStrategy(
-  { kind: "account", ownerKey: "alice" },
-  {
-    kind: "turso-serverless",
-    url: "libsql://alice-db.my-org.turso.io",
-    authToken: process.env.TURSO_ALICE_TOKEN,
-  },
-);
+import {
+  resolveTursoDatabaseUrl,
+  resolveTursoCredentials,
+} from "@khoralabs/memories-service-storage-turso-serverless";
+
+const url = resolveTursoDatabaseUrl(strategy, id);
+// → "libsql://memories-alice.my-org.turso.io" (placeholders substituted)
+
+const credentials = resolveTursoCredentials(strategy, id);
+// → { url, authToken, remoteEncryptionKey }
 ```
 
-## Listing Semantics
+## Behavior notes
 
-`list()` on the Turso backend returns `[]` because this package does not call
-Turso Cloud provisioning/list APIs. Placed Turso nodes still appear through
-`resolver.list()` because placement overrides are part of the registry/control
-plane.
+**`list()`** — returns `[]`. This backend does not call Turso Cloud provisioning or list APIs. Principals placed via explicit placement overrides still appear in `resolver.list()` because the resolver merges override ids from the placement store.
 
-## Delete semantics
+**`exists(id)`** — opens a short-lived connection, probes for the schema version table or a row in `memories`, then closes. Returns `false` on any connectivity or schema error rather than throwing.
 
-`delete(id)` clears all Memories tables in the resolved remote Turso database.
-It does not remove placement records or drop the Turso Cloud database itself.
+**`delete(id)`** — opens a connection and `DELETE`s all Memories tables in FK-safe order. Does **not** remove placement records or drop the Turso Cloud database itself. To reprovision or decommission a Turso database, use the Turso Cloud API separately.
+
+**`checkpoint(id)`** — no-op. WAL checkpointing is not applicable to remote Turso databases.
+
+**`handle.sqlite`** — not set. SQLite-specific graph read helpers (`loadDatabaseGraphLayout`, etc.) are not available for Turso-backed databases.
 
 ## Related packages
 
-- `@khoralabs/memories-turso-serverless` — persistence implementation
-- `@khoralabs/memories-service` — resolver, placement, connection cache
-- `@khoralabs/memories-service-storage-sqlite` — local file backend plus current SQLite placement/ontology registries
+- `@khoralabs/memories-turso-serverless` — underlying Turso persistence implementation
+- `@khoralabs/memories-service` — resolver, placement interface, connection cache
+- `@khoralabs/memories-service-storage-sqlite` — local file backend plus SQLite placement/ontology registries
