@@ -33,6 +33,7 @@ import {
   loadNodePropertiesForNamespace as loadNodePropertiesQuery,
 } from "./models/graph-index";
 import { syncLabelPropsSearchFeatures as syncLabelPropsSearchFeaturesImpl } from "./models/label-props-search";
+import { listMemoryNamespaces as listMemoryNamespacesQuery } from "./models/list-memory-namespaces";
 import { listSourceMapsForMemory as listSourceMapsForMemoryQuery } from "./models/list-source-maps-for-memory";
 import { listTextFeatureExportRowsForMemory as listTextFeatureExportRowsForMemoryQuery } from "./models/list-text-feature-export-rows";
 import {
@@ -415,12 +416,31 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return listNeighborsForEdgeMemory<EDGE_LABEL, NODE_LABEL>(this.readCtx(), input);
   }
 
+  listMemoryNamespaces(): string[] {
+    return listMemoryNamespacesQuery(this.db);
+  }
+
   listSourceMapsForMemory(memoryId: string, limit: number): SourceMap[] {
     return listSourceMapsForMemoryQuery(this.readCtx(), memoryId, limit);
   }
 
   listTextFeatureExportRowsForMemory(memoryId: string): TextFeatureExportRow[] {
     return listTextFeatureExportRowsForMemoryQuery(this.readCtx(), memoryId);
+  }
+
+  getSourceMapTextPreview(sourceMapId: string, maxChars = 8000): string | null {
+    const rows = this.db
+      .query<{ text: string }, [string]>(
+        `SELECT tf.text AS text
+         FROM text_features tf
+         WHERE tf.source_map_id = ?
+         ORDER BY tf._ts_created ASC, tf._id ASC`,
+      )
+      .all(sourceMapId);
+    if (rows.length === 0) return null;
+    const joined = rows.map((row) => row.text).join("\n\n");
+    if (joined.length <= maxChars) return joined;
+    return `${joined.slice(0, Math.max(0, maxChars - 1))}…`;
   }
 
   listVectorEmbeddingIndexDimensions(): number[] {

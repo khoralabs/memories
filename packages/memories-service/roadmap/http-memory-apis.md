@@ -38,11 +38,10 @@ POST /databases/provenance/head
 POST /databases/capabilities
 ```
 
-### SQLite read endpoints (host UI / workflows)
+### Read endpoints
 
 ```text
 POST /databases/namespaces
-POST /databases/graph
 POST /databases/edge-preview
 POST /databases/source-map/text-preview
 POST /databases/vector-dimensions
@@ -84,7 +83,7 @@ await client.mergeMemory(params);
 
 const reads = createRemoteMemoriesReadClient({ baseUrl, database, auth });
 await reads.listNamespaces();
-await reads.getGraphLayout(namespace, "exact");
+await reads.getSourceMapTextPreview(sourceMapId);
 ```
 
 Hosts use these clients from backend services, app routes, and workflow adapters.

@@ -1,8 +1,8 @@
 # @khoralabs/memories-service-http
 
-HTTP adapter for `@khoralabs/memories-service`.
+Backend-agnostic HTTP adapter for `@khoralabs/memories-service`.
 
-Wire with `@khoralabs/memories-service-storage-sqlite` for local hosting:
+Wire with any `MemoriesDatabaseService`. For local hosting:
 
 ```ts
 import { createNoneAuthStrategy } from "@khoralabs/memories-service-auth";
@@ -23,7 +23,7 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }`.
 
 **Persistence:** `POST /databases/search`, `merge`, `delete-memory`, `provenance/head`, `capabilities`
 
-**Reads:** `POST /databases/namespaces`, `graph`, `edge-preview`, `source-map/text-preview`, `vector-dimensions`, `ensure-scope-chain`, `find-memory-id`, `load-memory-namespace-key`
+**Reads:** `POST /databases/namespaces`, `edge-preview`, `source-map/text-preview`, `vector-dimensions`, `ensure-scope-chain`, `find-memory-id`, `load-memory-namespace-key`
 
 **Ontology:** `POST /ontologies/register`, `get`, `databases`; `POST /databases/ontology/link`, `current`, `history`
 

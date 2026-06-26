@@ -23,7 +23,6 @@ import {
   handleDatabaseEdgePreview,
   handleDatabaseEnsureScopeChain,
   handleDatabaseFindMemoryId,
-  handleDatabaseGraph,
   handleDatabaseLoadMemoryNamespaceKey,
   handleDatabaseMerge,
   handleDatabaseNamespaces,
@@ -180,13 +179,6 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseNamespaces(opts.service, body);
-    }
-
-    if (req.method === "POST" && url.pathname === "/databases/graph") {
-      const body = await readJsonBody(req);
-      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
-      return handleDatabaseGraph(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/edge-preview") {

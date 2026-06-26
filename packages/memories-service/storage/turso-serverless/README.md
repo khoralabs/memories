@@ -113,7 +113,7 @@ const credentials = resolveTursoCredentials(strategy, id);
 
 **`checkpoint(id)`** — no-op. WAL checkpointing is not applicable to remote Turso databases.
 
-**`handle.sqlite`** — not set. SQLite-specific graph read helpers (`loadDatabaseGraphLayout`, etc.) are not available for Turso-backed databases.
+**`handle.sqlite`** — not set. Host code that needs raw SQLite maintenance access should only rely on this field for SQLite-backed databases.
 
 ## Related packages
 

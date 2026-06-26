@@ -16,7 +16,7 @@ import type {
   TextFeatureExportRow,
 } from "@khoralabs/memories-core/persistence";
 import type { MemoryProvenanceEvent } from "@khoralabs/memories-core/provenance";
-import { createTursoClients, type TursoCredentials } from "./client";
+import { createTursoClients, queryAll, type TursoCredentials } from "./client";
 import { type DbCtx, readCtx, writeCtx } from "./context";
 import type { TursoDatabase } from "./db";
 import { ctxExec } from "./db";
@@ -443,12 +443,35 @@ export class MemoriesTursoServerlessPersistence {
     return listNeighborsForEdgeMemory<EDGE_LABEL, NODE_LABEL>(this.readDbCtx(), input);
   }
 
+  async listMemoryNamespaces(): Promise<string[]> {
+    const rows = await queryAll<{ namespace: string }>(
+      this.db.read,
+      `SELECT DISTINCT namespace FROM memories ORDER BY namespace`,
+    );
+    return rows.map((row) => row.namespace);
+  }
+
   async listSourceMapsForMemory(memoryId: string, limit: number): Promise<SourceMap[]> {
     return listSourceMapsForMemoryQuery(this.readDbCtx(), memoryId, limit);
   }
 
   async listTextFeatureExportRowsForMemory(memoryId: string): Promise<TextFeatureExportRow[]> {
     return listTextFeatureExportRowsForMemoryQuery(this.readDbCtx(), memoryId);
+  }
+
+  async getSourceMapTextPreview(sourceMapId: string, maxChars = 8000): Promise<string | null> {
+    const rows = await queryAll<{ text: string }>(
+      this.db.read,
+      `SELECT tf.text AS text
+       FROM text_features tf
+       WHERE tf.source_map_id = ?
+       ORDER BY tf._ts_created ASC, tf._id ASC`,
+      [sourceMapId],
+    );
+    if (rows.length === 0) return null;
+    const joined = rows.map((row) => row.text).join("\n\n");
+    if (joined.length <= maxChars) return joined;
+    return `${joined.slice(0, Math.max(0, maxChars - 1))}…`;
   }
 
   async listVectorEmbeddingIndexDimensions(): Promise<number[]> {

@@ -46,6 +46,9 @@ function createRemotePersistence(
     findMemoryIdByKey: async (namespace: string, key: string) =>
       reads.findMemoryIdByKey(namespace, key),
     loadMemoryNamespaceKey: async (memoryId: string) => reads.loadMemoryNamespaceKey(memoryId),
+    listMemoryNamespaces: async () => reads.listNamespaces(),
+    getSourceMapTextPreview: async (sourceMapId: string, maxChars?: number) =>
+      reads.getSourceMapTextPreview(sourceMapId, maxChars),
   } as unknown as MemoriesPersistenceAsync;
 }
 
@@ -121,17 +124,6 @@ export class RemoteMemoriesReadClient {
       },
     );
     return response.namespaces;
-  }
-
-  async getGraphLayout(
-    namespace: string,
-    scope: "exact" | "subtree" = "exact",
-  ): Promise<Record<string, unknown>> {
-    return this.#client.postJson("/databases/graph", {
-      database: this.#database,
-      namespace,
-      scope,
-    });
   }
 
   async getEdgePreview(namespace: string, edgeId: string): Promise<Record<string, unknown>> {

@@ -101,12 +101,6 @@ export type DatabaseCapabilitiesResponse = {
 export type DatabaseNamespacesRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseNamespacesResponse = { namespaces: string[] };
 
-export type DatabaseGraphRequest = DatabaseScopedBody<{
-  namespace: string;
-  scope?: "exact" | "subtree";
-}>;
-export type DatabaseGraphResponse = Record<string, unknown>;
-
 export type DatabaseEdgePreviewRequest = DatabaseScopedBody<{
   namespace: string;
   edgeId: string;

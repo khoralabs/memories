@@ -27,7 +27,6 @@ export {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
-  type DatabaseGraphRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespacesRequest,
   type DatabaseProvenanceHeadResponse,

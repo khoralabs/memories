@@ -242,7 +242,6 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 | Method | Path | Action | Auth action |
 |--------|------|--------|-------------|
 | `POST` | `/databases/namespaces` | List namespaces | `read` |
-| `POST` | `/databases/graph` | Graph layout for namespace | `read` |
 | `POST` | `/databases/edge-preview` | Edge preview | `read` |
 | `POST` | `/databases/source-map/text-preview` | Source map text preview | `read` |
 | `POST` | `/databases/vector-dimensions` | Vector index dimensions | `read` |

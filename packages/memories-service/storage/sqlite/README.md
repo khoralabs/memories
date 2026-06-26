@@ -103,31 +103,6 @@ const service = createMemoriesDatabaseService({ resolver, maxCached: 32 });
 
 `kind` is logical identity only. Use `resolveLocalSqliteDatabasePath(dataDir, id)` to compute the path for any `MemoriesDatabaseId`.
 
-## SQLite-specific read helpers
-
-The `handle.sqlite` context (available from `service.getHandle(id)`) exposes a raw `Database` and the sync `MemoriesPersistence`. Pass it to read helpers from this package:
-
-```ts
-import {
-  listDatabaseNamespaces,
-  listDatabaseVectorDimensions,
-  loadDatabaseGraphLayout,
-  loadDatabaseEdgePreview,
-  loadDatabaseSourceMapTextPreview,
-} from "@khoralabs/memories-service-storage-sqlite";
-
-const handle = await service.getHandle(id);
-const ctx = handle.sqlite!;
-
-const namespaces = listDatabaseNamespaces(ctx);
-const dims = listDatabaseVectorDimensions(ctx);
-const layout = loadDatabaseGraphLayout(ctx, "org/team", "subtree"); // "exact" | "subtree"
-const preview = loadDatabaseEdgePreview(ctx, "org/team", edgeId);
-const text = loadDatabaseSourceMapTextPreview(ctx, sourceMapId, 500);
-```
-
-These are the same helpers used by the HTTP read endpoints in `@khoralabs/memories-service-http`.
-
 ## Registries
 
 **Placement registry** (`placements.db`):
@@ -145,4 +120,3 @@ Both registries are SQLCipher-encrypted with the same `sqlCipherKey` as the node
 - `@khoralabs/memories-service` — resolver, placement interface, connection cache
 - `@khoralabs/memories-service-storage-turso-serverless` — Turso Cloud node backend
 - `@khoralabs/memories-sqlite` — underlying SQLite persistence implementation
-- `@khoralabs/memories-projections-sqlite` — graph layout and preview helpers

@@ -43,7 +43,7 @@ type MemoriesDatabaseHandle = {
 - `persistence` is the opened async persistence instance for this database.
 - `close()` releases the connection. The service's LRU cache calls this on eviction and explicit `close(id)`.
 - `checkpoint?()` is optional; only meaningful for WAL-mode databases (SQLite). Turso and other backends can omit it or no-op.
-- `sqlite` is only needed for backends that expose a raw `bun:sqlite` connection. Required by graph read helpers in `@khoralabs/memories-service-storage-sqlite/read-endpoints`. Omit for remote backends.
+- `sqlite` is only needed for backends that expose a raw `bun:sqlite` connection for host-owned local maintenance paths. Omit for remote backends.
 
 ## Method contracts
 

@@ -400,11 +400,17 @@ export interface MemoriesNeighborIndex {
  * {@link listVectorEmbeddingIndexDimensions} returns `[]` when the store cannot infer dimensions (unknown or not applicable).
  */
 export interface MemoriesPersistenceReads {
+  /** All distinct primary memory namespaces, sorted for stable UI. */
+  listMemoryNamespaces(): NamespacePath[];
+
   /** Source map rows for a memory, newest first, capped at `limit`. */
   listSourceMapsForMemory(memoryId: string, limit: number): SourceMap[];
 
   /** Text lines joined with source keys for JSONL sync and similar export paths. */
   listTextFeatureExportRowsForMemory(memoryId: string): TextFeatureExportRow[];
+
+  /** Display text attached to one source map row, truncated to `maxChars` when supplied. */
+  getSourceMapTextPreview(sourceMapId: string, maxChars?: number): string | null;
 
   /**
    * Distinct embedding widths present in the store's vector indexes (one entry per width in use).

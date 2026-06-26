@@ -85,8 +85,17 @@ describe("memories service persistence http handlers", () => {
       stack,
     );
     expect(searchRes.status).toBe(200);
-    const searchBody = (await searchRes.json()) as { hits: unknown[] };
+    const searchBody = (await searchRes.json()) as { hits: Array<{ id: string }> };
     expect(searchBody.hits.length).toBeGreaterThan(0);
+
+    const previewRes = await postJson(
+      "http://localhost/databases/source-map/text-preview",
+      { database, sourceMapId: searchBody.hits[0]?.id },
+      stack,
+    );
+    expect(previewRes.status).toBe(200);
+    const previewBody = (await previewRes.json()) as { text: string | null };
+    expect(previewBody.text).toContain("hello world");
 
     const capsRes = await postJson("http://localhost/databases/capabilities", { database }, stack);
     expect(capsRes.status).toBe(200);
@@ -130,12 +139,12 @@ describe("memories service persistence http handlers", () => {
     const namespacesBody = (await namespacesRes.json()) as { namespaces: string[] };
     expect(namespacesBody.namespaces).toContain("ns/a");
 
-    const graphRes = await postJson(
-      "http://localhost/databases/graph",
-      { database, namespace: "ns/a", scope: "exact" },
+    const scopeChainRes = await postJson(
+      "http://localhost/databases/ensure-scope-chain",
+      { database, scopePaths: ["team", "team/project"] },
       stack,
     );
-    expect(graphRes.status).toBe(200);
+    expect(scopeChainRes.status).toBe(200);
 
     const dimsRes = await postJson(
       "http://localhost/databases/vector-dimensions",

@@ -12,7 +12,6 @@ import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
-  type DatabaseGraphRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespacesRequest,
   type DatabaseSearchRequest,
@@ -20,31 +19,38 @@ import {
   type DatabaseVectorDimensionsRequest,
   serializeSearchHit,
 } from "@khoralabs/memories-service-client";
-import {
-  listDatabaseNamespaces,
-  listDatabaseVectorDimensions,
-  loadDatabaseEdgePreview,
-  loadDatabaseGraphLayout,
-  loadDatabaseSourceMapTextPreview,
-} from "@khoralabs/memories-service-storage-sqlite";
 
 import { HttpError, parseDatabaseIdBody } from "./handlers";
 
 const GLOBAL_ROOT = "_global_";
 
-function ensureScopeChainSync(
-  persistence: import("@khoralabs/memories-core/persistence").MemoriesPersistence,
+async function ensureScopeChain(
+  handle: MemoriesDatabaseHandle,
   scopePaths: readonly string[],
-): void {
+): Promise<void> {
   if (scopePaths.length === 0) return;
   const op = { now: Date.now() };
-  persistence.withTransaction(() => {
-    persistence.upsertScope(op, { scopeId: scopePaths[0] ?? GLOBAL_ROOT });
+  if (handle.sqlite !== undefined) {
+    const persistence = handle.sqlite.syncPersistence;
+    persistence.withTransaction(() => {
+      persistence.upsertScope(op, { scopeId: scopePaths[0] ?? GLOBAL_ROOT });
+      for (let i = 0; i < scopePaths.length - 1; i++) {
+        const parent = scopePaths[i];
+        const child = scopePaths[i + 1];
+        if (parent === undefined || child === undefined) continue;
+        persistence.linkScopes(op, { parentScopeId: parent, childScopeId: child });
+      }
+    });
+    return;
+  }
+
+  await handle.persistence.withTransaction(async () => {
+    await handle.persistence.upsertScope(op, { scopeId: scopePaths[0] ?? GLOBAL_ROOT });
     for (let i = 0; i < scopePaths.length - 1; i++) {
       const parent = scopePaths[i];
       const child = scopePaths[i + 1];
       if (parent === undefined || child === undefined) continue;
-      persistence.linkScopes(op, { parentScopeId: parent, childScopeId: child });
+      await handle.persistence.linkScopes(op, { parentScopeId: parent, childScopeId: child });
     }
   });
 }
@@ -110,15 +116,6 @@ async function getHandle(
   const scoped = parseDatabaseScopedBody(body);
   const handle = await service.getHandle(scoped.database);
   return { database: scoped.database, handle };
-}
-
-function requireSqlite(
-  handle: MemoriesDatabaseHandle,
-): NonNullable<MemoriesDatabaseHandle["sqlite"]> {
-  if (handle.sqlite === undefined) {
-    throw new HttpError("Endpoint requires a SQLite backend", 501);
-  }
-  return handle.sqlite;
 }
 
 export async function handleDatabaseSearch(
@@ -212,23 +209,8 @@ export async function handleDatabaseNamespaces(
 ): Promise<Response> {
   const scoped = body as DatabaseNamespacesRequest;
   const { database, handle } = await getHandle(service, scoped);
-  const sqlite = requireSqlite(handle);
-  const namespaces = listDatabaseNamespaces(sqlite);
+  const namespaces = await handle.persistence.listMemoryNamespaces();
   return Response.json({ namespaces, database });
-}
-
-export async function handleDatabaseGraph(
-  service: MemoriesDatabaseService,
-  body: unknown,
-): Promise<Response> {
-  const scoped = body as DatabaseGraphRequest;
-  const { database, handle } = await getHandle(service, scoped);
-  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
-    throw new HttpError("namespace is required", 400);
-  }
-  const sqlite = requireSqlite(handle);
-  const layout = loadDatabaseGraphLayout(sqlite, scoped.namespace.trim(), scoped.scope ?? "exact");
-  return Response.json({ ...layout, database });
 }
 
 export async function handleDatabaseEdgePreview(
@@ -240,12 +222,21 @@ export async function handleDatabaseEdgePreview(
   if (typeof scoped.namespace !== "string" || typeof scoped.edgeId !== "string") {
     throw new HttpError("namespace and edgeId are required", 400);
   }
-  const sqlite = requireSqlite(handle);
-  const detail = loadDatabaseEdgePreview(sqlite, scoped.namespace.trim(), scoped.edgeId.trim());
-  if (detail === undefined) {
+  const link = await handle.persistence.loadGraphEdge(
+    scoped.namespace.trim(),
+    scoped.edgeId.trim(),
+  );
+  if (link === null) {
     throw new HttpError("edge not found in namespace", 404);
   }
-  return Response.json({ ...detail, database });
+  return Response.json({
+    edgeId: link.edgeId,
+    fromKey: link.fromKey,
+    toKey: link.toKey,
+    labels: link.labels,
+    properties: link.properties ?? null,
+    database,
+  });
 }
 
 export async function handleDatabaseSourceMapTextPreview(
@@ -257,9 +248,11 @@ export async function handleDatabaseSourceMapTextPreview(
   if (typeof scoped.sourceMapId !== "string" || scoped.sourceMapId.trim().length === 0) {
     throw new HttpError("sourceMapId is required", 400);
   }
-  const sqlite = requireSqlite(handle);
   const maxChars = scoped.maxChars ?? 2400;
-  const text = loadDatabaseSourceMapTextPreview(sqlite, scoped.sourceMapId.trim(), maxChars);
+  const text = await handle.persistence.getSourceMapTextPreview(
+    scoped.sourceMapId.trim(),
+    maxChars,
+  );
   return Response.json({ text, database });
 }
 
@@ -269,8 +262,7 @@ export async function handleDatabaseVectorDimensions(
 ): Promise<Response> {
   const scoped = body as DatabaseVectorDimensionsRequest;
   const { database, handle } = await getHandle(service, scoped);
-  const sqlite = requireSqlite(handle);
-  const dimensions = listDatabaseVectorDimensions(sqlite);
+  const dimensions = await handle.persistence.listVectorEmbeddingIndexDimensions();
   return Response.json({ dimensions, database });
 }
 
@@ -284,8 +276,7 @@ export async function handleDatabaseEnsureScopeChain(
     throw new HttpError("scopePaths must be an array", 400);
   }
   const scopePaths = scoped.scopePaths.filter((path): path is string => typeof path === "string");
-  const sqlite = requireSqlite(handle);
-  ensureScopeChainSync(sqlite.syncPersistence, scopePaths);
+  await ensureScopeChain(handle, scopePaths);
   return Response.json({ ok: true, database });
 }
 
@@ -298,8 +289,7 @@ export async function handleDatabaseFindMemoryId(
   if (typeof scoped.namespace !== "string" || typeof scoped.key !== "string") {
     throw new HttpError("namespace and key are required", 400);
   }
-  const sqlite = requireSqlite(handle);
-  const memoryId = sqlite.syncPersistence.findMemoryIdByKey(
+  const memoryId = await handle.persistence.findMemoryIdByKey(
     scoped.namespace.trim(),
     scoped.key.trim(),
   );
@@ -315,7 +305,6 @@ export async function handleDatabaseLoadMemoryNamespaceKey(
   if (typeof scoped.memoryId !== "string" || scoped.memoryId.trim().length === 0) {
     throw new HttpError("memoryId is required", 400);
   }
-  const sqlite = requireSqlite(handle);
-  const loaded = sqlite.syncPersistence.loadMemoryNamespaceKey(scoped.memoryId.trim());
+  const loaded = await handle.persistence.loadMemoryNamespaceKey(scoped.memoryId.trim());
   return Response.json({ record: loaded ?? null, database });
 }
