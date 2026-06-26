@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { ids } from "@khoralabs/memories-persistence-core";
 import { createMemoriesPersistence, openTestMemoriesDatabase } from "@khoralabs/memories-sqlite";
 import { mergeMemory } from "./api/merge-memory";
 import { search } from "./api/search";
-import { ids } from "./models/ids";
 import {
   MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
   MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,

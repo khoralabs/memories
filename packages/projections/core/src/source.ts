@@ -3,7 +3,7 @@ import type {
   GraphEdgeLink,
   GraphMemoryEmbedding,
   OntologyLabelInstance,
-} from "@khoralabs/memories-core";
+} from "@khoralabs/memories-persistence-core";
 
 export type MaybePromise<T> = T | Promise<T>;
 

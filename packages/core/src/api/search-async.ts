@@ -1,9 +1,15 @@
-import type { NamespacePath } from "../models/namespace-path";
-import type { HydratedNeighbor, NeighborFilter } from "../models/neighbor-search-types";
-import type { OntologyLabelInstance } from "../models/ontology-label";
-import type { MemoriesPersistenceAsync } from "../persistence/async-types";
-import type { MemoriesBackendCapabilities, SearchNamespaceScope } from "../persistence/types";
-import { resolveMemoriesBackendCapabilities } from "../persistence/types";
+import type {
+  HydratedNeighbor,
+  NamespacePath,
+  NeighborFilter,
+  OntologyLabelInstance,
+} from "@khoralabs/memories-persistence-core";
+import type {
+  MemoriesBackendCapabilities,
+  MemoriesPersistenceAsync,
+  SearchNamespaceScope,
+} from "@khoralabs/memories-persistence-core/persistence";
+import { resolveMemoriesBackendCapabilities } from "@khoralabs/memories-persistence-core/persistence";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtxAsync } from "./merge-memory-async";
 import {

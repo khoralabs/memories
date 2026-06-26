@@ -1,4 +1,4 @@
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-core/persistence";
+import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
 
 import type { MemoriesDatabaseHandle } from "./backend";
 import {

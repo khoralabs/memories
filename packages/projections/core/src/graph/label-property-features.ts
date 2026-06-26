@@ -1,4 +1,4 @@
-import type { OntologyLabelInstance } from "@khoralabs/memories-core";
+import type { OntologyLabelInstance } from "@khoralabs/memories-persistence-core";
 
 /** Dimension for hashing ontology labels + JSON properties into a dense sketch. */
 export const LABEL_PROPERTY_SYNTH_DIM = 32;

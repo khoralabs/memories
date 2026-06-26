@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mergeMemory, namespacePath } from "@khoralabs/memories-core";
+import { mergeMemory } from "@khoralabs/memories-core";
+import { namespacePath } from "@khoralabs/memories-persistence-core";
 import { openTestMemoriesDatabase } from "../connection";
 import { createMemoriesPersistence } from "../persistence";
 import { prepareMemoriesSqliteStmts } from "./prepared-stmts";

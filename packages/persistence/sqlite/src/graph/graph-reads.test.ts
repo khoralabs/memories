@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { ids, mergeMemory } from "@khoralabs/memories-core";
+import { mergeMemory } from "@khoralabs/memories-core";
+import { ids } from "@khoralabs/memories-persistence-core";
 import {
   createMemoriesPersistence,
   listMemoryNamespaces,

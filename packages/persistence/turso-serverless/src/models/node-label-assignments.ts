@@ -1,4 +1,4 @@
-import { ids } from "@khoralabs/memories-core";
+import { ids } from "@khoralabs/memories-persistence-core";
 import type { DbCtx } from "../context";
 import { ctxExec, ctxQueryOne } from "../db";
 import { validatePropsAgainstJsonSchema } from "./validate-props";

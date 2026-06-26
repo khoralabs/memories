@@ -1,5 +1,5 @@
+import type { OntologyLabelInstance } from "@khoralabs/memories-persistence-core";
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from "@standard-schema/spec";
-import type { OntologyLabelInstance } from "../models/ontology-label";
 
 export type { OntologyLabelInstance, StandardJSONSchemaV1, StandardSchemaV1 };
 

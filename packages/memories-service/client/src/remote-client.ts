@@ -7,7 +7,7 @@ import { MemoriesClientAsync, type SearchHit, type SearchParams } from "@khorala
 import type {
   MemoriesBackendCapabilities,
   MemoriesPersistenceAsync,
-} from "@khoralabs/memories-core/persistence";
+} from "@khoralabs/memories-persistence-core/persistence";
 import {
   decodeUmapInput,
   type NamespaceUmapInput,

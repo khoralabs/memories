@@ -1,5 +1,5 @@
 import type { SQLQueryBindings } from "bun:sqlite";
-import type { HydratedNeighbor, HydratedSourceMapHit } from "@khoralabs/memories-core";
+import type { HydratedNeighbor, HydratedSourceMapHit } from "@khoralabs/memories-persistence-core";
 import {
   canonicalizeNamespacePrefixes,
   ids,
@@ -11,8 +11,8 @@ import {
   namespaceSegments,
   type OntologyLabelInstance,
   type SearchNamespaceScope,
-} from "@khoralabs/memories-core";
-import type { Edge, Memory } from "@khoralabs/memories-core/persistence";
+} from "@khoralabs/memories-persistence-core";
+import type { Edge, Memory } from "@khoralabs/memories-persistence-core/persistence";
 import { vectorToBlob } from "../connection";
 import { vectorVecTableName } from "../search-indexes";
 import type { DbCtx } from "./context";
@@ -24,7 +24,7 @@ export type {
   NeighborConstraint,
   NeighborFilter,
   NeighborNodesFilter,
-} from "@khoralabs/memories-core";
+} from "@khoralabs/memories-persistence-core";
 
 function placeholders(count: number): string {
   return Array.from({ length: count }, () => "?").join(", ");

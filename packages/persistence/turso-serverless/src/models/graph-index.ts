@@ -1,5 +1,9 @@
-import type { GraphEdgeLink, GraphNode, OntologyLabelInstance } from "@khoralabs/memories-core";
-import { ids } from "@khoralabs/memories-core";
+import type {
+  GraphEdgeLink,
+  GraphNode,
+  OntologyLabelInstance,
+} from "@khoralabs/memories-persistence-core";
+import { ids } from "@khoralabs/memories-persistence-core";
 import type { TursoDatabase } from "../db";
 import { readQueryAll } from "../db";
 import { parsePropsColumn } from "../sql";

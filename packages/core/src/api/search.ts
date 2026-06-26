@@ -1,17 +1,25 @@
-import {
-  canonicalizeNamespacePrefixes,
-  type NamespacePath,
-  namespacePath,
-} from "../models/namespace-path";
 import type {
   HydratedNeighbor,
   MemoryGraphAssociation,
   NeighborFilter,
-} from "../models/neighbor-search-types";
-import type { OntologyLabelInstance } from "../models/ontology-label";
-import type { Edge, Memory, SourceMapRow } from "../persistence/rows.js";
-import type { MemoriesBackendCapabilities, SearchNamespaceScope } from "../persistence/types";
-import { type MemoriesPersistence, resolveMemoriesBackendCapabilities } from "../persistence/types";
+  OntologyLabelInstance,
+} from "@khoralabs/memories-persistence-core";
+import {
+  canonicalizeNamespacePrefixes,
+  type NamespacePath,
+  namespacePath,
+} from "@khoralabs/memories-persistence-core";
+import type {
+  Edge,
+  MemoriesBackendCapabilities,
+  Memory,
+  SearchNamespaceScope,
+  SourceMapRow,
+} from "@khoralabs/memories-persistence-core/persistence";
+import {
+  type MemoriesPersistence,
+  resolveMemoriesBackendCapabilities,
+} from "@khoralabs/memories-persistence-core/persistence";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtx } from "./merge-memory";
 

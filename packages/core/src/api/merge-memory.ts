@@ -1,15 +1,17 @@
-import z from "zod";
-import { ids } from "../models/ids";
-import { MEMORY_SEARCH_META_SOURCE_KEY } from "../models/memory-search-meta";
-import type { NamespacePath } from "../models/namespace-path";
-import { zNamespacePath } from "../models/namespace-path";
-import { zVectorPayload } from "../persistence/row-schemas";
+import type { NamespacePath } from "@khoralabs/memories-persistence-core";
+import {
+  ids,
+  MEMORY_SEARCH_META_SOURCE_KEY,
+  zNamespacePath,
+} from "@khoralabs/memories-persistence-core";
 import {
   type MemoriesPersistence,
   type MemoryOpContext,
   resolveMemoriesBackendCapabilities,
-} from "../persistence/types";
-import { computeSourceMapContentHash } from "../provenance/index";
+  zVectorPayload,
+} from "@khoralabs/memories-persistence-core/persistence";
+import { computeSourceMapContentHash } from "@khoralabs/memories-persistence-core/provenance";
+import z from "zod";
 import type {
   EdgeLabelInstance,
   LabelSchemaMap,
@@ -21,11 +23,11 @@ import { propsSchemaToJson } from "./ontology";
 export {
   buildCanonicalMemorySearchMetaTextForMerge,
   MEMORY_SEARCH_META_SOURCE_KEY,
-} from "../models/memory-search-meta";
+} from "@khoralabs/memories-persistence-core";
 export {
   buildCanonicalMemorySearchMetaText,
   upsertMemorySearchMetaVector,
-} from "../persistence/facade";
+} from "@khoralabs/memories-persistence-core/persistence";
 
 export interface MutationCtx {
   persistence: MemoriesPersistence;

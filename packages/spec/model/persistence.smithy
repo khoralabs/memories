@@ -120,7 +120,7 @@ MemoriesMutation, MemoriesRetrieval, MemoriesNeighborIndex, MemoriesPersistenceR
 
 **Read helpers:** **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory** (prefetch / JSONL export). **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable; implementations that can infer widths from stored indexes should return them.
 
-**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete) and nullable **`source_maps.content_hash`** body commitments. Normative hashing lives in `@khoralabs/memories-core/provenance` (see SQLite implementors guide).
+**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete) and nullable **`source_maps.content_hash`** body commitments. Normative hashing lives in `@khoralabs/memories-persistence-core/provenance` (see SQLite implementors guide).
 """)
 service MemoriesPersistenceService {
     version: "2026-04-11"
@@ -822,7 +822,7 @@ structure GetProvenanceHeadRootHexOutput {
 }
 
 @documentation("""
-Append one row advancing the linear chain. Must run inside **WithTransaction**. `event` is stored as canonical JSON in `memory_provenance.event_json`; implementations derive `root_hex` per `@khoralabs/memories-core/provenance`.
+Append one row advancing the linear chain. Must run inside **WithTransaction**. `event` is stored as canonical JSON in `memory_provenance.event_json`; implementations derive `root_hex` per `@khoralabs/memories-persistence-core/provenance`.
 """)
 operation AppendProvenanceEvent {
     input: AppendProvenanceEventInput

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { propsToHumanSearchText } from "./models/label-props-search-text";
+import { propsToHumanSearchText } from "@khoralabs/memories-persistence-core";
 
 describe("propsToHumanSearchText", () => {
   test("emits readable lines without JSON delimiters", () => {

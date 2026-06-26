@@ -1,4 +1,4 @@
-import type { GraphMemoryEmbedding } from "@khoralabs/memories-core";
+import type { GraphMemoryEmbedding } from "@khoralabs/memories-persistence-core";
 import type { GraphProjectionSource } from "@khoralabs/memories-projections";
 
 export type TursoProjectionRow = Record<string, unknown>;

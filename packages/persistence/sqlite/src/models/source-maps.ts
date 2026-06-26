@@ -1,7 +1,7 @@
-import { ids } from "@khoralabs/memories-core";
-import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-core/persistence";
-import type { SourceMapBodyParts } from "@khoralabs/memories-core/provenance";
-import { computeSourceMapContentHash } from "@khoralabs/memories-core/provenance";
+import { ids } from "@khoralabs/memories-persistence-core";
+import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-persistence-core/persistence";
+import type { SourceMapBodyParts } from "@khoralabs/memories-persistence-core/provenance";
+import { computeSourceMapContentHash } from "@khoralabs/memories-persistence-core/provenance";
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "./context";
 

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { ids } from "@khoralabs/memories-persistence-core";
 import { createMemoriesPersistence, openTestMemoriesDatabase } from "@khoralabs/memories-sqlite";
 import { mergeMemory } from "./api/merge-memory";
 import { search } from "./api/search";
-import { ids } from "./models/ids";
 
 function openTestDb() {
   return openTestMemoriesDatabase();

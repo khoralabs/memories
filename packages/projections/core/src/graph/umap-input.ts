@@ -4,7 +4,7 @@ import type {
   GraphEdgeLink,
   GraphMemoryEmbedding,
   OntologyLabelInstance,
-} from "@khoralabs/memories-core";
+} from "@khoralabs/memories-persistence-core";
 import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source";
 import { buildNamespaceGraphLayoutFromRows } from "./layout-core";
 import type { GraphLayoutEdge, NamespaceGraphLayout } from "./layout-types";

@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@khoralabs/memories-core": "workspace:*",
+    "@khoralabs/memories-persistence-core": "workspace:*",
     "@khoralabs/sqlite-crypto": "^0.1.0",
     "@khoralabs/sqlite-migrate": "^0.1.0",
     "ajv": "^8",

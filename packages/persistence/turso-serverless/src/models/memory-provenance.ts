@@ -1,10 +1,10 @@
-import { ids } from "@khoralabs/memories-core";
-import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-core/persistence";
+import { ids } from "@khoralabs/memories-persistence-core";
+import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-persistence-core/persistence";
 import {
   canonicalJson,
   type MemoryProvenanceEvent,
   nextProvenanceRoot,
-} from "@khoralabs/memories-core/provenance";
+} from "@khoralabs/memories-persistence-core/provenance";
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "../context";
 import type { TursoDatabase } from "../db";

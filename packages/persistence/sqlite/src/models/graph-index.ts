@@ -1,6 +1,10 @@
 import type { Database } from "bun:sqlite";
-import type { GraphEdgeLink, GraphNode, OntologyLabelInstance } from "@khoralabs/memories-core";
-import { ids } from "@khoralabs/memories-core";
+import type {
+  GraphEdgeLink,
+  GraphNode,
+  OntologyLabelInstance,
+} from "@khoralabs/memories-persistence-core";
+import { ids } from "@khoralabs/memories-persistence-core";
 
 function parsePropsColumn(raw: unknown): Record<string, unknown> {
   if (raw == null || raw === "") return {};

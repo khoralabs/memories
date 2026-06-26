@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { canonicalOntology } from "@khoralabs/memories-ontologies";
+import type { TextFeatureExportRow } from "@khoralabs/memories-persistence-core/persistence";
 import { createMemoriesPersistence, openTestMemoriesDatabase } from "@khoralabs/memories-sqlite";
-import type { TextFeatureExportRow } from "../persistence/row-schemas";
 import { MemoriesClient } from "./client";
 import type { Store } from "./resolve-sourcemap";
 

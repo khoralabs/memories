@@ -5,7 +5,7 @@ import type {
   GraphMemoryEmbedding,
   MemoriesPersistence,
   OntologyLabelInstance,
-} from "@khoralabs/memories-core";
+} from "@khoralabs/memories-persistence-core";
 import {
   buildNamespaceGraphLayoutFromRows,
   collectNamespaceSubtreeUmapInput,

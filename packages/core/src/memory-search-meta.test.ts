@@ -1,6 +1,11 @@
 import type { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import {
+  buildCanonicalMemorySearchMetaTextForMerge,
+  ids,
+  MEMORY_SEARCH_META_SOURCE_KEY,
+} from "@khoralabs/memories-persistence-core";
+import {
   blobToVector,
   createMemoriesPersistence,
   openTestMemoriesDatabase,
@@ -12,11 +17,6 @@ import {
   zUserSourceKey,
 } from "./api/merge-memory";
 import { search } from "./api/search";
-import { ids } from "./models/ids";
-import {
-  buildCanonicalMemorySearchMetaTextForMerge,
-  MEMORY_SEARCH_META_SOURCE_KEY,
-} from "./models/memory-search-meta";
 
 function openTestDb() {
   return openTestMemoriesDatabase();

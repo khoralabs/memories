@@ -1,22 +1,24 @@
 # @khoralabs/memories-core
 
-Logic layer and contracts for the memories knowledge graph: typed ontology, merge/search/delete APIs, stable IDs, provenance, and the `MemoriesPersistence` interface backends implement.
+Runtime logic layer for the memories knowledge graph: typed ontology, merge/search/delete APIs, clients, helpers, and search orchestration.
+
+Persistence contracts, row schemas, stable IDs, namespace helpers, and provenance hashing live in `@khoralabs/memories-persistence-core`. This package re-exports them for compatibility, but storage implementations should import `@khoralabs/memories-persistence-core` directly.
 
 ## Exports
 
 | Subpath | Contents |
 |---------|----------|
-| `.` | `MemoriesClient`, `MemoriesClientAsync`, `mergeMemory`, `search`, `deleteMemory`, ontology helpers, namespace paths, graph types |
-| `./persistence` | Row Zod schemas, `MemoriesPersistence` / `MemoriesPersistenceAsync` types, capabilities |
-| `./provenance` | Hash chain helpers for merge/delete events |
+| `.` | `MemoriesClient`, `MemoriesClientAsync`, `mergeMemory`, `search`, `deleteMemory`, ontology helpers, namespace paths, graph types, compatibility re-exports |
+| `./persistence` | Deprecated compatibility export for `@khoralabs/memories-persistence-core/persistence` |
+| `./provenance` | Deprecated compatibility export for `@khoralabs/memories-persistence-core/provenance` |
 | `./helpers` | `logical-memory` decomposition, `embedding-model`, `memory-search-pipeline`, `mergeOntologies`, `fileToContent` |
 | `./search-meta-constants` | Reserved source keys for topology and label-props search chunks |
 
 ## Core types
 
 - **`MemoriesClient`** — fixed ontology; validates label props via Standard Schema; calls `mergeMemory` / `search` / `deleteMemory` on a `MemoriesPersistence` backend. Optional `Store` from `@khoralabs/sourcemaps` for resolving canonical content behind source maps.
-- **`MemoriesPersistence`** — sync contract: mutations, lexical + vector retrieval, neighbor index, graph reads/writes, provenance append. See [`packages/persistence/IMPLEMENTORS.md`](../persistence/IMPLEMENTORS.md).
-- **Stable IDs** — `ids.memory(namespace, key)`, `ids.sourceMap(memoryId, key)`, `ids.textFeature(sourceMapId)`, etc. (`src/models/ids.ts`).
+- **`MemoriesPersistence`** — sync contract from `@khoralabs/memories-persistence-core/persistence`: mutations, lexical + vector retrieval, neighbor index, graph reads/writes, provenance append. See [`packages/persistence/IMPLEMENTORS.md`](../persistence/IMPLEMENTORS.md).
+- **Stable IDs** — `ids.memory(namespace, key)`, `ids.sourceMap(memoryId, key)`, `ids.textFeature(sourceMapId)`, etc. from `@khoralabs/memories-persistence-core`.
 
 ## Merge flow
 

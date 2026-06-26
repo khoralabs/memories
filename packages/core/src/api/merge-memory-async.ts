@@ -1,10 +1,11 @@
-import { ids } from "../models/ids";
-import type { NamespacePath } from "../models/namespace-path";
-import { zNamespacePath } from "../models/namespace-path";
-import type { MemoriesPersistenceAsync } from "../persistence/async-types";
-import { zVectorPayload } from "../persistence/row-schemas";
-import { resolveMemoriesBackendCapabilities } from "../persistence/types";
-import { computeSourceMapContentHash } from "../provenance/index";
+import type { NamespacePath } from "@khoralabs/memories-persistence-core";
+import { ids, zNamespacePath } from "@khoralabs/memories-persistence-core";
+import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+import {
+  resolveMemoriesBackendCapabilities,
+  zVectorPayload,
+} from "@khoralabs/memories-persistence-core/persistence";
+import { computeSourceMapContentHash } from "@khoralabs/memories-persistence-core/provenance";
 import {
   catalogSchemaJsonForEdgeKind,
   catalogSchemaJsonForNodeKind,

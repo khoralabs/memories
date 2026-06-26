@@ -1,8 +1,8 @@
-import { ids } from "@khoralabs/memories-core";
 import {
   isSystemSearchMetaSourceKey,
   MEMORY_SEARCH_META_SOURCE_KEY,
 } from "@khoralabs/memories-core/search-meta-constants";
+import { ids } from "@khoralabs/memories-persistence-core";
 import type { DbCtx } from "../context";
 import { ctxExec, ctxQueryAll, ctxQueryOne } from "../db";
 import { loadGraphEdge } from "./graph-index";

@@ -3,11 +3,11 @@ import type {
   MemoriesBackendCapabilities,
   MemoriesPersistence,
   MemoriesPersistenceAsync,
-} from "@khoralabs/memories-core/persistence";
+} from "@khoralabs/memories-persistence-core/persistence";
 import {
   DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
   resolveMemoriesBackendCapabilities,
-} from "@khoralabs/memories-core/persistence";
+} from "@khoralabs/memories-persistence-core/persistence";
 
 import type { DatabaseListFilter, MemoriesDatabaseId } from "./types";
 

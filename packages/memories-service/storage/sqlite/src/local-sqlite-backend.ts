@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
-import type { MemoriesPersistence } from "@khoralabs/memories-core/persistence";
-import { wrapSyncMemoriesPersistenceAsAsync } from "@khoralabs/memories-core/persistence";
+import type { MemoriesPersistence } from "@khoralabs/memories-persistence-core/persistence";
+import { wrapSyncMemoriesPersistenceAsAsync } from "@khoralabs/memories-persistence-core/persistence";
 import type {
   DatabaseListFilter,
   MemoriesDatabaseBackend,

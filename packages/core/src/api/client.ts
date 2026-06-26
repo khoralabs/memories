@@ -1,9 +1,9 @@
+import type { MemoriesPersistence } from "@khoralabs/memories-persistence-core/persistence";
 import type { DefaultEntityMap, ResolvedSource } from "@khoralabs/sourcemaps";
 import {
   type DeleteMemoryParams,
   deleteMemory as deleteMemoryHandler,
 } from "../models/delete-memory";
-import type { MemoriesPersistence } from "../persistence/types";
 import {
   type MergeMemoryParams,
   type MutationCtx,

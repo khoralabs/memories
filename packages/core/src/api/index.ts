@@ -1,22 +1,20 @@
-export type { DeleteMemoryParams } from "../models/delete-memory";
-export { deleteMemory } from "../models/delete-memory";
-export { deleteMemoryAsync } from "../models/delete-memory-async";
 export type {
+  HydratedNeighbor,
+  HydratedSourceMapHit,
   LabelPropsSearchFormatter,
   LabelPropsSearchRole,
-} from "../models/label-props-search-text";
-export {
-  formatLabelPropsForSearch,
-  propsToHumanSearchText,
-} from "../models/label-props-search-text";
-export type {
+  MemoryGraphAssociation,
   NamespacePath,
   NamespacePathLiteral,
   NamespacePrefixKey,
   NamespacePrefixKeyCamel,
-} from "../models/namespace-path";
+  NeighborConstraint,
+  NeighborFilter,
+  NeighborNodesFilter,
+} from "@khoralabs/memories-persistence-core";
 export {
   canonicalizeNamespacePrefixes,
+  formatLabelPropsForSearch,
   isPrefixOf,
   NAMESPACE_MAX_DEPTH,
   NAMESPACE_SEGMENT_REGEX,
@@ -31,16 +29,9 @@ export {
   namespacePrefixFields,
   namespacePrefixFieldsCamel,
   namespaceSegments,
+  propsToHumanSearchText,
   zNamespacePath,
-} from "../models/namespace-path";
-export type {
-  HydratedNeighbor,
-  HydratedSourceMapHit,
-  MemoryGraphAssociation,
-  NeighborConstraint,
-  NeighborFilter,
-  NeighborNodesFilter,
-} from "../models/neighbor-search-types";
+} from "@khoralabs/memories-persistence-core";
 export type {
   MemoriesBackendCapabilities,
   MemoriesGraph,
@@ -56,14 +47,17 @@ export type {
   MemoriesRuntimeCtx,
   MemoryOpContext,
   SearchNamespaceScope,
-} from "../persistence";
+} from "@khoralabs/memories-persistence-core/persistence";
 export {
   buildCanonicalMemorySearchMetaTextAsync,
   DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
   resolveMemoriesBackendCapabilities,
   upsertMemorySearchMetaVectorAsync,
   wrapSyncMemoriesPersistenceAsAsync,
-} from "../persistence";
+} from "@khoralabs/memories-persistence-core/persistence";
+export type { DeleteMemoryParams } from "../models/delete-memory";
+export { deleteMemory } from "../models/delete-memory";
+export { deleteMemoryAsync } from "../models/delete-memory-async";
 export * from "./client";
 export * from "./client-async";
 export type {

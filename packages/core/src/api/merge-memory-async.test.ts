@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { ids } from "../models/ids";
-import type { MemoriesPersistenceAsync } from "../persistence/async-types";
+import { ids } from "@khoralabs/memories-persistence-core";
+import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
 import { mergeMemoryAsync } from "./merge-memory-async";
 
 const vec512 = (): number[] => Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));

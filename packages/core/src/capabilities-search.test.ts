@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import type { MemoriesPersistence } from "@khoralabs/memories-persistence-core/persistence";
 import { mergeMemory } from "./api/merge-memory";
 import { search } from "./api/search";
-import type { MemoriesPersistence } from "./persistence/types";
 
 describe("MemoriesBackendCapabilities", () => {
   test("merge rejects vector content when vectorSearch is false", () => {

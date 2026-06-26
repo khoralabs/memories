@@ -114,10 +114,10 @@
       "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/sourcemaps": "^0.1.0",
         "@standard-schema/spec": "^1.1.0",
         "ai": "^6",
-        "js-sha256": "^0.11.0",
         "zod": "^4",
       },
       "devDependencies": {
@@ -149,6 +149,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/memories-projections": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
       },
@@ -188,6 +189,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "lru-cache": "^11.5.1",
       },
       "devDependencies": {
@@ -201,7 +203,7 @@
       "name": "@khoralabs/memories-service-storage-sqlite",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
         "@khoralabs/memories-sqlite": "workspace:*",
         "@khoralabs/sqlite-crypto": "^0.1.0",
@@ -243,11 +245,27 @@
         "typescript": "^5",
       },
     },
+    "packages/persistence/core": {
+      "name": "@khoralabs/memories-persistence-core",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/sourcemaps": "^0.1.0",
+        "js-sha256": "^0.11.0",
+        "zod": "^4",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/persistence/sqlite": {
       "name": "@khoralabs/memories-sqlite",
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/sqlite-crypto": "^0.1.0",
         "@khoralabs/sqlite-migrate": "^0.1.0",
         "ajv": "^8",
@@ -265,6 +283,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "@tursodatabase/serverless": "^0.2.0",
         "ajv": "^8",
       },
@@ -279,7 +298,7 @@
       "name": "@khoralabs/memories-projections",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "umap-js": "^1.4.0",
       },
       "devDependencies": {
@@ -293,7 +312,7 @@
       "name": "@khoralabs/memories-projections-sqlite",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/memories-projections": "workspace:*",
         "@khoralabs/memories-sqlite": "workspace:*",
       },
@@ -308,7 +327,7 @@
       "name": "@khoralabs/memories-projections-turso",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/memories-projections": "workspace:*",
       },
       "devDependencies": {
@@ -412,6 +431,8 @@
     "@khoralabs/memories-investigator": ["@khoralabs/memories-investigator@workspace:packages/agents/investigator"],
 
     "@khoralabs/memories-ontologies": ["@khoralabs/memories-ontologies@workspace:packages/ontologies"],
+
+    "@khoralabs/memories-persistence-core": ["@khoralabs/memories-persistence-core@workspace:packages/persistence/core"],
 
     "@khoralabs/memories-projections": ["@khoralabs/memories-projections@workspace:packages/projections/core"],
 

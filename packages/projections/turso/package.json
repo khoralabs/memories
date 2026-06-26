@@ -21,7 +21,7 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-core": "workspace:*",
+    "@khoralabs/memories-persistence-core": "workspace:*",
     "@khoralabs/memories-projections": "workspace:*"
   },
   "scripts": {

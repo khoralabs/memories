@@ -1,3 +1,8 @@
+import type { NamespacePath, OntologyLabelInstance } from "@khoralabs/memories-persistence-core";
+import type {
+  MemoriesPersistence,
+  MemoriesPersistenceAsync,
+} from "@khoralabs/memories-persistence-core/persistence";
 import type { MemoriesClient } from "../api/client.js";
 import type { MemoriesClientAsync } from "../api/client-async.js";
 import type { LabelSchemaMap } from "../api/ontology.js";
@@ -7,10 +12,6 @@ import type {
   SearchHit,
   SearchParams,
 } from "../api/search.js";
-import type { NamespacePath } from "../models/namespace-path.js";
-import type { OntologyLabelInstance } from "../models/ontology-label.js";
-import type { MemoriesPersistenceAsync } from "../persistence/async-types.js";
-import type { MemoriesPersistence } from "../persistence/types.js";
 import type { EmbeddingModel } from "./embedding-model.js";
 import { embedTextChunks } from "./embedding-model.js";
 

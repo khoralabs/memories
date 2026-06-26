@@ -1,6 +1,6 @@
-import { ids, namespacePath, namespacePrefixFields } from "@khoralabs/memories-core";
-import type { MemoryKind } from "@khoralabs/memories-core/persistence";
-import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-core/persistence";
+import { ids, namespacePath, namespacePrefixFields } from "@khoralabs/memories-persistence-core";
+import type { MemoryKind } from "@khoralabs/memories-persistence-core/persistence";
+import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-persistence-core/persistence";
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "./context";
 

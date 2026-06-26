@@ -73,7 +73,7 @@ Use the `collect*UmapInput` helpers when a service node should run storage-local
 ## Layout Core Rules
 
 - Core layout code must not import `bun:sqlite`, Turso/libSQL clients, or strategy packages.
-- Core layout code may depend on `@khoralabs/memories-core` types and `umap-js`.
+- Core layout code may depend on `@khoralabs/memories-persistence-core` types and `umap-js`.
 - UMAP output should be deterministic by default through the seeded RNG.
 - Layout positions are normalized to `[-1, 1]` per axis.
 - Namespace subtree layouts qualify keys as `namespace::memoryKey` to avoid collisions.

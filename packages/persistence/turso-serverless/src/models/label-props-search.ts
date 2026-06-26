@@ -1,15 +1,15 @@
 import {
-  formatLabelPropsForSearch,
-  ids,
-  isNonEmptyProps,
-  type LabelPropsSearchFormatter,
-} from "@khoralabs/memories-core";
-import {
   MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
   MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
   memoryEdgeLabelPropsSourceKey,
   memoryNodeLabelPropsSourceKey,
 } from "@khoralabs/memories-core/search-meta-constants";
+import {
+  formatLabelPropsForSearch,
+  ids,
+  isNonEmptyProps,
+  type LabelPropsSearchFormatter,
+} from "@khoralabs/memories-persistence-core";
 import type { DbCtx } from "../context";
 import { ctxExec, ctxQueryAll, ctxQueryOne } from "../db";
 import { parsePropsColumn } from "../sql";

@@ -1,12 +1,9 @@
-/**
- * Row shapes exchanged with persistence implementations.
- * Types are inferred from the canonical Zod document in `row-schemas.ts`.
- */
-
+/** @deprecated Import from @khoralabs/memories-persistence-core/persistence instead. */
 export type {
   Edge,
   EdgeLabel,
   EdgeLabelAssignment,
+  MemoriesPersistenceSchema,
   Memory,
   Node,
   NodeLabel,
@@ -17,4 +14,4 @@ export type {
   TextFeature,
   TextFeatureExportRow,
   VectorFeature,
-} from "./row-schemas";
+} from "@khoralabs/memories-persistence-core/persistence";

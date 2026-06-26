@@ -48,7 +48,7 @@ a SQLite-backed registry can place nodes on SQLite or Turso, and a future
 Turso-backed registry should be able to do the same.
 
 ```ts
-import type { MemoriesBackendCapabilities } from "@khoralabs/memories-core/persistence";
+import type { MemoriesBackendCapabilities } from "@khoralabs/memories-persistence-core/persistence";
 
 type StrategyCapabilities = Partial<MemoriesBackendCapabilities>;
 

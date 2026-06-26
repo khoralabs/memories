@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { GraphEdgeLink } from "@khoralabs/memories-core";
+import type { GraphEdgeLink } from "@khoralabs/memories-persistence-core";
 import { buildNamespaceGraphLayoutFromSource } from "./build-namespace-graph-layout";
 
 describe("buildNamespaceGraphLayoutFromSource", () => {

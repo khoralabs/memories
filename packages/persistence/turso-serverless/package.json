@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@khoralabs/memories-core": "workspace:*",
+    "@khoralabs/memories-persistence-core": "workspace:*",
     "@tursodatabase/serverless": "^0.2.0",
     "ajv": "^8"
   },
