@@ -1,7 +1,6 @@
 import { type AgentRegistry, createAgentRegistry } from "@khoralabs/agent-capabilities";
 import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type {
-  LabelSchemaMap,
   MemoriesClient,
   MemoriesClientAsync,
   MergeMemoryParamsNode,
@@ -13,6 +12,7 @@ import {
   mergeLogicalMemoryWithMergeSlice,
   type ProcessedLogicalMemory,
 } from "@khoralabs/memories-core/helpers";
+import type { LabelSchemaMap } from "@khoralabs/memories-ontologies";
 import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "@khoralabs/memories-tools";
 import type { LanguageModel } from "ai";
 import { MemoryIntegratorClient } from "./client.js";

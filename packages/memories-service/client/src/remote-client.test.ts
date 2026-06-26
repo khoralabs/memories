@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-core";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 
 import { deserializeSearchHit, serializeSearchHit } from "./wire";
 

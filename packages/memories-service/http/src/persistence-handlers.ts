@@ -1,12 +1,11 @@
 import {
-  type LabelSchemaMap,
   MemoriesClient,
   MemoriesClientAsync,
   type MergeMemoryParams,
-  type OntologyDefinition,
   type SearchParams,
   searchAsync,
 } from "@khoralabs/memories-core";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 import {
   collectNamespaceUmapInput,
   encodeUmapInput,
@@ -16,7 +15,7 @@ import {
   type UmapInputCompression,
   type UmapInputScope,
 } from "@khoralabs/memories-projections";
-import type { MemoriesDatabaseHandle, MemoriesDatabaseService } from "@khoralabs/memories-service";
+import type { MemoriesDatabaseService } from "@khoralabs/memories-service";
 import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
@@ -29,6 +28,7 @@ import {
   type DatabaseVectorDimensionsRequest,
   serializeSearchHit,
 } from "@khoralabs/memories-service-client";
+import type { MemoriesDatabaseHandle } from "@khoralabs/memories-service-storage-core";
 
 import { HttpError, type MemoriesServiceHttpOptions, parseDatabaseIdBody } from "./handlers";
 

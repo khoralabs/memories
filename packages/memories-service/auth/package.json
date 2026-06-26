@@ -21,7 +21,7 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-service": "workspace:*"
+    "@khoralabs/memories-service-storage-core": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest"

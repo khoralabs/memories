@@ -1,5 +1,5 @@
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-core";
-import { propsSchemaToJson } from "@khoralabs/memories-core";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
+import { propsSchemaToJson } from "@khoralabs/memories-ontologies";
 import {
   STORED_ONTOLOGY_JSON_SCHEMA_URI,
   type StoredOntologyJsonSchema,

@@ -26,6 +26,7 @@
         "@khoralabs/agent-capabilities-ai-sdk": "^0.1.1",
         "@khoralabs/agent-capabilities-otel": "^0.1.1",
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-tools": "workspace:*",
         "ai": "^6",
         "zod": "^4",
@@ -46,6 +47,7 @@
         "@khoralabs/agent-capabilities-ai-sdk": "^0.1.1",
         "@khoralabs/agent-capabilities-otel": "^0.1.1",
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-tools": "workspace:*",
         "ai": "^6",
         "zod": "^4",
@@ -66,6 +68,7 @@
         "@khoralabs/agent-capabilities-ai-sdk": "^0.1.1",
         "@khoralabs/agent-capabilities-otel": "^0.1.1",
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-tools": "workspace:*",
         "ai": "^6",
         "zod": "^4",
@@ -135,7 +138,7 @@
       "name": "@khoralabs/memories-service-auth",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-service": "workspace:*",
+        "@khoralabs/memories-service-storage-core": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -149,9 +152,11 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/memories-projections": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
+        "@khoralabs/memories-service-storage-core": "workspace:*",
       },
       "devDependencies": {
         "@khoralabs/memories-core": "workspace:*",
@@ -167,10 +172,12 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-projections": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
         "@khoralabs/memories-service-auth": "workspace:*",
         "@khoralabs/memories-service-client": "workspace:*",
+        "@khoralabs/memories-service-storage-core": "workspace:*",
       },
       "devDependencies": {
         "@khoralabs/memories-core": "workspace:*",
@@ -189,6 +196,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/memories-service-storage-core": "workspace:*",
         "lru-cache": "^11.5.1",

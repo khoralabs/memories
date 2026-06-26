@@ -1,4 +1,7 @@
-import type { DatabaseListFilter, MemoriesDatabaseId } from "@khoralabs/memories-service";
+import type {
+  DatabaseListFilter,
+  MemoriesDatabaseId,
+} from "@khoralabs/memories-service-storage-core";
 
 export type MemoriesServiceClientAuthProvider = {
   applyAuth(req: RequestInit): RequestInit | Promise<RequestInit>;

@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@khoralabs/memories-core": "workspace:*",
+    "@khoralabs/memories-ontologies": "workspace:*",
     "@khoralabs/memories-persistence-core": "workspace:*",
     "@khoralabs/memories-service-storage-core": "workspace:*",
     "lru-cache": "^11.5.1"

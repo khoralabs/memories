@@ -1,10 +1,10 @@
+import type { MergeMemoryParamsNode } from "@khoralabs/memories-core";
 import type {
   EdgeLabelInstance,
   LabelSchemaMap,
-  MergeMemoryParamsNode,
   NodeLabelInstance,
   OntologyDefinition,
-} from "@khoralabs/memories-core";
+} from "@khoralabs/memories-ontologies";
 import type z from "zod";
 import type { IntegratorEdgeWire, IntegratorPlanWire } from "./integrator-output.js";
 import { integratorLabelKindsFromOntology } from "./integrator-output.js";

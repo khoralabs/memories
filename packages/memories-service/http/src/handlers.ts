@@ -1,16 +1,16 @@
 import type { GraphProjectionSource } from "@khoralabs/memories-projections";
-import type {
-  DatabaseKind,
-  MemoriesDatabaseHandle,
-  MemoriesDatabaseId,
-  MemoriesDatabaseOntologyStore,
-  MemoriesDatabaseService,
-} from "@khoralabs/memories-service";
+import type { MemoriesDatabaseService } from "@khoralabs/memories-service";
 import {
   AuthStrategyError,
   type DatabaseAction,
   type MemoriesDatabaseAccessStrategy,
 } from "@khoralabs/memories-service-auth";
+import type {
+  DatabaseKind,
+  MemoriesDatabaseHandle,
+  MemoriesDatabaseId,
+  MemoriesDatabaseOntologyStore,
+} from "@khoralabs/memories-service-storage-core";
 import {
   handleDatabaseHash,
   handleDatabaseOntologyCurrent,

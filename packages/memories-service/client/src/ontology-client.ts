@@ -1,6 +1,10 @@
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-core";
-import type { MemoriesDatabaseId, StoredOntologyJsonSchema } from "@khoralabs/memories-service";
-import { hashStoredOntology, ontologyToStoredJsonSchema } from "@khoralabs/memories-service";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
+import { ontologyToStoredJsonSchema } from "@khoralabs/memories-service";
+import type {
+  MemoriesDatabaseId,
+  StoredOntologyJsonSchema,
+} from "@khoralabs/memories-service-storage-core";
+import { hashStoredOntology } from "@khoralabs/memories-service-storage-core";
 
 import type { MemoriesServiceClient } from "./client";
 import type { DatabaseHashRequest, DatabaseHashResponse } from "./wire";

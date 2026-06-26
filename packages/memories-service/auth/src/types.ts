@@ -1,4 +1,4 @@
-import type { MemoriesDatabaseId } from "@khoralabs/memories-service";
+import type { MemoriesDatabaseId } from "@khoralabs/memories-service-storage-core";
 
 export type DatabaseAction = "read" | "write" | "manage";
 

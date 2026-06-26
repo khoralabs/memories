@@ -1,9 +1,6 @@
-import type {
-  DeleteMemoryParams,
-  LabelSchemaMap,
-  OntologyDefinition,
-} from "@khoralabs/memories-core";
-import { MemoriesClientAsync, type SearchHit, type SearchParams } from "@khoralabs/memories-core";
+import type { DeleteMemoryParams, SearchHit, SearchParams } from "@khoralabs/memories-core";
+import { MemoriesClientAsync } from "@khoralabs/memories-core";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 import type {
   MemoriesBackendCapabilities,
   MemoriesPersistenceAsync,
@@ -14,7 +11,7 @@ import {
   UMAP_INPUT_ENCODING_HEADER,
   type UmapInputCompression,
 } from "@khoralabs/memories-projections";
-import type { MemoriesDatabaseId } from "@khoralabs/memories-service";
+import type { MemoriesDatabaseId } from "@khoralabs/memories-service-storage-core";
 
 import { MemoriesServiceClient, type MemoriesServiceClientOptions } from "./client";
 import {

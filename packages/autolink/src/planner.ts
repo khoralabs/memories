@@ -1,4 +1,5 @@
-import type { EdgeLabelInstance, NodeLabelInstance, SearchHit } from "@khoralabs/memories-core";
+import type { SearchHit } from "@khoralabs/memories-core";
+import type { EdgeLabelInstance, NodeLabelInstance } from "@khoralabs/memories-ontologies";
 import {
   RETRIEVAL_SEED_NODE_KIND,
   RETRIEVAL_SIMILARITY_EDGE_KIND,

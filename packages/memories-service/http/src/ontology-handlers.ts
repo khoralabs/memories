@@ -2,7 +2,7 @@ import type {
   MemoriesDatabaseId,
   MemoriesDatabaseOntologyStore,
   StoredOntologyJsonSchema,
-} from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
 
 import { HttpError, parseDatabaseIdBody } from "./handlers";
 

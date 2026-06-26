@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-core";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 import { createNoneAuthStrategy } from "@khoralabs/memories-service-auth";
 import {
   ensureDatabaseOntologyLink,

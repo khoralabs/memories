@@ -3,7 +3,7 @@ import type {
   RegisteredAgentAffordances,
   ToolRuntimeContext,
 } from "@khoralabs/agent-capabilities";
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-core";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 import {
   createMemorySearchToolLoopAgent,
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
