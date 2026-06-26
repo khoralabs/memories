@@ -18,11 +18,37 @@
     "src",
     "README.md"
   ],
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./families/entities": {
+      "types": "./src/families/entities.ts",
+      "import": "./src/families/entities.ts",
+      "default": "./src/families/entities.ts"
+    },
+    "./families/knowledge": {
+      "types": "./src/families/knowledge.ts",
+      "import": "./src/families/knowledge.ts",
+      "default": "./src/families/knowledge.ts"
+    },
+    "./families/preferences": {
+      "types": "./src/families/preferences.ts",
+      "import": "./src/families/preferences.ts",
+      "default": "./src/families/preferences.ts"
+    },
+    "./families/relations": {
+      "types": "./src/families/relations.ts",
+      "import": "./src/families/relations.ts",
+      "default": "./src/families/relations.ts"
+    },
+    "./families/temporal": {
+      "types": "./src/families/temporal.ts",
+      "import": "./src/families/temporal.ts",
+      "default": "./src/families/temporal.ts"
     }
   },
   "dependencies": {

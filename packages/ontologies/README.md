@@ -4,24 +4,39 @@ Default ontology vocabulary for personal and agent memory graphs. Defines node a
 
 ## Exports
 
-- **`canonicalOntology`** — baseline vocabulary: `person`, `place`, `preference`, `fact`, `event`, `task`, `document`, and edge kinds such as `knows`, `located_at`, `related_to`, `part_of`, `mentions`, `scheduled_for`.
+- **Canonical families** — grouped shape maps and formatters such as `canonicalEntityNodeLabelShapes`, `canonicalKnowledgeNodeLabelShapes`, `canonicalTemporalNodeLabelShapes`, `canonicalRelationEdgeLabelShapes`, and `canonicalEntityLabelPropsSearchFormatter`.
+- **Individual canonical shapes** — Zod schemas such as `personNodeLabelShape`, `factNodeLabelShape`, and `referencesEdgeLabelShape` for assembling only the ontology pieces your implementation needs.
+- **`canonicalOntology`** — deprecated compatibility export assembled from the family maps.
 - **`canonicalLabelPropsSearchFormatter`** — formatter for canonical ontology kinds in label-props search text.
 
 ## Usage
 
-Use as-is for demos and personal-memory apps, or merge with your own ontology:
+Assemble the shapes you need:
 
 ```ts
 import { defineOntology } from "@khoralabs/memories-core";
-import { mergeOntologies } from "@khoralabs/memories-core/helpers";
-import { canonicalOntology } from "@khoralabs/memories-ontologies";
-import { retrievalAutolinkOntology } from "@khoralabs/memories-autolink";
+import {
+  canonicalEntityNodeLabelShapes,
+  canonicalKnowledgeNodeLabelShapes,
+  canonicalRelationEdgeLabelShapes,
+} from "@khoralabs/memories-ontologies";
 
-export const appOntology = mergeOntologies(canonicalOntology, retrievalAutolinkOntology);
-export type AppOntology = typeof appOntology;
+export const appOntology = defineOntology({
+  nodeLabels: {
+    ...canonicalEntityNodeLabelShapes,
+    ...canonicalKnowledgeNodeLabelShapes,
+  },
+  edgeLabels: {
+    ...canonicalRelationEdgeLabelShapes,
+  },
+});
 
 const client = new MemoriesClient(appOntology, { persistence });
 ```
+
+Families are also available as subpath imports, for example
+`@khoralabs/memories-ontologies/families/entities`.
+`canonicalOntology` is still exported for compatibility, but new code should assemble shapes directly.
 
 On kind collision, the **last** argument to `mergeOntologies` wins.
 
