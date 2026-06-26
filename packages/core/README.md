@@ -15,7 +15,7 @@ Logic layer and contracts for the memories knowledge graph: typed ontology, merg
 ## Core types
 
 - **`MemoriesClient`** — fixed ontology; validates label props via Standard Schema; calls `mergeMemory` / `search` / `deleteMemory` on a `MemoriesPersistence` backend. Optional `Store` from `@khoralabs/sourcemaps` for resolving canonical content behind source maps.
-- **`MemoriesPersistence`** — sync contract: mutations, lexical + vector retrieval, neighbor index, graph reads/writes, provenance append. See [`packages/persistence/sqlite/IMPLEMENTORS.md`](../persistence/sqlite/IMPLEMENTORS.md).
+- **`MemoriesPersistence`** — sync contract: mutations, lexical + vector retrieval, neighbor index, graph reads/writes, provenance append. See [`packages/persistence/IMPLEMENTORS.md`](../persistence/IMPLEMENTORS.md).
 - **Stable IDs** — `ids.memory(namespace, key)`, `ids.sourceMap(memoryId, key)`, `ids.textFeature(sourceMapId)`, etc. (`src/models/ids.ts`).
 
 ## Merge flow

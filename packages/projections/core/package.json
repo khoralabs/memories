@@ -1,18 +1,13 @@
 {
-  "name": "@khoralabs/sqlite-graph-projections",
+  "name": "@khoralabs/memories-projections",
   "version": "0.1.0",
-  "description": "SQLite graph study projections: UMAP layout, mean embeddings, and UI previews for memories.",
+  "description": "Strategy-neutral graph projection math and source interfaces for Memories.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/persistence/sqlite-graph-projections"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/persistence/sqlite-graph-projections#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
-  "publishConfig": {
-    "access": "public"
+    "directory": "packages/projections/core"
   },
   "files": [
     "src",
@@ -27,11 +22,7 @@
   },
   "dependencies": {
     "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-sqlite": "workspace:*",
     "umap-js": "^1.4.0"
-  },
-  "scripts": {
-    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"

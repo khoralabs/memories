@@ -20,7 +20,7 @@ export function createSeededRandom(seed: number): () => number {
 
 export type Umap3DLayoutOptions = Partial<UMAPParameters> & { seed?: number };
 
-/** Per-axis min–max to [-1, 1]; degenerate axis → 0 for all points. */
+/** Per-axis min–max to [-1, 1]; degenerate axis -> 0 for all points. */
 export function minMaxNormalize3D(points: Point3[]): Point3[] {
   if (points.length === 0) return [];
   const xs = points.map((p) => p.x);
@@ -64,7 +64,7 @@ export function fibonacciSphereLayout3D(n: number): Point3[] {
 }
 
 /**
- * UMAP 3D embedding, then min–max normalize. Uses a Fibonacci fallback when `n` is too small or fit throws.
+ * UMAP 3D embedding, then min-max normalize. Uses a Fibonacci fallback when `n` is too small or fit throws.
  */
 export function umap3DLayout(embeddings: number[][], options?: Umap3DLayoutOptions): Point3[] {
   const n = embeddings.length;

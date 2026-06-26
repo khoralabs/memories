@@ -124,7 +124,6 @@
         "@khoralabs/memories-autolink": "workspace:*",
         "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-sqlite": "workspace:*",
-        "@khoralabs/sqlite-graph-projections": "workspace:*",
         "@types/bun": "latest",
         "zod": "^4.2",
       },
@@ -203,10 +202,10 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-projections-sqlite": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
         "@khoralabs/memories-sqlite": "workspace:*",
         "@khoralabs/sqlite-crypto": "^0.1.0",
-        "@khoralabs/sqlite-graph-projections": "workspace:*",
       },
       "devDependencies": {
         "@khoralabs/sqlite-crypto": "^0.1.0",
@@ -262,12 +261,26 @@
         "typescript": "^5",
       },
     },
-    "packages/persistence/sqlite-graph-projections": {
-      "name": "@khoralabs/sqlite-graph-projections",
+    "packages/persistence/turso-serverless": {
+      "name": "@khoralabs/memories-turso-serverless",
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-sqlite": "workspace:*",
+        "@tursodatabase/serverless": "^0.2.0",
+        "ajv": "^8",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/projections/core": {
+      "name": "@khoralabs/memories-projections",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-core": "workspace:*",
         "umap-js": "^1.4.0",
       },
       "devDependencies": {
@@ -277,13 +290,27 @@
         "typescript": "^5",
       },
     },
-    "packages/persistence/turso-serverless": {
-      "name": "@khoralabs/memories-turso-serverless",
+    "packages/projections/sqlite": {
+      "name": "@khoralabs/memories-projections-sqlite",
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
-        "@tursodatabase/serverless": "^0.2.0",
-        "ajv": "^8",
+        "@khoralabs/memories-projections": "workspace:*",
+        "@khoralabs/memories-sqlite": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/projections/turso": {
+      "name": "@khoralabs/memories-projections-turso",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-projections": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -387,6 +414,12 @@
 
     "@khoralabs/memories-ontologies": ["@khoralabs/memories-ontologies@workspace:packages/ontologies"],
 
+    "@khoralabs/memories-projections": ["@khoralabs/memories-projections@workspace:packages/projections/core"],
+
+    "@khoralabs/memories-projections-sqlite": ["@khoralabs/memories-projections-sqlite@workspace:packages/projections/sqlite"],
+
+    "@khoralabs/memories-projections-turso": ["@khoralabs/memories-projections-turso@workspace:packages/projections/turso"],
+
     "@khoralabs/memories-react-graph": ["@khoralabs/memories-react-graph@workspace:packages/react/graph"],
 
     "@khoralabs/memories-service": ["@khoralabs/memories-service@workspace:packages/memories-service/service"],
@@ -412,8 +445,6 @@
     "@khoralabs/sourcemaps": ["@khoralabs/sourcemaps@0.1.0", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-9eXXrtxYeOCGpKdcEWoGtLVzHfi3zF+6s//LPv4SFWoy9tJtGu1hLdW9gGFhtbRfTHDxMb1/RHblk7NREqQdwQ=="],
 
     "@khoralabs/sqlite-crypto": ["@khoralabs/sqlite-crypto@0.1.0", "", {}, "sha512-HTpnQtwaPQDD0J5fwk9w8o47cs1HrhTBYEL5SKUlEMuvUdcqC/JgEZzwMqeT7wIZQLPdrBuPoHJMyrAkyVJGDw=="],
-
-    "@khoralabs/sqlite-graph-projections": ["@khoralabs/sqlite-graph-projections@workspace:packages/persistence/sqlite-graph-projections"],
 
     "@khoralabs/sqlite-migrate": ["@khoralabs/sqlite-migrate@0.1.0", "", {}, "sha512-mGkPR6WposZArUh1k4A1s2VwyOtGJUPlKkUY+DYjZ8pkhgJ6mEhHQOlRQJNOAXKlJETsdVy4iPTeyuvzPl/zFg=="],
 

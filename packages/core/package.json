@@ -49,7 +49,6 @@
     "@khoralabs/memories-autolink": "workspace:*",
     "@khoralabs/memories-ontologies": "workspace:*",
     "@khoralabs/memories-sqlite": "workspace:*",
-    "@khoralabs/sqlite-graph-projections": "workspace:*",
     "@types/bun": "latest",
     "zod": "^4.2"
   },

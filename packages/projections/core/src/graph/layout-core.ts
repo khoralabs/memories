@@ -1,6 +1,4 @@
-import type { Database } from "bun:sqlite";
-import type { MemoriesPersistence } from "@khoralabs/memories-core";
-import { loadMeanEmbeddingsForNamespace } from "../mean-embeddings";
+import type { GraphMemoryEmbedding, OntologyLabelInstance } from "@khoralabs/memories-core";
 import {
   LABEL_PROPERTY_SYNTH_DIM,
   labelPropertySyntheticEmbedding,
@@ -17,35 +15,34 @@ import {
 /** Scale of L2-normalized label/property sketch relative to content embedding coordinates. */
 const LABEL_PROPERTY_SYNTH_WEIGHT = 0.22;
 
-/**
- * Loads edges + mean embeddings + label/property sketches, runs UMAP 3D (or fallback),
- * returns normalized [-1,1]³ positions.
- */
-export function buildNamespaceGraphLayout(
-  db: Database,
-  persistence: Pick<
-    MemoriesPersistence,
-    "loadGraphEdgesForNamespace" | "loadNodeLabelsForNamespace" | "loadNodePropertiesForNamespace"
-  >,
-  namespace: string,
-  umapOptions?: Umap3DLayoutOptions,
-): NamespaceGraphLayout {
-  const edges = persistence.loadGraphEdgesForNamespace(namespace);
-  const withEmb = loadMeanEmbeddingsForNamespace(db, namespace);
-  const labelsByKey = persistence.loadNodeLabelsForNamespace(namespace);
-  const propsByKey = persistence.loadNodePropertiesForNamespace(namespace);
+export type NamespaceGraphLayoutInput = {
+  namespace: string;
+  edges: GraphLayoutEdge[];
+  embeddings: GraphMemoryEmbedding[];
+  labelsByKey: Map<string, OntologyLabelInstance[]>;
+  propertiesByKey: Map<string, Record<string, unknown> | null>;
+  umapOptions?: Umap3DLayoutOptions;
+};
 
+export function buildNamespaceGraphLayoutFromRows({
+  namespace,
+  edges,
+  embeddings,
+  labelsByKey,
+  propertiesByKey,
+  umapOptions,
+}: NamespaceGraphLayoutInput): NamespaceGraphLayout {
   const keySet = new Set<string>();
   for (const e of edges) {
     keySet.add(e.fromKey);
     keySet.add(e.toKey);
   }
-  for (const n of withEmb) {
+  for (const n of embeddings) {
     keySet.add(n.memoryKey);
   }
 
   const orderedKeys = [...keySet].sort();
-  const embByKey = new Map(withEmb.map((e) => [e.memoryKey, e.embedding] as const));
+  const embByKey = new Map(embeddings.map((e) => [e.memoryKey, e.embedding] as const));
 
   const rawPositions: Point3[] = [];
 
@@ -53,18 +50,12 @@ export function buildNamespaceGraphLayout(
     return {
       namespace,
       nodes: [],
-      edges: edges.map((e) => ({
-        edgeId: e.edgeId,
-        fromKey: e.fromKey,
-        toKey: e.toKey,
-        labels: e.labels,
-        directed: e.directed,
-      })),
+      edges,
     };
   }
 
   let contentDim = 0;
-  for (const e of withEmb) {
+  for (const e of embeddings) {
     if (e.embedding.length > 0) {
       contentDim = e.embedding.length;
       break;
@@ -73,7 +64,7 @@ export function buildNamespaceGraphLayout(
 
   const buildCombinedEmbedding = (key: string): number[] => {
     const labels = labelsByKey.get(key) ?? [];
-    const props = propsByKey.get(key) ?? null;
+    const props = propertiesByKey.get(key) ?? null;
     const synth = labelPropertySyntheticEmbedding(labels, props, LABEL_PROPERTY_SYNTH_DIM).map(
       (x) => x * LABEL_PROPERTY_SYNTH_WEIGHT,
     );
@@ -90,7 +81,7 @@ export function buildNamespaceGraphLayout(
     return [...meanPart, ...synth];
   };
 
-  if (withEmb.length === 0) {
+  if (embeddings.length === 0) {
     const rows = orderedKeys.map(buildCombinedEmbedding);
     const dim = rows[0]?.length ?? 0;
     if (dim === 0) {
@@ -111,17 +102,9 @@ export function buildNamespaceGraphLayout(
     return { key, x: p.x, y: p.y, z: p.z, labels };
   });
 
-  const edgeRows: GraphLayoutEdge[] = edges.map((e) => ({
-    edgeId: e.edgeId,
-    fromKey: e.fromKey,
-    toKey: e.toKey,
-    labels: e.labels,
-    directed: e.directed,
-  }));
-
   return {
     namespace,
     nodes,
-    edges: edgeRows,
+    edges,
   };
 }

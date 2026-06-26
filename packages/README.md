@@ -20,8 +20,8 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
     └───────────┬──────────┘
                 │
     ┌───────────▼──────────┐     ┌─────────────────────────────┐
-    │ sqlite-graph-        │     │ agents/*, autolink,         │
-    │ projections (opt.)   │     │ ontologies, react/graph, spec │
+    │ projections/*        │     │ agents/*, autolink,         │
+    │ (core + strategies)  │     │ ontologies, react/graph, spec │
     └──────────────────────┘     └─────────────────────────────┘
 ```
 
@@ -31,7 +31,9 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
 |---------|------|------|
 | `@khoralabs/memories-core` | [`core/`](core) | Contracts, merge/search/delete APIs, IDs, provenance, helpers |
 | `@khoralabs/memories-sqlite` | [`persistence/sqlite/`](persistence/sqlite) | Reference sync `MemoriesPersistence` (FTS5 + sqlite-vec) |
-| `@khoralabs/sqlite-graph-projections` | [`persistence/sqlite-graph-projections/`](persistence/sqlite-graph-projections) | Optional UMAP layout + mean embeddings + UI previews |
+| `@khoralabs/memories-projections` | [`projections/core/`](projections/core) | Strategy-neutral projection source interfaces, UMAP layout math, and async visualization helpers |
+| `@khoralabs/memories-projections-sqlite` | [`projections/sqlite/`](projections/sqlite) | SQLite projection strategy for `@khoralabs/memories-sqlite` |
+| `@khoralabs/memories-projections-turso` | [`projections/turso/`](projections/turso) | Turso/libSQL projection strategy for already-local Turso-family databases |
 | `@khoralabs/memories-ontologies` | [`ontologies/`](ontologies) | Default personal/agent ontology vocabulary |
 | `@khoralabs/memories-spec` | [`spec/`](spec) | Smithy wire model |
 | `@khoralabs/memories-autolink` | [`autolink/`](autolink) | Search-then-link graph integration |
@@ -237,7 +239,7 @@ Wire up agents with `@khoralabs/agent-capabilities` (`createAgentRegistry`, tool
 | SQLite models | `persistence/sqlite/src/models/{source-maps,text-features,vector-features,search,memory-search-meta,memory-subtree}.ts` |
 | Helpers | `core/src/helpers/{logical-memory,embedding-model,memory-search-pipeline}.ts` |
 | Spec | `spec/model/persistence.smithy` |
-| Implementor guide | `persistence/sqlite/IMPLEMENTORS.md` |
+| Implementor guide | `persistence/IMPLEMENTORS.md` |
 
 ---
 

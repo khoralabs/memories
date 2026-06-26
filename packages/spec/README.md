@@ -23,7 +23,7 @@ Use modules to see what a minimal backend can omit; use the aggregate `MemoriesP
 | `MemoriesPersistenceLabelProps` | `syncLabelPropsSearchFeatures` |
 | `MemoriesPersistenceReads` | Prefetch / export reads |
 
-See [`packages/persistence/sqlite/IMPLEMENTORS.md`](../persistence/sqlite/IMPLEMENTORS.md) for operational semantics mapped to these operations.
+See [`packages/persistence/IMPLEMENTORS.md`](../persistence/IMPLEMENTORS.md) for operational semantics mapped to these operations.
 
 ## Validation
 

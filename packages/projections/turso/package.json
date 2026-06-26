@@ -1,13 +1,13 @@
 {
-  "name": "@khoralabs/memories-service-storage-sqlite",
+  "name": "@khoralabs/memories-projections-turso",
   "version": "0.1.0",
-  "description": "Local SQLCipher file backend and SQLite placement registry for the Memories database service.",
+  "description": "Turso/libSQL graph projection strategy for Memories.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/storage-sqlite"
+    "directory": "packages/projections/turso"
   },
   "files": [
     "src",
@@ -22,13 +22,12 @@
   },
   "dependencies": {
     "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-projections-sqlite": "workspace:*",
-    "@khoralabs/memories-service": "workspace:*",
-    "@khoralabs/memories-sqlite": "workspace:*",
-    "@khoralabs/sqlite-crypto": "^0.1.0"
+    "@khoralabs/memories-projections": "workspace:*"
+  },
+  "scripts": {
+    "test": "bun test"
   },
   "devDependencies": {
-    "@khoralabs/sqlite-crypto": "^0.1.0",
     "@types/bun": "latest"
   },
   "peerDependencies": {

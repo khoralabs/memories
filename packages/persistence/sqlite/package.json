@@ -16,8 +16,7 @@
   },
   "files": [
     "src",
-    "README.md",
-    "IMPLEMENTORS.md"
+    "README.md"
   ],
   "exports": {
     ".": {

@@ -1,6 +1,10 @@
+import type { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { createMemoriesPersistence, openTestMemoriesDatabase } from "@khoralabs/memories-sqlite";
-import { loadMeanEmbeddingsForNamespace } from "@khoralabs/sqlite-graph-projections";
+import {
+  blobToVector,
+  createMemoriesPersistence,
+  openTestMemoriesDatabase,
+} from "@khoralabs/memories-sqlite";
 import {
   buildCanonicalMemorySearchMetaText,
   mergeMemory,
@@ -19,6 +23,24 @@ function openTestDb() {
 }
 
 const vec512 = (): number[] => Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));
+
+function loadUserVectorRowsForNamespace(db: Database, namespace: string): number[][] {
+  const rows = db
+    .query<{ vector: Buffer | Uint8Array }, [string]>(
+      `SELECT vf.vector AS vector
+       FROM vector_features vf
+       JOIN source_maps sm ON sm._id = vf.source_map_id
+       JOIN memories m ON m._id = vf.memory_id
+       WHERE m.namespace = ?
+         AND sm.source_key NOT GLOB '__*'`,
+    )
+    .all(namespace);
+  return rows.map((row) =>
+    Array.from(
+      blobToVector(row.vector instanceof Buffer ? new Uint8Array(row.vector) : row.vector),
+    ),
+  );
+}
 
 describe("memory search meta", () => {
   test("zUserSourceKey rejects reserved prefix and meta key", () => {
@@ -210,9 +232,9 @@ describe("memory search meta", () => {
       },
     );
 
-    const means = loadMeanEmbeddingsForNamespace(db, "ns");
-    expect(means).toHaveLength(1);
-    expect(means[0]?.embedding[0]).toBe(1);
-    expect(means[0]?.embedding[1]).toBe(0);
+    const userVectors = loadUserVectorRowsForNamespace(db, "ns");
+    expect(userVectors).toHaveLength(1);
+    expect(userVectors[0]?.[0]).toBe(1);
+    expect(userVectors[0]?.[1]).toBe(0);
   });
 });

@@ -20,7 +20,9 @@ Each memory has one or more **source maps** (one per content chunk), each indexe
 |---------|------|------|
 | `@khoralabs/memories-core` | [`packages/core`](packages/core) | `MemoriesClient`, merge/search/delete, RRF, provenance, stable IDs |
 | `@khoralabs/memories-sqlite` | [`packages/persistence/sqlite`](packages/persistence/sqlite) | Reference backend: FTS5 + sqlite-vec, SQLite schema and migrations |
-| `@khoralabs/sqlite-graph-projections` | [`packages/persistence/sqlite-graph-projections`](packages/persistence/sqlite-graph-projections) | Optional UMAP layout + graph study projections |
+| `@khoralabs/memories-projections` | [`packages/projections/core`](packages/projections/core) | Persistence-agnostic projection interfaces, layout math, and visualization helpers |
+| `@khoralabs/memories-projections-sqlite` | [`packages/projections/sqlite`](packages/projections/sqlite) | SQLite projection strategy for local SQLite stores |
+| `@khoralabs/memories-projections-turso` | [`packages/projections/turso`](packages/projections/turso) | Turso/libSQL projection strategy for already-local Turso-family stores |
 | `@khoralabs/memories-ontologies` | [`packages/ontologies`](packages/ontologies) | Default ontology vocabulary (people, places, facts, …) |
 | `@khoralabs/memories-autolink` | [`packages/autolink`](packages/autolink) | Search-then-link graph integration |
 | `@khoralabs/memories-spec` | [`packages/spec`](packages/spec) | Smithy wire model for persistence |

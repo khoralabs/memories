@@ -2,6 +2,8 @@
 
 Async [Memories](https://github.com/khoralabs/memories) persistence over [Turso Cloud](https://turso.tech) using `@tursodatabase/serverless`. Implements `MemoriesPersistenceAsync` with Turso-native full-text search (Tantivy FTS indexes) and vector search (`vector32`, `vector_distance_cos`).
 
+Shared persistence semantics are documented in [`../IMPLEMENTORS.md`](../IMPLEMENTORS.md). This README covers only the Turso serverless implementation details.
+
 ## Custodial service usage
 
 Intended for **one Turso database per principal** in a custodial Memories Service:
@@ -41,6 +43,13 @@ await mergeMemoryAsync({
 | Lexical search | `CREATE INDEX ... USING fts` on `text_features(text)`; query with `fts_match` / `fts_score` |
 | Vector search | `vector32('[...]')` on insert; `vector_distance_cos` for scoped/unscoped queries |
 | Graph / scopes | Same relational schema as the SQLite reference backend |
+
+## Turso implementation notes
+
+- This package opens remote Turso databases through `@tursodatabase/serverless`.
+- It does not run local Turso Sync `pull()` / `push()`.
+- Projection workflows should first provide an already-local Turso-family database, then use `@khoralabs/memories-projections-turso`.
+- The custodial Memories Service should keep URL/token resolution outside this package.
 
 ## Migrations
 

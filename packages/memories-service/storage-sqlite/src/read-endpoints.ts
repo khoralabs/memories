@@ -1,12 +1,12 @@
 import type { Database } from "bun:sqlite";
-import type { SqliteDatabaseContext } from "@khoralabs/memories-service";
-import { listMemoryNamespaces } from "@khoralabs/memories-sqlite";
 import {
   buildNamespaceGraphLayout,
   buildNamespaceSubtreeGraphLayout,
   loadEdgePreview,
   loadSourceMapTextPreview,
-} from "@khoralabs/sqlite-graph-projections";
+} from "@khoralabs/memories-projections-sqlite";
+import type { SqliteDatabaseContext } from "@khoralabs/memories-service";
+import { listMemoryNamespaces } from "@khoralabs/memories-sqlite";
 
 export type GraphScope = "exact" | "subtree";
 

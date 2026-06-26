@@ -6,9 +6,9 @@ SQLite-backed implementation of the memories **persistence** contract (`Memories
 
 - **`createMemoriesPersistence(db, options?)`** — returns a sync `MemoriesPersistence` bound to a `bun:sqlite` `Database` opened with the memories schema (see `openMemoriesDatabase` in this package). Implements **`MemoriesGraph`** (reads + writes; topology reads are gated by `graphIndex`, default `true`).
 - **DB helpers** — `openMemoriesDatabase`, `openMemoriesDatabaseReadonly`, `openTestMemoriesDatabase`, `ensureCustomSqliteForExtensions`, `blobToVector`, schema init, and vec table utilities.
-- **Provenance reconstruction** — `getMemoryContentAtRootHex(db, rootHex, namespace, key)` returns the text content of one memory as it existed at a given chain link. `reconstructStoreAtRootHex(db, rootHex)` returns the same for every memory in the store (full audit; use sparingly). Both are also available as methods on the `MemoriesPersistence` instance. Content is sourced from the `memory_content_outbox` table written atomically alongside each merge/delete.
+- **SQLite-specific audit helpers** — `getMemoryContentAtRootHex(db, rootHex, namespace, key)` returns the text content of one memory as it existed at a given chain link. `reconstructStoreAtRootHex(db, rootHex)` returns the same for every memory in the store (full audit; use sparingly). Both read the SQLite `memory_content_outbox` table written atomically alongside each merge/delete.
 
-Graph study / UMAP layout / UI previews live in [`@khoralabs/sqlite-graph-projections`](../sqlite-graph-projections) (optional; pulls in `umap-js`).
+Graph study / UMAP layout / UI previews live in [`@khoralabs/memories-projections-sqlite`](../../projections/sqlite), the SQLite strategy for the projection core.
 
 ## Client usage
 
@@ -27,11 +27,16 @@ const persistence = createMemoriesPersistence(db);
 const client = new MemoriesClient(canonicalOntology, { persistence });
 ```
 
-For async backends, implement `MemoriesPersistenceAsync` in your host and use `MemoriesClientAsync` from core.
-
 ## Parity
 
-Behavior is aligned with the shared row model and ops described in [`IMPLEMENTORS.md`](./IMPLEMENTORS.md). The Smithy wire model lives in [`packages/spec/model/persistence.smithy`](../../spec/model/persistence.smithy).
+Behavior is aligned with the shared row model and ops described in [`../IMPLEMENTORS.md`](../IMPLEMENTORS.md). The Smithy wire model lives in [`packages/spec/model/persistence.smithy`](../../spec/model/persistence.smithy).
+
+## SQLite implementation notes
+
+- Uses `bun:sqlite` plus `sqlite-vec` extension-backed vector indexes.
+- Uses FTS5 for lexical search.
+- Uses local SQLite transactions through `db.transaction(fn)()`.
+- Implements the reference graph, scope, provenance, and label-props search behavior described in the shared guide.
 
 ## Running tests (sqlite-vec / extension loading)
 
