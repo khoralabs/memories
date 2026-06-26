@@ -11,14 +11,15 @@ import type {
   MemoriesDatabaseHandle,
   MemoriesDatabaseId,
   SqliteBackendStrategy,
-} from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
 import {
   createReversibleOwnerKeyEncoder,
   DATABASE_FILENAME,
   OWNER_KEY_ENCODING_VERSION,
   resolveEncodedDatabasePath,
+  unsupportedStorageFeature,
   validateMemoriesDatabaseId,
-} from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
 import {
   createMemoriesPersistence,
   ensureCustomSqliteForExtensions,
@@ -81,8 +82,14 @@ function createHandle(opened: OpenedLocalDatabase): MemoriesDatabaseHandle {
   };
 }
 
-export function createLocalSqliteBackend(strategy: SqliteBackendStrategy): MemoriesDatabaseBackend {
-  const validatedStrategy = assertSqliteStrategy(strategy);
+export type CreateLocalSqliteBackendOptions = {
+  strategy: SqliteBackendStrategy;
+};
+
+export function createLocalSqliteBackend(
+  opts: CreateLocalSqliteBackendOptions,
+): MemoriesDatabaseBackend {
+  const validatedStrategy = assertSqliteStrategy(opts.strategy);
   const encoder = createReversibleOwnerKeyEncoder();
   let extensionsReady = false;
 
@@ -150,6 +157,10 @@ export function createLocalSqliteBackend(strategy: SqliteBackendStrategy): Memor
       }
     },
 
+    async snapshot(_id) {
+      return unsupportedStorageFeature("snapshot", "sqlite");
+    },
+
     async close(_id) {
       return;
     },
@@ -159,7 +170,7 @@ export function createLocalSqliteBackend(strategy: SqliteBackendStrategy): Memor
 export function createLocalSqliteBackendFactory(): MemoriesDatabaseBackendFactory {
   return {
     create(strategy) {
-      return createLocalSqliteBackend(assertSqliteStrategy(strategy));
+      return createLocalSqliteBackend({ strategy: assertSqliteStrategy(strategy) });
     },
   };
 }

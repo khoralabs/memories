@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { unsupportedStorageFeature } from "@khoralabs/memories-service-storage-core";
 import {
   createBackendResolver,
   createInMemoryPlacementStore,
@@ -29,6 +30,9 @@ function createMockBackend(
     },
     async delete() {},
     async checkpoint() {},
+    async snapshot() {
+      return unsupportedStorageFeature("snapshot", strategy.kind);
+    },
     async close() {},
   };
 }

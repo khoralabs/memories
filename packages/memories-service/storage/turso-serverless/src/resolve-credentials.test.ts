@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { TursoServerlessBackendStrategy } from "@khoralabs/memories-service";
+import type { TursoServerlessBackendStrategy } from "@khoralabs/memories-service-storage-core";
 
 import { resolveTursoCredentials, resolveTursoDatabaseUrl } from "./resolve-credentials";
 

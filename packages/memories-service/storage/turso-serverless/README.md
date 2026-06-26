@@ -2,7 +2,7 @@
 
 Turso Cloud **node backend** for the Memories database service. Maps a placement strategy `{ kind: "turso-serverless", url, authToken }` to a remote Turso-backed memory node.
 
-This package is a **node data plane only**. It does not include a placement or ontology registry. The control plane is supplied by the host — typically `createSqlitePlacementStore` from `@khoralabs/memories-service-storage-sqlite`, though any `MemoriesDatabasePlacementStore` implementation works.
+This package is a **node data plane only**. It does not include a placement or ontology registry. The control plane is supplied by the host — typically `createSqlitePlacementStore` from `@khoralabs/memories-service-storage-sqlite`, though any `MemoriesDatabasePlacementStore` implementation from `@khoralabs/memories-service-storage-core` works.
 
 ## Strategy
 
@@ -103,6 +103,16 @@ const credentials = resolveTursoCredentials(strategy, id);
 // → { url, authToken, remoteEncryptionKey }
 ```
 
+For direct backend construction, use the shared options-object shape:
+
+```ts
+import { createTursoServerlessBackend } from "@khoralabs/memories-service-storage-turso-serverless";
+
+const backend = createTursoServerlessBackend({
+  strategy: { kind: "turso-serverless", url: "libsql://db.turso.io", authToken: "..." },
+});
+```
+
 ## Behavior notes
 
 **`list()`** — returns `[]`. This backend does not call Turso Cloud provisioning or list APIs. Principals placed via explicit placement overrides still appear in `resolver.list()` because the resolver merges override ids from the placement store.
@@ -113,10 +123,13 @@ const credentials = resolveTursoCredentials(strategy, id);
 
 **`checkpoint(id)`** — no-op. WAL checkpointing is not applicable to remote Turso databases.
 
+**`snapshot(id)`** — part of the shared storage-core contract, but currently throws `UnsupportedStorageFeatureError`. Future support should stream a synced replica artifact.
+
 **`handle.sqlite`** — not set. Host code that needs raw SQLite maintenance access should only rely on this field for SQLite-backed databases.
 
 ## Related packages
 
 - `@khoralabs/memories-turso-serverless` — underlying Turso persistence implementation
-- `@khoralabs/memories-service` — resolver, placement interface, connection cache
+- `@khoralabs/memories-service-storage-core` — storage contracts, placement/ontology interfaces, strategy helpers
+- `@khoralabs/memories-service` — resolver, service orchestration, connection cache
 - `@khoralabs/memories-service-storage-sqlite` — local file backend plus SQLite placement/ontology registries

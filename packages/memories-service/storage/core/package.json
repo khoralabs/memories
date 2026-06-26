@@ -1,13 +1,13 @@
 {
-  "name": "@khoralabs/memories-service",
+  "name": "@khoralabs/memories-service-storage-core",
   "version": "0.1.0",
-  "description": "Backend-agnostic database lifecycle service for managing many Memories databases.",
+  "description": "Storage contracts, strategies, lifecycle helpers, and control-plane stores for the Memories database service.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/service"
+    "directory": "packages/memories-service/storage/core"
   },
   "files": [
     "src",
@@ -21,10 +21,7 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-persistence-core": "workspace:*",
-    "@khoralabs/memories-service-storage-core": "workspace:*",
-    "lru-cache": "^11.5.1"
+    "@khoralabs/memories-persistence-core": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest"

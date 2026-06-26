@@ -1,4 +1,7 @@
-import type { MemoriesDatabaseBackendFactory, MemoriesDatabaseBackendStrategy } from "./backend";
+import type {
+  MemoriesDatabaseBackendFactory,
+  MemoriesDatabaseBackendStrategy,
+} from "@khoralabs/memories-service-storage-core";
 
 export type CompositeBackendFactoryMap = Record<string, MemoriesDatabaseBackendFactory>;
 

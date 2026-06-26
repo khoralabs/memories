@@ -1,17 +1,13 @@
 import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+import type {
+  DatabaseKind,
+  DatabaseListFilter,
+  MemoriesDatabaseHandle,
+  MemoriesDatabaseId,
+  MemoriesDatabaseSnapshot,
+} from "@khoralabs/memories-service-storage-core";
 
-export type DatabaseKind = "organization" | "account" | string;
-
-export type MemoriesDatabaseId = {
-  kind: DatabaseKind;
-  ownerKey: string;
-};
-
-export type DatabaseListFilter = {
-  kind?: DatabaseKind;
-};
-
-import type { MemoriesDatabaseHandle } from "./backend";
+export type { DatabaseKind, DatabaseListFilter, MemoriesDatabaseId };
 
 export type MemoriesDatabaseService = {
   open(id: MemoriesDatabaseId): Promise<MemoriesPersistenceAsync>;
@@ -20,5 +16,6 @@ export type MemoriesDatabaseService = {
   list(filter?: DatabaseListFilter): Promise<MemoriesDatabaseId[]>;
   delete(id: MemoriesDatabaseId): Promise<void>;
   checkpoint(id: MemoriesDatabaseId): Promise<void>;
+  snapshot(id: MemoriesDatabaseId): Promise<MemoriesDatabaseSnapshot>;
   close(id: MemoriesDatabaseId): Promise<void>;
 };

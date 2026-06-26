@@ -6,14 +6,16 @@ import type {
   MemoriesDatabaseOntologyStore,
   OntologyLinkRecord,
   StoredOntologyJsonSchema,
-} from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
 import {
+  currentLinkForRows,
   hashStoredOntology,
   listOntologyLabelKinds,
   normalizeStoredOntologyJsonSchema,
   ontologyMatchesLabelKinds,
+  parseDatabaseKey,
   validateMemoriesDatabaseId,
-} from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
 import { openEncryptedDatabaseSync } from "@khoralabs/sqlite-crypto";
 
 const ONTOLOGY_SCHEMA = `
@@ -44,12 +46,12 @@ function parseOntology(json: string): StoredOntologyJsonSchema {
 function currentLinkRow(
   rows: Array<{ ontology_hash: string; linked_at_ms: number; link_id: number }>,
 ): { ontology_hash: string; linked_at_ms: number; link_id: number } | undefined {
-  if (rows.length === 0) return undefined;
-  return rows.reduce((latest, row) => {
-    if (row.linked_at_ms > latest.linked_at_ms) return row;
-    if (row.linked_at_ms < latest.linked_at_ms) return latest;
-    return row.link_id > latest.link_id ? row : latest;
-  });
+  const indexed = rows.map((row) => ({
+    ...row,
+    linkedAtMs: row.linked_at_ms,
+    linkId: row.link_id,
+  }));
+  return currentLinkForRows(indexed);
 }
 
 export type SqliteOntologyStoreOptions = {
@@ -137,12 +139,6 @@ export function createSqliteOntologyStore(
       }
     }
     return current;
-  }
-
-  function parseDatabaseKey(key: string): MemoriesDatabaseId | undefined {
-    const [kind, ownerKey] = key.split("\0");
-    if (kind === undefined || ownerKey === undefined) return undefined;
-    return { kind, ownerKey };
   }
 
   return {

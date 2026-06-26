@@ -2,9 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { UnsupportedStorageFeatureError } from "@khoralabs/memories-service-storage-core";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 
-import { createLocalSqliteServiceStack, resolveLocalSqliteDatabasePath } from "./index";
+import {
+  createLocalSqliteBackend,
+  createLocalSqliteServiceStack,
+  resolveLocalSqliteDatabasePath,
+} from "./index";
 
 const tempDirs: string[] = [];
 
@@ -141,5 +146,21 @@ describe("local sqlite backend", () => {
     const handle = await service.getHandle(id);
     await handle.close();
     await handle.close();
+  });
+
+  test("direct backend constructor uses options object and snapshot is unsupported", async () => {
+    const dataDir = makeTempDataDir();
+    const backend = createLocalSqliteBackend({
+      strategy: {
+        kind: "sqlite",
+        dataDir,
+        sqlCipherKey: TEST_SQLCIPHER_KEY,
+      },
+    });
+
+    expect(backend.strategy.kind).toBe("sqlite");
+    await expect(backend.snapshot({ kind: "account", ownerKey: "owner-snapshot" })).rejects.toThrow(
+      UnsupportedStorageFeatureError,
+    );
   });
 });

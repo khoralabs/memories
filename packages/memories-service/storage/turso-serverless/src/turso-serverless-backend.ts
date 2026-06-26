@@ -4,7 +4,8 @@ import type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabaseHandle,
   TursoServerlessBackendStrategy,
-} from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
+import { unsupportedStorageFeature } from "@khoralabs/memories-service-storage-core";
 import type { TursoClients } from "@khoralabs/memories-turso-serverless";
 import {
   createMemoriesTursoServerlessPersistence,
@@ -129,6 +130,10 @@ export function createTursoServerlessBackend(
 
     async checkpoint(_id) {
       return;
+    },
+
+    async snapshot(_id) {
+      return unsupportedStorageFeature("snapshot", "turso-serverless");
     },
 
     async close(_id) {

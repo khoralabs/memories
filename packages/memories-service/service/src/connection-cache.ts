@@ -1,8 +1,12 @@
+import type {
+  MemoriesDatabaseHandle,
+  MemoriesDatabaseId,
+} from "@khoralabs/memories-service-storage-core";
+import {
+  cacheKeyForId,
+  validateMemoriesDatabaseId,
+} from "@khoralabs/memories-service-storage-core";
 import { LRUCache } from "lru-cache";
-
-import type { MemoriesDatabaseHandle } from "./backend";
-import type { MemoriesDatabaseId } from "./types";
-import { cacheKeyForId, validateMemoriesDatabaseId } from "./validate";
 
 export type CachedConnection = {
   id: MemoriesDatabaseId;

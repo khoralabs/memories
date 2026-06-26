@@ -1,8 +1,8 @@
 import type {
   MemoriesDatabaseId,
   TursoServerlessBackendStrategy,
-} from "@khoralabs/memories-service";
-import { validateMemoriesDatabaseId } from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
+import { validateMemoriesDatabaseId } from "@khoralabs/memories-service-storage-core";
 import type { TursoCredentials } from "@khoralabs/memories-turso-serverless";
 
 const OWNER_KEY_PLACEHOLDER = "{ownerKey}";

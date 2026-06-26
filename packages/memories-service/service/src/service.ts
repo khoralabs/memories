@@ -1,6 +1,12 @@
 import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+import type {
+  DatabaseListFilter,
+  MemoriesDatabaseHandle,
+  MemoriesDatabaseId,
+  MemoriesDatabaseSnapshot,
+} from "@khoralabs/memories-service-storage-core";
+import { validateMemoriesDatabaseId } from "@khoralabs/memories-service-storage-core";
 
-import type { MemoriesDatabaseHandle } from "./backend";
 import {
   createConnectionCache,
   getCachedConnection,
@@ -8,8 +14,7 @@ import {
   setCachedConnection,
 } from "./connection-cache";
 import type { MemoriesDatabaseBackendResolver } from "./resolver";
-import type { DatabaseListFilter, MemoriesDatabaseId, MemoriesDatabaseService } from "./types";
-import { validateMemoriesDatabaseId } from "./validate";
+import type { MemoriesDatabaseService } from "./types";
 
 export type CreateMemoriesDatabaseServiceOptions = {
   resolver: MemoriesDatabaseBackendResolver;
@@ -90,6 +95,12 @@ export function createMemoriesDatabaseService(
       const validated = validateMemoriesDatabaseId(id);
       const backend = await opts.resolver.resolve(validated);
       await backend.checkpoint(validated);
+    },
+
+    async snapshot(id: MemoriesDatabaseId): Promise<MemoriesDatabaseSnapshot> {
+      const validated = validateMemoriesDatabaseId(id);
+      const backend = await opts.resolver.resolve(validated);
+      return backend.snapshot(validated);
     },
 
     async close(id: MemoriesDatabaseId): Promise<void> {

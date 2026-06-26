@@ -20,6 +20,7 @@ This wires:
 - Placement registry at `{dataDir}/registry/placements.db`
 - Ontology registry at `{dataDir}/registry/ontologies.db`
 - `createBackendResolver` + `createMemoriesDatabaseService` from `@khoralabs/memories-service`
+- Storage contracts from `@khoralabs/memories-service-storage-core`
 
 `registryPath` and `ontologyRegistryPath` can be overridden independently:
 
@@ -91,6 +92,16 @@ const resolver = createBackendResolver({
 const service = createMemoriesDatabaseService({ resolver, maxCached: 32 });
 ```
 
+For direct backend construction, use the shared options-object shape:
+
+```ts
+import { createLocalSqliteBackend } from "@khoralabs/memories-service-storage-sqlite";
+
+const backend = createLocalSqliteBackend({
+  strategy: { kind: "sqlite", dataDir: "./data/memories", sqlCipherKey: "..." },
+});
+```
+
 ## File layout
 
 ```
@@ -115,8 +126,15 @@ const service = createMemoriesDatabaseService({ resolver, maxCached: 32 });
 
 Both registries are SQLCipher-encrypted with the same `sqlCipherKey` as the node databases.
 
+## Behavior Notes
+
+- `list()` enumerates local database files under `{dataDir}/v1`.
+- `checkpoint(id)` runs `PRAGMA wal_checkpoint(TRUNCATE)`.
+- `snapshot(id)` is part of the storage-core contract but currently throws `UnsupportedStorageFeatureError`.
+
 ## Related packages
 
-- `@khoralabs/memories-service` — resolver, placement interface, connection cache
+- `@khoralabs/memories-service-storage-core` — storage contracts, placement/ontology interfaces, strategy helpers
+- `@khoralabs/memories-service` — resolver, service orchestration, connection cache
 - `@khoralabs/memories-service-storage-turso-serverless` — Turso Cloud node backend
 - `@khoralabs/memories-sqlite` — underlying SQLite persistence implementation

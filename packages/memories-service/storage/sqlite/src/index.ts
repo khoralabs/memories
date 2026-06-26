@@ -1,4 +1,5 @@
 export {
+  type CreateLocalSqliteBackendOptions,
   createLocalSqliteBackend,
   createLocalSqliteBackendFactory,
   resolveLocalSqliteDatabasePath,

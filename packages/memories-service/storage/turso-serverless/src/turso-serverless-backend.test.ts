@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { UnsupportedStorageFeatureError } from "@khoralabs/memories-service-storage-core";
 
-import { createTursoServerlessBackendFactory } from "./turso-serverless-backend";
+import {
+  createTursoServerlessBackend,
+  createTursoServerlessBackendFactory,
+} from "./turso-serverless-backend";
 
 describe("createTursoServerlessBackendFactory", () => {
   test("creates a node backend with no physical listing support", async () => {
@@ -22,5 +26,19 @@ describe("createTursoServerlessBackendFactory", () => {
         sqlCipherKey: "secret",
       }),
     ).toThrow("Expected turso-serverless strategy");
+  });
+
+  test("direct backend constructor uses options object and snapshot is unsupported", async () => {
+    const backend = createTursoServerlessBackend({
+      strategy: {
+        kind: "turso-serverless",
+        url: "libsql://{ownerKey}.example.turso.io",
+        authToken: "token",
+      },
+    });
+
+    await expect(backend.snapshot({ kind: "account", ownerKey: "owner-snapshot" })).rejects.toThrow(
+      UnsupportedStorageFeatureError,
+    );
   });
 });

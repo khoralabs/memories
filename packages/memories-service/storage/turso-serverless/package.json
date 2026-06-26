@@ -21,8 +21,7 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-service": "workspace:*",
+    "@khoralabs/memories-service-storage-core": "workspace:*",
     "@khoralabs/memories-turso-serverless": "workspace:*"
   },
   "devDependencies": {

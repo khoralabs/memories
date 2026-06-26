@@ -2,12 +2,14 @@ import path from "node:path";
 import {
   createBackendResolver,
   createMemoriesDatabaseService,
-  type MemoriesDatabaseBackendFactory,
-  type MemoriesDatabaseOntologyStore,
-  type MemoriesDatabasePlacementStore,
   type MemoriesDatabaseService,
-  type SqliteBackendStrategy,
 } from "@khoralabs/memories-service";
+import type {
+  MemoriesDatabaseBackendFactory,
+  MemoriesDatabaseOntologyStore,
+  MemoriesDatabasePlacementStore,
+  SqliteBackendStrategy,
+} from "@khoralabs/memories-service-storage-core";
 import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-sqlite";
 import { createLocalSqliteBackendFactory } from "./local-sqlite-backend";
 import { createSqliteOntologyStore } from "./ontology-registry";

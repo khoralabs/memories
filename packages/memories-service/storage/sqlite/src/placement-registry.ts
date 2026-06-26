@@ -4,8 +4,12 @@ import path from "node:path";
 import type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabasePlacementStore,
-} from "@khoralabs/memories-service";
-import { validateMemoriesDatabaseId } from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
+import {
+  parseStrategy,
+  serializeStrategy,
+  validateMemoriesDatabaseId,
+} from "@khoralabs/memories-service-storage-core";
 import { openEncryptedDatabaseSync } from "@khoralabs/sqlite-crypto";
 
 const PLACEMENT_SCHEMA = `
@@ -25,17 +29,6 @@ CREATE TABLE IF NOT EXISTS placement_overrides (
   PRIMARY KEY (kind, owner_key)
 );
 `;
-
-function parseStrategy(json: string): MemoriesDatabaseBackendStrategy {
-  return JSON.parse(json) as MemoriesDatabaseBackendStrategy;
-}
-
-function serializeStrategy(strategy: MemoriesDatabaseBackendStrategy): {
-  kind: string;
-  json: string;
-} {
-  return { kind: strategy.kind, json: JSON.stringify(strategy) };
-}
 
 export type SqlitePlacementStoreOptions = {
   registryPath: string;

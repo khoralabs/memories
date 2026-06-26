@@ -5,7 +5,7 @@ import path from "node:path";
 import {
   normalizeStoredOntologyJsonSchema,
   type StoredOntologyJsonSchema,
-} from "@khoralabs/memories-service";
+} from "@khoralabs/memories-service-storage-core";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 
 import { createSqliteOntologyStore } from "./ontology-registry";

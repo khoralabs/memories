@@ -1,6 +1,6 @@
 # Storage backend implementor's guide
 
-This document describes the contract for adding a new storage backend to the Memories service. The relevant types live in `@khoralabs/memories-service`.
+This document describes the contract for adding a new storage backend to the Memories service. The canonical storage contracts live in `@khoralabs/memories-service-storage-core`; `@khoralabs/memories-service` re-exports them for compatibility.
 
 ## Core interfaces
 
@@ -14,6 +14,7 @@ type MemoriesDatabaseBackend = {
   list(filter?: DatabaseListFilter): Promise<MemoriesDatabaseId[]>;
   delete(id: MemoriesDatabaseId): Promise<void>;
   checkpoint(id: MemoriesDatabaseId): Promise<void>;
+  snapshot(id: MemoriesDatabaseId): Promise<MemoriesDatabaseSnapshot>;
   close(id: MemoriesDatabaseId): Promise<void>;
 };
 ```
@@ -71,6 +72,10 @@ Remove the database's data. **Data plane only:** do not remove placement or onto
 
 Flush WAL to the main database file. No-op is acceptable for remote or non-WAL backends. For local SQLite: open the file, run `PRAGMA wal_checkpoint(TRUNCATE)`, close.
 
+### `snapshot(id)`
+
+Return a pull-based snapshot artifact (`body: ReadableStream<Uint8Array>`, `contentType`, optional `contentEncoding`, `contentLength`, filename, and metadata) that the caller can stream to a worker. Backends may throw `UnsupportedStorageFeatureError` while snapshotting is not implemented. The current SQLite and Turso serverless backends both expose the method and return unsupported.
+
 ### `close(id)`
 
 Backend-level close hook called by the service when it evicts or explicitly closes a handle. Most backends can implement this as a no-op if the handle's `close()` already handles cleanup.
@@ -92,11 +97,11 @@ Declare it in your factory's `create` validation. The strategy is serialized to 
 
 ## Capabilities
 
-Attach a `capabilities` field to your strategy to declare what the opened database supports. `resolveStrategyCapabilities(strategy)` from `@khoralabs/memories-service` merges your declared overrides with the appropriate defaults:
+Attach a `capabilities` field to your strategy to declare what the opened database supports. `resolveStrategyCapabilities(strategy)` from `@khoralabs/memories-service-storage-core` merges your declared overrides with the appropriate defaults:
 
 - `sqlite` strategies default to `DEFAULT_SQLITE_STRATEGY_CAPABILITIES` (all flags on).
 - `turso-serverless` strategies default to `DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES` (all flags on).
-- All other `kind` values fall back to `DEFAULT_MEMORIES_BACKEND_CAPABILITIES` from `@khoralabs/memories-core` (lexical, vector, neighbor, graph, and multi-namespace on; **unscoped off**).
+- All other `kind` values fall back to `DEFAULT_MEMORIES_BACKEND_CAPABILITIES` from `@khoralabs/memories-persistence-core/persistence` (lexical, vector, neighbor, graph, and multi-namespace on; **unscoped off**).
 
 Override individual flags when your backend lacks a capability:
 
@@ -111,7 +116,7 @@ Override individual flags when your backend lacks a capability:
 Hosts can read strategy capabilities before opening a database:
 
 ```ts
-import { resolveStrategyCapabilities } from "@khoralabs/memories-service";
+import { resolveStrategyCapabilities } from "@khoralabs/memories-service-storage-core";
 
 const caps = resolveStrategyCapabilities(strategy);
 if (!caps.vectorSearch) { /* skip embed step */ }
@@ -134,7 +139,7 @@ Pass `factory` to `createBackendResolver`. The composite routes each strategy by
 
 ## Placement store
 
-The placement store is separate from the node backend. If you need a custom control plane (e.g. a remote database for multi-node deployment), implement `MemoriesDatabasePlacementStore` from `@khoralabs/memories-service`:
+The placement store is separate from the node backend. If you need a custom control plane (e.g. a remote database for multi-node deployment), implement `MemoriesDatabasePlacementStore` from `@khoralabs/memories-service-storage-core`:
 
 ```ts
 type MemoriesDatabasePlacementStore = {
@@ -153,7 +158,7 @@ The SQLite implementation in `@khoralabs/memories-service-storage-sqlite` is the
 
 ## Ontology store
 
-Similarly, implement `MemoriesDatabaseOntologyStore` from `@khoralabs/memories-service` if you need a custom ontology registry. The SQLite implementation stores ontologies at `{dataDir}/registry/ontologies.db`. The store is append-only: `registerOntology` uses `INSERT OR IGNORE` (content-addressed by SHA-256 hash), and `linkDatabase` appends links.
+Similarly, implement `MemoriesDatabaseOntologyStore` from `@khoralabs/memories-service-storage-core` if you need a custom ontology registry. The SQLite implementation stores ontologies at `{dataDir}/registry/ontologies.db`. The store is append-only: `registerOntology` uses `INSERT OR IGNORE` (content-addressed by SHA-256 hash), and `linkDatabase` appends links.
 
 ## Reference implementations
 
@@ -161,3 +166,12 @@ Similarly, implement `MemoriesDatabaseOntologyStore` from `@khoralabs/memories-s
 |---------|--------|-------|
 | SQLite | [`sqlite/src/local-sqlite-backend.ts`](./sqlite/src/local-sqlite-backend.ts) | Local file, WAL, SQLCipher, full `MemoriesBackendHandle.sqlite` context |
 | Turso serverless | [`turso-serverless/src/turso-serverless-backend.ts`](./turso-serverless/src/turso-serverless-backend.ts) | Remote, async, no `sqlite` context, `list()` returns `[]` |
+
+Both direct backend constructors use an options object:
+
+```ts
+createLocalSqliteBackend({ strategy });
+createTursoServerlessBackend({ strategy });
+```
+
+Backend-specific behavior is allowed when the contract is explicit: SQLite can enumerate local files and checkpoint WAL; Turso serverless cannot enumerate physical databases and treats checkpoint as a no-op. Both currently return `UnsupportedStorageFeatureError` from `snapshot(id)`.

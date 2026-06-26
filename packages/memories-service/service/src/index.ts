@@ -1,21 +1,5 @@
-export type {
-  MemoriesBackendCapabilities,
-  MemoriesDatabaseBackend,
-  MemoriesDatabaseBackendFactory,
-  MemoriesDatabaseBackendStrategy,
-  MemoriesDatabaseHandle,
-  SqliteBackendStrategy,
-  SqliteDatabaseContext,
-  StrategyCapabilities,
-  TursoServerlessBackendStrategy,
-} from "./backend";
-export {
-  DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
-  DEFAULT_SQLITE_STRATEGY_CAPABILITIES,
-  DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES,
-  resolveStrategyCapabilities,
-  strategyCacheKey,
-} from "./backend";
+/** @deprecated Storage contracts are owned by @khoralabs/memories-service-storage-core. */
+export * from "@khoralabs/memories-service-storage-core";
 export {
   type CompositeBackendFactoryMap,
   createCompositeBackendFactory,
@@ -45,23 +29,6 @@ export {
   type StoredOntologyLabelMapSchema,
 } from "./ontology";
 export {
-  createInMemoryOntologyStore,
-  type MemoriesDatabaseOntologyStore,
-  type OntologyLinkRecord,
-} from "./ontology-registry";
-export {
-  createReversibleOwnerKeyEncoder,
-  DATABASE_FILENAME,
-  OWNER_KEY_ENCODING_VERSION,
-  type OwnerKeyEncoder,
-  resolveEncodedDatabasePath,
-} from "./owner-key-encoder";
-export {
-  createInMemoryPlacementStore,
-  type InMemoryPlacementStoreOptions,
-  type MemoriesDatabasePlacementStore,
-} from "./placement";
-export {
   type CreateBackendResolverOptions,
   createBackendResolver,
   type MemoriesDatabaseBackendResolver,
@@ -70,15 +37,4 @@ export {
   type CreateMemoriesDatabaseServiceOptions,
   createMemoriesDatabaseService,
 } from "./service";
-export type {
-  DatabaseKind,
-  DatabaseListFilter,
-  MemoriesDatabaseId,
-  MemoriesDatabaseService,
-} from "./types";
-export {
-  cacheKeyForId,
-  validateDatabaseKind,
-  validateMemoriesDatabaseId,
-  validateOwnerKey,
-} from "./validate";
+export type { MemoriesDatabaseService } from "./types";
