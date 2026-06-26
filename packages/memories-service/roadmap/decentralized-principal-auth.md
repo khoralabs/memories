@@ -2,7 +2,46 @@
 
 DID-based authorization for the HTTP adapter: clients prove control of a principal, optionally present delegation from the database owner, and verify revocation without server-local grant state.
 
-**Status:** Not implemented. Shipped auth schemes are `none` and `server-admin` only.
+**Status:** Phase 1 shipped. The attestation signing infrastructure (`@khoralabs/memories-attestation`) and server-side HTTP attribution (`MemoriesServiceHttpOptions.attribution`) are live. The `did-principal` auth scheme, DID proof verification, nonce handling, and delegation grants are not yet implemented.
+
+## What is shipped
+
+### `@khoralabs/memories-attestation`
+
+Formats for cryptographically signed contributor envelopes stored in provenance events:
+
+- **`khora.direct-principal-v1`** — caller-signed attestation binding a principal to a merge/delete scope. Used for in-process attribution where the caller controls the signing key.
+- **`khora.http-request-v1`** — server-signed attestation binding a principal to an HTTP request (method, path, `SHA-256(body)`, `issuedAt`). Built server-side; never trusted from clients.
+
+Both formats share the same `ContributorAttestation` envelope (`v`, `format`, `principal`, `payload`, `signature`, `alg?`, `keyId?`) and the same build/decode/verify pattern with caller-supplied sign and verify callbacks.
+
+### HTTP-safe attribution (`memories-service-http`)
+
+`MemoriesServiceHttpOptions.attribution` lets operators configure server-side contributor signing:
+
+```ts
+import { createMemoriesServiceHttpServer } from "@khoralabs/memories-service-http";
+
+createMemoriesServiceHttpServer({
+  service,
+  auth: createServerAdminAuthStrategy(token),
+  attribution: {
+    sign: myServerSigningKey.sign,
+    principalForActor: (actor) => `${actor.scheme}:${actor.subject}`,
+    alg: "EdDSA",
+    keyId: "did:key:z-server#key",
+  },
+});
+```
+
+On every merge or delete request:
+
+1. `auth.authenticate` and `auth.authorize` run first
+2. A `khora.http-request-v1` attestation is built from the returned `AuthenticatedActor` and request metadata (method, path, body SHA-256, issuedAt)
+3. The attestation is injected as `attribution.contributor` before persistence; any client-supplied `contributor` is stripped
+4. Clients may send `intentSnapshotId` at the top level of merge/delete request bodies; this is preserved and written to `intent_snapshot_id` column
+
+Client-side (`RemoteMemoriesClientAsync`): `attribution.contributor` is stripped before wire serialization; `attribution.intentSnapshotId` is promoted to top-level `intentSnapshotId`.
 
 ## Goal
 
@@ -13,7 +52,7 @@ With `MEMORIES_SERVICE_AUTH=did-principal`, a client can access a database when 
 
 The core `@khoralabs/memories-service` package stays unchanged. All DID verification, nonce handling, credential parsing, and revocation checks live in `@khoralabs/memories-service-auth`.
 
-## Auth scheme
+## Auth scheme (not yet implemented)
 
 Add to `MemoriesServiceAuthScheme`:
 
@@ -58,7 +97,7 @@ For `MemoriesDatabaseId { kind, ownerKey }`:
 
 Actions map to existing `DatabaseAction` values: `read`, `write`, `manage`.
 
-Namespace scoping (optional grant field) applies at the auth layer before any future HTTP memory APIs call into persistence.
+Namespace scoping (optional grant field) applies at the auth layer before any HTTP memory APIs call into persistence.
 
 ## Delegation grants
 
@@ -81,8 +120,8 @@ The grant issuer must match `database.ownerKey` or be an already-authorized admi
 
 ### Grant storage (open choice)
 
-| Approach | Pros | Cons |
-|----------|------|------|
+| Approach | Storage | Pros | Cons |
+|----------|---------|------|------|
 | Embedded in principal database | Travels with data | Bootstrap problem: need access to read grants |
 | Service-level registry | Simple, fast | Server state outside the database file |
 | Portable signed credentials | No server storage; works across nodes | Stronger format and revocation story required |
@@ -115,7 +154,7 @@ Per-request verification:
 - Credential is within validity window
 - Credential is not revoked
 
-Credentials must be canonicalized before signing (canonical JSON or typed binary) so all nodes verify the same bytes.
+Credentials must be canonicalized before signing (canonical JSON or typed binary) so all nodes verify the same bytes. The existing `canonicalPayloadBytes` / `canonicalJson` utilities in `@khoralabs/memories-attestation` are reusable here.
 
 ## Issuer-signed revocation log
 
@@ -139,13 +178,29 @@ Verification:
 - `previousEventHash` chains to the prior canonical event hash
 - Credential id is absent from the verified revoked set
 
-**Availability:** nodes need a way to fetch the issuer's latest log, cache freshness policy, and fail-closed behavior when the log is unavailable (safer for database access than fail-open).
+**Availability:** nodes need a way to fetch the issuer's latest log, a cache freshness policy, and fail-closed behavior when the log is unavailable.
+
+## Integration with HTTP attribution
+
+When `did-principal` auth ships, `MemoriesServiceHttpOptions.attribution` gains a natural `principalForActor` that maps the verified DID to the `khora.http-request-v1` principal:
+
+```ts
+attribution: {
+  sign: serverKey.sign,
+  principalForActor: (actor) => actor.subject, // actor.subject is the verified DID
+  keyId: serverKey.id,
+  alg: "EdDSA",
+}
+```
+
+Provenance events will carry server-attested HTTP attribution from day one without any change to persistence. The `contributor` in `event_json` will reflect the request signer's DID once DID auth is active — no migration required.
 
 ## Dependencies
 
 - `@khoralabs/relay-contracts` — header names and message format
 - `@khoralabs/relay-crypto` — DID key resolution and signature verification
 - Nonce store (same pattern as Relay/Khora)
+- `@khoralabs/memories-attestation` — already shipped; `canonicalPayloadBytes` reusable for credential signing
 
 ## Implementation order
 

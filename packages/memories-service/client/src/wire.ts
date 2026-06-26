@@ -89,10 +89,15 @@ export type DatabaseHashResponse = { hash: string | null };
 export type DatabaseSearchRequest = DatabaseScopedBody<{ params: SearchParamsWire }>;
 export type DatabaseSearchResponse = { hits: SearchHitWire[] };
 
-export type DatabaseMergeRequest = DatabaseScopedBody<{ params: Record<string, unknown> }>;
+export type DatabaseMergeRequest = DatabaseScopedBody<{
+  params: Record<string, unknown>;
+  intentSnapshotId?: string;
+}>;
 export type DatabaseMergeResponse = { memoryIds: string[] };
 
-export type DatabaseDeleteMemoryRequest = DatabaseScopedBody<DeleteMemoryParamsWire>;
+export type DatabaseDeleteMemoryRequest = DatabaseScopedBody<
+  DeleteMemoryParamsWire & { intentSnapshotId?: string }
+>;
 export type DatabaseDeleteMemoryResponse = { ok: true };
 
 export type DatabaseProvenanceHeadRequest = DatabaseScopedBody<Record<string, never>>;

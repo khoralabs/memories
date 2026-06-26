@@ -35,17 +35,32 @@ await ensureDatabaseOntologyLink({
   schema: storedOntologyFromDefinition(ontology),
 });
 
-const ontologyClient = new MemoriesOntologyClient({
-  serviceClient: new MemoriesServiceClient({ baseUrl, auth }),
-});
-const currentHash = await ontologyClient.getDatabaseHash(database);
-
 const memories = await createRemoteMemoriesClientAsync({ baseUrl, database, ontology, auth });
 await memories.search({ namespace, content, options });
+await memories.mergeMemory(params);
+await memories.deleteMemory({ namespace, key });
 
 const reads = createRemoteMemoriesReadClient({ baseUrl, database, auth });
 await reads.listNamespaces();
+await reads.getSourceMapTextPreview(sourceMapId);
 ```
+
+## Intent snapshot ids
+
+When merging or deleting with an `attribution.intentSnapshotId`, the remote client promotes it to a top-level wire field and strips `attribution.contributor` (contributor is always built server-side):
+
+```ts
+await memories.mergeMemory({
+  kind: "node",
+  key: "note-1",
+  namespace: "user/a",
+  content: [{ key: "text", text: "hello" }],
+  labels: [],
+  attribution: { intentSnapshotId: "run-42" },  // sent as top-level intentSnapshotId
+});
+```
+
+The server writes this to `intent_snapshot_id` in `memory_provenance`. The server's own `khora.http-request-v1` contributor attestation is added independently if the server has `attribution` configured.
 
 ## Projection worker input
 
@@ -58,5 +73,3 @@ const reads = createRemoteMemoriesReadClient({ baseUrl, database, auth });
 const input = await reads.fetchUmapInput({ namespace, scope: "subtree" });
 const layout = buildNamespaceGraphLayoutFromUmapInput(input);
 ```
-
-See [../roadmap/http-memory-apis.md](../roadmap/http-memory-apis.md).

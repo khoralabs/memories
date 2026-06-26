@@ -6,6 +6,7 @@ import {
   searchAsync,
 } from "@khoralabs/memories-core";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
+import type { MemoryMutationAttribution } from "@khoralabs/memories-persistence-core/provenance";
 import {
   collectNamespaceUmapInput,
   encodeUmapInput,
@@ -178,13 +179,29 @@ function stripRemoteAttribution<T extends object>(params: T): Omit<T, "attributi
 export async function handleDatabaseMerge(
   service: MemoriesDatabaseService,
   body: unknown,
+  serverAttribution?: MemoryMutationAttribution,
 ): Promise<Response> {
-  const scoped = body as DatabaseMergeRequest;
+  const scoped = body as DatabaseMergeRequest & { intentSnapshotId?: string };
   const { database, handle } = await getHandle(service, scoped);
   if (scoped.params === undefined || typeof scoped.params !== "object") {
     throw new HttpError("params is required", 400);
   }
-  const params = stripRemoteAttribution(scoped.params as MergeMemoryParams) as MergeMemoryParams;
+  const safeParams = stripRemoteAttribution(
+    scoped.params as MergeMemoryParams,
+  ) as MergeMemoryParams;
+  const intentSnapshotId =
+    typeof scoped.intentSnapshotId === "string" ? scoped.intentSnapshotId : undefined;
+  const attribution: MergeMemoryParams["attribution"] =
+    serverAttribution !== undefined || intentSnapshotId !== undefined
+      ? {
+          ...(serverAttribution !== undefined ? serverAttribution : {}),
+          ...(intentSnapshotId !== undefined ? { intentSnapshotId } : {}),
+        }
+      : undefined;
+  const params: MergeMemoryParams = {
+    ...safeParams,
+    ...(attribution !== undefined ? { attribution } : {}),
+  };
   const ontology = ontologyFromMergeParams(scoped.params);
 
   let memoryIds: string[];
@@ -202,22 +219,38 @@ export async function handleDatabaseMerge(
 export async function handleDatabaseDeleteMemory(
   service: MemoriesDatabaseService,
   body: unknown,
+  serverAttribution?: MemoryMutationAttribution,
 ): Promise<Response> {
-  const scoped = body as DatabaseDeleteMemoryRequest;
+  const scoped = body as DatabaseDeleteMemoryRequest & { intentSnapshotId?: string };
   const { database, handle } = await getHandle(service, scoped);
   if (typeof scoped.namespace !== "string" || typeof scoped.key !== "string") {
     throw new HttpError("namespace and key are required", 400);
   }
+  const intentSnapshotId =
+    typeof scoped.intentSnapshotId === "string" ? scoped.intentSnapshotId : undefined;
+  const attribution: MemoryMutationAttribution | undefined =
+    serverAttribution !== undefined || intentSnapshotId !== undefined
+      ? {
+          ...(serverAttribution !== undefined ? serverAttribution : {}),
+          ...(intentSnapshotId !== undefined ? { intentSnapshotId } : {}),
+        }
+      : undefined;
+
+  const deleteParams = {
+    namespace: scoped.namespace,
+    key: scoped.key,
+    ...(attribution !== undefined ? { attribution } : {}),
+  };
 
   if (handle.sqlite !== undefined) {
     const client = new MemoriesClient(handle.sqlite.syncPersistence, {
       nodeLabels: {},
       edgeLabels: {},
     });
-    client.deleteMemory({ namespace: scoped.namespace, key: scoped.key });
+    client.deleteMemory(deleteParams);
   } else {
     const client = new MemoriesClientAsync(handle.persistence, { nodeLabels: {}, edgeLabels: {} });
-    await client.deleteMemory({ namespace: scoped.namespace, key: scoped.key });
+    await client.deleteMemory(deleteParams);
   }
 
   return Response.json({ ok: true, database });

@@ -80,19 +80,31 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
   override async mergeMemory(
     params: Parameters<MemoriesClientAsync<LabelSchemaMap, LabelSchemaMap>["mergeMemory"]>[0],
   ): Promise<string[]> {
+    const { attribution, ...safeParams } = params as typeof params & {
+      attribution?: { intentSnapshotId?: string };
+    };
     const body: DatabaseMergeRequest = {
       database: this.#database,
-      params: params as unknown as Record<string, unknown>,
+      params: safeParams as unknown as Record<string, unknown>,
+      ...(attribution?.intentSnapshotId !== undefined
+        ? { intentSnapshotId: attribution.intentSnapshotId }
+        : {}),
     };
     const response = await this.#client.postJson<{ memoryIds: string[] }>("/databases/merge", body);
     return response.memoryIds;
   }
 
   override async deleteMemory(params: DeleteMemoryParams): Promise<void> {
+    const { attribution, ...safeParams } = params as DeleteMemoryParams & {
+      attribution?: { intentSnapshotId?: string };
+    };
     const body: DatabaseDeleteMemoryRequest = {
       database: this.#database,
-      namespace: params.namespace,
-      key: params.key,
+      namespace: safeParams.namespace,
+      key: safeParams.key,
+      ...(attribution?.intentSnapshotId !== undefined
+        ? { intentSnapshotId: attribution.intentSnapshotId }
+        : {}),
     };
     await this.#client.postJson("/databases/delete-memory", body);
   }

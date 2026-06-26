@@ -21,8 +21,10 @@
     }
   },
   "dependencies": {
+    "@khoralabs/memories-attestation": "workspace:*",
     "@khoralabs/memories-core": "workspace:*",
     "@khoralabs/memories-ontologies": "workspace:*",
+    "@khoralabs/memories-persistence-core": "workspace:*",
     "@khoralabs/memories-projections": "workspace:*",
     "@khoralabs/memories-service": "workspace:*",
     "@khoralabs/memories-service-auth": "workspace:*",

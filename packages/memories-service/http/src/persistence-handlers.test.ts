@@ -219,6 +219,209 @@ describe("memories service persistence http handlers", () => {
     expect(row?.intent_snapshot_id).toBeNull();
   });
 
+  test("configured HTTP attribution writes khora.http-request-v1 contributor into merge provenance", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-http-attr-merge" };
+    await stack.service.open(database);
+
+    const res = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            kind: "node",
+            key: "note-attr",
+            namespace: "user/attr",
+            content: [{ key: "text", text: "attributed" }],
+            labels: [],
+          },
+        }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+        attribution: {
+          sign: ({ payloadBytes }) => payloadBytes,
+          now: () => new Date("2026-06-26T00:00:00.000Z"),
+        },
+      },
+    );
+    expect(res.status).toBe(200);
+
+    const handle = await stack.service.getHandle(database);
+    const sqlite = handle.sqlite;
+    if (sqlite === undefined) throw new Error("expected sqlite handle");
+    const row = sqlite.db
+      .query<{ event_json: string }, []>(`SELECT event_json FROM memory_provenance LIMIT 1`)
+      .get();
+    const event = JSON.parse(row?.event_json ?? "{}") as {
+      contributor?: { format?: string; principal?: string };
+    };
+    expect(event.contributor?.format).toBe("khora.http-request-v1");
+    expect(typeof event.contributor?.principal).toBe("string");
+  });
+
+  test("configured HTTP attribution writes contributor into delete provenance", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-http-attr-delete" };
+    await stack.service.open(database);
+
+    await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            kind: "node",
+            key: "note-del",
+            namespace: "user/del",
+            content: [{ key: "text", text: "to delete" }],
+            labels: [],
+          },
+        }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+      },
+    );
+
+    const res = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/delete-memory", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "user/del", key: "note-del" }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+        attribution: {
+          sign: ({ payloadBytes }) => payloadBytes,
+          now: () => new Date("2026-06-26T00:00:00.000Z"),
+        },
+      },
+    );
+    expect(res.status).toBe(200);
+
+    const handle = await stack.service.getHandle(database);
+    const sqlite = handle.sqlite;
+    if (sqlite === undefined) throw new Error("expected sqlite handle");
+    const row = sqlite.db
+      .query<{ event_json: string }, []>(
+        `SELECT event_json FROM memory_provenance ORDER BY rowid DESC LIMIT 1`,
+      )
+      .get();
+    const event = JSON.parse(row?.event_json ?? "{}") as {
+      kind?: string;
+      contributor?: { format?: string };
+    };
+    expect(event.kind).toBe("DELETE_MEMORY");
+    expect(event.contributor?.format).toBe("khora.http-request-v1");
+  });
+
+  test("client-supplied contributor is still ignored even when server attribution is enabled", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-no-spoof-with-attr" };
+    await stack.service.open(database);
+
+    const res = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            kind: "node",
+            key: "note-spoof",
+            namespace: "user/spoof",
+            content: [{ key: "text", text: "spoofed" }],
+            labels: [],
+            attribution: {
+              contributor: {
+                v: 1,
+                format: "khora.direct-principal-v1",
+                principal: "did:key:z-evil",
+                payload: "eyJ2IjoxfQ",
+                signature: "c2ln",
+              },
+            },
+          },
+        }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+        attribution: {
+          sign: ({ payloadBytes }) => payloadBytes,
+          now: () => new Date("2026-06-26T00:00:00.000Z"),
+        },
+      },
+    );
+    expect(res.status).toBe(200);
+
+    const handle = await stack.service.getHandle(database);
+    const sqlite = handle.sqlite;
+    if (sqlite === undefined) throw new Error("expected sqlite handle");
+    const row = sqlite.db
+      .query<{ event_json: string }, []>(`SELECT event_json FROM memory_provenance LIMIT 1`)
+      .get();
+    const event = JSON.parse(row?.event_json ?? "{}") as {
+      contributor?: { principal?: string; format?: string };
+    };
+    expect(event.contributor?.principal).not.toBe("did:key:z-evil");
+    expect(event.contributor?.format).toBe("khora.http-request-v1");
+    expect(typeof event.contributor?.principal).toBe("string");
+  });
+
+  test("top-level intentSnapshotId round-trips into event JSON and column", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-intent-id" };
+    await stack.service.open(database);
+
+    const res = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          intentSnapshotId: "run-42",
+          params: {
+            kind: "node",
+            key: "note-intent",
+            namespace: "user/intent",
+            content: [{ key: "text", text: "intent test" }],
+            labels: [],
+          },
+        }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+      },
+    );
+    expect(res.status).toBe(200);
+
+    const handle = await stack.service.getHandle(database);
+    const sqlite = handle.sqlite;
+    if (sqlite === undefined) throw new Error("expected sqlite handle");
+    const row = sqlite.db
+      .query<{ event_json: string; intent_snapshot_id: string | null }, []>(
+        `SELECT event_json, intent_snapshot_id FROM memory_provenance LIMIT 1`,
+      )
+      .get();
+    const event = JSON.parse(row?.event_json ?? "{}") as { intent_snapshot_id?: string };
+    expect(event.intent_snapshot_id).toBe("run-42");
+    expect(row?.intent_snapshot_id).toBe("run-42");
+  });
+
   test("umap input endpoint requires projection source", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-no-projection" };

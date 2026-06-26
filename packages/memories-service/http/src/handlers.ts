@@ -1,6 +1,13 @@
+import type {
+  BuildHttpRequestAttestationInput,
+  HttpRequestContributorSigner,
+} from "@khoralabs/memories-attestation";
+import { buildHttpRequestAttestation } from "@khoralabs/memories-attestation";
+import type { MemoryMutationAttribution } from "@khoralabs/memories-persistence-core/provenance";
 import type { GraphProjectionSource } from "@khoralabs/memories-projections";
 import type { MemoriesDatabaseService } from "@khoralabs/memories-service";
 import {
+  type AuthenticatedActor,
   AuthStrategyError,
   type DatabaseAction,
   type MemoriesDatabaseAccessStrategy,
@@ -61,6 +68,14 @@ export class HttpError extends Error {
   }
 }
 
+export type HttpAttributionOptions = {
+  sign: HttpRequestContributorSigner;
+  principalForActor?: (actor: AuthenticatedActor) => string;
+  keyId?: string;
+  alg?: string;
+  now?: () => Date;
+};
+
 export type MemoriesServiceHttpOptions = {
   service: MemoriesDatabaseService;
   auth: MemoriesDatabaseAccessStrategy;
@@ -69,6 +84,7 @@ export type MemoriesServiceHttpOptions = {
     database: MemoriesDatabaseId;
     handle: MemoriesDatabaseHandle;
   }) => GraphProjectionSource | Promise<GraphProjectionSource | undefined>;
+  attribution?: HttpAttributionOptions;
 };
 
 function requireOntology(opts: MemoriesServiceHttpOptions): MemoriesDatabaseOntologyStore {
@@ -78,14 +94,26 @@ function requireOntology(opts: MemoriesServiceHttpOptions): MemoriesDatabaseOnto
   return opts.ontology;
 }
 
-async function readJsonBody(req: Request): Promise<unknown> {
+type ParsedJsonRequest = {
+  body: unknown;
+  bodySha256: string;
+};
+
+async function readJsonBody(req: Request): Promise<ParsedJsonRequest> {
   const text = await req.text();
-  if (text.trim().length === 0) return {};
+  const normalized = text.trim().length === 0 ? "{}" : text;
+  let body: unknown;
   try {
-    return JSON.parse(text) as unknown;
+    body = JSON.parse(normalized) as unknown;
   } catch {
     throw new HttpError("Invalid JSON body", 400);
   }
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalized));
+  const bodySha256 = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/u, "");
+  return { body, bodySha256 };
 }
 
 async function authorize(
@@ -93,9 +121,35 @@ async function authorize(
   req: Request,
   action: DatabaseAction,
   database?: MemoriesDatabaseId,
-): Promise<void> {
+): Promise<AuthenticatedActor> {
   const actor = await auth.authenticate(req);
   await auth.authorize({ actor, action, database });
+  return actor;
+}
+
+async function buildRequestAttribution(
+  opts: HttpAttributionOptions,
+  actor: AuthenticatedActor,
+  req: Request,
+  bodySha256: string,
+): Promise<MemoryMutationAttribution> {
+  const url = new URL(req.url);
+  const principal =
+    opts.principalForActor !== undefined
+      ? opts.principalForActor(actor)
+      : `${actor.scheme}:${actor.subject}`;
+  const buildInput: BuildHttpRequestAttestationInput = {
+    principal,
+    method: req.method,
+    path: url.pathname,
+    bodySha256,
+    sign: opts.sign,
+    issuedAt: (opts.now !== undefined ? opts.now() : new Date()).toISOString(),
+    ...(opts.alg !== undefined ? { alg: opts.alg } : {}),
+    ...(opts.keyId !== undefined ? { keyId: opts.keyId } : {}),
+  };
+  const contributor = await buildHttpRequestAttestation(buildInput);
+  return { contributor };
 }
 
 export async function handleMemoriesServiceHttpRequest(
@@ -113,126 +167,139 @@ export async function handleMemoriesServiceHttpRequest(
     }
 
     if (req.method === "POST" && url.pathname === "/databases/open") {
-      const id = parseDatabaseIdBody(await readJsonBody(req));
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "read", id);
       await opts.service.open(id);
       return jsonResponse({ ok: true, database: id });
     }
 
     if (req.method === "POST" && url.pathname === "/databases/exists") {
-      const id = parseDatabaseIdBody(await readJsonBody(req));
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "read", id);
       const exists = await opts.service.exists(id);
       return jsonResponse({ exists, database: id });
     }
 
     if (req.method === "POST" && url.pathname === "/databases/checkpoint") {
-      const id = parseDatabaseIdBody(await readJsonBody(req));
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "write", id);
       await opts.service.checkpoint(id);
       return jsonResponse({ ok: true, database: id });
     }
 
     if (req.method === "POST" && url.pathname === "/databases/close") {
-      const id = parseDatabaseIdBody(await readJsonBody(req));
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "manage", id);
       await opts.service.close(id);
       return jsonResponse({ ok: true, database: id });
     }
 
     if (req.method === "DELETE" && url.pathname === "/databases") {
-      const id = parseDatabaseIdBody(await readJsonBody(req));
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "manage", id);
       await opts.service.delete(id);
       return jsonResponse({ ok: true, database: id });
     }
 
     if (req.method === "POST" && url.pathname === "/databases/search") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseSearch(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/merge") {
-      const body = await readJsonBody(req);
+      const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id);
-      return handleDatabaseMerge(opts.service, body);
+      const actor = await authorize(opts.auth, req, "write", id);
+      const attribution =
+        opts.attribution !== undefined
+          ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
+          : undefined;
+      return handleDatabaseMerge(opts.service, body, attribution);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/delete-memory") {
-      const body = await readJsonBody(req);
+      const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id);
-      return handleDatabaseDeleteMemory(opts.service, body);
+      const actor = await authorize(opts.auth, req, "write", id);
+      const attribution =
+        opts.attribution !== undefined
+          ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
+          : undefined;
+      return handleDatabaseDeleteMemory(opts.service, body, attribution);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/provenance/head") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseProvenanceHead(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/capabilities") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseCapabilities(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseNamespaces(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/edge-preview") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseEdgePreview(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/source-map/text-preview") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseSourceMapTextPreview(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/vector-dimensions") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseVectorDimensions(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/projections/umap-input") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return await handleDatabaseUmapInput(opts.service, opts.projectionSource, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ensure-scope-chain") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id);
       return handleDatabaseEnsureScopeChain(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/find-memory-id") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseFindMemoryId(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/load-memory-namespace-key") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseLoadMemoryNamespaceKey(opts.service, body);
@@ -240,45 +307,45 @@ export async function handleMemoriesServiceHttpRequest(
 
     if (req.method === "POST" && url.pathname === "/ontologies/register") {
       await authorize(opts.auth, req, "manage");
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       return handleOntologyRegister(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/ontologies/get") {
       await authorize(opts.auth, req, "read");
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       return handleOntologyGet(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/ontologies/databases") {
       await authorize(opts.auth, req, "manage");
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       return handleOntologyListDatabases(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ontology/link") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id);
       return handleDatabaseOntologyLink(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ontology/current") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseOntologyCurrent(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/hash") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseHash(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ontology/history") {
-      const body = await readJsonBody(req);
+      const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseOntologyHistory(requireOntology(opts), body);

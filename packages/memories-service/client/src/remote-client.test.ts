@@ -28,4 +28,27 @@ describe("memories service client wire", () => {
   test("exports ontology type for remote clients", () => {
     expect(ontology.nodeLabels).toEqual({});
   });
+
+  test("DatabaseMergeRequest includes intentSnapshotId but not contributor", () => {
+    const req = {
+      database: { kind: "account", ownerKey: "owner" },
+      params: { kind: "node", key: "k1", namespace: "ns", labels: [], content: [] },
+      intentSnapshotId: "run-1",
+    };
+    const json = JSON.stringify(req);
+    expect(json).toContain("intentSnapshotId");
+    expect(json).not.toContain("contributor");
+  });
+
+  test("DatabaseDeleteMemoryRequest includes intentSnapshotId but not contributor", () => {
+    const req = {
+      database: { kind: "account", ownerKey: "owner" },
+      namespace: "ns",
+      key: "k1",
+      intentSnapshotId: "run-2",
+    };
+    const json = JSON.stringify(req);
+    expect(json).toContain("intentSnapshotId");
+    expect(json).not.toContain("contributor");
+  });
 });
