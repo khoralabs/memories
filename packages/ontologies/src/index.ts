@@ -4,7 +4,7 @@ export * from "./families/knowledge";
 export * from "./families/preferences";
 export * from "./families/relations";
 export * from "./families/retrieval";
+export * from "./families/salience";
 export * from "./families/temporal";
-export * from "./label-props-canonical-format";
 export * from "./merge-ontologies";
 export * from "./ontology";

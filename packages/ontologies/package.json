@@ -60,6 +60,11 @@
       "import": "./src/families/retrieval.ts",
       "default": "./src/families/retrieval.ts"
     },
+    "./families/salience": {
+      "types": "./src/families/salience.ts",
+      "import": "./src/families/salience.ts",
+      "default": "./src/families/salience.ts"
+    },
     "./families/temporal": {
       "types": "./src/families/temporal.ts",
       "import": "./src/families/temporal.ts",

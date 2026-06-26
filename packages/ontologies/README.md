@@ -4,7 +4,7 @@ Ontology contracts, merge helpers, and default vocabulary families for personal 
 
 ## Exports
 
-- **Canonical families** — grouped shape maps and formatters such as `canonicalEntityNodeLabelShapes`, `canonicalKnowledgeNodeLabelShapes`, `canonicalTemporalNodeLabelShapes`, `canonicalRelationEdgeLabelShapes`, `canonicalRetrievalEdgeLabelShapes`, and `canonicalEntityLabelPropsSearchFormatter`.
+- **Canonical families** — grouped shape maps and formatters such as `canonicalEntityNodeLabelShapes`, `canonicalKnowledgeNodeLabelShapes`, `canonicalTemporalNodeLabelShapes`, `canonicalRelationEdgeLabelShapes`, `canonicalRetrievalEdgeLabelShapes`, `canonicalSalienceNodeLabelShapes`, and `canonicalEntityLabelPropsSearchFormatter`.
 - **Individual canonical shapes** — Zod schemas such as `personNodeLabelShape`, `factNodeLabelShape`, and `referencesEdgeLabelShape` for assembling only the ontology pieces your implementation needs.
 - **`canonicalOntology`** — deprecated compatibility export assembled from the family maps.
 - **`canonicalLabelPropsSearchFormatter`** — formatter for canonical ontology kinds in label-props search text.
@@ -37,6 +37,7 @@ const client = new MemoriesClient(appOntology, { persistence });
 
 Families are also available as subpath imports, for example
 `@khoralabs/memories-ontologies/families/entities`.
+Use `@khoralabs/memories-ontologies/families/salience` for generic `memory` / `related` labels with salience facets, or `salienceRetrievalMemoryOntology` when you also want retrieval similarity labels.
 `canonicalOntology` is still exported for compatibility, but new code should assemble shapes directly.
 
 On kind collision, the **last** argument to `mergeOntologies` wins.
