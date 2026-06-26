@@ -114,6 +114,7 @@ export class MemoriesClient<
         attachScopes: params.attachScopes,
         searchMetaVector: params.searchMetaVector,
         ontology: this.ontology,
+        attribution: params.attribution,
       });
       this.syncLexicalExportToStore(params.namespace, mergedKeys);
       return mergedKeys;
@@ -139,6 +140,7 @@ export class MemoriesClient<
       attachScopes: params.attachScopes,
       searchMetaVector: params.searchMetaVector,
       ontology: this.ontology,
+      attribution: params.attribution,
     });
     this.syncLexicalExportToStore(params.namespace, mergedKeys);
     return mergedKeys;

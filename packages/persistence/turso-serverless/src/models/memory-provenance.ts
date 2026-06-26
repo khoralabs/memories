@@ -40,6 +40,7 @@ export async function appendProvenanceEvent(
   const { parent_root_hex, root_hex } = nextProvenanceRoot(head, event);
   const eventJson = canonicalJson(event);
   const event_type = event.kind;
+  const intent_snapshot_id = event.intent_snapshot_id;
   const rowId = ids.provenance(parent_root_hex, eventJson);
   doc.parse({
     _id: rowId,
@@ -48,12 +49,13 @@ export async function appendProvenanceEvent(
     root_hex,
     event_type,
     event_json: eventJson,
+    ...(intent_snapshot_id !== undefined ? { intent_snapshot_id } : {}),
   });
   await ctxExec(
     ctx,
-    `INSERT INTO memory_provenance (_id, _ts_created, parent_root_hex, root_hex, event_type, event_json)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [rowId, ctx.now, parent_root_hex, root_hex, event_type, eventJson],
+    `INSERT INTO memory_provenance (_id, _ts_created, parent_root_hex, root_hex, event_type, event_json, intent_snapshot_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [rowId, ctx.now, parent_root_hex, root_hex, event_type, eventJson, intent_snapshot_id ?? null],
   );
   return { root_hex };
 }

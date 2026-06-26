@@ -48,6 +48,21 @@ export function provenanceChainLink(parentRootHex: string, leafDigest: Uint8Arra
   return sha256Bytes(combined);
 }
 
+export type ContributorAttestation = {
+  v: 1;
+  format: string;
+  principal: string;
+  payload: string;
+  signature: string;
+  alg?: string;
+  keyId?: string;
+};
+
+export type MemoryMutationAttribution = {
+  contributor?: ContributorAttestation;
+  intentSnapshotId?: string;
+};
+
 export type MergeMemoryProvenanceEvent = {
   v: 1;
   kind: "MERGE_MEMORY";
@@ -56,6 +71,8 @@ export type MergeMemoryProvenanceEvent = {
   memory_id: string;
   source_keys: string[];
   content_hashes?: Record<string, string>;
+  contributor?: ContributorAttestation;
+  intent_snapshot_id?: string;
 };
 
 export type DeleteMemoryProvenanceEvent = {
@@ -64,6 +81,8 @@ export type DeleteMemoryProvenanceEvent = {
   namespace: string;
   memory_key: string;
   memory_id: string;
+  contributor?: ContributorAttestation;
+  intent_snapshot_id?: string;
 };
 
 export type MemoryProvenanceEvent = MergeMemoryProvenanceEvent | DeleteMemoryProvenanceEvent;

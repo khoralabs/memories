@@ -17,7 +17,10 @@ import {
   resolveMemoriesBackendCapabilities,
   zVectorPayload,
 } from "@khoralabs/memories-persistence-core/persistence";
-import { computeSourceMapContentHash } from "@khoralabs/memories-persistence-core/provenance";
+import {
+  computeSourceMapContentHash,
+  type MemoryMutationAttribution,
+} from "@khoralabs/memories-persistence-core/provenance";
 import z from "zod";
 
 export {
@@ -31,6 +34,18 @@ export {
 
 export interface MutationCtx {
   persistence: MemoriesPersistence;
+}
+
+export type { MemoryMutationAttribution } from "@khoralabs/memories-persistence-core/provenance";
+
+export function buildMemoryOpContext(attribution?: MemoryMutationAttribution): MemoryOpContext {
+  return {
+    now: Date.now(),
+    ...(attribution?.contributor !== undefined ? { contributor: attribution.contributor } : {}),
+    ...(attribution?.intentSnapshotId !== undefined
+      ? { intentSnapshotId: attribution.intentSnapshotId }
+      : {}),
+  };
 }
 
 /** Reject reserved / system `source_key` values (prefix `__` and the search-meta key). */
@@ -74,6 +89,7 @@ export type MergeMemoryParamsNode<
   attachScopes?: NamespacePath[];
   searchMetaVector?: number[];
   ontology?: OntologyDefinition<TNode, TEdge>;
+  attribution?: MemoryMutationAttribution;
 };
 
 /** Merge into an **edge** memory (searchable unit attached to one graph edge). */
@@ -94,6 +110,7 @@ export type MergeMemoryParamsEdge<
   attachScopes?: NamespacePath[];
   searchMetaVector?: number[];
   ontology?: OntologyDefinition<TNode, TEdge>;
+  attribution?: MemoryMutationAttribution;
 };
 
 export type MergeMemoryParams<
@@ -226,8 +243,7 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
   params: MergeMemoryParamsNode<TNode, TEdge>,
 ): string[] {
   const { persistence } = ctx;
-  const now = Date.now();
-  const op = { now };
+  const op = buildMemoryOpContext(params.attribution);
 
   const namespace = zNamespacePath.parse(params.namespace);
   const memoryId = ids.memory(namespace, params.key);
@@ -361,6 +377,8 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       memory_id: memoryId,
       source_keys: sourceKeysSorted,
       ...(sortedHashes !== undefined ? { content_hashes: sortedHashes } : {}),
+      ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
+      ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
     });
     persistence.appendContentOutbox?.(op, {
       root_hex,
@@ -379,8 +397,7 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
   params: MergeMemoryParamsEdge<TNode, TEdge>,
 ): string[] {
   const { persistence } = ctx;
-  const now = Date.now();
-  const op = { now };
+  const op = buildMemoryOpContext(params.attribution);
 
   const namespace = zNamespacePath.parse(params.namespace);
   const memoryId = ids.memory(namespace, params.key);
@@ -501,6 +518,8 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       memory_id: memoryId,
       source_keys: sourceKeysSorted,
       ...(sortedHashes !== undefined ? { content_hashes: sortedHashes } : {}),
+      ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
+      ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
     });
     persistence.appendContentOutbox?.(op, {
       root_hex,

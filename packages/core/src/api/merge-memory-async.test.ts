@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { ids } from "@khoralabs/memories-persistence-core";
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+import type {
+  MemoriesPersistenceAsync,
+  MemoryOpContext,
+} from "@khoralabs/memories-persistence-core/persistence";
+import type { MemoryProvenanceEvent } from "@khoralabs/memories-persistence-core/provenance";
 import { mergeMemoryAsync } from "./merge-memory-async";
 
 const vec512 = (): number[] => Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));
@@ -9,6 +13,12 @@ describe("mergeMemoryAsync", () => {
   test("syncMemorySearchMeta receives metaVector only for primary memoryKey", async () => {
     const syncMetaCalls: { memoryKey: string; metaVector?: Float32Array }[] = [];
     const labelPropsCalls: { memoryKey: string }[] = [];
+    let provenanceOp:
+      | { contributor?: { principal: string }; intentSnapshotId?: string }
+      | undefined;
+    let provenanceEvent:
+      | { contributor?: { principal: string }; intent_snapshot_id?: string }
+      | undefined;
     let sm = 0;
 
     const persistence = {
@@ -31,7 +41,11 @@ describe("mergeMemoryAsync", () => {
       insertLexicalFeature: async () => {},
       insertVectorFeature: async () => ({ vectorFeatureId: "vf" }),
       updateSourceMapContentHash: async () => {},
-      appendProvenanceEvent: async () => ({ root_hex: "mock-root-hex" }),
+      appendProvenanceEvent: async (op: MemoryOpContext, event: MemoryProvenanceEvent) => {
+        provenanceOp = op;
+        provenanceEvent = event;
+        return { root_hex: "mock-root-hex" };
+      },
       getProvenanceHeadRootHex: async () => undefined,
       ensureNodeLabel: async () => "nl",
       insertNodeLabelAssignment: async () => {},
@@ -60,6 +74,16 @@ describe("mergeMemoryAsync", () => {
         labels: [],
         content: [{ key: "body", text: "hello" }],
         searchMetaVector: vec512(),
+        attribution: {
+          contributor: {
+            v: 1,
+            format: "khora.direct-principal-v1",
+            principal: "did:key:z-test",
+            payload: "eyJ2IjoxfQ",
+            signature: "c2ln",
+          },
+          intentSnapshotId: "agent-run-1",
+        },
       },
     );
 
@@ -67,6 +91,10 @@ describe("mergeMemoryAsync", () => {
     expect(syncMetaCalls[0]?.memoryKey).toBe("primary");
     expect(syncMetaCalls[0]?.metaVector?.length).toBe(512);
     expect(labelPropsCalls).toEqual([{ memoryKey: "primary" }]);
+    expect(provenanceOp?.contributor?.principal).toBe("did:key:z-test");
+    expect(provenanceOp?.intentSnapshotId).toBe("agent-run-1");
+    expect(provenanceEvent?.contributor?.principal).toBe("did:key:z-test");
+    expect(provenanceEvent?.intent_snapshot_id).toBe("agent-run-1");
   });
 
   test("syncLabelPropsSearchFeatures invoked once per sync key (primary + edge targets)", async () => {

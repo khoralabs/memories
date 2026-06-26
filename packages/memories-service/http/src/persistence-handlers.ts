@@ -168,6 +168,13 @@ export async function handleDatabaseSearch(
   return Response.json({ hits: hits.map(serializeSearchHit), database });
 }
 
+function stripRemoteAttribution<T extends object>(params: T): Omit<T, "attribution"> {
+  const { attribution: _clientSuppliedAttribution, ...safeParams } = params as T & {
+    attribution?: unknown;
+  };
+  return safeParams;
+}
+
 export async function handleDatabaseMerge(
   service: MemoriesDatabaseService,
   body: unknown,
@@ -177,7 +184,7 @@ export async function handleDatabaseMerge(
   if (scoped.params === undefined || typeof scoped.params !== "object") {
     throw new HttpError("params is required", 400);
   }
-  const params = scoped.params as MergeMemoryParams;
+  const params = stripRemoteAttribution(scoped.params as MergeMemoryParams) as MergeMemoryParams;
   const ontology = ontologyFromMergeParams(scoped.params);
 
   let memoryIds: string[];

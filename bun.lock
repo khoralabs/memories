@@ -98,6 +98,19 @@
         "typescript": "^5",
       },
     },
+    "packages/attestation": {
+      "name": "@khoralabs/memories-attestation",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-persistence-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/autolink": {
       "name": "@khoralabs/memories-autolink",
       "version": "0.1.0",
@@ -444,6 +457,8 @@
     "@khoralabs/agent-capabilities-otel": ["@khoralabs/agent-capabilities-otel@0.1.1", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.1.1", "@opentelemetry/api": "^1.9.0", "pino": "^9.6.0" }, "peerDependencies": { "typescript": "^5" } }, "sha512-dsJSsS4IONrmwsWp/sqLwZVkzvHwr1mf9sZXNF2z9ELp6Bs+7e5HM7FMnN9JvhlAx63CI8YQuDhVOHRcrPt+zw=="],
 
     "@khoralabs/memories-adapter": ["@khoralabs/memories-adapter@workspace:packages/agents/adapter"],
+
+    "@khoralabs/memories-attestation": ["@khoralabs/memories-attestation@workspace:packages/attestation"],
 
     "@khoralabs/memories-autolink": ["@khoralabs/memories-autolink@workspace:packages/autolink"],
 

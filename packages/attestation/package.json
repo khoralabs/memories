@@ -1,0 +1,58 @@
+{
+  "name": "@khoralabs/memories-attestation",
+  "version": "0.1.0",
+  "description": "Contributor attestation envelopes and strategy-neutral verification helpers for Memories provenance.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/attestation"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/attestation#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./attestation": {
+      "types": "./src/attestation.ts",
+      "import": "./src/attestation.ts",
+      "default": "./src/attestation.ts"
+    },
+    "./registry": {
+      "types": "./src/registry.ts",
+      "import": "./src/registry.ts",
+      "default": "./src/registry.ts"
+    },
+    "./formats/direct-principal-v1": {
+      "types": "./src/formats/direct-principal-v1.ts",
+      "import": "./src/formats/direct-principal-v1.ts",
+      "default": "./src/formats/direct-principal-v1.ts"
+    },
+    "./formats/http-request-v1": {
+      "types": "./src/formats/http-request-v1.ts",
+      "import": "./src/formats/http-request-v1.ts",
+      "default": "./src/formats/http-request-v1.ts"
+    }
+  },
+  "dependencies": {
+    "@khoralabs/memories-persistence-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

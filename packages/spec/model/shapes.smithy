@@ -362,8 +362,20 @@ list IntegerList {
 
 // --- Persistence: shared op context ---
 
+structure ContributorAttestation {
+    v: Integer
+    format: String
+    principal: String
+    payload: String
+    signature: String
+    alg: String
+    keyId: String
+}
+
 structure MemoryOpContext {
     now: Long
+    contributor: ContributorAttestation
+    intentSnapshotId: String
 }
 
 structure GraphEdgeLink {

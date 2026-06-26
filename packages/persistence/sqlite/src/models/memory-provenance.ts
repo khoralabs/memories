@@ -42,6 +42,7 @@ export function appendProvenanceEvent(
   const { parent_root_hex, root_hex } = nextProvenanceRoot(head, event);
   const eventJson = canonicalJson(event);
   const event_type = event.kind;
+  const intent_snapshot_id = event.intent_snapshot_id;
   const rowId = ids.provenance(parent_root_hex, eventJson);
   doc.parse({
     _id: rowId,
@@ -50,7 +51,16 @@ export function appendProvenanceEvent(
     root_hex,
     event_type,
     event_json: eventJson,
+    ...(intent_snapshot_id !== undefined ? { intent_snapshot_id } : {}),
   });
-  stmts.insertMemoryProvenance.run(rowId, now, parent_root_hex, root_hex, event_type, eventJson);
+  stmts.insertMemoryProvenance.run(
+    rowId,
+    now,
+    parent_root_hex,
+    root_hex,
+    event_type,
+    eventJson,
+    intent_snapshot_id ?? null,
+  );
   return { root_hex };
 }

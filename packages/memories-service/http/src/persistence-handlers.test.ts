@@ -175,6 +175,50 @@ describe("memories service persistence http handlers", () => {
     expect(dimsRes.status).toBe(200);
   });
 
+  test("merge endpoint ignores client-supplied attribution while service attribution is deferred", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-no-spoof" };
+    await stack.service.open(database);
+
+    const mergeRes = await postJson(
+      "http://localhost/databases/merge",
+      {
+        database,
+        params: {
+          kind: "node",
+          key: "note-1",
+          namespace: "user/a",
+          content: [{ key: "text", text: "hello world" }],
+          labels: [],
+          attribution: {
+            contributor: {
+              v: 1,
+              format: "khora.direct-principal-v1",
+              principal: "did:key:z-spoof",
+              payload: "eyJ2IjoxfQ",
+              signature: "c2ln",
+            },
+            intentSnapshotId: "client-run-1",
+          },
+        },
+      },
+      stack,
+    );
+    expect(mergeRes.status).toBe(200);
+
+    const handle = await stack.service.getHandle(database);
+    const sqlite = handle.sqlite;
+    if (sqlite === undefined) throw new Error("expected sqlite handle");
+    const row = sqlite.db
+      .query<{ event_json: string; intent_snapshot_id: string | null }, []>(
+        `SELECT event_json, intent_snapshot_id FROM memory_provenance LIMIT 1`,
+      )
+      .get();
+    const event = JSON.parse(row?.event_json ?? "{}") as { contributor?: unknown };
+    expect(event.contributor).toBeUndefined();
+    expect(row?.intent_snapshot_id).toBeNull();
+  });
+
   test("umap input endpoint requires projection source", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-no-projection" };

@@ -1,12 +1,16 @@
 import type { NamespacePath } from "@khoralabs/memories-persistence-core";
 import { ids, zNamespacePath } from "@khoralabs/memories-persistence-core";
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+import type {
+  MemoriesPersistenceAsync,
+  MemoryOpContext,
+} from "@khoralabs/memories-persistence-core/persistence";
 import {
   resolveMemoriesBackendCapabilities,
   zVectorPayload,
 } from "@khoralabs/memories-persistence-core/persistence";
 import { computeSourceMapContentHash } from "@khoralabs/memories-persistence-core/provenance";
 import {
+  buildMemoryOpContext,
   catalogSchemaJsonForEdgeKind,
   catalogSchemaJsonForNodeKind,
   type MergeMemoryParams,
@@ -29,8 +33,7 @@ export async function mergeMemoryAsync(
 ): Promise<string[]> {
   const { persistence } = ctx;
   const caps = resolveMemoriesBackendCapabilities(persistence);
-  const now = Date.now();
-  const op = { now };
+  const op = buildMemoryOpContext(params.attribution);
 
   const namespace = zNamespacePath.parse(params.namespace);
 
@@ -65,7 +68,7 @@ async function mergeMemoryAsyncNode(
   ctx: MutationCtxAsync,
   params: MergeMemoryParamsNode,
   namespace: ReturnType<typeof zNamespacePath.parse>,
-  op: { now: number },
+  op: MemoryOpContext,
 ): Promise<string[]> {
   const { persistence } = ctx;
   const memoryId = ids.memory(namespace, params.key);
@@ -228,6 +231,8 @@ async function mergeMemoryAsyncNode(
       memory_id: memoryId,
       source_keys: sourceKeysSorted,
       ...(sortedHashes !== undefined ? { content_hashes: sortedHashes } : {}),
+      ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
+      ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
     });
     await persistence.appendContentOutbox?.(op, {
       root_hex,
@@ -245,7 +250,7 @@ async function mergeMemoryAsyncEdge(
   ctx: MutationCtxAsync,
   params: MergeMemoryParamsEdge,
   namespace: ReturnType<typeof zNamespacePath.parse>,
-  op: { now: number },
+  op: MemoryOpContext,
 ): Promise<string[]> {
   const { persistence } = ctx;
   const memoryId = ids.memory(namespace, params.key);
@@ -400,6 +405,8 @@ async function mergeMemoryAsyncEdge(
       memory_id: memoryId,
       source_keys: sourceKeysSorted,
       ...(sortedHashes !== undefined ? { content_hashes: sortedHashes } : {}),
+      ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
+      ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
     });
     await persistence.appendContentOutbox?.(op, {
       root_hex,

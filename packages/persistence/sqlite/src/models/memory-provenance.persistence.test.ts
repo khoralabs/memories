@@ -136,4 +136,41 @@ describe("memory provenance + content_hash (SQLite)", () => {
     ).toThrow("abort txn");
     expect(persistence.getProvenanceHeadRootHex()).toBeUndefined();
   });
+
+  test("appendProvenanceEvent stores contributor in event_json and intent snapshot column", () => {
+    const db = openTestMemoriesDatabase();
+    const persistence = createMemoriesPersistence(db);
+    const op: MemoryOpContext = { now: Date.now() };
+    const event = {
+      v: 1 as const,
+      kind: "MERGE_MEMORY" as const,
+      namespace: "ns",
+      memory_key: "signed",
+      memory_id: ids.memory("ns", "signed"),
+      source_keys: ["source"],
+      contributor: {
+        v: 1 as const,
+        format: "khora.direct-principal-v1",
+        principal: "did:key:z-test",
+        payload: "eyJ2IjoxfQ",
+        signature: "MEUCIQD",
+        alg: "EdDSA",
+        keyId: "did:key:z-test#z-test",
+      },
+      intent_snapshot_id: "agent-run-1",
+    };
+
+    persistence.withTransaction(() => {
+      persistence.appendProvenanceEvent(op, event);
+    });
+
+    const row = db
+      .query<{ root_hex: string; event_json: string; intent_snapshot_id: string | null }, []>(
+        `SELECT root_hex, event_json, intent_snapshot_id FROM memory_provenance ORDER BY _ts_created ASC LIMIT 1`,
+      )
+      .get();
+    expect(row?.root_hex).toBe(nextProvenanceRoot(undefined, event).root_hex);
+    expect(row?.event_json).toBe(canonicalJson(event));
+    expect(row?.intent_snapshot_id).toBe("agent-run-1");
+  });
 });

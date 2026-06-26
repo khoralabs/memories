@@ -130,8 +130,8 @@ export function prepareMemoriesSqliteStmts(db: Database): MemoriesSqliteStmts {
     ),
 
     insertMemoryProvenance: db.prepare(
-      `INSERT INTO memory_provenance (_id, _ts_created, parent_root_hex, root_hex, event_type, event_json)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO memory_provenance (_id, _ts_created, parent_root_hex, root_hex, event_type, event_json, intent_snapshot_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ),
 
     insertContentOutbox: db.prepare(

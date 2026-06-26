@@ -91,6 +91,7 @@ export { deleteMemoryAsync } from "../models/delete-memory-async";
 export * from "./client";
 export * from "./client-async";
 export type {
+  MemoryMutationAttribution,
   MergeMemoryContentItem,
   MergeMemoryParams,
   MergeMemoryParamsEdge,
@@ -100,6 +101,7 @@ export type {
 export {
   buildCanonicalMemorySearchMetaText,
   buildCanonicalMemorySearchMetaTextForMerge,
+  buildMemoryOpContext,
   catalogSchemaJsonForEdgeKind,
   catalogSchemaJsonForNodeKind,
   MEMORY_SEARCH_META_SOURCE_KEY,

@@ -1,8 +1,13 @@
-import type { MutationCtx } from "../api/merge-memory";
+import {
+  buildMemoryOpContext,
+  type MemoryMutationAttribution,
+  type MutationCtx,
+} from "../api/merge-memory";
 
 export interface DeleteMemoryParams {
   namespace: string;
   key: string;
+  attribution?: MemoryMutationAttribution;
 }
 
 /**
@@ -12,8 +17,7 @@ export interface DeleteMemoryParams {
  */
 export function deleteMemory(ctx: MutationCtx, params: DeleteMemoryParams): void {
   const { persistence } = ctx;
-  const now = Date.now();
-  const op = { now };
+  const op = buildMemoryOpContext(params.attribution);
 
   persistence.withTransaction(() => {
     const assoc = persistence.findMemoryAssociation(params.namespace, params.key);
@@ -48,6 +52,8 @@ export function deleteMemory(ctx: MutationCtx, params: DeleteMemoryParams): void
       namespace: params.namespace,
       memory_key: params.key,
       memory_id: assoc.memoryId,
+      ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
+      ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
     });
     persistence.appendContentOutbox?.(op, {
       root_hex,
