@@ -1,4 +1,4 @@
-import { defineOntology, type LabelSchemaMap, type OntologyDefinition } from "../api/ontology";
+import { defineOntology, type LabelSchemaMap, type OntologyDefinition } from "./ontology";
 
 type OntologyDef = OntologyDefinition<LabelSchemaMap, LabelSchemaMap>;
 
@@ -9,7 +9,7 @@ type MergeTwo<A extends OntologyDef, B extends OntologyDef> =
       : never
     : never;
 
-/** Left-to-right fold: first ontology’s keys are overwritten by later ones on collision. */
+/** Left-to-right fold: first ontology's keys are overwritten by later ones on collision. */
 export type MergeOntologyTuple<T extends readonly OntologyDef[]> = T extends readonly []
   ? never
   : T extends readonly [infer Only extends OntologyDef]

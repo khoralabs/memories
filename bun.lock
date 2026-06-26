@@ -114,6 +114,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^4.0.23",
+        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/sourcemaps": "^0.1.0",
         "@standard-schema/spec": "^1.1.0",
@@ -122,7 +123,6 @@
       },
       "devDependencies": {
         "@khoralabs/memories-autolink": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/memories-sqlite": "workspace:*",
         "@types/bun": "latest",
         "zod": "^4.2",
@@ -235,7 +235,6 @@
       "name": "@khoralabs/memories-service-storage-turso-serverless",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-service": "workspace:*",
         "@khoralabs/memories-service-storage-core": "workspace:*",
         "@khoralabs/memories-turso-serverless": "workspace:*",
       },
@@ -250,7 +249,8 @@
       "name": "@khoralabs/memories-ontologies",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
+        "@standard-schema/spec": "^1.1.0",
         "zod": "^4.2",
       },
       "devDependencies": {

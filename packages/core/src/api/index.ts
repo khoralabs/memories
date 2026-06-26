@@ -1,3 +1,22 @@
+/** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
+export type {
+  EdgeLabelInstance,
+  LabelSchemaMap,
+  NodeLabelInstance,
+  OntologyDefinition,
+  OntologyLabelInstance,
+  StandardJSONSchemaV1,
+  StandardSchemaV1,
+} from "@khoralabs/memories-ontologies";
+/** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
+export {
+  defineOntology,
+  edgeLabelPropsSchema,
+  nodeLabelPropsSchema,
+  propsSchemaToJson,
+  validateEdgeLabel,
+  validateNodeLabel,
+} from "@khoralabs/memories-ontologies";
 export type {
   HydratedNeighbor,
   HydratedSourceMapHit,
@@ -80,7 +99,6 @@ export {
   zUserSourceKey,
 } from "./merge-memory";
 export * from "./merge-memory-async";
-export * from "./ontology";
 export * from "./resolve-sourcemap";
 export type {
   NeighborSearchOption,

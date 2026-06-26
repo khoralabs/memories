@@ -25,6 +25,16 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./ontology": {
+      "types": "./src/ontology.ts",
+      "import": "./src/ontology.ts",
+      "default": "./src/ontology.ts"
+    },
+    "./merge-ontologies": {
+      "types": "./src/merge-ontologies.ts",
+      "import": "./src/merge-ontologies.ts",
+      "default": "./src/merge-ontologies.ts"
+    },
     "./families/entities": {
       "types": "./src/families/entities.ts",
       "import": "./src/families/entities.ts",
@@ -52,7 +62,8 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-core": "workspace:*",
+    "@khoralabs/memories-persistence-core": "workspace:*",
+    "@standard-schema/spec": "^1.1.0",
     "zod": "^4.2"
   },
   "devDependencies": {

@@ -1,3 +1,4 @@
+import type { LabelSchemaMap } from "@khoralabs/memories-ontologies";
 import {
   buildCanonicalMemorySearchMetaText,
   buildCanonicalMemorySearchMetaTextAsync,
@@ -8,7 +9,6 @@ import {
 import type { MemoriesClient, TypedSearchHit } from "../api/client";
 import { MemoriesClientAsync } from "../api/client-async";
 import type { MergeMemoryContentItem, MergeMemoryParamsNode } from "../api/merge-memory";
-import type { LabelSchemaMap } from "../api/ontology";
 import type { SearchContent } from "../api/search";
 import type { EmbeddingModel } from "./embedding-model";
 import { embedTextChunks } from "./embedding-model";

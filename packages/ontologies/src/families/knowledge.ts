@@ -1,4 +1,4 @@
-import type { LabelPropsSearchFormatter } from "@khoralabs/memories-core";
+import type { LabelPropsSearchFormatter } from "@khoralabs/memories-persistence-core";
 import z from "zod";
 import { nl, s } from "./format-helpers";
 

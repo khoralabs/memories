@@ -1,3 +1,10 @@
+import type {
+  EdgeLabelInstance,
+  LabelSchemaMap,
+  NodeLabelInstance,
+  OntologyDefinition,
+} from "@khoralabs/memories-ontologies";
+import { propsSchemaToJson } from "@khoralabs/memories-ontologies";
 import type { NamespacePath } from "@khoralabs/memories-persistence-core";
 import {
   ids,
@@ -12,13 +19,6 @@ import {
 } from "@khoralabs/memories-persistence-core/persistence";
 import { computeSourceMapContentHash } from "@khoralabs/memories-persistence-core/provenance";
 import z from "zod";
-import type {
-  EdgeLabelInstance,
-  LabelSchemaMap,
-  NodeLabelInstance,
-  OntologyDefinition,
-} from "./ontology";
-import { propsSchemaToJson } from "./ontology";
 
 export {
   buildCanonicalMemorySearchMetaTextForMerge,

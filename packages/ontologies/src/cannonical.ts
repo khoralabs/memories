@@ -1,4 +1,3 @@
-import { defineOntology } from "@khoralabs/memories-core";
 import { canonicalEntityNodeLabelShapes } from "./families/entities";
 import { canonicalKnowledgeNodeLabelShapes } from "./families/knowledge";
 import { canonicalPreferenceNodeLabelShapes } from "./families/preferences";
@@ -7,6 +6,7 @@ import {
   canonicalTemporalEdgeLabelShapes,
   canonicalTemporalNodeLabelShapes,
 } from "./families/temporal";
+import { defineOntology } from "./ontology";
 
 /**
  * Default graph vocabulary for personal/agent memory: people, places, time, facts, and how they relate.

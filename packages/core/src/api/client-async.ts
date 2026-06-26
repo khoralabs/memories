@@ -1,3 +1,9 @@
+import {
+  type LabelSchemaMap,
+  type OntologyDefinition,
+  validateEdgeLabel,
+  validateNodeLabel,
+} from "@khoralabs/memories-ontologies";
 import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
 import type { ResolvedSource } from "@khoralabs/sourcemaps";
 import type { DeleteMemoryParams } from "../models/delete-memory";
@@ -9,8 +15,6 @@ import {
   mergeMemoryAsync,
   zMergeMemoryContentItem,
 } from "./merge-memory-async";
-import type { LabelSchemaMap, OntologyDefinition } from "./ontology";
-import { validateEdgeLabel, validateNodeLabel } from "./ontology";
 import type { Store } from "./resolve-sourcemap.js";
 import {
   type SearchHit,

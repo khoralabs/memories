@@ -1,6 +1,6 @@
 # @khoralabs/memories-ontologies
 
-Default ontology vocabulary for personal and agent memory graphs. Defines node and edge label kinds with Zod schemas used by `defineOntology` from `@khoralabs/memories-core`.
+Ontology contracts, merge helpers, and default vocabulary families for personal and agent memory graphs.
 
 ## Exports
 
@@ -8,17 +8,18 @@ Default ontology vocabulary for personal and agent memory graphs. Defines node a
 - **Individual canonical shapes** — Zod schemas such as `personNodeLabelShape`, `factNodeLabelShape`, and `referencesEdgeLabelShape` for assembling only the ontology pieces your implementation needs.
 - **`canonicalOntology`** — deprecated compatibility export assembled from the family maps.
 - **`canonicalLabelPropsSearchFormatter`** — formatter for canonical ontology kinds in label-props search text.
+- **`defineOntology` / `mergeOntologies`** — ontology construction and composition helpers.
 
 ## Usage
 
 Assemble the shapes you need:
 
 ```ts
-import { defineOntology } from "@khoralabs/memories-core";
 import {
   canonicalEntityNodeLabelShapes,
   canonicalKnowledgeNodeLabelShapes,
   canonicalRelationEdgeLabelShapes,
+  defineOntology,
 } from "@khoralabs/memories-ontologies";
 
 export const appOntology = defineOntology({

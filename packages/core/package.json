@@ -47,7 +47,6 @@
   },
   "devDependencies": {
     "@khoralabs/memories-autolink": "workspace:*",
-    "@khoralabs/memories-ontologies": "workspace:*",
     "@khoralabs/memories-sqlite": "workspace:*",
     "@types/bun": "latest",
     "zod": "^4.2"
@@ -56,6 +55,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@khoralabs/memories-ontologies": "workspace:*",
     "@khoralabs/memories-persistence-core": "workspace:*",
     "@khoralabs/sourcemaps": "^0.1.0",
     "@standard-schema/spec": "^1.1.0",

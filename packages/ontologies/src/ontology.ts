@@ -113,7 +113,7 @@ export function edgeLabelPropsSchema<TNode extends LabelSchemaMap, TEdge extends
 }
 
 /**
- * Builds a typed ontology. Pass Standard Schema–compatible schemas per kind; empty objects use an empty object schema.
+ * Builds a typed ontology. Pass Standard Schema-compatible schemas per kind; empty objects use an empty object schema.
  */
 export function defineOntology<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   def: OntologyDefinition<TNode, TEdge>,

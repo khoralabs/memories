@@ -1,12 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import {
-  RETRIEVAL_AUTOLINK_EDGE_KIND,
-  RETRIEVAL_BOOTSTRAP_NODE_KIND,
-  retrievalAutolinkOntology,
-} from "@khoralabs/memories-autolink";
 import z from "zod";
-import { defineOntology } from "../api/ontology";
 import { mergeOntologies } from "./merge-ontologies";
+import { defineOntology } from "./ontology";
 
 describe("mergeOntologies", () => {
   test("layers retrieval kinds over base", () => {
@@ -14,11 +9,15 @@ describe("mergeOntologies", () => {
       nodeLabels: { fact: z.object({ text: z.string() }) },
       edgeLabels: { relates: z.object({}) },
     });
-    const merged = mergeOntologies(base, retrievalAutolinkOntology);
+    const retrieval = defineOntology({
+      nodeLabels: { retrieval_bootstrap: z.object({ query: z.string() }) },
+      edgeLabels: { retrieval_autolink: z.object({ score: z.number() }) },
+    });
+    const merged = mergeOntologies(base, retrieval);
     expect(merged.nodeLabels).toHaveProperty("fact");
-    expect(merged.nodeLabels).toHaveProperty(RETRIEVAL_BOOTSTRAP_NODE_KIND);
+    expect(merged.nodeLabels).toHaveProperty("retrieval_bootstrap");
     expect(merged.edgeLabels).toHaveProperty("relates");
-    expect(merged.edgeLabels).toHaveProperty(RETRIEVAL_AUTOLINK_EDGE_KIND);
+    expect(merged.edgeLabels).toHaveProperty("retrieval_autolink");
   });
 
   test("merges three layers; last key wins on collision", () => {
