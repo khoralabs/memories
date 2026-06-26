@@ -1,6 +1,7 @@
 import path from "node:path";
 import {
   createBackendResolver,
+  createCompositeBackendFactory,
   createMemoriesDatabaseService,
   type MemoriesDatabaseService,
 } from "@khoralabs/memories-service";
@@ -10,6 +11,7 @@ import type {
   MemoriesDatabasePlacementStore,
   SqliteBackendStrategy,
 } from "@khoralabs/memories-service-storage-core";
+import { createTursoServerlessBackendFactory } from "@khoralabs/memories-service-storage-turso-serverless";
 import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-sqlite";
 import { createLocalSqliteBackendFactory } from "./local-sqlite-backend";
 import { createSqliteOntologyStore } from "./ontology-registry";
@@ -53,7 +55,12 @@ export function createLocalSqliteServiceStack(
     registryPath: ontologyRegistryPath,
     sqlCipherKey: opts.sqlCipherKey,
   });
-  const factory = opts.backendFactory ?? createLocalSqliteBackendFactory();
+  const factory =
+    opts.backendFactory ??
+    createCompositeBackendFactory({
+      sqlite: createLocalSqliteBackendFactory(),
+      "turso-serverless": createTursoServerlessBackendFactory(),
+    });
   const resolver = createBackendResolver({ placement, factory });
   const service = createMemoriesDatabaseService({
     resolver,

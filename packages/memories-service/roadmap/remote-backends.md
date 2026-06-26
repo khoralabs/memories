@@ -2,29 +2,34 @@
 
 Backend strategies beyond local SQLCipher files: libSQL/Turso, remote Memories nodes, and principal-registered endpoints for self-custody.
 
-**Status:** Only `{ kind: "sqlite"; dataDir; sqlCipherKey? }` is implemented in `@khoralabs/memories-service-storage-sqlite`.
-
 ## Strategy model
 
-The core type intentionally keeps one known branch plus an escape hatch:
+`MemoriesDatabaseBackendStrategy` is a discriminated union with one named branch per implemented backend plus an open escape hatch:
 
 ```ts
 type MemoriesDatabaseBackendStrategy =
   | { kind: "sqlite"; dataDir: string; sqlCipherKey?: string; capabilities?: Partial<MemoriesBackendCapabilities> }
+  | { kind: "turso-serverless"; url: string; authToken?: string; remoteEncryptionKey?: string; capabilities?: Partial<MemoriesBackendCapabilities> }
   | { kind: string; capabilities?: Partial<MemoriesBackendCapabilities>; [key: string]: unknown };
 ```
 
-New backends add packages that implement `MemoriesDatabaseBackend` + `MemoriesDatabaseBackendFactory` and register strategies through placement overrides or the default strategy. Set `capabilities` on the strategy so hosts and agents know what persistence features are available without opening a connection. Fields for remote/libSQL shapes stay in the open branch until use cases stabilize.
+New backends add packages that implement `MemoriesDatabaseBackend` + `MemoriesDatabaseBackendFactory` and register strategies through placement overrides or the default strategy. Set `capabilities` on the strategy so hosts and agents know what persistence features are available without opening a connection.
 
-## libSQL / Turso
+## libSQL / Turso — implemented
 
-Local libSQL and hosted Turso are both "sqlite-shaped" persistence but not file-path hosting. Likely direction:
+`@khoralabs/memories-service-storage-turso-serverless` is implemented. The `turso-serverless` strategy kind is in the `MemoriesDatabaseBackendStrategy` union and the backend supports `open`, `exists`, `delete`, and `close`. Snapshot and list are not supported (unsupported-storage-feature).
 
-- New backend package (e.g. `storage-libsql`)
-- Strategy fields: `url`, `authToken`, optional local replica path
-- Same `MemoriesPersistence` surface via `@khoralabs/memories-sqlite` or a libSQL client adapter
+### Gap: composite factory not wired in the service stack
 
-Open questions: SQLCipher compatibility, vec extension support, backup semantics vs file backends.
+`createLocalSqliteServiceStack` currently passes only `createLocalSqliteBackendFactory()` as the node backend factory. Placement overrides that point a database to `{ kind: "turso-serverless", ... }` will throw `UnknownBackendStrategyError` at runtime because there is no registered factory for that kind.
+
+**Work needed:**
+
+1. Change `createLocalSqliteServiceStack` (or add a new stack variant) to build a `createCompositeBackendFactory({ sqlite: ..., "turso-serverless": ... })` and use it as the resolver's factory.
+2. Expose `createTursoServerlessBackendFactory` from `storage-turso-serverless` in the stack wiring (already exported from that package).
+3. Add validation in the placement store / HTTP layer that an override strategy references a kind the host has a factory for (already noted in [placement-admin-api.md](./placement-admin-api.md)).
+
+Once the composite factory is wired, operators can register turso-serverless overrides via `placement.setOverride` today, and through the HTTP admin API once [placement-admin-api.md](./placement-admin-api.md) ships.
 
 ## Remote Memories node
 
@@ -58,6 +63,6 @@ Stay backend-specific. The service may expose capability metadata per backend; i
 
 ## Implementation order
 
-1. libSQL backend package (if Turso/local libSQL is the next concrete need)
+1. Wire composite backend factory in the service stack so turso-serverless placement overrides work (see Gap section above)
 2. Remote HTTP persistence client + remote backend factory
 3. Principal node registration and discovery (likely coupled with DID auth)
