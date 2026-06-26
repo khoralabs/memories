@@ -4,6 +4,7 @@ export * from "./graph/label-property-features";
 export * from "./graph/layout-core";
 export * from "./graph/layout-types";
 export * from "./graph/qualified-memory-key";
+export * from "./graph/umap-input";
 export * from "./graph/umap-layout";
 export * from "./source";
 export * from "./visualization";

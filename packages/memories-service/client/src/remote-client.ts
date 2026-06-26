@@ -8,6 +8,12 @@ import type {
   MemoriesBackendCapabilities,
   MemoriesPersistenceAsync,
 } from "@khoralabs/memories-core/persistence";
+import {
+  decodeUmapInput,
+  type NamespaceUmapInput,
+  UMAP_INPUT_ENCODING_HEADER,
+  type UmapInputCompression,
+} from "@khoralabs/memories-projections";
 import type { MemoriesDatabaseId } from "@khoralabs/memories-service";
 
 import { MemoriesServiceClient, type MemoriesServiceClientOptions } from "./client";
@@ -18,6 +24,7 @@ import {
   type DatabaseProvenanceHeadResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
+  type DatabaseUmapInputRequest,
   deserializeSearchHits,
   type SearchHitWire,
 } from "./wire";
@@ -148,6 +155,36 @@ export class RemoteMemoriesReadClient {
       { database: this.#database },
     );
     return response.dimensions;
+  }
+
+  async fetchUmapInput(input: {
+    namespace: string;
+    scope?: "exact" | "subtree";
+    compression?: UmapInputCompression;
+    includeProvenanceHead?: boolean;
+    dangerousSkipValidation?: boolean;
+  }): Promise<NamespaceUmapInput> {
+    const compression = input.compression ?? "gzip";
+    const body: DatabaseUmapInputRequest = {
+      database: this.#database,
+      namespace: input.namespace,
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
+      compression,
+      ...(input.includeProvenanceHead !== undefined
+        ? { includeProvenanceHead: input.includeProvenanceHead }
+        : {}),
+    };
+    const response = await this.#client.postBinaryResponse(
+      "/databases/projections/umap-input",
+      body,
+    );
+    const responseCompression =
+      (response.headers.get(UMAP_INPUT_ENCODING_HEADER) as UmapInputCompression | null) ??
+      compression;
+    return decodeUmapInput(await response.arrayBuffer(), {
+      compression: responseCompression,
+      dangerousSkipValidation: input.dangerousSkipValidation,
+    });
   }
 
   async ensureScopeChain(scopePaths: readonly string[]): Promise<void> {

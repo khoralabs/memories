@@ -8,6 +8,9 @@ Strategy-neutral graph projection code for Memories: source interfaces, layout m
 - `GraphProjectionGraphReads` — graph read shape consumed from `MemoriesPersistence` / `MemoriesPersistenceAsync`.
 - `buildNamespaceGraphLayoutFromSource` — builds one namespace layout from a source and graph reads.
 - `buildNamespaceSubtreeGraphLayoutFromSource` — builds a subtree layout with qualified `namespace::key` node ids.
+- `collectNamespaceUmapInput` / `collectNamespaceSubtreeUmapInput` — run storage-local reads and return JSON-safe UMAP input rows without running UMAP.
+- `encodeUmapInput` / `decodeUmapInput` / `validateUmapInput` — optional gzip transport helpers for sending UMAP input to workers.
+- `buildNamespaceGraphLayoutFromUmapInput` — run UMAP from a collected input payload.
 - `createMemoriesVisualizationFromSource` — async facade for layout and preview calls.
 - UMAP helpers and layout types: `NamespaceGraphLayout`, `GraphLayoutNode`, `GraphLayoutEdge`, `umap3DLayout`, `minMaxNormalize3D`.
 
@@ -21,6 +24,25 @@ import {
 
 const source: GraphProjectionSource = createYourStrategySource(localDb);
 const layout = await buildNamespaceGraphLayoutFromSource(source, persistence, "app/user-1");
+```
+
+For worker-based projection, split the pipeline:
+
+```ts
+import {
+  buildNamespaceGraphLayoutFromUmapInput,
+  collectNamespaceUmapInput,
+  decodeUmapInput,
+  encodeUmapInput,
+} from "@khoralabs/memories-projections";
+
+// service/storage-local process
+const input = await collectNamespaceUmapInput(source, persistence, "app/user-1");
+const payload = await encodeUmapInput(input, { compression: "gzip" });
+
+// external worker process
+const decoded = await decodeUmapInput(payload, { compression: "gzip" });
+const layout = buildNamespaceGraphLayoutFromUmapInput(decoded);
 ```
 
 ## Strategy Boundary

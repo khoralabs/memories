@@ -116,6 +116,13 @@ export type DatabaseSourceMapTextPreviewResponse = { text: string | null };
 export type DatabaseVectorDimensionsRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseVectorDimensionsResponse = { dimensions: number[] };
 
+export type DatabaseUmapInputRequest = DatabaseScopedBody<{
+  namespace: string;
+  scope?: "exact" | "subtree";
+  compression?: "gzip" | "none";
+  includeProvenanceHead?: boolean;
+}>;
+
 export type DatabaseEnsureScopeChainRequest = DatabaseScopedBody<{ scopePaths: string[] }>;
 export type DatabaseEnsureScopeChainResponse = { ok: true };
 

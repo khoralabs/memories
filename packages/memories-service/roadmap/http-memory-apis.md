@@ -45,6 +45,7 @@ POST /databases/namespaces
 POST /databases/edge-preview
 POST /databases/source-map/text-preview
 POST /databases/vector-dimensions
+POST /databases/projections/umap-input
 POST /databases/ensure-scope-chain
 POST /databases/find-memory-id
 POST /databases/load-memory-namespace-key
@@ -84,6 +85,7 @@ await client.mergeMemory(params);
 const reads = createRemoteMemoriesReadClient({ baseUrl, database, auth });
 await reads.listNamespaces();
 await reads.getSourceMapTextPreview(sourceMapId);
+await reads.fetchUmapInput({ namespace, scope: "subtree" });
 ```
 
 Hosts use these clients from backend services, app routes, and workflow adapters.

@@ -80,6 +80,10 @@ export class MemoriesServiceClient {
     return (await response.json()) as T;
   }
 
+  async postBinaryResponse(path: string, body: unknown): Promise<Response> {
+    return this.requestJson("POST", path, body);
+  }
+
   private async requestJson(method: string, path: string, body?: unknown): Promise<Response> {
     const init = await this.auth.applyAuth({
       method,

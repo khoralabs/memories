@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@khoralabs/memories-core": "workspace:*",
+    "@khoralabs/memories-projections": "workspace:*",
     "@khoralabs/memories-service": "workspace:*",
     "@khoralabs/memories-service-auth": "workspace:*",
     "@khoralabs/memories-service-client": "workspace:*"

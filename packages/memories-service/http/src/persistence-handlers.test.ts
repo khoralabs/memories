@@ -4,8 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-core";
 import { MemoriesClient } from "@khoralabs/memories-core";
+import { decodeUmapInput, UMAP_INPUT_ENCODING_HEADER } from "@khoralabs/memories-projections";
 import { createNoneAuthStrategy } from "@khoralabs/memories-service-auth";
-import { createRemoteMemoriesClientAsync } from "@khoralabs/memories-service-client";
+import {
+  createRemoteMemoriesClientAsync,
+  createRemoteMemoriesReadClient,
+} from "@khoralabs/memories-service-client";
 import { createLocalSqliteServiceStack } from "@khoralabs/memories-service-storage-sqlite";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 
@@ -47,6 +51,23 @@ async function postJson(url: string, body: unknown, stack = createTestStack()) {
     }),
     { service: stack.service, ontology: stack.ontology, auth: createNoneAuthStrategy() },
   );
+}
+
+function createFakeProjectionSource() {
+  return {
+    async listNamespacesUnderPrefix(prefix: string) {
+      return [prefix];
+    },
+    async loadMeanEmbeddingsForNamespace() {
+      return [{ memoryId: "m1", memoryKey: "n1", embedding: [1, 0, 0] }];
+    },
+    async loadMemoryTextPreview() {
+      return null;
+    },
+    async loadSourceMapTextPreview() {
+      return null;
+    },
+  };
 }
 
 describe("memories service persistence http handlers", () => {
@@ -153,6 +174,59 @@ describe("memories service persistence http handlers", () => {
     );
     expect(dimsRes.status).toBe(200);
   });
+
+  test("umap input endpoint requires projection source", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-no-projection" };
+
+    const res = await postJson(
+      "http://localhost/databases/projections/umap-input",
+      { database, namespace: "ns/a" },
+      stack,
+    );
+
+    expect(res.status).toBe(501);
+  });
+
+  test("umap input endpoint returns compressed projection input", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-projection" };
+    const handle = await stack.service.getHandle(database);
+    const sqlite = handle.sqlite;
+    if (sqlite === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sqlite.syncPersistence, testOntology).mergeMemory({
+      kind: "node",
+      key: "n1",
+      namespace: "ns/a",
+      content: [{ key: "text", text: "projection node" }],
+      labels: [],
+    });
+
+    const res = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/projections/umap-input", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          namespace: "ns/a",
+          includeProvenanceHead: true,
+        }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+        projectionSource: createFakeProjectionSource,
+      },
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get(UMAP_INPUT_ENCODING_HEADER)).toBe("gzip");
+    const input = await decodeUmapInput(await res.arrayBuffer(), { compression: "gzip" });
+    expect(input.namespace).toBe("ns/a");
+    expect(input.embeddings[0]?.memoryKey).toBe("n1");
+    expect(input.provenanceHeadRootHex).toBeDefined();
+  });
 });
 
 describe("remote memories client over http", () => {
@@ -193,6 +267,45 @@ describe("remote memories client over http", () => {
       expect(hits.length).toBeGreaterThan(0);
 
       await client.deleteMemory({ namespace: "user/remote", key: "remote-note" });
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("read client fetches and decodes umap input", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "remote-projection" };
+    const handle = await stack.service.getHandle(database);
+    const sqlite = handle.sqlite;
+    if (sqlite === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sqlite.syncPersistence, testOntology).mergeMemory({
+      kind: "node",
+      key: "n1",
+      namespace: "ns/a",
+      content: [{ key: "text", text: "remote projection" }],
+      labels: [],
+    });
+
+    const server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        return handleMemoriesServiceHttpRequest(req, {
+          service: stack.service,
+          ontology: stack.ontology,
+          auth: createNoneAuthStrategy(),
+          projectionSource: createFakeProjectionSource,
+        });
+      },
+    });
+
+    try {
+      const reads = createRemoteMemoriesReadClient({
+        baseUrl: `http://localhost:${server.port}`,
+        database,
+        ontology: testOntology,
+      });
+      const input = await reads.fetchUmapInput({ namespace: "ns/a" });
+      expect(input.embeddings[0]?.memoryKey).toBe("n1");
     } finally {
       server.stop(true);
     }

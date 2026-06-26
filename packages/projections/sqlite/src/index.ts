@@ -8,8 +8,11 @@ import type {
 } from "@khoralabs/memories-core";
 import {
   buildNamespaceGraphLayoutFromRows,
+  collectNamespaceSubtreeUmapInput,
+  collectNamespaceUmapInput,
   type GraphLayoutEdge,
   type NamespaceGraphLayout,
+  type NamespaceUmapInput,
   qualifyMemoryKey,
   type Umap3DLayoutOptions,
 } from "@khoralabs/memories-projections";
@@ -23,10 +26,15 @@ import {
 
 export {
   buildNamespaceGraphLayoutFromSource,
+  buildNamespaceGraphLayoutFromUmapInput,
   buildNamespaceSubtreeGraphLayoutFromSource,
+  collectNamespaceSubtreeUmapInput,
+  collectNamespaceUmapInput,
   createMemoriesVisualizationFromSource,
   createSeededRandom,
   DEFAULT_UMAP_LAYOUT_SEED,
+  decodeUmapInput,
+  encodeUmapInput,
   fibonacciSphereLayout3D,
   type GraphLayoutEdge,
   type GraphLayoutNode,
@@ -35,11 +43,16 @@ export {
   labelPropertySyntheticEmbedding,
   minMaxNormalize3D,
   type NamespaceGraphLayout,
+  type NamespaceUmapInput,
   type Point3,
   QUALIFIED_MEMORY_KEY_SEP,
   qualifyMemoryKey,
+  UMAP_INPUT_CONTENT_TYPE,
+  UMAP_INPUT_ENCODING_HEADER,
+  UMAP_INPUT_VERSION,
   type Umap3DLayoutOptions,
   umap3DLayout,
+  validateUmapInput,
 } from "@khoralabs/memories-projections";
 export {
   createSqliteGraphProjectionSource,
@@ -157,6 +170,28 @@ export function buildNamespaceSubtreeGraphLayout(
     propertiesByKey,
     umapOptions,
   });
+}
+
+export type CollectSqliteUmapInputOptions = {
+  namespace: string;
+  scope?: "exact" | "subtree";
+  provenanceHeadRootHex?: string;
+};
+
+export function collectSqliteUmapInput(
+  db: Database,
+  persistence: Pick<
+    MemoriesPersistence,
+    "loadGraphEdgesForNamespace" | "loadNodeLabelsForNamespace" | "loadNodePropertiesForNamespace"
+  >,
+  input: CollectSqliteUmapInputOptions,
+): Promise<NamespaceUmapInput> {
+  const source = createSqliteGraphProjectionSource(db);
+  const options = { provenanceHeadRootHex: input.provenanceHeadRootHex };
+  if (input.scope === "subtree") {
+    return collectNamespaceSubtreeUmapInput(source, persistence, input.namespace, options);
+  }
+  return collectNamespaceUmapInput(source, persistence, input.namespace, options);
 }
 
 export function loadEdgePreview(

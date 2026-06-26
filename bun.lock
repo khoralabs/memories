@@ -149,6 +149,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-projections": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
       },
       "devDependencies": {
@@ -165,6 +166,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-projections": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
         "@khoralabs/memories-service-auth": "workspace:*",
         "@khoralabs/memories-service-client": "workspace:*",

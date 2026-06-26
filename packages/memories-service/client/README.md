@@ -42,4 +42,16 @@ const reads = createRemoteMemoriesReadClient({ baseUrl, database, auth });
 await reads.listNamespaces();
 ```
 
+## Projection worker input
+
+When the HTTP service is configured with a projection source, workers can fetch compressed UMAP input and run layout locally:
+
+```ts
+import { buildNamespaceGraphLayoutFromUmapInput } from "@khoralabs/memories-projections";
+
+const reads = createRemoteMemoriesReadClient({ baseUrl, database, auth });
+const input = await reads.fetchUmapInput({ namespace, scope: "subtree" });
+const layout = buildNamespaceGraphLayoutFromUmapInput(input);
+```
+
 See [../roadmap/http-memory-apis.md](../roadmap/http-memory-apis.md).

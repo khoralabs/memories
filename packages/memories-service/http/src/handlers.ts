@@ -1,5 +1,7 @@
+import type { GraphProjectionSource } from "@khoralabs/memories-projections";
 import type {
   DatabaseKind,
+  MemoriesDatabaseHandle,
   MemoriesDatabaseId,
   MemoriesDatabaseOntologyStore,
   MemoriesDatabaseService,
@@ -29,6 +31,7 @@ import {
   handleDatabaseProvenanceHead,
   handleDatabaseSearch,
   handleDatabaseSourceMapTextPreview,
+  handleDatabaseUmapInput,
   handleDatabaseVectorDimensions,
 } from "./persistence-handlers";
 
@@ -61,6 +64,10 @@ export type MemoriesServiceHttpOptions = {
   service: MemoriesDatabaseService;
   auth: MemoriesDatabaseAccessStrategy;
   ontology?: MemoriesDatabaseOntologyStore;
+  projectionSource?: (input: {
+    database: MemoriesDatabaseId;
+    handle: MemoriesDatabaseHandle;
+  }) => GraphProjectionSource | Promise<GraphProjectionSource | undefined>;
 };
 
 function requireOntology(opts: MemoriesServiceHttpOptions): MemoriesDatabaseOntologyStore {
@@ -200,6 +207,13 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id);
       return handleDatabaseVectorDimensions(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/projections/umap-input") {
+      const body = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id);
+      return await handleDatabaseUmapInput(opts.service, opts.projectionSource, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ensure-scope-chain") {

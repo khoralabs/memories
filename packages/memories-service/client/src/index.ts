@@ -33,6 +33,7 @@ export {
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
   type DatabaseSourceMapTextPreviewRequest,
+  type DatabaseUmapInputRequest,
   type DatabaseVectorDimensionsRequest,
   type DeleteMemoryParamsWire,
   deserializeSearchHit,

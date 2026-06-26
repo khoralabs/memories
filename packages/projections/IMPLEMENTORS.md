@@ -36,7 +36,12 @@ The core package combines source rows and graph reads through:
 
 - `buildNamespaceGraphLayoutFromSource(source, persistence, namespace, options?)`
 - `buildNamespaceSubtreeGraphLayoutFromSource(source, persistence, prefix, options?)`
+- `collectNamespaceUmapInput(source, persistence, namespace, options?)`
+- `collectNamespaceSubtreeUmapInput(source, persistence, prefix, options?)`
+- `buildNamespaceGraphLayoutFromUmapInput(input, options?)`
 - `createMemoriesVisualizationFromSource(source, persistence)`
+
+Use the `collect*UmapInput` helpers when a service node should run storage-local reads but an external worker should run UMAP. The collected input is JSON-safe and can be transported with `encodeUmapInput` / `decodeUmapInput`.
 
 ## Storage Adapter Rules
 
