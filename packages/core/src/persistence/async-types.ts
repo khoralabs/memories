@@ -1,2 +1,4 @@
-/** @deprecated Import from @khoralabs/memories-persistence-core/persistence instead. */
-export type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+export type {
+  /** @deprecated Import from @khoralabs/memories-persistence-core/persistence instead. */
+  MemoriesPersistenceAsync,
+} from "@khoralabs/memories-persistence-core/persistence";

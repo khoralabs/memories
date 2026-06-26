@@ -1,5 +1,9 @@
-/** @deprecated Import from @khoralabs/memories-persistence-core instead. */
-export { ids, stableId } from "@khoralabs/memories-persistence-core";
+export {
+  /** @deprecated Import from @khoralabs/memories-persistence-core instead. */
+  ids,
+  /** @deprecated Import from @khoralabs/memories-persistence-core instead. */
+  stableId,
+} from "@khoralabs/memories-persistence-core";
 /** @deprecated Import from @khoralabs/memories-persistence-core/persistence instead. */
 export * from "@khoralabs/memories-persistence-core/persistence";
 export * from "./api/index";

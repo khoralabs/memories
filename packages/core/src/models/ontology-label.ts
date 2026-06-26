@@ -1,2 +1,4 @@
-/** @deprecated Import from @khoralabs/memories-persistence-core instead. */
-export type { OntologyLabelInstance } from "@khoralabs/memories-persistence-core";
+export type {
+  /** @deprecated Import from @khoralabs/memories-persistence-core instead. */
+  OntologyLabelInstance,
+} from "@khoralabs/memories-persistence-core";

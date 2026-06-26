@@ -7,17 +7,26 @@ import {
   type StoredOntologyLabelMapSchema,
 } from "@khoralabs/memories-service-storage-core";
 
-/** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
 export {
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   canonicalizeStoredOntology,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   hashStoredOntology,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   listOntologyLabelKinds,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   normalizeStoredOntologyJsonSchema,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   type OntologyLabelKinds,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   ontologyMatchesLabelKinds,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   STORED_ONTOLOGY_JSON_SCHEMA_URI,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   type StoredOntologyJsonSchema,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   type StoredOntologyJsonSchemaMetadata,
+  /** @deprecated Import from @khoralabs/memories-service-storage-core instead. */
   type StoredOntologyLabelMapSchema,
 } from "@khoralabs/memories-service-storage-core";
 

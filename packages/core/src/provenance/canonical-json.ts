@@ -1,2 +1,4 @@
-/** @deprecated Import from @khoralabs/memories-persistence-core/provenance instead. */
-export { canonicalJson } from "@khoralabs/memories-persistence-core/provenance";
+export {
+  /** @deprecated Import from @khoralabs/memories-persistence-core/provenance instead. */
+  canonicalJson,
+} from "@khoralabs/memories-persistence-core/provenance";
