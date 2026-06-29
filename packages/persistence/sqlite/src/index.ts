@@ -6,6 +6,7 @@ export {
   configureMemoriesSqlitePragmas,
   ensureCustomSqliteForExtensions,
   type MemoriesSqlitePragmaOptions,
+  memoriesSqliteVecAvailable,
   type OpenMemoriesDatabaseOptions,
   openMemoriesDatabase,
   openMemoriesDatabaseReadonly,
@@ -24,3 +25,9 @@ export {
   getMemoriesSqliteDatabase,
   MemoriesPersistence,
 } from "./persistence";
+export {
+  createMemoriesPersistenceAsync,
+  getMemoriesSqliteDatabaseFromAsync,
+  getMemoriesSyncPersistenceFromAsync,
+  wrapMemoriesPersistenceAsAsync,
+} from "./persistence-async";

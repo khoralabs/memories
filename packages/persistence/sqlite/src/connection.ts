@@ -38,6 +38,21 @@ export type OpenMemoriesDatabaseOptions = DatabaseOptions & {
 export const SQLITE_CUSTOM_LIB_ENV = "SQLITE_CUSTOM_LIB";
 
 let didConfigureCustomSqlite = false;
+let sqliteVecProbe: boolean | undefined;
+
+/** True when sqlite-vec can load (requires extension-capable libsqlite3 on macOS). */
+export function memoriesSqliteVecAvailable(): boolean {
+  if (sqliteVecProbe === undefined) {
+    try {
+      const db = openTestMemoriesDatabase();
+      db.close();
+      sqliteVecProbe = true;
+    } catch {
+      sqliteVecProbe = false;
+    }
+  }
+  return sqliteVecProbe;
+}
 
 /** Resolve `$(brew --prefix sqlite)/lib/libsqlite3.dylib` when Homebrew sqlite is installed. */
 function tryHomebrewSqliteDylibPath(): string | undefined {
@@ -57,7 +72,6 @@ function tryHomebrewSqliteDylibPath(): string | undefined {
 
 export function ensureCustomSqliteForExtensions(): void {
   if (didConfigureCustomSqlite) return;
-  didConfigureCustomSqlite = true;
 
   const fromEnv = process.env[SQLITE_CUSTOM_LIB_ENV]?.trim();
   const candidates: string[] = [];
@@ -88,10 +102,18 @@ export function ensureCustomSqliteForExtensions(): void {
 
   for (const p of candidates) {
     if (p.length > 0 && existsSync(p)) {
-      Database.setCustomSQLite(p);
+      try {
+        Database.setCustomSQLite(p);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!/SQLite already loaded/i.test(msg)) throw e;
+      }
+      didConfigureCustomSqlite = true;
       return;
     }
   }
+
+  didConfigureCustomSqlite = true;
 }
 
 export type MemoriesSqlitePragmaOptions = {
