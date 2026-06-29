@@ -36,6 +36,8 @@
     "@khoralabs/memories-service": "workspace:*",
     "@khoralabs/memories-service-auth": "workspace:*",
     "@khoralabs/memories-service-client": "workspace:*",
+    "@khoralabs/memories-service-storage-sqlite": "workspace:*",
+    "@khoralabs/memories-sqlite": "workspace:*",
     "@khoralabs/sqlite-crypto": "^0.1.0",
     "@types/bun": "latest"
   },
