@@ -11,6 +11,11 @@ import type { MemorySearchEnv } from "./memory-search-toolkit.js";
 /** Tool map shape used by {@link createMemorySearchToolLoopAgent} (aligns with adapter/integrator {@code *ToolSet} aliases). */
 export type MemorySearchToolSet = Record<string, Tool<unknown, unknown>> & ToolSet;
 type ToolLoopOutputSpec = NonNullable<ConstructorParameters<typeof ToolLoopAgent>[0]["output"]>;
+type ToolLoopRuntimeContext = Record<string, unknown>;
+
+/** {@link ToolLoopAgent} instance for memory-search sessions (AI SDK v7: runtime context + output). */
+export type MemorySearchToolLoopAgent<OUTPUT extends ToolLoopOutputSpec = ToolLoopOutputSpec> =
+  ToolLoopAgent<never, MemorySearchToolSet, ToolLoopRuntimeContext, OUTPUT>;
 /**
  * {@link ToolLoopAgent} for memory-search–backed sessions: same wiring as the memories adapter/integrator agents.
  * {@code OUTPUT} is an AI SDK output spec (e.g. from {@code Output.object(...)}).
@@ -26,7 +31,7 @@ export function createMemorySearchToolLoopAgent<
   /** When true and a memory search budget is set on {@code runtime.env}, zero {@code used} before each LLM step. */
   memorySearchBudgetPerStep?: boolean;
   output: OUTPUT;
-}): ToolLoopAgent<never, MemorySearchToolSet, OUTPUT> {
+}): MemorySearchToolLoopAgent<OUTPUT> {
   const {
     model,
     identity,
@@ -46,7 +51,7 @@ export function createMemorySearchToolLoopAgent<
           return {};
         }
       : undefined;
-  return new ToolLoopAgent<never, MemorySearchToolSet, OUTPUT>({
+  return new ToolLoopAgent({
     id: identity.agentId,
     model,
     tools,

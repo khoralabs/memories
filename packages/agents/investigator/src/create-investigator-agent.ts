@@ -7,9 +7,10 @@ import {
   createMemorySearchToolLoopAgent,
   DEFAULT_INVESTIGATOR_MAX_STEPS,
   type MemorySearchEnv,
+  type MemorySearchToolLoopAgent,
   type MemorySearchToolSet,
 } from "@khoralabs/memories-tools";
-import type { LanguageModel, ToolLoopAgent } from "ai";
+import type { LanguageModel } from "ai";
 import {
   type InvestigatorStructuredOutput,
   investigatorAnswerOutput,
@@ -17,11 +18,7 @@ import {
 
 export type MemoryInvestigatorToolSet = MemorySearchToolSet;
 
-export type MemoryInvestigatorAgent = ToolLoopAgent<
-  never,
-  MemoryInvestigatorToolSet,
-  InvestigatorStructuredOutput
->;
+export type MemoryInvestigatorAgent = MemorySearchToolLoopAgent<InvestigatorStructuredOutput>;
 
 export type InvestigatorPipelineGeneration = Awaited<
   ReturnType<MemoryInvestigatorAgent["generate"]>

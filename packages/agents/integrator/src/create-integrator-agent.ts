@@ -8,9 +8,10 @@ import {
   createMemorySearchToolLoopAgent,
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
   type MemorySearchEnv,
+  type MemorySearchToolLoopAgent,
   type MemorySearchToolSet,
 } from "@khoralabs/memories-tools";
-import { type generateObject, type LanguageModel, Output, type ToolLoopAgent } from "ai";
+import { type generateObject, type LanguageModel, Output } from "ai";
 import z from "zod";
 import { memoryIntegratorSearchPhaseInstruction } from "./instructions.js";
 import {
@@ -28,17 +29,10 @@ export type IntegratorSearchStructuredOutput = ReturnType<
   typeof createIntegratorSearchCompleteOutput
 >;
 
-export type MemoryIntegratorSearchAgent = ToolLoopAgent<
-  never,
-  MemoryIntegratorToolSet,
-  IntegratorSearchStructuredOutput
->;
+export type MemoryIntegratorSearchAgent =
+  MemorySearchToolLoopAgent<IntegratorSearchStructuredOutput>;
 
-export type MemoryIntegratorAgent = ToolLoopAgent<
-  never,
-  MemoryIntegratorToolSet,
-  IntegratorPlanStructuredOutput
->;
+export type MemoryIntegratorAgent = MemorySearchToolLoopAgent<IntegratorPlanStructuredOutput>;
 
 export type IntegratorSearchGeneration = Awaited<
   ReturnType<MemoryIntegratorSearchAgent["generate"]>

@@ -8,9 +8,10 @@ import {
   createMemorySearchToolLoopAgent,
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
   type MemorySearchEnv,
+  type MemorySearchToolLoopAgent,
   type MemorySearchToolSet,
 } from "@khoralabs/memories-tools";
-import type { LanguageModel, ToolLoopAgent } from "ai";
+import type { LanguageModel } from "ai";
 import {
   type MemoryAdapterStructuredOutput,
   memoryAdapterExpandedOutput,
@@ -19,11 +20,7 @@ import {
 /** AI SDK tool map for the memory adapter (search only). */
 export type MemoryAdapterToolSet = MemorySearchToolSet;
 
-export type MemoryAdapterAgent = ToolLoopAgent<
-  never,
-  MemoryAdapterToolSet,
-  MemoryAdapterStructuredOutput
->;
+export type MemoryAdapterAgent = MemorySearchToolLoopAgent<MemoryAdapterStructuredOutput>;
 
 export type AdapterPipelineGeneration = Awaited<ReturnType<MemoryAdapterAgent["generate"]>>;
 

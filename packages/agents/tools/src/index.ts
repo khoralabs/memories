@@ -38,6 +38,7 @@ export type { MemoriesLogPayloadMap } from "./telemetry.js";
 export { elapsedMs } from "./timing.js";
 export {
   createMemorySearchToolLoopAgent,
+  type MemorySearchToolLoopAgent,
   type MemorySearchToolSet,
 } from "./tool-loop-from-affordances.js";
 export {
