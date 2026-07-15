@@ -88,6 +88,7 @@ export type HybridMemorySearchInput = {
  * Neighbor rows are capped when present.
  */
 export type MemorySearchHit = {
+  namespace: string;
   memory_key: string;
   kind: "node" | "edge";
   score: number;
@@ -101,6 +102,7 @@ const MAX_NEIGHBORS_PER_HIT = 8;
 
 function mapSearchHit(hit: SearchHit): MemorySearchHit {
   const row: MemorySearchHit = {
+    namespace: hit.memory.namespace,
     memory_key: hit.memory.key,
     kind: hit.graph.kind === "edge" ? "edge" : "node",
     score: hit.score,
