@@ -23,8 +23,7 @@ export function loadSqliteVec(db: Database): void {
           "  brew install sqlite\n" +
           '  export SQLITE_CUSTOM_LIB="$(brew --prefix sqlite)/lib/libsqlite3.dylib"\n' +
           "(macOS). On Linux, install libsqlite3 (distro package) and set SQLITE_CUSTOM_LIB to the\n" +
-          "  shared library path if needed (e.g. /usr/lib/x86_64-linux-gnu/libsqlite3.so.0).\n" +
-          "  See SQLITE_CUSTOM_LIB in apps/matchmaking/.env.example.",
+          "  shared library path if needed (e.g. /usr/lib/x86_64-linux-gnu/libsqlite3.so.0)."
       );
     }
     throw e;
