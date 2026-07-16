@@ -20,5 +20,5 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "exclude": ["vitest.integration.config.ts", "**/*.integration.test.ts"]
+  "include": ["src/**/*.ts"]
 }

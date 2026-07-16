@@ -6,7 +6,7 @@ Host-side lexical / retrieval linking for **@khoralabs/memories-core** graphs. T
 
 The preferred host API is the durable Workflow SDK entry `autolinkIntegrate`. This package is **world-agnostic**: it never selects a Workflow world backend. The hosting process must configure and start a world before `start(...)`.
 
-- **Local / tests:** [Local World](https://workflow-sdk.dev/worlds/local) — set `WORKFLOW_TARGET_WORLD=local` (CLI default) or use `createLocalWorld` + `setWorld` / `@workflow/vitest`.
+- **Local / tests:** [Local World](https://workflow-sdk.dev/worlds/local) — set `WORKFLOW_TARGET_WORLD=local` (CLI default) or use `createLocalWorld` + `setWorld`. Integration tests use `@workflow/vitest`'s `buildWorkflowTests` / `setupWorkflowTests` under `bun test`.
 - **Production hosts:** e.g. Turso via `@workflow-worlds/turso` (see agent-net reference app).
 
 ```ts

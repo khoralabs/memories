@@ -1,5 +1,10 @@
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Memory, SearchHit, SearchParams } from "@khoralabs/memories-core";
-import { afterEach, describe, expect, it } from "vitest";
+import { buildWorkflowTests, setupWorkflowTests, teardownWorkflowTests } from "@workflow/vitest";
+import { Agent } from "undici";
 import { start } from "workflow/api";
 import {
   provideAutolinkSession,
@@ -7,6 +12,8 @@ import {
   resetAutolinkSessionRegistryForTests,
 } from "../session.js";
 import { autolinkIntegrate } from "./autolink-integrate.js";
+
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 function nodeHit(key: string, score: number): SearchHit {
   const memory = {
@@ -26,12 +33,46 @@ function nodeHit(key: string, score: number): SearchHit {
   } as SearchHit;
 }
 
+/**
+ * Bun does not run the Workflow SWC transform. Stamp `workflowId` from the
+ * bundle that `buildWorkflowTests` just wrote (same id the transform would add).
+ */
+async function attachWorkflowIdFromBundle(
+  fn: typeof autolinkIntegrate,
+  exportName: string,
+): Promise<void> {
+  const bundle = await readFile(join(packageRoot, ".workflow-vitest/workflows.mjs"), "utf8");
+  const match = bundle.match(new RegExp(`${exportName}\\.workflowId = "([^"]+)"`));
+  if (!match?.[1]) {
+    throw new Error(
+      `attachWorkflowIdFromBundle: no workflowId for ${exportName} in .workflow-vitest/workflows.mjs`,
+    );
+  }
+  (fn as { workflowId?: string }).workflowId = match[1];
+}
+
+beforeAll(async () => {
+  // Bun's undici Agent may lack `close()`. Local World teardown calls it.
+  const proto = Agent.prototype as { close?: () => unknown };
+  if (typeof proto.close !== "function") {
+    proto.close = () => undefined;
+  }
+
+  await buildWorkflowTests({ cwd: packageRoot, rootDir: packageRoot });
+  await setupWorkflowTests({ cwd: packageRoot, rootDir: packageRoot });
+  await attachWorkflowIdFromBundle(autolinkIntegrate, "autolinkIntegrate");
+});
+
+afterAll(async () => {
+  await teardownWorkflowTests();
+});
+
 afterEach(() => {
   resetAutolinkSessionRegistryForTests();
 });
 
 describe("autolinkIntegrate via Local World", () => {
-  it("start(autolinkIntegrate) search-links via session client", async () => {
+  test("start(autolinkIntegrate) search-links via session client", async () => {
     const merges: unknown[] = [];
     const client = {
       search(_params: SearchParams) {
