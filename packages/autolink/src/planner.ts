@@ -1,12 +1,14 @@
 import type { SearchHit } from "@khoralabs/memories-core";
 import type { EdgeLabelInstance, NodeLabelInstance } from "@khoralabs/memories-ontologies";
+import type {
+  RetrievalSimilarityEdgeLabels,
+  RetrievalSimilarityNodeLabels,
+} from "@khoralabs/memories-ontologies/families/retrieval";
 import {
   RETRIEVAL_SEED_NODE_KIND,
   RETRIEVAL_SIMILARITY_EDGE_KIND,
-  type RetrievalSimilarityEdgeLabels,
-  type RetrievalSimilarityNodeLabels,
-  zRetrievalSimilarityEdgeProps,
-} from "./ontology.js";
+  type RetrievalSimilarityEdgeProps,
+} from "./kinds.js";
 
 export type LexicalLinkMergePatch = {
   labels?: NodeLabelInstance<RetrievalSimilarityNodeLabels>[];
@@ -82,13 +84,13 @@ export function computeLexicalLinkMergeSlice(
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (r === undefined) continue;
-    const props = zRetrievalSimilarityEdgeProps.parse({
+    const props: RetrievalSimilarityEdgeProps = {
       similarityScore: r.score,
       searchConfig: frozenConfig,
       rank: i,
       hitMemoryKey: r.memoryKey,
       hitSourceKey: r.sourceKey,
-    });
+    };
     edges.push({
       memory_key: r.memoryKey,
       direction: "out",

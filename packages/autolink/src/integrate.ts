@@ -12,8 +12,8 @@ import { type ComputeLexicalLinkOptions, computeLexicalLinkMergeSlice } from "./
 import { normalizeSearchConfigSnapshot } from "./search-config.js";
 
 export type IntegrateNewMemoryArgs<
-  TNode extends LabelSchemaMap,
-  TEdge extends LabelSchemaMap,
+  TNode extends LabelSchemaMap = LabelSchemaMap,
+  TEdge extends LabelSchemaMap = LabelSchemaMap,
 > = Pick<
   MergeMemoryParamsNode<TNode, TEdge>,
   "namespace" | "key" | "content" | "properties" | "searchMetaVector" | "attachScopes"
@@ -28,20 +28,27 @@ export type IntegrateNewMemoryArgs<
   linkPlan?: Omit<ComputeLexicalLinkOptions, "searchConfig">;
 };
 
+export type AutolinkIntegrateDeps<
+  TNode extends LabelSchemaMap = LabelSchemaMap,
+  TEdge extends LabelSchemaMap = LabelSchemaMap,
+> = {
+  client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
+};
+
 /**
- * Runs search for {@link IntegrateNewMemoryArgs.searchContent}, builds a lexical link patch,
- * then merges the focal node with user content/labels/edges plus the patch.
- * Works with sync {@link MemoriesClient} or {@link MemoriesClientAsync} (awaited uniformly).
+ * Search → lexical link patch → merge. Pure of Workflow directives; call from a step
+ * or directly in tests.
  *
  * Requires a merged ontology that includes the retrieval similarity ontology kinds.
  */
-export async function integrateNewMemoryIntoGraph<
+export async function runAutolinkIntegrate<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
 >(
-  client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>,
   args: IntegrateNewMemoryArgs<TNode, TEdge>,
+  deps: AutolinkIntegrateDeps<TNode, TEdge>,
 ): Promise<string[]> {
+  const { client } = deps;
   const searchOptions: NonNullable<SearchParams["options"]> = {
     topK: 25,
     ...args.searchOptions,
@@ -102,4 +109,17 @@ export async function integrateNewMemoryIntoGraph<
         : {}),
     } as Parameters<MemoriesClient<TNode, TEdge>["mergeMemory"]>[0]),
   );
+}
+
+/**
+ * @deprecated Prefer {@link runAutolinkIntegrate} or the durable `autolinkIntegrate` workflow.
+ */
+export async function integrateNewMemoryIntoGraph<
+  TNode extends LabelSchemaMap,
+  TEdge extends LabelSchemaMap,
+>(
+  client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>,
+  args: IntegrateNewMemoryArgs<TNode, TEdge>,
+): Promise<string[]> {
+  return runAutolinkIntegrate(args, { client });
 }

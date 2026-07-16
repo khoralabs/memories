@@ -1,10 +1,19 @@
-export { type IntegrateNewMemoryArgs, integrateNewMemoryIntoGraph } from "./integrate.js";
+export {
+  type AutolinkIntegrateDeps,
+  type IntegrateNewMemoryArgs,
+  integrateNewMemoryIntoGraph,
+  runAutolinkIntegrate,
+} from "./integrate.js";
+export {
+  RETRIEVAL_SEED_NODE_KIND,
+  RETRIEVAL_SIMILARITY_EDGE_KIND,
+  type RetrievalSeedNodeProps,
+  type RetrievalSimilarityEdgeProps,
+} from "./kinds.js";
 export {
   canonicalRetrievalEdgeLabelShapes,
   canonicalRetrievalLabelPropsSearchFormatter,
   canonicalRetrievalNodeLabelShapes,
-  RETRIEVAL_SEED_NODE_KIND,
-  RETRIEVAL_SIMILARITY_EDGE_KIND,
   type RetrievalSimilarityOntology,
   retrievalSimilarityOntology,
   zRetrievalSearchConfig,
@@ -17,3 +26,10 @@ export {
   type LexicalLinkMergePatch,
 } from "./planner.js";
 export { normalizeSearchConfigSnapshot, type SearchConfigSnapshotInput } from "./search-config.js";
+export {
+  getAutolinkSession,
+  provideAutolinkSession,
+  releaseAutolinkSession,
+  requireAutolinkSession,
+  resetAutolinkSessionRegistryForTests,
+} from "./session.js";
