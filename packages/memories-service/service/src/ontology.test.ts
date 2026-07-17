@@ -89,8 +89,10 @@ describe("stored ontology json schema", () => {
   test("preserves field descriptions in per-label schemas", () => {
     const schema = sampleSchema();
     const factSchema = schema.properties.nodeLabels.properties.fact;
-    expect(factSchema).toBeDefined();
-    const confidence = (factSchema?.properties as Record<string, { description?: string }>)
+    if (factSchema === undefined) {
+      throw new Error("expected fact schema");
+    }
+    const confidence = (factSchema.properties as Record<string, { description?: string }>)
       .confidence;
     expect(confidence?.description).toBe("Confidence score between 0 and 1");
   });
@@ -114,8 +116,10 @@ describe("stored ontology json schema", () => {
     const base = sampleSchema();
     const described = sampleSchema();
     const factSchema = described.properties.nodeLabels.properties.fact;
-    expect(factSchema).toBeDefined();
-    const confidence = (factSchema?.properties as Record<string, { description?: string }>)
+    if (factSchema === undefined) {
+      throw new Error("expected fact schema");
+    }
+    const confidence = (factSchema.properties as Record<string, { description?: string }>)
       .confidence;
     if (confidence === undefined) {
       throw new Error("expected confidence schema");

@@ -88,9 +88,11 @@ describe("computeLexicalLinkMergeSlice", () => {
     const hits = [nodeHit(nodeMemory("n1"), 0.2), nodeHit(nodeMemory("n1"), 0.9, "other")];
     const patch = computeLexicalLinkMergeSlice("src", hits, cfg);
     expect(patch.edges?.length).toBe(1);
-    expect((patch.edges?.[0]?.label.props as { similarityScore: number }).similarityScore).toBe(
-      0.9,
-    );
+    const edge = patch.edges?.[0];
+    if (edge === undefined) {
+      throw new Error("expected merged lexical link edge");
+    }
+    expect((edge.label.props as { similarityScore: number }).similarityScore).toBe(0.9);
   });
 
   test("minSimilarityScore filters", () => {

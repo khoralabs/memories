@@ -15,7 +15,7 @@
     "context": "bun run scripts/context.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
+    "@biomejs/biome": "2.5.3",
     "@types/bun": "latest",
     "@types/parse-gitignore": "^1.0.2",
     "husky": "^9.1.7",

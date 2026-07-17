@@ -98,8 +98,10 @@ describe("in-memory ontology store", () => {
     const base = schemaWithNodeKind("fact");
     const described = schemaWithNodeKind("fact");
     const factSchema = described.properties.nodeLabels.properties.fact;
-    expect(factSchema).toBeDefined();
-    const text = (factSchema?.properties as Record<string, { description?: string }>).text;
+    if (factSchema === undefined) {
+      throw new Error("expected fact schema");
+    }
+    const text = (factSchema.properties as Record<string, { description?: string }>).text;
     if (text === undefined) {
       throw new Error("expected text schema");
     }
