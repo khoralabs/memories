@@ -290,6 +290,20 @@
         "typescript": "^5",
       },
     },
+    "packages/persistence/contract": {
+      "name": "@khoralabs/memories-persistence-contract",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/persistence/core": {
       "name": "@khoralabs/memories-persistence-core",
       "version": "0.1.0",
@@ -317,6 +331,7 @@
         "sqlite-vec": "^0.1.9",
       },
       "devDependencies": {
+        "@khoralabs/memories-persistence-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -333,6 +348,7 @@
         "ajv": "^8",
       },
       "devDependencies": {
+        "@khoralabs/memories-persistence-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -570,6 +586,8 @@
     "@khoralabs/memories-investigator": ["@khoralabs/memories-investigator@workspace:packages/agents/investigator"],
 
     "@khoralabs/memories-ontologies": ["@khoralabs/memories-ontologies@workspace:packages/ontologies"],
+
+    "@khoralabs/memories-persistence-contract": ["@khoralabs/memories-persistence-contract@workspace:packages/persistence/contract"],
 
     "@khoralabs/memories-persistence-core": ["@khoralabs/memories-persistence-core@workspace:packages/persistence/core"],
 

@@ -7,6 +7,7 @@ Persistence packages implement the storage side of `@khoralabs/memories-core`.
 | Package | Path | Role |
 | --- | --- | --- |
 | `@khoralabs/memories-persistence-core` | [`core/`](./core) | Shared persistence contracts, row schemas, stable IDs, namespace helpers, search payload types, and provenance hashing. |
+| `@khoralabs/memories-persistence-contract` | [`contract/`](./contract) | Shared conformance tests (`runMemoriesPersistenceContractTests`) for async persistence backends. |
 | `@khoralabs/memories-sqlite` | [`sqlite/`](./sqlite) | Reference local SQLite backend using FTS5, sqlite-vec, graph tables, scopes, and provenance. |
 | `@khoralabs/memories-turso-serverless` | [`turso-serverless/`](./turso-serverless) | Async Turso Cloud backend for remote single-tenant databases. |
 

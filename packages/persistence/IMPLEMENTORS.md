@@ -149,3 +149,15 @@ Thin adapters that only support one namespace per query should set **`multiNames
 [`MemoriesPersistenceAsync`](./core/src/persistence/async-types.ts) mirrors the sync interface with `Promise`-returning methods and `withTransaction(fn: () => Promise<T>): Promise<T>`. Use `MemoriesClientAsync` and `mergeMemoryAsync` / `searchAsync` / `deleteMemoryAsync` when implementing remote or non-blocking stores.
 
 **Note:** `wrapSyncMemoriesPersistenceAsAsync` does not support a real async transaction—use native async backends for `mergeMemoryAsync` inside `withTransaction`.
+
+## Conformance tests
+
+New backends should run the shared suite from `@khoralabs/memories-persistence-contract`:
+
+```ts
+import { runMemoriesPersistenceContractTests } from "@khoralabs/memories-persistence-contract";
+
+runMemoriesPersistenceContractTests("my-backend", () => openMyPersistence());
+```
+
+The harness is async-first (`MemoriesPersistenceAsync` + `mergeMemoryAsync` / `searchAsync` / `deleteMemoryAsync`). Capability-gated suites skip when `MemoriesBackendCapabilities` reports a feature off. Keep SQL/schema/driver unit tests in the implementation package.
