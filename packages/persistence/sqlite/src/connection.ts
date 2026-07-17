@@ -12,7 +12,13 @@ const memoriesMigrations = [m001Initial, m001AddContentOutbox];
 
 export function loadSqliteVec(db: Database): void {
   try {
-    sqliteVec.load(db);
+    const fromEnv =
+      process.env.SQLITE_VEC_PATH?.trim() || process.env.KHORA_SQLITE_VEC_PATH?.trim();
+    if (fromEnv !== undefined && fromEnv.length > 0) {
+      db.loadExtension(fromEnv);
+    } else {
+      sqliteVec.load(db);
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/dynamic extension loading|not support.*extension/i.test(msg)) {
@@ -23,7 +29,8 @@ export function loadSqliteVec(db: Database): void {
           "  brew install sqlite\n" +
           '  export SQLITE_CUSTOM_LIB="$(brew --prefix sqlite)/lib/libsqlite3.dylib"\n' +
           "(macOS). On Linux, install libsqlite3 (distro package) and set SQLITE_CUSTOM_LIB to the\n" +
-          "  shared library path if needed (e.g. /usr/lib/x86_64-linux-gnu/libsqlite3.so.0).",
+          "  shared library path if needed (e.g. /usr/lib/x86_64-linux-gnu/libsqlite3.so.0).\n" +
+          "Packaged khora-server: set SQLITE_VEC_PATH to the bundled lib/vec0.{dylib,so}.",
       );
     }
     throw e;
