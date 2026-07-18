@@ -229,6 +229,19 @@
         "typescript": "^5",
       },
     },
+    "packages/memories-service/storage/contract": {
+      "name": "@khoralabs/memories-service-storage-contract",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-service-storage-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/memories-service/storage/core": {
       "name": "@khoralabs/memories-service-storage-core",
       "version": "0.1.0",
@@ -236,6 +249,7 @@
         "@khoralabs/memories-persistence-core": "workspace:*",
       },
       "devDependencies": {
+        "@khoralabs/memories-service-storage-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -254,6 +268,7 @@
         "@khoralabs/sqlite-crypto": "^0.1.0",
       },
       "devDependencies": {
+        "@khoralabs/memories-service-storage-contract": "workspace:*",
         "@khoralabs/sqlite-crypto": "^0.1.0",
         "@types/bun": "latest",
       },
@@ -269,6 +284,7 @@
         "@khoralabs/memories-turso-serverless": "workspace:*",
       },
       "devDependencies": {
+        "@khoralabs/memories-service-storage-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -606,6 +622,8 @@
     "@khoralabs/memories-service-client": ["@khoralabs/memories-service-client@workspace:packages/memories-service/client"],
 
     "@khoralabs/memories-service-http": ["@khoralabs/memories-service-http@workspace:packages/memories-service/http"],
+
+    "@khoralabs/memories-service-storage-contract": ["@khoralabs/memories-service-storage-contract@workspace:packages/memories-service/storage/contract"],
 
     "@khoralabs/memories-service-storage-core": ["@khoralabs/memories-service-storage-core@workspace:packages/memories-service/storage/core"],
 

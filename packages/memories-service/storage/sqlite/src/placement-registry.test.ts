@@ -26,8 +26,9 @@ afterEach(() => {
   }
 });
 
+/** Durability + service routing. Placement CRUD lives in the shared contract suite. */
 describe("sqlite placement registry", () => {
-  test("persists default strategy and per-principal overrides", async () => {
+  test("persists default strategy and per-principal overrides across reopen", async () => {
     const dataDir = makeTempDataDir();
     const registryPath = path.join(dataDir, "registry", "placements.db");
     const defaultStrategy = {

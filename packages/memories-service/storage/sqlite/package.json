@@ -29,6 +29,7 @@
     "@khoralabs/sqlite-crypto": "^0.1.0"
   },
   "devDependencies": {
+    "@khoralabs/memories-service-storage-contract": "workspace:*",
     "@khoralabs/sqlite-crypto": "^0.1.0",
     "@types/bun": "latest"
   },

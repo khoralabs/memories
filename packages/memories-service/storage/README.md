@@ -7,6 +7,7 @@ Storage contracts and node-level backends for the Memories database service. Eac
 | Package | Path | Role |
 |---------|------|------|
 | `@khoralabs/memories-service-storage-core` | [`core/`](./core) | Shared storage contracts, strategies, placement/ontology stores, owner-key helpers, and snapshot artifact types. |
+| `@khoralabs/memories-service-storage-contract` | [`contract/`](./contract) | Shared conformance tests for backends, placement stores, and ontology stores. |
 | `@khoralabs/memories-service-storage-sqlite` | [`sqlite/`](./sqlite) | Local SQLCipher file backend, SQLite placement registry, and SQLite ontology registry. |
 | `@khoralabs/memories-service-storage-turso-serverless` | [`turso-serverless/`](./turso-serverless) | Turso Cloud remote backend factory. Node data plane only — uses an external placement registry. |
 

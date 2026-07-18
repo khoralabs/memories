@@ -25,6 +25,7 @@
     "@khoralabs/memories-turso-serverless": "workspace:*"
   },
   "devDependencies": {
+    "@khoralabs/memories-service-storage-contract": "workspace:*",
     "@types/bun": "latest"
   },
   "peerDependencies": {

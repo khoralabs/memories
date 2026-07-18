@@ -175,3 +175,25 @@ createTursoServerlessBackend({ strategy });
 ```
 
 Backend-specific behavior is allowed when the contract is explicit: SQLite can enumerate local files and checkpoint WAL; Turso serverless cannot enumerate physical databases and treats checkpoint as a no-op. Both currently return `UnsupportedStorageFeatureError` from `snapshot(id)`.
+
+## Conformance tests
+
+New backends and control-plane stores should run the shared suite from `@khoralabs/memories-service-storage-contract`:
+
+```ts
+import {
+  runMemoriesDatabaseBackendContractTests,
+  runMemoriesDatabasePlacementStoreContractTests,
+  runMemoriesDatabaseOntologyStoreContractTests,
+} from "@khoralabs/memories-service-storage-contract";
+
+runMemoriesDatabaseBackendContractTests("my-backend", () => createMyBackend(), {
+  canEnumerate: false,
+  supportsCheckpoint: true,
+  supportsSnapshot: false,
+  requiresSqliteHandle: false,
+  deleteClearsExistence: false,
+});
+```
+
+Exercise the backend API directly (not the Memories service LRU). Capability options mirror the divergences documented above.

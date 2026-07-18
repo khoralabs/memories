@@ -24,6 +24,7 @@
     "@khoralabs/memories-persistence-core": "workspace:*"
   },
   "devDependencies": {
+    "@khoralabs/memories-service-storage-contract": "workspace:*",
     "@types/bun": "latest"
   },
   "peerDependencies": {

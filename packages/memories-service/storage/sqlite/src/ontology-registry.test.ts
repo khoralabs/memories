@@ -9,7 +9,6 @@ import {
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 
 import { createSqliteOntologyStore } from "./ontology-registry";
-import { createLocalSqliteServiceStack } from "./stack";
 
 const tempDirs: string[] = [];
 
@@ -65,8 +64,9 @@ afterEach(() => {
   }
 });
 
+/** Durability across reopen. Ontology CRUD / queries live in the shared contract suite. */
 describe("sqlite ontology registry", () => {
-  test("persists ontologies and append-only link history", async () => {
+  test("persists ontologies and append-only link history across reopen", async () => {
     const dataDir = makeTempDataDir();
     const registryPath = path.join(dataDir, "registry", "ontologies.db");
     const store = createSqliteOntologyStore({
@@ -88,42 +88,5 @@ describe("sqlite ontology registry", () => {
       linkedAtMs: expect.any(Number),
     });
     expect(await reloaded.listLinkHistory(id)).toHaveLength(1);
-  });
-
-  test("registerOntology is idempotent and descriptions affect hash", async () => {
-    const dataDir = makeTempDataDir();
-    const store = createSqliteOntologyStore({
-      registryPath: path.join(dataDir, "registry", "ontologies.db"),
-      sqlCipherKey: TEST_SQLCIPHER_KEY,
-    });
-    const base = schemaWithNodeKind("fact");
-    const described = schemaWithNodeKind("fact", "Different description");
-
-    const first = await store.registerOntology(base);
-    const second = await store.registerOntology(base);
-    const third = await store.registerOntology(described);
-
-    expect(first.hash).toBe(second.hash);
-    expect(first.hash).not.toBe(third.hash);
-  });
-
-  test("shape queries use current link across databases", async () => {
-    const dataDir = makeTempDataDir();
-    const { ontology } = createLocalSqliteServiceStack({
-      dataDir,
-      sqlCipherKey: TEST_SQLCIPHER_KEY,
-    });
-    const fact = await ontology.registerOntology(schemaWithNodeKind("fact"));
-    const belief = await ontology.registerOntology(schemaWithNodeKind("belief"));
-    const factDb = { kind: "account", ownerKey: "fact-db" };
-    const beliefDb = { kind: "account", ownerKey: "belief-db" };
-
-    await ontology.linkDatabase(factDb, fact.hash);
-    await ontology.linkDatabase(beliefDb, belief.hash);
-    await ontology.linkDatabase(factDb, belief.hash);
-    await ontology.linkDatabase(factDb, fact.hash);
-
-    expect(await ontology.listDatabasesByOntologyHash(fact.hash)).toEqual([factDb]);
-    expect(await ontology.listDatabasesByLabelKinds({ nodeKinds: ["belief"] })).toEqual([beliefDb]);
   });
 });
