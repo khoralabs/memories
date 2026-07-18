@@ -141,8 +141,9 @@ export function runMemoriesProjectionsContractTests(
       expect(full).toContain("world");
       expect(full).toMatch(/\n\n/);
       // User content chunks only (exclude system `__*` maps) — both present, joined.
-      const userOnly = full
-        ?.split("\n\n")
+      expect(full).not.toBeNull();
+      const userOnly = (full ?? "")
+        .split("\n\n")
         .filter((chunk) => chunk === "hello" || chunk === "world");
       expect(userOnly.sort()).toEqual(["hello", "world"]);
 

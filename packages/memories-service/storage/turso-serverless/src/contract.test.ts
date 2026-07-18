@@ -14,14 +14,20 @@ const integration = hasTursoIntegrationEnv();
 describe.skipIf(!integration)("turso-serverless live backend", () => {
   runMemoriesDatabaseBackendContractTests(
     "turso-serverless",
-    () =>
-      createTursoServerlessBackend({
+    () => {
+      const url = process.env.TURSO_DATABASE_URL?.trim();
+      const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
+      if (!url || !authToken) {
+        throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required");
+      }
+      return createTursoServerlessBackend({
         strategy: {
           kind: "turso-serverless",
-          url: process.env.TURSO_DATABASE_URL?.trim(),
-          authToken: process.env.TURSO_AUTH_TOKEN?.trim(),
+          url,
+          authToken,
         },
-      }),
+      });
+    },
     {
       canEnumerate: false,
       supportsCheckpoint: true,
