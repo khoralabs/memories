@@ -180,7 +180,14 @@ export function openMemoriesDatabase(
 
 /** Standard test key; use in unit/integration tests only. */
 export function openTestMemoriesDatabase(filename = ":memory:"): Database {
-  return openMemoriesDatabase(filename, { sqlCipherKey: TEST_SQLCIPHER_KEY });
+  try {
+    return openMemoriesDatabase(filename, { sqlCipherKey: TEST_SQLCIPHER_KEY });
+  } catch (e) {
+    // First open can race: ensureCustomSqlite loads libsqlite before SQLCipher setCustomSQLite.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/SQLite already loaded/i.test(msg)) throw e;
+    return openMemoriesDatabase(filename, { sqlCipherKey: TEST_SQLCIPHER_KEY });
+  }
 }
 
 export function openMemoriesDatabaseReadonly(filename: string): Database {
