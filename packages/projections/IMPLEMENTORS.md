@@ -7,7 +7,9 @@ This document describes the contract for projection packages. Persistence semant
 | Package | Role |
 | --- | --- |
 | `@khoralabs/memories-projections` | Strategy-neutral source interfaces, layout math, layout types, and async visualization facade. |
+| `@khoralabs/memories-projections-contract` | Shared conformance tests for strategy adapters (`runMemoriesProjectionsContractTests`). |
 | `@khoralabs/memories-projections-sqlite` | SQLite strategy adapter for `@khoralabs/memories-sqlite` table/blob layout. |
+| `@khoralabs/memories-projections-libsql` | LibSQL strategy adapter for `@khoralabs/memories-libsql` (FTS5 + `vector32`). |
 | `@khoralabs/memories-projections-turso` | Turso/libSQL strategy adapter for an already-local Turso-family database. |
 
 Projection strategy must match the in-process persistence database shape. Do not auto-detect storage backends in the core package.
@@ -48,7 +50,7 @@ Use the `collect*UmapInput` helpers when a service node should run storage-local
 - Adapters must accept an already-local database/query handle.
 - Adapters must not open remote databases, run sync, provision databases, or own credentials.
 - Adapters should preserve namespace subtree semantics: namespace equals `prefix` or is nested under `prefix + "/"`.
-- Adapters should exclude system source maps whose `source_key` begins with `__` when computing user content mean embeddings.
+- Adapters should exclude system source maps whose `source_key` matches GLOB `__*` (or equivalent) when computing user content mean embeddings. Prefer `NOT GLOB '__*'` over `NOT LIKE '__%'` — in SQL `LIKE`, `_` is a single-character wildcard.
 - Adapters should mean-pool vectors per memory and skip malformed/incompatible vector rows rather than changing layout core behavior.
 
 ## SQLite Strategy
@@ -60,6 +62,15 @@ Use the `collect*UmapInput` helpers when a service node should run storage-local
 - Text previews read `text_features` ordered by `_ts_created`, then `_id`.
 - Sync convenience APIs can remain for SQLite callers, but the strategy must also expose `createSqliteGraphProjectionSource(db)`.
 
+## LibSQL Strategy
+
+`@khoralabs/memories-projections-libsql` wraps a local query client (e.g. `@libsql/client` `Client`).
+
+- Pair with `@khoralabs/memories-libsql` for the matching table/`vector32` shape.
+- The adapter reads vectors with `vector_extract(vf.vector) AS vector_json` and parses JSON arrays.
+- Public APIs accept a minimal query client rather than credentials or file paths.
+- Prefer a real `file:` database handle; private in-memory URLs are unreliable with interactive persistence transactions.
+
 ## Turso/libSQL Strategy
 
 `@khoralabs/memories-projections-turso` wraps a local query client.
@@ -68,6 +79,7 @@ Use the `collect*UmapInput` helpers when a service node should run storage-local
 - The adapter reads vectors with `vector_extract(vf.vector) AS vector_json` and parses JSON arrays.
 - The adapter must not call Turso Sync `pull()` or `push()`. A workflow may sync before creating the projection source.
 - Public APIs should accept a minimal query client rather than Turso credentials.
+- SQL is compatible with the libsql projections adapter on the shared Turso-family schema.
 
 ## Layout Core Rules
 
@@ -81,7 +93,5 @@ Use the `collect*UmapInput` helpers when a service node should run storage-local
 
 Use focused tests at the right layer:
 
-- Core tests use fake `GraphProjectionSource` data and no database.
-- Strategy tests cover SQL row handling, vector decoding/parsing, namespace prefix behavior, and text preview truncation.
-- Turso tests should use fake query clients; do not require remote credentials or network.
-- SQLite tests may use in-memory SQLite schemas for adapter behavior.
+- Core tests use fake `GraphProjectionSource` data and no database (layout/UMAP math).
+- Cross-strategy behavioral conformance lives in [`@khoralabs/memories-projections-contract`](./contract): call `runMemoriesProjectionsContractTests(name, factory)` from each strategy package. The factory returns `{ source, persistence }` so the harness can seed with `mergeMemoryAsync` and assert namespaces, mean embeddings (including `__*` exclusion), previews, and layout smoke.

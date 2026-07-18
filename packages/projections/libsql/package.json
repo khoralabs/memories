@@ -1,13 +1,13 @@
 {
-  "name": "@khoralabs/memories-projections-sqlite",
+  "name": "@khoralabs/memories-projections-libsql",
   "version": "0.1.0",
-  "description": "SQLite graph projection strategy for Memories.",
+  "description": "LibSQL graph projection strategy for Memories.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/projections/sqlite"
+    "directory": "packages/projections/libsql"
   },
   "files": [
     "src",
@@ -22,13 +22,13 @@
   },
   "dependencies": {
     "@khoralabs/memories-persistence-core": "workspace:*",
-    "@khoralabs/memories-projections": "workspace:*",
-    "@khoralabs/memories-sqlite": "workspace:*"
+    "@khoralabs/memories-projections": "workspace:*"
   },
   "scripts": {
     "test": "bun test"
   },
   "devDependencies": {
+    "@khoralabs/memories-libsql": "workspace:*",
     "@khoralabs/memories-projections-contract": "workspace:*",
     "@types/bun": "latest"
   },

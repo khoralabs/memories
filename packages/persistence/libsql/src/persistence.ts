@@ -16,7 +16,7 @@ import type {
   TextFeatureExportRow,
 } from "@khoralabs/memories-persistence-core/persistence";
 import type { MemoryProvenanceEvent } from "@khoralabs/memories-persistence-core/provenance";
-import { createLibsqlDatabase, type LibsqlCredentials, queryAll } from "./client";
+import { createLibsqlDatabase, queryAll } from "./client";
 import { type DbCtx, readCtx, writeCtx } from "./context";
 import type { LibsqlDatabase } from "./db";
 import { ctxExec } from "./db";
@@ -85,7 +85,10 @@ import { insertVectorFeature } from "./models/vector-features";
 import { listVectorEmbeddingIndexDimensions as listVectorEmbeddingIndexDimensionsQuery } from "./models/vector-index-dimensions";
 import { withWriteTransaction } from "./transactions";
 
-export type MemoriesLibsqlOptions = LibsqlCredentials & {
+export type MemoriesLibsqlOptions = {
+  url?: string;
+  authToken?: string;
+  encryptionKey?: string;
   db?: LibsqlDatabase;
   autoMigrate?: boolean;
   labelPropsSearchFormatter?: LabelPropsSearchFormatter;
@@ -529,7 +532,18 @@ export class MemoriesLibsqlPersistence {
 export async function createMemoriesLibsqlPersistence(
   options: MemoriesLibsqlOptions,
 ): Promise<MemoriesPersistenceAsync> {
-  const db = options.db ?? createLibsqlDatabase(options);
+  const db =
+    options.db ??
+    (() => {
+      if (!options.url) {
+        throw new Error("createMemoriesLibsqlPersistence: url is required when db is omitted");
+      }
+      return createLibsqlDatabase({
+        url: options.url,
+        authToken: options.authToken,
+        encryptionKey: options.encryptionKey,
+      });
+    })();
   if (options.autoMigrate !== false) {
     await migrateMemoriesLibsql(db);
   }

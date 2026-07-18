@@ -44,7 +44,7 @@ const layout = await buildNamespaceGraphLayout(localClient, persistence, "app/us
 - The query handle should point at an already-local Turso-family database.
 - Pulling from Turso Cloud before projection is a workflow concern, not a package concern.
 - Remote `url` / `authToken` handling belongs in persistence or service packages.
-- Excludes system source maps whose `source_key` starts with `__` from mean embeddings.
+- Excludes system source maps whose `source_key` matches GLOB `__*` from mean embeddings.
 - Skips malformed vector JSON rows.
 
 Shared adapter rules are documented in [`../IMPLEMENTORS.md`](../IMPLEMENTORS.md).

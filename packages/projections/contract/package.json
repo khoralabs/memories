@@ -1,13 +1,18 @@
 {
-  "name": "@khoralabs/memories-projections-turso",
+  "name": "@khoralabs/memories-projections-contract",
   "version": "0.1.0",
-  "description": "Turso/libSQL graph projection strategy for Memories.",
+  "description": "Shared conformance tests for Memories projection strategy adapters.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/projections/turso"
+    "directory": "packages/projections/contract"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/projections/contract#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "src",
@@ -20,16 +25,16 @@
       "default": "./src/index.ts"
     }
   },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
+    "@khoralabs/memories-core": "workspace:*",
     "@khoralabs/memories-persistence-core": "workspace:*",
     "@khoralabs/memories-projections": "workspace:*"
   },
-  "scripts": {
-    "test": "bun test"
-  },
   "devDependencies": {
-    "@khoralabs/memories-libsql": "workspace:*",
-    "@khoralabs/memories-projections-contract": "workspace:*",
     "@types/bun": "latest"
   },
   "peerDependencies": {

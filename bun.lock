@@ -388,6 +388,21 @@
         "typescript": "^5",
       },
     },
+    "packages/projections/contract": {
+      "name": "@khoralabs/memories-projections-contract",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-core": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
+        "@khoralabs/memories-projections": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/projections/core": {
       "name": "@khoralabs/memories-projections",
       "version": "0.1.0",
@@ -396,6 +411,22 @@
         "umap-js": "^1.4.0",
       },
       "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/projections/libsql": {
+      "name": "@khoralabs/memories-projections-libsql",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-persistence-core": "workspace:*",
+        "@khoralabs/memories-projections": "workspace:*",
+      },
+      "devDependencies": {
+        "@khoralabs/memories-libsql": "workspace:*",
+        "@khoralabs/memories-projections-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -411,6 +442,7 @@
         "@khoralabs/memories-sqlite": "workspace:*",
       },
       "devDependencies": {
+        "@khoralabs/memories-projections-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -425,6 +457,8 @@
         "@khoralabs/memories-projections": "workspace:*",
       },
       "devDependencies": {
+        "@khoralabs/memories-libsql": "workspace:*",
+        "@khoralabs/memories-projections-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -627,6 +661,10 @@
     "@khoralabs/memories-persistence-core": ["@khoralabs/memories-persistence-core@workspace:packages/persistence/core"],
 
     "@khoralabs/memories-projections": ["@khoralabs/memories-projections@workspace:packages/projections/core"],
+
+    "@khoralabs/memories-projections-contract": ["@khoralabs/memories-projections-contract@workspace:packages/projections/contract"],
+
+    "@khoralabs/memories-projections-libsql": ["@khoralabs/memories-projections-libsql@workspace:packages/projections/libsql"],
 
     "@khoralabs/memories-projections-sqlite": ["@khoralabs/memories-projections-sqlite@workspace:packages/projections/sqlite"],
 

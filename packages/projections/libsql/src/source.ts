@@ -1,33 +1,33 @@
 import type { GraphMemoryEmbedding } from "@khoralabs/memories-persistence-core";
 import type { GraphProjectionSource } from "@khoralabs/memories-projections";
 
-export type TursoProjectionRow = Record<string, unknown>;
+export type LibsqlProjectionRow = Record<string, unknown>;
 
-export type TursoProjectionQueryResult = {
-  rows: readonly TursoProjectionRow[];
+export type LibsqlProjectionQueryResult = {
+  rows: readonly LibsqlProjectionRow[];
 };
 
-export type TursoProjectionStatement = {
+export type LibsqlProjectionStatement = {
   sql: string;
   args?: unknown;
 };
 
-export type TursoProjectionQueryClient = {
+export type LibsqlProjectionQueryClient = {
   execute(
-    statement: string | TursoProjectionStatement,
+    statement: string | LibsqlProjectionStatement,
     args?: unknown,
-  ): Promise<TursoProjectionQueryResult>;
+  ): Promise<LibsqlProjectionQueryResult>;
 };
 
 function executeQuery(
-  queryClient: TursoProjectionQueryClient,
+  queryClient: LibsqlProjectionQueryClient,
   sql: string,
   args: readonly unknown[],
-): Promise<TursoProjectionQueryResult> {
+): Promise<LibsqlProjectionQueryResult> {
   return queryClient.execute({ sql, args });
 }
 
-function stringValue(row: TursoProjectionRow, key: string): string | null {
+function stringValue(row: LibsqlProjectionRow, key: string): string | null {
   const value = row[key];
   return typeof value === "string" ? value : null;
 }
@@ -50,7 +50,7 @@ function parseVectorJson(value: unknown): number[] | null {
 }
 
 export async function listNamespacesUnderPrefix(
-  queryClient: TursoProjectionQueryClient,
+  queryClient: LibsqlProjectionQueryClient,
   prefix: string,
 ): Promise<string[]> {
   const result = await executeQuery(
@@ -67,7 +67,7 @@ export async function listNamespacesUnderPrefix(
 }
 
 export async function loadMeanEmbeddingsForNamespace(
-  queryClient: TursoProjectionQueryClient,
+  queryClient: LibsqlProjectionQueryClient,
   namespace: string,
 ): Promise<GraphMemoryEmbedding[]> {
   const result = await executeQuery(
@@ -115,7 +115,7 @@ export async function loadMeanEmbeddingsForNamespace(
 }
 
 export async function loadSourceMapTextPreview(
-  queryClient: TursoProjectionQueryClient,
+  queryClient: LibsqlProjectionQueryClient,
   sourceMapId: string,
   maxChars = 8000,
 ): Promise<string | null> {
@@ -138,7 +138,7 @@ export async function loadSourceMapTextPreview(
 }
 
 export async function loadMemoryTextPreview(
-  queryClient: TursoProjectionQueryClient,
+  queryClient: LibsqlProjectionQueryClient,
   namespace: string,
   key: string,
   maxChars = 8000,
@@ -162,8 +162,8 @@ export async function loadMemoryTextPreview(
   return `${joined.slice(0, maxChars - 1)}…`;
 }
 
-export function createTursoGraphProjectionSource(
-  queryClient: TursoProjectionQueryClient,
+export function createLibsqlGraphProjectionSource(
+  queryClient: LibsqlProjectionQueryClient,
 ): GraphProjectionSource {
   return {
     listNamespacesUnderPrefix(prefix) {
