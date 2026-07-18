@@ -37,6 +37,17 @@ export const DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES: MemoriesBackendCapa
   asOfTimestampMsSearch: true,
 };
 
+/** Capabilities of the local libSQL file backend (`@khoralabs/memories-libsql`). */
+export const DEFAULT_LIBSQL_STRATEGY_CAPABILITIES: MemoriesBackendCapabilities = {
+  lexicalSearch: true,
+  vectorSearch: true,
+  neighborIndex: true,
+  graphIndex: true,
+  multiNamespaceSearch: true,
+  unscopedSearch: true,
+  asOfTimestampMsSearch: true,
+};
+
 export type SqliteBackendStrategy = {
   kind: "sqlite";
   dataDir: string;
@@ -54,9 +65,19 @@ export type TursoServerlessBackendStrategy = {
   capabilities?: StrategyCapabilities;
 };
 
+/** Local multi-tenant libSQL files under `dataDir` (encoded paths), optional at-rest encryption. */
+export type LibsqlBackendStrategy = {
+  kind: "libsql";
+  dataDir: string;
+  /** Optional at-rest key for local `file:` DBs (maps to memories-libsql `encryptionKey`). */
+  encryptionKey?: string;
+  capabilities?: StrategyCapabilities;
+};
+
 export type MemoriesDatabaseBackendStrategy =
   | SqliteBackendStrategy
   | TursoServerlessBackendStrategy
+  | LibsqlBackendStrategy
   | ({ kind: string; capabilities?: StrategyCapabilities } & Record<string, unknown>);
 
 export function resolveStrategyCapabilities(
@@ -68,6 +89,9 @@ export function resolveStrategyCapabilities(
   }
   if (strategy.kind === "turso-serverless") {
     return { ...DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES, ...partial };
+  }
+  if (strategy.kind === "libsql") {
+    return { ...DEFAULT_LIBSQL_STRATEGY_CAPABILITIES, ...partial };
   }
   return resolveMemoriesBackendCapabilities({ capabilities: partial });
 }

@@ -100,6 +100,7 @@ Declare it in your factory's `create` validation. The strategy is serialized to 
 Attach a `capabilities` field to your strategy to declare what the opened database supports. `resolveStrategyCapabilities(strategy)` from `@khoralabs/memories-service-storage-core` merges your declared overrides with the appropriate defaults:
 
 - `sqlite` strategies default to `DEFAULT_SQLITE_STRATEGY_CAPABILITIES` (all flags on).
+- `libsql` strategies default to `DEFAULT_LIBSQL_STRATEGY_CAPABILITIES` (all flags on).
 - `turso-serverless` strategies default to `DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES` (all flags on).
 - All other `kind` values fall back to `DEFAULT_MEMORIES_BACKEND_CAPABILITIES` from `@khoralabs/memories-persistence-core/persistence` (lexical, vector, neighbor, graph, and multi-namespace on; **unscoped off**).
 
@@ -165,16 +166,18 @@ Similarly, implement `MemoriesDatabaseOntologyStore` from `@khoralabs/memories-s
 | Backend | Source | Notes |
 |---------|--------|-------|
 | SQLite | [`sqlite/src/local-sqlite-backend.ts`](./sqlite/src/local-sqlite-backend.ts) | Local file, WAL, SQLCipher, full `MemoriesBackendHandle.sqlite` context |
+| LibSQL | [`libsql/src/local-libsql-backend.ts`](./libsql/src/local-libsql-backend.ts) | Local file, same encoded paths as SQLite, optional `encryptionKey`, no `sqlite` context |
 | Turso serverless | [`turso-serverless/src/turso-serverless-backend.ts`](./turso-serverless/src/turso-serverless-backend.ts) | Remote, async, no `sqlite` context, `list()` returns `[]` |
 
 Both direct backend constructors use an options object:
 
 ```ts
 createLocalSqliteBackend({ strategy });
+createLocalLibsqlBackend({ strategy });
 createTursoServerlessBackend({ strategy });
 ```
 
-Backend-specific behavior is allowed when the contract is explicit: SQLite can enumerate local files and checkpoint WAL; Turso serverless cannot enumerate physical databases and treats checkpoint as a no-op. Both currently return `UnsupportedStorageFeatureError` from `snapshot(id)`.
+Backend-specific behavior is allowed when the contract is explicit: SQLite and local libSQL can enumerate local files; Turso serverless cannot enumerate physical databases and treats checkpoint as a no-op. SQLite and libSQL treat checkpoint as success (WAL or no-op); all three currently return `UnsupportedStorageFeatureError` from `snapshot(id)`.
 
 ## Conformance tests
 

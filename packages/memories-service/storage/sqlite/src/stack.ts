@@ -11,6 +11,7 @@ import type {
   MemoriesDatabasePlacementStore,
   SqliteBackendStrategy,
 } from "@khoralabs/memories-service-storage-core";
+import { createLocalLibsqlBackendFactory } from "@khoralabs/memories-service-storage-libsql";
 import { createTursoServerlessBackendFactory } from "@khoralabs/memories-service-storage-turso-serverless";
 import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-sqlite";
 import { createLocalSqliteBackendFactory } from "./local-sqlite-backend";
@@ -59,6 +60,7 @@ export function createLocalSqliteServiceStack(
     opts.backendFactory ??
     createCompositeBackendFactory({
       sqlite: createLocalSqliteBackendFactory(),
+      libsql: createLocalLibsqlBackendFactory(),
       "turso-serverless": createTursoServerlessBackendFactory(),
     });
   const resolver = createBackendResolver({ placement, factory });

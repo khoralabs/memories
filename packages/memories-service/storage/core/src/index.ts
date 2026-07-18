@@ -1,4 +1,5 @@
 export type {
+  LibsqlBackendStrategy,
   MemoriesBackendCapabilities,
   MemoriesDatabaseBackend,
   MemoriesDatabaseBackendFactory,
@@ -10,6 +11,7 @@ export type {
   TursoServerlessBackendStrategy,
 } from "./backend";
 export {
+  DEFAULT_LIBSQL_STRATEGY_CAPABILITIES,
   DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
   DEFAULT_SQLITE_STRATEGY_CAPABILITIES,
   DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES,

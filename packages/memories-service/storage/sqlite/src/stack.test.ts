@@ -25,6 +25,20 @@ function makeTempDataDir(): string {
   return dir;
 }
 
+function createStack(
+  opts: Parameters<typeof createLocalSqliteServiceStack>[0],
+): ReturnType<typeof createLocalSqliteServiceStack> {
+  const open = () => createLocalSqliteServiceStack(opts);
+  try {
+    return open();
+  } catch (e) {
+    // First open can race: custom libsqlite vs SQLCipher setCustomSQLite.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/SQLite already loaded/i.test(msg)) throw e;
+    return open();
+  }
+}
+
 afterEach(() => {
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
@@ -73,7 +87,7 @@ describe("createLocalSqliteServiceStack", () => {
   test("routes turso-serverless placement overrides without UnknownBackendStrategyError", async () => {
     const dataDir = makeTempDataDir();
     const tursoFactory = createStubTursoFactory();
-    const { service, placement } = createLocalSqliteServiceStack({
+    const { service, placement } = createStack({
       dataDir,
       sqlCipherKey: TEST_SQLCIPHER_KEY,
       backendFactory: createCompositeBackendFactory({
@@ -96,9 +110,29 @@ describe("createLocalSqliteServiceStack", () => {
     expect(tursoFactory.strategies[0]?.kind).toBe("turso-serverless");
   });
 
+  test("routes libsql placement overrides without UnknownBackendStrategyError", async () => {
+    const dataDir = makeTempDataDir();
+    const libsqlDataDir = makeTempDataDir();
+    const { service, placement } = createStack({
+      dataDir,
+      sqlCipherKey: TEST_SQLCIPHER_KEY,
+    });
+
+    const libsqlId = { kind: "account", ownerKey: "libsql-user" };
+    await placement.setStrategy(libsqlId, {
+      kind: "libsql",
+      dataDir: libsqlDataDir,
+      encryptionKey: "test-libsql-key",
+    });
+
+    await service.open(libsqlId);
+    expect(await service.exists(libsqlId)).toBe(true);
+    await service.close(libsqlId);
+  });
+
   test("placement store accepts turso-serverless strategies and persists them", async () => {
     const dataDir = makeTempDataDir();
-    const { placement } = createLocalSqliteServiceStack({
+    const { placement } = createStack({
       dataDir,
       sqlCipherKey: TEST_SQLCIPHER_KEY,
     });
@@ -116,7 +150,7 @@ describe("createLocalSqliteServiceStack", () => {
 
   test("local sqlite databases work normally when turso overrides are registered", async () => {
     const dataDir = makeTempDataDir();
-    const { service, placement } = createLocalSqliteServiceStack({
+    const { service, placement } = createStack({
       dataDir,
       sqlCipherKey: TEST_SQLCIPHER_KEY,
     });

@@ -24,6 +24,7 @@
     "@khoralabs/memories-persistence-core": "workspace:*",
     "@khoralabs/memories-service": "workspace:*",
     "@khoralabs/memories-service-storage-core": "workspace:*",
+    "@khoralabs/memories-service-storage-libsql": "workspace:*",
     "@khoralabs/memories-service-storage-turso-serverless": "workspace:*",
     "@khoralabs/memories-sqlite": "workspace:*",
     "@khoralabs/sqlite-crypto": "^0.1.0"

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  DEFAULT_LIBSQL_STRATEGY_CAPABILITIES,
   DEFAULT_SQLITE_STRATEGY_CAPABILITIES,
   databaseKey,
   parseDatabaseKey,
@@ -18,6 +19,15 @@ describe("storage-core strategies", () => {
         capabilities: { vectorSearch: false },
       }),
     ).toEqual({ ...DEFAULT_SQLITE_STRATEGY_CAPABILITIES, vectorSearch: false });
+  });
+
+  test("resolveStrategyCapabilities uses libsql defaults", () => {
+    expect(
+      resolveStrategyCapabilities({
+        kind: "libsql",
+        dataDir: "/data",
+      }),
+    ).toEqual(DEFAULT_LIBSQL_STRATEGY_CAPABILITIES);
   });
 
   test("serializeStrategy preserves strategy kind and JSON payload", () => {

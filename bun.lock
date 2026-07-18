@@ -256,6 +256,21 @@
         "typescript": "^5",
       },
     },
+    "packages/memories-service/storage/libsql": {
+      "name": "@khoralabs/memories-service-storage-libsql",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-libsql": "workspace:*",
+        "@khoralabs/memories-service-storage-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@khoralabs/memories-service-storage-contract": "workspace:*",
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/memories-service/storage/sqlite": {
       "name": "@khoralabs/memories-service-storage-sqlite",
       "version": "0.1.0",
@@ -263,6 +278,7 @@
         "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
         "@khoralabs/memories-service-storage-core": "workspace:*",
+        "@khoralabs/memories-service-storage-libsql": "workspace:*",
         "@khoralabs/memories-service-storage-turso-serverless": "workspace:*",
         "@khoralabs/memories-sqlite": "workspace:*",
         "@khoralabs/sqlite-crypto": "^0.1.0",
@@ -683,6 +699,8 @@
     "@khoralabs/memories-service-storage-contract": ["@khoralabs/memories-service-storage-contract@workspace:packages/memories-service/storage/contract"],
 
     "@khoralabs/memories-service-storage-core": ["@khoralabs/memories-service-storage-core@workspace:packages/memories-service/storage/core"],
+
+    "@khoralabs/memories-service-storage-libsql": ["@khoralabs/memories-service-storage-libsql@workspace:packages/memories-service/storage/libsql"],
 
     "@khoralabs/memories-service-storage-sqlite": ["@khoralabs/memories-service-storage-sqlite@workspace:packages/memories-service/storage/sqlite"],
 
