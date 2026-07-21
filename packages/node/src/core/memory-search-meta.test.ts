@@ -123,7 +123,7 @@ describe("memory search meta", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       {
         namespace: "ns",

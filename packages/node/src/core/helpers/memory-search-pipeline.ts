@@ -240,7 +240,8 @@ export async function runHybridMemorySearch(
       : undefined,
   };
 
-  const rawHits = await Promise.resolve(client.search(searchParams));
+  const raw = await Promise.resolve(client.search(searchParams));
+  const rawHits = Array.isArray(raw) ? raw : raw.hits;
 
   return mapSearchHits(rawHits as SearchHit[]);
 }

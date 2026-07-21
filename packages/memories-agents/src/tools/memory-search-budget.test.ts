@@ -14,7 +14,7 @@ test("memory_search budget denies after max completed searches", async () => {
   const env = toMemorySearchEnv({
     client: {
       async search() {
-        return [];
+        return { hits: [] };
       },
     } as never,
     namespace: "ns",

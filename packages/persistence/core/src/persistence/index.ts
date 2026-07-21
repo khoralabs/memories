@@ -48,9 +48,12 @@ export type {
   MemoriesRuntimeCtx,
   MemoryOpContext,
   SearchNamespaceScope,
+  SearchVectorSourceMapIdsResult,
+  VectorSearchMethod,
 } from "./types";
 export {
   DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
   resolveMemoriesBackendCapabilities,
+  resolveVectorSearchMethod,
 } from "./types";
 export { wrapSyncMemoriesPersistenceAsAsync } from "./wrap-sync-as-async";

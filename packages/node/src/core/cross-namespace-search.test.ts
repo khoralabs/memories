@@ -35,7 +35,7 @@ describe("cross-namespace search", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       {
         namespace: "ns1",
@@ -73,7 +73,7 @@ describe("cross-namespace search", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       {
         namespace: "z1",
@@ -94,6 +94,8 @@ describe("cross-namespace search (validation + fallback)", () => {
       capabilities: {
         lexicalSearch: true,
         vectorSearch: false,
+        vectorKnnSearch: false,
+        vectorAnnSearch: false,
         neighborIndex: false,
         multiNamespaceSearch: true,
         unscopedSearch: false,
@@ -102,7 +104,7 @@ describe("cross-namespace search (validation + fallback)", () => {
         return [];
       },
       searchVectorSourceMapIds() {
-        return [];
+        return { sourceMapIds: [] };
       },
       hydrateSourceMapHits() {
         return [];
@@ -125,13 +127,15 @@ describe("cross-namespace search (validation + fallback)", () => {
       capabilities: {
         lexicalSearch: true,
         vectorSearch: false,
+        vectorKnnSearch: false,
+        vectorAnnSearch: false,
         neighborIndex: false,
       },
       searchLexicalSourceMapIds() {
         return [];
       },
       searchVectorSourceMapIds() {
-        return [];
+        return { sourceMapIds: [] };
       },
       hydrateSourceMapHits() {
         return [];
@@ -147,13 +151,15 @@ describe("cross-namespace search (validation + fallback)", () => {
       capabilities: {
         lexicalSearch: true,
         vectorSearch: false,
+        vectorKnnSearch: false,
+        vectorAnnSearch: false,
         neighborIndex: false,
       },
       searchLexicalSourceMapIds() {
         return [];
       },
       searchVectorSourceMapIds() {
-        return [];
+        return { sourceMapIds: [] };
       },
       hydrateSourceMapHits() {
         return [];
@@ -178,6 +184,8 @@ describe("cross-namespace search (validation + fallback)", () => {
       capabilities: {
         lexicalSearch: true,
         vectorSearch: false,
+        vectorKnnSearch: false,
+        vectorAnnSearch: false,
         neighborIndex: false,
         multiNamespaceSearch: false,
         unscopedSearch: false,
@@ -197,7 +205,7 @@ describe("cross-namespace search (validation + fallback)", () => {
         return [];
       },
       searchVectorSourceMapIds() {
-        return [];
+        return { sourceMapIds: [] };
       },
       hydrateSourceMapHits(ids: string[]): HydratedSourceMapHit[] {
         return ids.map((id) => {
@@ -222,7 +230,7 @@ describe("cross-namespace search (validation + fallback)", () => {
       },
     } as unknown as MemoriesPersistence;
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       {
         namespace: "a",
@@ -264,7 +272,7 @@ describe("cross-namespace search (subtree scope)", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       {
         namespace: namespacePath("agents/acme"),
@@ -283,6 +291,8 @@ describe("cross-namespace search (subtree scope)", () => {
       capabilities: {
         lexicalSearch: true,
         vectorSearch: false,
+        vectorKnnSearch: false,
+        vectorAnnSearch: false,
         neighborIndex: false,
         multiNamespaceSearch: true,
         unscopedSearch: false,
@@ -294,7 +304,7 @@ describe("cross-namespace search (subtree scope)", () => {
         return [];
       },
       searchVectorSourceMapIds() {
-        return [];
+        return { sourceMapIds: [] };
       },
       hydrateSourceMapHits() {
         return [];

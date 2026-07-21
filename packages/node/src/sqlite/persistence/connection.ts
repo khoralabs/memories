@@ -7,6 +7,7 @@ import { createMigrationRunner } from "@khoralabs/sqlite-migrate";
 import * as sqliteVec from "sqlite-vec";
 import m001Initial from "./migrations/0.0.0-0.1.0/001-initial";
 import m001AddContentOutbox from "./migrations/0.1.0-0.2.0/001-add-content-outbox";
+import { backfillVectorFeaturesVecTables } from "./search-indexes";
 
 const memoriesMigrations = [m001Initial, m001AddContentOutbox];
 
@@ -175,6 +176,7 @@ export function openMemoriesDatabase(
   configureMemoriesSqlitePragmas(db);
   loadSqliteVec(db);
   initMemoriesSchema(db);
+  backfillVectorFeaturesVecTables(db);
   return db;
 }
 
@@ -207,7 +209,7 @@ export function initMemoriesSchema(db: Database): void {
 }
 
 export function vectorToBlob(vector: Float32Array): Uint8Array {
-  return new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength);
+  return Buffer.from(vector.buffer, vector.byteOffset, vector.byteLength);
 }
 
 export function blobToVector(blob: Uint8Array | Buffer): Float32Array {

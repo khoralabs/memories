@@ -77,11 +77,14 @@ export type {
   MemoriesRuntimeCtx,
   MemoryOpContext,
   SearchNamespaceScope,
+  SearchVectorSourceMapIdsResult,
+  VectorSearchMethod,
 } from "@khoralabs/memories-persistence-core/persistence";
 export {
   buildCanonicalMemorySearchMetaTextAsync,
   DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
   resolveMemoriesBackendCapabilities,
+  resolveVectorSearchMethod,
   upsertMemorySearchMetaVectorAsync,
   wrapSyncMemoriesPersistenceAsAsync,
 } from "@khoralabs/memories-persistence-core/persistence";
@@ -118,6 +121,7 @@ export type {
   SearchContent,
   SearchHit,
   SearchNeighborHit,
+  SearchOutput,
   SearchParams,
 } from "./search";
 export { MAX_ADDITIONAL_NAMESPACES, normalizeSearchScopeFromParams, search } from "./search";

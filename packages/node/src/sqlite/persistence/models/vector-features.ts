@@ -2,7 +2,11 @@ import { ids } from "@khoralabs/memories-persistence-core";
 import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-persistence-core/persistence";
 import { documentValidator } from "../_lib";
 import { vectorToBlob } from "../connection";
-import { ensureVectorFeaturesVecTable } from "../search-indexes";
+import {
+  ensureVectorFeaturesVecTable,
+  hasVectorAnnSearch,
+  vectorVecTableName,
+} from "../search-indexes";
 import type { DbCtx } from "./context";
 
 export function insertVectorFeature(
@@ -24,6 +28,9 @@ export function insertVectorFeature(
   }
   const vfRow = parsed.data;
   const dim = input.vector.length;
+  vectorVecTableName(dim);
+  const annAvailable = hasVectorAnnSearch(db);
+  if (annAvailable) ensureVectorFeaturesVecTable(db, dim);
   const blob = vectorToBlob(input.vector);
   stmts.insertVectorFeatureRow.run(
     vfRow._id,
@@ -32,7 +39,6 @@ export function insertVectorFeature(
     vfRow.source_map_id,
     blob,
   );
-  ensureVectorFeaturesVecTable(db, dim);
-  stmts.getInsertVectorVec(dim).run(vfRow._id, input.memoryId, input.vector);
+  if (annAvailable) stmts.getInsertVectorVec(dim).run(vfRow._id, input.vector);
   return { vectorFeatureId };
 }

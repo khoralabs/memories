@@ -504,7 +504,7 @@ describe("remote memories client over http", () => {
         labels: [],
       });
 
-      const hits = await client.search({
+      const { hits } = await client.search({
         namespace: "user/remote",
         content: { text: "remote" },
         options: { topK: 3, arms: { lexical: 1, vector: 0 } },

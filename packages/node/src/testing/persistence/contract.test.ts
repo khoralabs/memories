@@ -49,7 +49,7 @@ export function runMemoriesPersistenceContractTests(
 
       expect(await persistence.findMemoryIdByKey(namespace, key)).toBeDefined();
 
-      const hits = await searchAsync(
+      const { hits } = await searchAsync(
         { persistence },
         {
           namespace,
@@ -79,7 +79,7 @@ export function runMemoriesPersistenceContractTests(
         },
       );
 
-      const hits = await searchAsync(
+      const { hits } = await searchAsync(
         { persistence },
         {
           namespace: namespacePath(`${root}/team`),
@@ -137,7 +137,7 @@ export function runMemoriesPersistenceContractTests(
           },
         );
 
-        const hits = await searchAsync(
+        const { hits } = await searchAsync(
           { persistence },
           {
             namespace: rootScope,
@@ -177,7 +177,7 @@ export function runMemoriesPersistenceContractTests(
           },
         );
 
-        const dagHits = await searchAsync(
+        const { hits: dagHits } = await searchAsync(
           { persistence },
           {
             namespace: rootScope,
@@ -188,7 +188,7 @@ export function runMemoriesPersistenceContractTests(
         );
         expect(dagHits.some((h) => h.memory.key === "entry")).toBe(true);
 
-        const exactParent = await searchAsync(
+        const { hits: exactParent } = await searchAsync(
           { persistence },
           {
             namespace: rootScope,
@@ -199,7 +199,7 @@ export function runMemoriesPersistenceContractTests(
         );
         expect(exactParent.some((h) => h.memory.key === "entry")).toBe(false);
 
-        const exactChild = await searchAsync(
+        const { hits: exactChild } = await searchAsync(
           { persistence },
           {
             namespace: childScope,
@@ -461,7 +461,7 @@ export function runMemoriesPersistenceContractTests(
           },
         );
 
-        const hits = await searchAsync(
+        const { hits } = await searchAsync(
           { persistence },
           {
             namespace: namespacePath(targetNs),
@@ -500,7 +500,7 @@ export function runMemoriesPersistenceContractTests(
           },
         );
 
-        const hits = await searchAsync(
+        const { hits } = await searchAsync(
           { persistence },
           {
             namespace: namespacePath(namespace),
@@ -509,6 +509,8 @@ export function runMemoriesPersistenceContractTests(
               topK: 10,
               arms: { vector: 1, lexical: 0 },
               maxVectorDistance: 0.1,
+              // Exact distance cutoff requires KNN (ANN distances are approximate).
+              vectorSearchMethod: "knn",
             },
           },
         );
@@ -544,7 +546,7 @@ export function runMemoriesPersistenceContractTests(
           },
         );
 
-        const hits = await searchAsync(
+        const { hits } = await searchAsync(
           { persistence },
           {
             namespace: namespacePath(nsA),
@@ -575,7 +577,7 @@ export function runMemoriesPersistenceContractTests(
           },
         );
 
-        const hits = await searchAsync(
+        const { hits } = await searchAsync(
           { persistence },
           {
             namespace: namespacePath(namespace),
@@ -606,7 +608,7 @@ export function runMemoriesPersistenceContractTests(
           );
         }
 
-        const hits = await searchAsync(
+        const { hits } = await searchAsync(
           { persistence },
           {
             namespace: namespacePath(root),
@@ -649,7 +651,7 @@ export function runMemoriesPersistenceContractTests(
           },
         );
 
-        const hits = await searchAsync(
+        const { hits } = await searchAsync(
           { persistence },
           {
             namespace: targetNs,
@@ -689,7 +691,7 @@ export function runMemoriesPersistenceContractTests(
           },
         );
 
-        const hits = await searchAsync(
+        const { hits } = await searchAsync(
           { persistence },
           {
             namespace: namespacePath(nsA),
@@ -736,16 +738,18 @@ export function runMemoriesPersistenceContractTests(
           vector: makeVec(1.0),
           limit: 10,
           memoryIds: [allowedId],
+          method: "knn",
         });
-        expect(result).toHaveLength(1);
+        expect(result.sourceMapIds).toHaveLength(1);
 
         const empty = await persistence.searchVectorSourceMapIds({
           scope: { kind: "unscoped" },
           vector: makeVec(1.0),
           limit: 10,
           memoryIds: [],
+          method: "knn",
         });
-        expect(empty).toEqual([]);
+        expect(empty.sourceMapIds).toEqual([]);
       });
 
       test("searchVectorSourceMapIds empty scope arrays return nothing", async () => {
@@ -758,16 +762,18 @@ export function runMemoriesPersistenceContractTests(
             scope: { kind: "pathSubtree", namespaces: [] },
             vector: makeVec(1.0),
             limit: 10,
+            method: "knn",
           }),
-        ).toEqual([]);
+        ).toEqual({ sourceMapIds: [] });
 
         expect(
           await persistence.searchVectorSourceMapIds({
             scope: { kind: "exactScope", scopes: [] },
             vector: makeVec(1.0),
             limit: 10,
+            method: "knn",
           }),
-        ).toEqual([]);
+        ).toEqual({ sourceMapIds: [] });
       });
     });
   });

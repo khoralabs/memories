@@ -16,7 +16,7 @@ import type {
   TextFeatureExportRow,
 } from "@khoralabs/memories-persistence-core/persistence";
 import type { MemoryProvenanceEvent } from "@khoralabs/memories-persistence-core/provenance";
-import { createTursoClients, queryAll, type TursoCredentials } from "./client";
+import { createTursoClients, execSql, queryAll, type TursoCredentials } from "./client";
 import { type DbCtx, readCtx, writeCtx } from "./context";
 import type { TursoDatabase } from "./db";
 import { ctxExec } from "./db";
@@ -84,6 +84,7 @@ import { insertLexicalFeature } from "./models/text-features";
 import { insertVectorFeature } from "./models/vector-features";
 import { listVectorEmbeddingIndexDimensions as listVectorEmbeddingIndexDimensionsQuery } from "./models/vector-index-dimensions";
 import { withWriteTransaction } from "./transactions";
+import { VECTOR_FEATURES_ANN_INDEX_SQL } from "./turso-schema";
 
 export type MemoriesTursoServerlessOptions = TursoCredentials & {
   db?: TursoDatabase;
@@ -92,15 +93,7 @@ export type MemoriesTursoServerlessOptions = TursoCredentials & {
 };
 
 export class MemoriesTursoServerlessPersistence {
-  readonly capabilities: MemoriesBackendCapabilities = {
-    lexicalSearch: true,
-    vectorSearch: true,
-    neighborIndex: true,
-    graphIndex: true,
-    multiNamespaceSearch: true,
-    unscopedSearch: true,
-    asOfTimestampMsSearch: true,
-  };
+  readonly capabilities: MemoriesBackendCapabilities;
 
   private readonly inTransaction = { current: false };
   private txCtx: DbCtx | undefined;
@@ -108,7 +101,20 @@ export class MemoriesTursoServerlessPersistence {
   constructor(
     readonly db: TursoDatabase,
     private readonly labelPropsSearchFormatter?: LabelPropsSearchFormatter,
-  ) {}
+    vectorAnnSearch = false,
+  ) {
+    this.capabilities = {
+      lexicalSearch: true,
+      vectorSearch: true,
+      vectorKnnSearch: true,
+      vectorAnnSearch,
+      neighborIndex: true,
+      graphIndex: true,
+      multiNamespaceSearch: true,
+      unscopedSearch: true,
+      asOfTimestampMsSearch: true,
+    };
+  }
 
   private ctx(op: MemoryOpContext): DbCtx {
     return writeCtx(this.db, op.now);
@@ -413,7 +419,14 @@ export class MemoriesTursoServerlessPersistence {
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
-  }): Promise<string[]> {
+    method: "knn" | "ann";
+  }): Promise<{ sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" }> {
+    if (input.method === "ann" && !this.capabilities.vectorAnnSearch) {
+      return { sourceMapIds: [] };
+    }
+    if (input.method === "knn" && !this.capabilities.vectorKnnSearch) {
+      return { sourceMapIds: [] };
+    }
     return searchVectorSourceMapIds(this.readDbCtx(), input);
   }
 
@@ -533,9 +546,17 @@ export async function createMemoriesTursoServerlessPersistence(
   if (options.autoMigrate !== false) {
     await migrateMemoriesTursoServerless(db);
   }
+  let vectorAnnSearch = false;
+  try {
+    await execSql(db.write, VECTOR_FEATURES_ANN_INDEX_SQL);
+    vectorAnnSearch = true;
+  } catch {
+    // Some Turso deployments do not expose libSQL vector indexes.
+  }
   return new MemoriesTursoServerlessPersistence(
     db,
     options.labelPropsSearchFormatter,
+    vectorAnnSearch,
   ) as unknown as MemoriesPersistenceAsync;
 }
 

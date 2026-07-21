@@ -34,7 +34,7 @@ function fakeClient(hits: SearchHit[]) {
     client: {
       search(params: SearchParams) {
         searches.push(params);
-        return hits;
+        return { hits };
       },
       mergeMemory(params: unknown) {
         merges.push(params);

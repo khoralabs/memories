@@ -33,7 +33,10 @@ Behavior is aligned with the shared row model and ops described in [`../IMPLEMEN
 
 ## SQLite implementation notes
 
-- Uses `bun:sqlite` plus `sqlite-vec` extension-backed vector indexes.
+- Uses `bun:sqlite` plus `sqlite-vec` **≥ 0.1.10-alpha** extension-backed vector indexes.
+- **KNN:** exact cosine over `vector_features` (`vec_distance_cosine`). Capability: `vectorKnnSearch`.
+- **ANN:** DiskANN `vec0` tables (`INDEXED BY diskann(neighbor_quantizer=binary)`) queried with `MATCH` + `k=`. Capability: `vectorAnnSearch` (probed at open).
+- Dual-write: blob rows in `vector_features` plus per-dimension DiskANN vec0 tables; legacy flat vec0 tables are rebuilt on open.
 - Uses FTS5 for lexical search.
 - Uses local SQLite transactions through `db.transaction(fn)()`.
 - Implements the reference graph, scope, provenance, and label-props search behavior described in the shared guide.

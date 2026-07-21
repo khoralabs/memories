@@ -8,15 +8,19 @@ import type {
   MemoriesBackendCapabilities,
   MemoriesPersistenceAsync,
   SearchNamespaceScope,
+  VectorSearchMethod,
 } from "@khoralabs/memories-persistence-core/persistence";
-import { resolveMemoriesBackendCapabilities } from "@khoralabs/memories-persistence-core/persistence";
+import {
+  resolveMemoriesBackendCapabilities,
+  resolveVectorSearchMethod,
+} from "@khoralabs/memories-persistence-core/persistence";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtxAsync } from "./merge-memory-async";
 import {
   normalizeSearchScopeFromParams,
   type SearchContent,
-  type SearchHit,
   type SearchNeighborHit,
+  type SearchOutput,
   type SearchParams,
 } from "./search";
 
@@ -25,6 +29,7 @@ export type {
   SearchContent,
   SearchHit,
   SearchNeighborHit,
+  SearchOutput,
   SearchParams,
 } from "./search";
 
@@ -64,11 +69,17 @@ async function rankSourceMapIdsForContentAsync(
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
+    vectorSearchMethod?: VectorSearchMethod;
   },
-): Promise<Array<{ id: string; score: number }>> {
+): Promise<{
+  fused: Array<{ id: string; score: number }>;
+  vectorSearchMethod?: VectorSearchMethod;
+}> {
   const { scope } = input;
   const asOf = input.asOfTimestampMs;
   const asOfSpread = asOf !== undefined ? { asOfTimestampMs: asOf } : {};
+  const resolvedMethod = resolveVectorSearchMethod(input.vectorSearchMethod, caps);
+  let usedMethod: VectorSearchMethod | undefined;
 
   const multiRoots =
     scope.kind === "pathSubtree"
@@ -83,6 +94,28 @@ async function rankSourceMapIdsForContentAsync(
     !caps.multiNamespaceSearch &&
     multiRoots.length > 1 &&
     (scope.kind === "pathSubtree" || scope.kind === "scopeDag" || scope.kind === "exactScope");
+
+  const runVector = async (subScope: SearchNamespaceScope): Promise<string[]> => {
+    if (!caps.vectorSearch || !("vector" in input.content) || input.vectorWeight <= 0) {
+      return [];
+    }
+    if (resolvedMethod === undefined) return [];
+    const result = await persistence.searchVectorSourceMapIds({
+      scope: subScope,
+      vector: input.content.vector,
+      limit: input.retrievalLimit,
+      memoryIds: input.memoryIds,
+      method: resolvedMethod,
+      ...(input.maxVectorDistance !== undefined
+        ? { maxVectorDistance: input.maxVectorDistance }
+        : {}),
+      ...asOfSpread,
+    });
+    if (result.vectorSearchMethod !== undefined) {
+      usedMethod = result.vectorSearchMethod;
+    }
+    return result.sourceMapIds;
+  };
 
   if (needsMultiArm) {
     const arms: RrfArm<string>[] = [];
@@ -105,24 +138,16 @@ async function rankSourceMapIdsForContentAsync(
           arms.push({ armId: `lexical:${ns}`, ranked, weight: input.lexicalWeight });
         }
       }
-      if (caps.vectorSearch && "vector" in input.content && input.vectorWeight > 0) {
-        const ranked = await persistence.searchVectorSourceMapIds({
-          scope: subScope,
-          vector: input.content.vector,
-          limit: input.retrievalLimit,
-          memoryIds: input.memoryIds,
-          ...(input.maxVectorDistance !== undefined
-            ? { maxVectorDistance: input.maxVectorDistance }
-            : {}),
-          ...asOfSpread,
-        });
-        if (ranked.length > 0) {
-          arms.push({ armId: `vector:${ns}`, ranked, weight: input.vectorWeight });
-        }
+      const ranked = await runVector(subScope);
+      if (ranked.length > 0) {
+        arms.push({ armId: `vector:${ns}`, ranked, weight: input.vectorWeight });
       }
     }
-    if (arms.length === 0) return [];
-    return fuseRrf(arms, { maxPerArm: input.retrievalLimit });
+    if (arms.length === 0) return { fused: [], vectorSearchMethod: usedMethod };
+    return {
+      fused: fuseRrf(arms, { maxPerArm: input.retrievalLimit }),
+      vectorSearchMethod: usedMethod,
+    };
   }
 
   const arms: RrfArm<string>[] = [];
@@ -138,23 +163,15 @@ async function rankSourceMapIdsForContentAsync(
       arms.push({ armId: "lexical", ranked, weight: input.lexicalWeight });
     }
   }
-  if (caps.vectorSearch && "vector" in input.content && input.vectorWeight > 0) {
-    const ranked = await persistence.searchVectorSourceMapIds({
-      scope,
-      vector: input.content.vector,
-      limit: input.retrievalLimit,
-      memoryIds: input.memoryIds,
-      ...(input.maxVectorDistance !== undefined
-        ? { maxVectorDistance: input.maxVectorDistance }
-        : {}),
-      ...asOfSpread,
-    });
-    if (ranked.length > 0) {
-      arms.push({ armId: "vector", ranked, weight: input.vectorWeight });
-    }
+  const ranked = await runVector(scope);
+  if (ranked.length > 0) {
+    arms.push({ armId: "vector", ranked, weight: input.vectorWeight });
   }
-  if (arms.length === 0) return [];
-  return fuseRrf(arms, { maxPerArm: input.retrievalLimit });
+  if (arms.length === 0) return { fused: [], vectorSearchMethod: usedMethod };
+  return {
+    fused: fuseRrf(arms, { maxPerArm: input.retrievalLimit }),
+    vectorSearchMethod: usedMethod,
+  };
 }
 
 async function expandNeighborsWithSubSearchAsync<
@@ -174,6 +191,7 @@ async function expandNeighborsWithSubSearchAsync<
     maxNeighbors: number | undefined;
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
+    vectorSearchMethod?: VectorSearchMethod;
   },
 ): Promise<SearchNeighborHit<NODE_LABELS, EDGE_LABELS>[]> {
   if (!caps.neighborIndex) return [];
@@ -200,7 +218,7 @@ async function expandNeighborsWithSubSearchAsync<
       : Math.max(memoryIds.length, 10);
   const neighborRetrievalLimit = Math.max(capForRetrieval * 5, 25);
 
-  const fused = await rankSourceMapIdsForContentAsync(persistence, caps, {
+  const fusedResult = await rankSourceMapIdsForContentAsync(persistence, caps, {
     scope: pathSubtreeSingle(input.namespace),
     logNamespace: input.namespace,
     content: input.content,
@@ -212,7 +230,11 @@ async function expandNeighborsWithSubSearchAsync<
       ? { maxVectorDistance: input.maxVectorDistance }
       : {}),
     ...(input.asOfTimestampMs !== undefined ? { asOfTimestampMs: input.asOfTimestampMs } : {}),
+    ...(input.vectorSearchMethod !== undefined
+      ? { vectorSearchMethod: input.vectorSearchMethod }
+      : {}),
   });
+  const fused = fusedResult.fused;
 
   if (fused.length === 0) return [];
 
@@ -256,22 +278,22 @@ export async function searchAsync<
 >(
   ctx: MutationCtxAsync,
   params: SearchParams<NODE_LABELS, EDGE_LABELS>,
-): Promise<SearchHit<NODE_LABELS, EDGE_LABELS>[]> {
+): Promise<SearchOutput<NODE_LABELS, EDGE_LABELS>> {
   const { persistence } = ctx;
   const caps = resolveMemoriesBackendCapabilities(persistence);
   const topK = params.options?.topK ?? 10;
-  if (topK <= 0) return [];
+  if (topK <= 0) return { hits: [] };
 
   const hasText = "text" in params.content;
   const hasVector = "vector" in params.content;
   if (!caps.lexicalSearch && !caps.vectorSearch) {
-    return [];
+    return { hits: [] };
   }
   if (hasVector && !hasText && !caps.vectorSearch) {
-    return [];
+    return { hits: [] };
   }
   if (hasText && !hasVector && !caps.lexicalSearch) {
-    return [];
+    return { hits: [] };
   }
 
   const { scope } = normalizeSearchScopeFromParams(params, caps);
@@ -286,18 +308,26 @@ export async function searchAsync<
   const lexicalWeight = params.options?.arms?.lexical ?? 1;
   const vectorWeight = params.options?.arms?.vector ?? 1;
   const maxVectorDistance = params.options?.maxVectorDistance;
+  const vectorSearchMethod = params.options?.vectorSearchMethod;
 
-  const fused = await rankSourceMapIdsForContentAsync(persistence, caps, {
-    scope,
-    logNamespace: params.namespace,
-    content: params.content,
-    lexicalWeight,
-    vectorWeight,
-    retrievalLimit,
-    ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
-    ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
-  });
-  if (fused.length === 0) return [];
+  const { fused, vectorSearchMethod: usedMethod } = await rankSourceMapIdsForContentAsync(
+    persistence,
+    caps,
+    {
+      scope,
+      logNamespace: params.namespace,
+      content: params.content,
+      lexicalWeight,
+      vectorWeight,
+      retrievalLimit,
+      ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
+      ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
+      ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
+    },
+  );
+  if (fused.length === 0) {
+    return usedMethod !== undefined ? { hits: [], vectorSearchMethod: usedMethod } : { hits: [] };
+  }
   const hydrated = await persistence.hydrateSourceMapHits(fused.map((result) => result.id));
   const hydratedById = new Map(hydrated.map((hit) => [hit._id, hit]));
   const minScore = params.options?.minScore ?? Number.NEGATIVE_INFINITY;
@@ -319,7 +349,9 @@ export async function searchAsync<
 
   const neighborOpt = !caps.neighborIndex ? false : params.options?.neighbors;
   if (neighborOpt === undefined || neighborOpt === false) {
-    return rootHits;
+    return usedMethod !== undefined
+      ? { hits: rootHits, vectorSearchMethod: usedMethod }
+      : { hits: rootHits };
   }
 
   const neighborFilters: NeighborFilter<EDGE_LABELS, NODE_LABELS> | undefined =
@@ -345,9 +377,12 @@ export async function searchAsync<
           ...(params.asOfTimestampMs !== undefined
             ? { asOfTimestampMs: params.asOfTimestampMs }
             : {}),
+          ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
         },
       ),
     })),
   );
-  return withNeighbors;
+  return usedMethod !== undefined
+    ? { hits: withNeighbors, vectorSearchMethod: usedMethod }
+    : { hits: withNeighbors };
 }

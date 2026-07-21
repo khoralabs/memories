@@ -70,6 +70,10 @@ export type EdgePreviewPayload = {
 export type MemoriesBackendCapabilities = {
   lexicalSearch: boolean;
   vectorSearch: boolean;
+  /** Exact / linear cosine vector search (`knn`). Backends must opt in. */
+  vectorKnnSearch: boolean;
+  /** Approximate vector index search (`ann`). Backends must opt in. */
+  vectorAnnSearch: boolean;
   neighborIndex: boolean;
   /**
    * When `true`, {@link MemoriesGraphIndex} topology reads are available (edges, labels per namespace, incident edges).
@@ -86,6 +90,30 @@ export type MemoriesBackendCapabilities = {
    */
   asOfTimestampMsSearch?: boolean;
 };
+
+/** Vector retrieval algorithm: exact (`knn`) or approximate index (`ann`). */
+export type VectorSearchMethod = "knn" | "ann";
+
+/** Rank-ordered vector search result; `vectorSearchMethod` omitted on noop. */
+export type SearchVectorSourceMapIdsResult = {
+  sourceMapIds: string[];
+  vectorSearchMethod?: VectorSearchMethod;
+};
+
+/**
+ * Resolve which vector method to run from an optional caller preference and capabilities.
+ * Explicit selection noops when unsupported; omitted prefers ANN then KNN.
+ */
+export function resolveVectorSearchMethod(
+  requested: VectorSearchMethod | undefined,
+  caps: Pick<MemoriesBackendCapabilities, "vectorKnnSearch" | "vectorAnnSearch">,
+): VectorSearchMethod | undefined {
+  if (requested === "ann") return caps.vectorAnnSearch ? "ann" : undefined;
+  if (requested === "knn") return caps.vectorKnnSearch ? "knn" : undefined;
+  if (caps.vectorAnnSearch) return "ann";
+  if (caps.vectorKnnSearch) return "knn";
+  return undefined;
+}
 
 /**
  * Namespace / scope filter for {@link MemoriesRetrieval} hybrid search.
@@ -105,6 +133,8 @@ export type SearchNamespaceScope =
 export const DEFAULT_MEMORIES_BACKEND_CAPABILITIES: MemoriesBackendCapabilities = {
   lexicalSearch: true,
   vectorSearch: true,
+  vectorKnnSearch: false,
+  vectorAnnSearch: false,
   neighborIndex: true,
   graphIndex: true,
   multiNamespaceSearch: true,
@@ -372,11 +402,13 @@ export interface MemoriesRetrieval {
     vector: number[];
     limit: number;
     memoryIds?: string[];
-    /** sqlite‑vec KNN distance upper bound; omit = return top‑k without a distance cutoff. */
+    /** Distance upper bound; omit = return top‑k without a distance cutoff. */
     maxVectorDistance?: number;
     /** Only memories with `_ts_created <= asOfTimestampMs` participate (backend-dependent). */
     asOfTimestampMs?: number;
-  }): string[];
+    /** Resolved method from core; unsupported → empty `sourceMapIds`. */
+    method: VectorSearchMethod;
+  }): SearchVectorSourceMapIdsResult;
 
   hydrateSourceMapHits(sourceMapIds: readonly string[]): HydratedSourceMapHit[];
 }

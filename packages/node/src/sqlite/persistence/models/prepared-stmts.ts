@@ -245,7 +245,7 @@ export function prepareMemoriesSqliteStmts(db: Database): MemoriesSqliteStmts {
       if (cached !== undefined) return cached;
       const vTable = vectorVecTableName(dim).replaceAll('"', '""');
       const stmt = db.prepare(
-        `INSERT INTO "${vTable}" (vector_feature_id, memory_id, embedding) VALUES (?, ?, ?)`,
+        `INSERT INTO "${vTable}" (vector_feature_id, embedding) VALUES (?, ?)`,
       );
       insertVectorVecByDim.set(dim, stmt);
       return stmt;
@@ -262,7 +262,10 @@ export function prepareMemoriesSqliteStmts(db: Database): MemoriesSqliteStmts {
       const cached = deleteVectorVecByMemoryIdByTable.get(tableName);
       if (cached !== undefined) return cached;
       const escaped = tableName.replaceAll('"', '""');
-      const stmt = db.prepare(`DELETE FROM "${escaped}" WHERE memory_id = ?`);
+      const stmt = db.prepare(
+        `DELETE FROM "${escaped}"
+         WHERE vector_feature_id IN (SELECT _id FROM vector_features WHERE memory_id = ?)`,
+      );
       deleteVectorVecByMemoryIdByTable.set(tableName, stmt);
       return stmt;
     },

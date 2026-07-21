@@ -36,7 +36,7 @@ describe("label props search features", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       { namespace: "ns", content: { text: unique }, options: { topK: 10 } },
     );
@@ -74,7 +74,7 @@ describe("label props search features", () => {
 
     expect(countMaps()).toBe(1);
     expect(
-      search({ persistence }, { namespace: "ns", content: { text: v1 }, options: { topK: 3 } })
+      search({ persistence }, { namespace: "ns", content: { text: v1 }, options: { topK: 3 } }).hits
         .length,
     ).toBeGreaterThanOrEqual(1);
 
@@ -92,9 +92,9 @@ describe("label props search features", () => {
     expect(countMaps()).toBe(1);
     expect(
       search({ persistence }, { namespace: "ns", content: { text: v1 }, options: { topK: 3 } }),
-    ).toEqual([]);
+    ).toEqual({ hits: [] });
     expect(
-      search({ persistence }, { namespace: "ns", content: { text: v2 }, options: { topK: 3 } })
+      search({ persistence }, { namespace: "ns", content: { text: v2 }, options: { topK: 3 } }).hits
         .length,
     ).toBeGreaterThanOrEqual(1);
   });
@@ -139,7 +139,7 @@ describe("label props search features", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       { namespace: "ns", content: { text: edgeToken }, options: { topK: 10 } },
     );
@@ -193,7 +193,7 @@ describe("label props search features", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       { namespace: "ns", content: { text: edgeToken }, options: { topK: 10 } },
     );

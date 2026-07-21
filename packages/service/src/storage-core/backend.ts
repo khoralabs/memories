@@ -18,6 +18,8 @@ export type StrategyCapabilities = Partial<MemoriesBackendCapabilities>;
 export const DEFAULT_SQLITE_STRATEGY_CAPABILITIES: MemoriesBackendCapabilities = {
   lexicalSearch: true,
   vectorSearch: true,
+  vectorKnnSearch: true,
+  vectorAnnSearch: true,
   neighborIndex: true,
   graphIndex: true,
   multiNamespaceSearch: true,
@@ -29,6 +31,8 @@ export const DEFAULT_SQLITE_STRATEGY_CAPABILITIES: MemoriesBackendCapabilities =
 export const DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES: MemoriesBackendCapabilities = {
   lexicalSearch: true,
   vectorSearch: true,
+  vectorKnnSearch: true,
+  vectorAnnSearch: false,
   neighborIndex: true,
   graphIndex: true,
   multiNamespaceSearch: true,
@@ -40,6 +44,8 @@ export const DEFAULT_TURSO_SERVERLESS_STRATEGY_CAPABILITIES: MemoriesBackendCapa
 export const DEFAULT_LIBSQL_STRATEGY_CAPABILITIES: MemoriesBackendCapabilities = {
   lexicalSearch: true,
   vectorSearch: true,
+  vectorKnnSearch: true,
+  vectorAnnSearch: true,
   neighborIndex: true,
   graphIndex: true,
   multiNamespaceSearch: true,

@@ -39,7 +39,7 @@ describe("search asOfTimestampMs", () => {
       },
     );
 
-    const full = search(
+    const { hits: full } = search(
       { persistence },
       {
         namespace: "ns",
@@ -49,7 +49,7 @@ describe("search asOfTimestampMs", () => {
     );
     expect(full.length).toBeGreaterThanOrEqual(2);
 
-    const asOf = search(
+    const { hits: asOf } = search(
       { persistence },
       {
         namespace: "ns",
@@ -67,13 +67,15 @@ describe("search asOfTimestampMs", () => {
       capabilities: {
         lexicalSearch: true,
         vectorSearch: false,
+        vectorKnnSearch: false,
+        vectorAnnSearch: false,
         neighborIndex: false,
         graphIndex: false,
         multiNamespaceSearch: true,
         unscopedSearch: false,
       },
       searchLexicalSourceMapIds: () => [] as string[],
-      searchVectorSourceMapIds: () => [] as string[],
+      searchVectorSourceMapIds: () => ({ sourceMapIds: [] }),
       hydrateSourceMapHits: () => [],
     };
     expect(() =>

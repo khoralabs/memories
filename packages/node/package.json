@@ -121,7 +121,7 @@
     "@libsql/client": "^0.17.4",
     "@tursodatabase/serverless": "^0.2.0",
     "ajv": "^8",
-    "sqlite-vec": "^0.1.9",
+    "sqlite-vec": "^0.1.10-alpha.4",
     "typescript": "^5",
     "umap-js": "^1.4.0",
     "workflow": "^4.5.0"
@@ -161,7 +161,7 @@
     "@workflow/vitest": "^4.0.12",
     "@workflow/world-local": "^4.2.1",
     "ajv": "^8",
-    "sqlite-vec": "^0.1.9",
+    "sqlite-vec": "^0.1.10-alpha.4",
     "umap-js": "^1.4.0",
     "undici": "^7.28.0",
     "workflow": "^4.5.0",

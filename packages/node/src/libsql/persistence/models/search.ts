@@ -123,14 +123,24 @@ export async function searchVectorSourceMapIds(
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
+    method: "knn" | "ann";
   },
-): Promise<string[]> {
-  if (input.memoryIds !== undefined && input.memoryIds.length === 0) return [];
-  if (input.scope.kind === "pathSubtree" && input.scope.namespaces.length === 0) return [];
-  if (input.scope.kind === "scopeDag" && input.scope.roots.length === 0) return [];
-  if (input.scope.kind === "exactScope" && input.scope.scopes.length === 0) return [];
+): Promise<{ sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" }> {
+  if (input.memoryIds !== undefined && input.memoryIds.length === 0) return { sourceMapIds: [] };
+  if (input.scope.kind === "pathSubtree" && input.scope.namespaces.length === 0)
+    return { sourceMapIds: [] };
+  if (input.scope.kind === "scopeDag" && input.scope.roots.length === 0)
+    return { sourceMapIds: [] };
+  if (input.scope.kind === "exactScope" && input.scope.scopes.length === 0)
+    return { sourceMapIds: [] };
 
-  return searchVectorScoped(ctx, input);
+  if (input.method === "knn") {
+    return { sourceMapIds: await searchVectorScoped(ctx, input), vectorSearchMethod: "knn" };
+  }
+  if (input.method === "ann") {
+    return { sourceMapIds: await searchVectorAnn(ctx, input), vectorSearchMethod: "ann" };
+  }
+  return { sourceMapIds: [] };
 }
 
 async function searchVectorScoped(
@@ -174,6 +184,41 @@ async function searchVectorScoped(
      ${distClause}
      ORDER BY dist ASC
      LIMIT ?`,
+    params,
+  );
+  return rows.map((row) => row.sourceMapId);
+}
+
+async function searchVectorAnn(
+  ctx: DbCtx,
+  input: {
+    scope: SearchNamespaceScope;
+    vector: number[];
+    limit: number;
+    memoryIds?: string[];
+    maxVectorDistance?: number;
+    asOfTimestampMs?: number;
+  },
+): Promise<string[]> {
+  const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
+    input.scope,
+    input.memoryIds,
+    input.asOfTimestampMs,
+    "vf",
+  );
+  const maxD = input.maxVectorDistance;
+  const distClause = maxD !== undefined && Number.isFinite(maxD) ? "AND top.distance <= ?" : "";
+  const params: unknown[] = [vector32Json(input.vector), input.limit, ...memBindings];
+  if (distClause) params.push(maxD as number);
+
+  const rows = await ctxQueryAll<{ sourceMapId: string }>(
+    ctx,
+    `SELECT vf.source_map_id AS sourceMapId
+     FROM vector_top_k('idx_vector_features_ann', vector32(?), ?) AS top
+     JOIN vector_features vf ON vf.rowid = top.id
+     WHERE ${memFilter}
+       ${distClause}
+     ORDER BY top.distance ASC`,
     params,
   );
   return rows.map((row) => row.sourceMapId);

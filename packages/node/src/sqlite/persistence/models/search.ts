@@ -14,7 +14,7 @@ import {
 } from "@khoralabs/memories-persistence-core";
 import type { Edge, Memory } from "@khoralabs/memories-persistence-core/persistence";
 import { vectorToBlob } from "../connection";
-import { vectorVecTableName } from "../search-indexes";
+import { hasVectorAnnSearch, vectorVecTableName } from "../search-indexes";
 import type { DbCtx } from "./context";
 import { loadGraphEdge } from "./graph-index";
 
@@ -254,30 +254,32 @@ export function searchVectorSourceMapIds(
     /** sqlite‑vec KNN distance; rows with larger distance are excluded. */
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
+    method: "knn" | "ann";
   },
-): string[] {
-  if (input.memoryIds !== undefined && input.memoryIds.length === 0) return [];
-  if (input.scope.kind === "pathSubtree" && input.scope.namespaces.length === 0) return [];
-  if (input.scope.kind === "scopeDag" && input.scope.roots.length === 0) return [];
-  if (input.scope.kind === "exactScope" && input.scope.scopes.length === 0) return [];
+): { sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" } {
+  if (input.method !== "knn" && input.method !== "ann") return { sourceMapIds: [] };
+  if (input.method === "ann" && !hasVectorAnnSearch(ctx.db)) return { sourceMapIds: [] };
+  if (input.memoryIds !== undefined && input.memoryIds.length === 0) return { sourceMapIds: [] };
+  if (input.scope.kind === "pathSubtree" && input.scope.namespaces.length === 0)
+    return { sourceMapIds: [] };
+  if (input.scope.kind === "scopeDag" && input.scope.roots.length === 0)
+    return { sourceMapIds: [] };
+  if (input.scope.kind === "exactScope" && input.scope.scopes.length === 0)
+    return { sourceMapIds: [] };
 
-  // For unscoped searches with no allowlist there is no pre-filter benefit, so use the
-  // vec0 MATCH path (SIMD-optimised chunked scan). For all scoped searches and allowlist
-  // searches use the scalar vec_distance_cosine path: the scope filter sits in WHERE and
-  // is resolved before any distance is computed, making the scan O(n_namespace) not O(n_total).
-  if (input.scope.kind === "unscoped" && input.memoryIds === undefined) {
-    return searchVectorVec0Unscoped(ctx, input);
-  }
-  return searchVectorScoped(ctx, input);
+  const sourceMapIds =
+    input.method === "ann" ? searchVectorAnn(ctx, input) : searchVectorKnn(ctx, input);
+  return { sourceMapIds, vectorSearchMethod: input.method };
 }
 
-/** vec0 MATCH path — only used for unscoped queries with no memoryIds allowlist. */
-function searchVectorVec0Unscoped(
+/** DiskANN vec0 MATCH path; scope and allowlist constraints are post-filters. */
+function searchVectorAnn(
   ctx: DbCtx,
   input: {
     scope: SearchNamespaceScope;
     vector: number[];
     limit: number;
+    memoryIds?: string[];
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
   },
@@ -291,16 +293,20 @@ function searchVectorVec0Unscoped(
   if (!exists) return [];
 
   const maxD = input.maxVectorDistance;
-  const distanceClause = maxD !== undefined && Number.isFinite(maxD) ? `AND knn.distance <= ?` : "";
+  const applyExactDistance = maxD !== undefined && Number.isFinite(maxD);
 
-  // Only join memories when asOf filtering is required.
-  const needsMemoriesJoin = input.asOfTimestampMs !== undefined;
-  const memoriesJoin = needsMemoriesJoin ? `JOIN memories m ON m._id = vf.memory_id` : "";
-  const asOfClause = needsMemoriesJoin ? `AND m._ts_created <= ?` : "";
+  const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
+    input.scope,
+    input.memoryIds,
+    input.asOfTimestampMs,
+  );
 
   const params: SQLQueryBindings[] = [JSON.stringify(input.vector), input.limit];
-  if (distanceClause) params.push(maxD as number);
-  if (needsMemoriesJoin) params.push(input.asOfTimestampMs as number);
+  if (applyExactDistance) {
+    params.push(vectorToBlob(new Float32Array(input.vector)));
+    params.push(maxD as number);
+  }
+  params.push(...memBindings);
 
   const rows = ctx.db
     .query<{ sourceMapId: string }, SQLQueryBindings[]>(
@@ -313,10 +319,9 @@ function searchVectorVec0Unscoped(
        SELECT vf.source_map_id AS sourceMapId
        FROM knn
        JOIN vector_features vf ON vf._id = knn.vector_feature_id
-       ${memoriesJoin}
        WHERE 1 = 1
-       ${distanceClause}
-       ${asOfClause}
+       ${applyExactDistance ? "AND vec_distance_cosine(vf.vector, ?) <= ?" : ""}
+       AND ${memFilter}
        ORDER BY knn.distance ASC`,
     )
     .all(...params);
@@ -333,7 +338,7 @@ function searchVectorVec0Unscoped(
  * The `length(vf.vector) = ?` predicate filters to the correct embedding dimension without
  * requiring a per-dimension shadow table lookup.
  */
-function searchVectorScoped(
+function searchVectorKnn(
   ctx: DbCtx,
   input: {
     scope: SearchNamespaceScope;

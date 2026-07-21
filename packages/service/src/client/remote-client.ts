@@ -1,4 +1,9 @@
-import type { DeleteMemoryParams, SearchHit, SearchParams } from "@khoralabs/memories-node";
+import type {
+  DeleteMemoryParams,
+  SearchHit,
+  SearchOutput,
+  SearchParams,
+} from "@khoralabs/memories-node";
 import { MemoriesClientAsync } from "@khoralabs/memories-node";
 import type {
   MemoriesBackendCapabilities,
@@ -71,10 +76,15 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
     this.#database = opts.database;
   }
 
-  override async search(params: SearchParams): Promise<SearchHit[]> {
+  override async search(params: SearchParams): Promise<SearchOutput> {
     const body: DatabaseSearchRequest = { database: this.#database, params };
     const response = await this.#client.postJson<DatabaseSearchResponse>("/databases/search", body);
-    return deserializeSearchHits(response.hits) as unknown as SearchHit[];
+    return {
+      hits: deserializeSearchHits(response.hits) as unknown as SearchHit[],
+      ...(response.vectorSearchMethod !== undefined
+        ? { vectorSearchMethod: response.vectorSearchMethod }
+        : {}),
+    };
   }
 
   override async mergeMemory(

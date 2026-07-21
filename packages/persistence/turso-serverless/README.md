@@ -81,6 +81,7 @@ bun test packages/persistence/turso-serverless
 ## Limitations
 
 - Turso FTS has **no read-your-writes inside a transaction** — search after commit.
-- Vector ANN (`vector_top_k` / `libsql_vector_idx`) is not required; queries use linear `vector_distance_cos` fallback.
+- **KNN** uses linear `vector_distance_cos` (`vectorKnnSearch: true`).
+- **ANN** (`libsql_vector_idx` / `vector_top_k`) is attempted at open; if index create fails, `vectorAnnSearch` is `false` and ANN requests noop.
 - Nested transactions are rejected.
 - Compat `batch()` ignores bound parameters — transactional writes use `Connection.transaction()` instead.

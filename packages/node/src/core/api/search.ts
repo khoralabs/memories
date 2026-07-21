@@ -15,10 +15,12 @@ import type {
   Memory,
   SearchNamespaceScope,
   SourceMapRow,
+  VectorSearchMethod,
 } from "@khoralabs/memories-persistence-core/persistence";
 import {
   type MemoriesPersistence,
   resolveMemoriesBackendCapabilities,
+  resolveVectorSearchMethod,
 } from "@khoralabs/memories-persistence-core/persistence";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtx } from "./merge-memory";
@@ -75,10 +77,15 @@ export interface SearchParams<
       lexical?: number;
     };
     /**
-     * When set, drop vector KNN candidates whose sqlite‑vec **distance** exceeds this value before RRF.
+     * When set, drop vector candidates whose **distance** exceeds this value before RRF.
      * Lower distance = closer match. Omit = no distance cutoff (previous behavior).
      */
     maxVectorDistance?: number;
+    /**
+     * Select `knn` or `ann`; omit = ANN if available else KNN.
+     * Unsupported selection is a noop for the vector arm.
+     */
+    vectorSearchMethod?: VectorSearchMethod;
   };
   /**
    * When set, only memories with `_ts_created <= asOfTimestampMs` participate in retrieval.
@@ -107,6 +114,15 @@ export interface SearchHit<NODE_LABELS extends string = string, EDGE_LABELS exte
   graph: MemoryGraphAssociation;
   neighbors?: Array<SearchNeighborHit<NODE_LABELS, EDGE_LABELS>>;
 }
+
+/** Hybrid search result: hits plus the vector method that ran (if any). */
+export type SearchOutput<
+  NODE_LABELS extends string = string,
+  EDGE_LABELS extends string = string,
+> = {
+  hits: SearchHit<NODE_LABELS, EDGE_LABELS>[];
+  vectorSearchMethod?: VectorSearchMethod;
+};
 
 function matchesLabelFilter(
   labels: readonly OntologyLabelInstance[],
@@ -201,11 +217,14 @@ function rankSourceMapIdsForContent(
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
+    vectorSearchMethod?: VectorSearchMethod;
   },
-): Array<{ id: string; score: number }> {
+): { fused: Array<{ id: string; score: number }>; vectorSearchMethod?: VectorSearchMethod } {
   const { scope } = input;
   const asOf = input.asOfTimestampMs;
   const asOfSpread = asOf !== undefined ? { asOfTimestampMs: asOf } : {};
+  const resolvedMethod = resolveVectorSearchMethod(input.vectorSearchMethod, caps);
+  let usedMethod: VectorSearchMethod | undefined;
 
   const multiRoots =
     scope.kind === "pathSubtree"
@@ -220,6 +239,28 @@ function rankSourceMapIdsForContent(
     !caps.multiNamespaceSearch &&
     multiRoots.length > 1 &&
     (scope.kind === "pathSubtree" || scope.kind === "scopeDag" || scope.kind === "exactScope");
+
+  const runVector = (subScope: SearchNamespaceScope): string[] => {
+    if (!caps.vectorSearch || !("vector" in input.content) || input.vectorWeight <= 0) {
+      return [];
+    }
+    if (resolvedMethod === undefined) return [];
+    const result = persistence.searchVectorSourceMapIds({
+      scope: subScope,
+      vector: input.content.vector,
+      limit: input.retrievalLimit,
+      memoryIds: input.memoryIds,
+      method: resolvedMethod,
+      ...(input.maxVectorDistance !== undefined
+        ? { maxVectorDistance: input.maxVectorDistance }
+        : {}),
+      ...asOfSpread,
+    });
+    if (result.vectorSearchMethod !== undefined) {
+      usedMethod = result.vectorSearchMethod;
+    }
+    return result.sourceMapIds;
+  };
 
   if (needsMultiArm) {
     const arms: RrfArm<string>[] = [];
@@ -242,24 +283,16 @@ function rankSourceMapIdsForContent(
           arms.push({ armId: `lexical:${ns}`, ranked, weight: input.lexicalWeight });
         }
       }
-      if (caps.vectorSearch && "vector" in input.content && input.vectorWeight > 0) {
-        const ranked = persistence.searchVectorSourceMapIds({
-          scope: subScope,
-          vector: input.content.vector,
-          limit: input.retrievalLimit,
-          memoryIds: input.memoryIds,
-          ...(input.maxVectorDistance !== undefined
-            ? { maxVectorDistance: input.maxVectorDistance }
-            : {}),
-          ...asOfSpread,
-        });
-        if (ranked.length > 0) {
-          arms.push({ armId: `vector:${ns}`, ranked, weight: input.vectorWeight });
-        }
+      const ranked = runVector(subScope);
+      if (ranked.length > 0) {
+        arms.push({ armId: `vector:${ns}`, ranked, weight: input.vectorWeight });
       }
     }
-    if (arms.length === 0) return [];
-    return fuseRrf(arms, { maxPerArm: input.retrievalLimit });
+    if (arms.length === 0) return { fused: [], vectorSearchMethod: usedMethod };
+    return {
+      fused: fuseRrf(arms, { maxPerArm: input.retrievalLimit }),
+      vectorSearchMethod: usedMethod,
+    };
   }
 
   const arms: RrfArm<string>[] = [];
@@ -275,23 +308,15 @@ function rankSourceMapIdsForContent(
       arms.push({ armId: "lexical", ranked, weight: input.lexicalWeight });
     }
   }
-  if (caps.vectorSearch && "vector" in input.content && input.vectorWeight > 0) {
-    const ranked = persistence.searchVectorSourceMapIds({
-      scope,
-      vector: input.content.vector,
-      limit: input.retrievalLimit,
-      memoryIds: input.memoryIds,
-      ...(input.maxVectorDistance !== undefined
-        ? { maxVectorDistance: input.maxVectorDistance }
-        : {}),
-      ...asOfSpread,
-    });
-    if (ranked.length > 0) {
-      arms.push({ armId: "vector", ranked, weight: input.vectorWeight });
-    }
+  const ranked = runVector(scope);
+  if (ranked.length > 0) {
+    arms.push({ armId: "vector", ranked, weight: input.vectorWeight });
   }
-  if (arms.length === 0) return [];
-  return fuseRrf(arms, { maxPerArm: input.retrievalLimit });
+  if (arms.length === 0) return { fused: [], vectorSearchMethod: usedMethod };
+  return {
+    fused: fuseRrf(arms, { maxPerArm: input.retrievalLimit }),
+    vectorSearchMethod: usedMethod,
+  };
 }
 
 function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS extends string>(
@@ -309,6 +334,7 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
     maxNeighbors: number | undefined;
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
+    vectorSearchMethod?: VectorSearchMethod;
   },
 ): SearchNeighborHit<NODE_LABELS, EDGE_LABELS>[] {
   if (!caps.neighborIndex) return [];
@@ -342,7 +368,7 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
       : Math.max(memoryIds.length, 10);
   const neighborRetrievalLimit = Math.max(capForRetrieval * 5, 25);
 
-  const fused = rankSourceMapIdsForContent(persistence, caps, {
+  const fusedResult = rankSourceMapIdsForContent(persistence, caps, {
     scope: pathSubtreeSingle(input.namespace),
     logNamespace: input.namespace,
     content: input.content,
@@ -354,7 +380,11 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
       ? { maxVectorDistance: input.maxVectorDistance }
       : {}),
     ...(input.asOfTimestampMs !== undefined ? { asOfTimestampMs: input.asOfTimestampMs } : {}),
+    ...(input.vectorSearchMethod !== undefined
+      ? { vectorSearchMethod: input.vectorSearchMethod }
+      : {}),
   });
+  const fused = fusedResult.fused;
 
   if (fused.length === 0) return [];
 
@@ -395,22 +425,22 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
 export function search<NODE_LABELS extends string = string, EDGE_LABELS extends string = string>(
   ctx: MutationCtx,
   params: SearchParams<NODE_LABELS, EDGE_LABELS>,
-): SearchHit<NODE_LABELS, EDGE_LABELS>[] {
+): SearchOutput<NODE_LABELS, EDGE_LABELS> {
   const { persistence } = ctx;
   const caps = resolveMemoriesBackendCapabilities(persistence);
   const topK = params.options?.topK ?? 10;
-  if (topK <= 0) return [];
+  if (topK <= 0) return { hits: [] };
 
   const hasText = "text" in params.content;
   const hasVector = "vector" in params.content;
   if (!caps.lexicalSearch && !caps.vectorSearch) {
-    return [];
+    return { hits: [] };
   }
   if (hasVector && !hasText && !caps.vectorSearch) {
-    return [];
+    return { hits: [] };
   }
   if (hasText && !hasVector && !caps.lexicalSearch) {
-    return [];
+    return { hits: [] };
   }
 
   const { scope } = normalizeSearchScopeFromParams(params, caps);
@@ -425,8 +455,9 @@ export function search<NODE_LABELS extends string = string, EDGE_LABELS extends 
   const lexicalWeight = params.options?.arms?.lexical ?? 1;
   const vectorWeight = params.options?.arms?.vector ?? 1;
   const maxVectorDistance = params.options?.maxVectorDistance;
+  const vectorSearchMethod = params.options?.vectorSearchMethod;
 
-  const fused = rankSourceMapIdsForContent(persistence, caps, {
+  const { fused, vectorSearchMethod: usedMethod } = rankSourceMapIdsForContent(persistence, caps, {
     scope,
     logNamespace: params.namespace,
     content: params.content,
@@ -435,8 +466,11 @@ export function search<NODE_LABELS extends string = string, EDGE_LABELS extends 
     retrievalLimit,
     ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
     ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
+    ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
   });
-  if (fused.length === 0) return [];
+  if (fused.length === 0) {
+    return usedMethod !== undefined ? { hits: [], vectorSearchMethod: usedMethod } : { hits: [] };
+  }
   const hydrated = persistence.hydrateSourceMapHits(fused.map((result) => result.id));
   const hydratedById = new Map(hydrated.map((hit) => [hit._id, hit]));
   const minScore = params.options?.minScore ?? Number.NEGATIVE_INFINITY;
@@ -458,7 +492,9 @@ export function search<NODE_LABELS extends string = string, EDGE_LABELS extends 
 
   const neighborOpt = !caps.neighborIndex ? false : params.options?.neighbors;
   if (neighborOpt === undefined || neighborOpt === false) {
-    return rootHits;
+    return usedMethod !== undefined
+      ? { hits: rootHits, vectorSearchMethod: usedMethod }
+      : { hits: rootHits };
   }
 
   const neighborFilters: NeighborFilter<EDGE_LABELS, NODE_LABELS> | undefined =
@@ -479,7 +515,10 @@ export function search<NODE_LABELS extends string = string, EDGE_LABELS extends 
       maxNeighbors,
       ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
       ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
+      ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
     }),
   }));
-  return withNeighbors;
+  return usedMethod !== undefined
+    ? { hits: withNeighbors, vectorSearchMethod: usedMethod }
+    : { hits: withNeighbors };
 }

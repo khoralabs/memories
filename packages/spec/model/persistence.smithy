@@ -686,14 +686,18 @@ structure SearchVectorSourceMapIdsInput {
     vector: DoubleList
     limit: Integer
     memoryIds: StringList
-    /// sqlite-vec KNN distance upper bound; omit = top-k without a distance cutoff.
+    /// Distance upper bound; omit = top-k without a distance cutoff.
     maxVectorDistance: Double
     /// Only memories with `_ts_created <= asOfTimestampMs` participate (backend-dependent).
     asOfTimestampMs: Long
+    /// Resolved method from core (`knn` or `ann`). Unsupported → empty ids.
+    method: VectorSearchMethod
 }
 
 structure SearchVectorSourceMapIdsOutput {
     sourceMapIds: StringList
+    /// Method that ran; omit when noop (unsupported method).
+    vectorSearchMethod: VectorSearchMethod
 }
 
 operation HydrateSourceMapHits {

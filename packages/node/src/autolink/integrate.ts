@@ -64,7 +64,7 @@ export async function runAutolinkIntegrate<
     ...(args.searchEntireDatabase === true ? { searchEntireDatabase: true as const } : {}),
   } satisfies SearchParams;
 
-  const hits: SearchHit[] = await Promise.resolve(
+  const { hits }: { hits: SearchHit[] } = await Promise.resolve(
     client.search(searchParams as Parameters<MemoriesClient<TNode, TEdge>["search"]>[0]),
   );
 

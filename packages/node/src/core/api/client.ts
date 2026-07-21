@@ -17,7 +17,12 @@ import {
   zMergeMemoryContentItem,
 } from "./merge-memory";
 import type { Store } from "./resolve-sourcemap.js";
-import { type SearchHit, type SearchParams, search as searchHandler } from "./search";
+import {
+  type SearchHit,
+  type SearchOutput,
+  type SearchParams,
+  search as searchHandler,
+} from "./search";
 
 export type { DefaultEntityMap } from "@khoralabs/sourcemaps";
 
@@ -37,6 +42,11 @@ export type TypedSearchHit<TNode extends LabelSchemaMap, TEdge extends LabelSche
   LabelKind<TNode>,
   LabelKind<TEdge>
 >;
+
+export type TypedSearchOutput<
+  TNode extends LabelSchemaMap,
+  TEdge extends LabelSchemaMap,
+> = SearchOutput<LabelKind<TNode>, LabelKind<TEdge>>;
 
 export type MemoriesClientOptions<EntityMap extends Record<string, unknown> = DefaultEntityMap> = {
   /** Lexical mirror (e.g. JSONL); {@link Store.resolve} enriches source maps. */
@@ -152,7 +162,7 @@ export class MemoriesClient<
   }
 
   /** Runs the package `search` function against this store. */
-  search(params: TypedSearchParams<TNode, TEdge>): TypedSearchHit<TNode, TEdge>[] {
+  search(params: TypedSearchParams<TNode, TEdge>): TypedSearchOutput<TNode, TEdge> {
     return searchHandler(this.mutationCtx, params);
   }
 

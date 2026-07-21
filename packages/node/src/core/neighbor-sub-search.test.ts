@@ -86,8 +86,9 @@ describe("scoped search helpers", () => {
       vector: vec512(0),
       limit: 10,
       memoryIds: [],
+      method: "knn",
     });
-    expect(r).toEqual([]);
+    expect(r.sourceMapIds).toEqual([]);
   });
 });
 
@@ -168,7 +169,7 @@ describe("neighbor sub-search", () => {
       },
     );
 
-    const noMatch = search(
+    const { hits: noMatch } = search(
       { persistence },
       {
         namespace: "ns",
@@ -215,7 +216,7 @@ describe("neighbor sub-search", () => {
       },
     );
 
-    const withMatch = search(
+    const { hits: withMatch } = search(
       { persistence },
       {
         namespace: "ns",
@@ -276,7 +277,7 @@ describe("neighbor sub-search", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       {
         namespace: "ns",
@@ -335,7 +336,7 @@ describe("neighbor sub-search", () => {
       },
     );
 
-    const hits = search(
+    const { hits } = search(
       { persistence },
       {
         namespace: "ns",

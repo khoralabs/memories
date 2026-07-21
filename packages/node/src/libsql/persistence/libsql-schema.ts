@@ -18,6 +18,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS text_features_fts USING fts5(
 );
 `;
 
+export const VECTOR_FEATURES_ANN_INDEX_SQL = `
+CREATE INDEX IF NOT EXISTS idx_vector_features_ann
+  ON vector_features (libsql_vector_idx(vector, 'metric=cosine'));
+`;
+
 export const LIBSQL_PRAGMAS_SQL = `
 PRAGMA foreign_keys = ON;
 `;

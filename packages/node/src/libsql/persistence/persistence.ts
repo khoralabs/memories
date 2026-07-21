@@ -16,10 +16,11 @@ import type {
   TextFeatureExportRow,
 } from "@khoralabs/memories-persistence-core/persistence";
 import type { MemoryProvenanceEvent } from "@khoralabs/memories-persistence-core/provenance";
-import { createLibsqlDatabase, queryAll } from "./client";
+import { createLibsqlDatabase, execMultiple, queryAll } from "./client";
 import { type DbCtx, readCtx, writeCtx } from "./context";
 import type { LibsqlDatabase } from "./db";
 import { ctxExec } from "./db";
+import { VECTOR_FEATURES_ANN_INDEX_SQL } from "./libsql-schema";
 import { migrateMemoriesLibsql } from "./migrations";
 import {
   appendDeleteOutboxEntry,
@@ -95,15 +96,7 @@ export type MemoriesLibsqlOptions = {
 };
 
 export class MemoriesLibsqlPersistence {
-  readonly capabilities: MemoriesBackendCapabilities = {
-    lexicalSearch: true,
-    vectorSearch: true,
-    neighborIndex: true,
-    graphIndex: true,
-    multiNamespaceSearch: true,
-    unscopedSearch: true,
-    asOfTimestampMsSearch: true,
-  };
+  readonly capabilities: MemoriesBackendCapabilities;
 
   private readonly inTransaction = { current: false };
   private txCtx: DbCtx | undefined;
@@ -111,7 +104,20 @@ export class MemoriesLibsqlPersistence {
   constructor(
     readonly db: LibsqlDatabase,
     private readonly labelPropsSearchFormatter?: LabelPropsSearchFormatter,
-  ) {}
+    vectorAnnSearch = false,
+  ) {
+    this.capabilities = {
+      lexicalSearch: true,
+      vectorSearch: true,
+      vectorKnnSearch: true,
+      vectorAnnSearch,
+      neighborIndex: true,
+      graphIndex: true,
+      multiNamespaceSearch: true,
+      unscopedSearch: true,
+      asOfTimestampMsSearch: true,
+    };
+  }
 
   private ctx(op: MemoryOpContext): DbCtx {
     return writeCtx(this.db, op.now);
@@ -416,7 +422,14 @@ export class MemoriesLibsqlPersistence {
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
-  }): Promise<string[]> {
+    method: "knn" | "ann";
+  }): Promise<{ sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" }> {
+    if (input.method === "ann" && !this.capabilities.vectorAnnSearch) {
+      return { sourceMapIds: [] };
+    }
+    if (input.method === "knn" && !this.capabilities.vectorKnnSearch) {
+      return { sourceMapIds: [] };
+    }
     return searchVectorSourceMapIds(this.readDbCtx(), input);
   }
 
@@ -547,7 +560,18 @@ export async function createMemoriesLibsqlPersistence(
   if (options.autoMigrate !== false) {
     await migrateMemoriesLibsql(db);
   }
-  const instance = new MemoriesLibsqlPersistence(db, options.labelPropsSearchFormatter);
+  let vectorAnnSearch = false;
+  try {
+    await execMultiple(db.client, VECTOR_FEATURES_ANN_INDEX_SQL);
+    vectorAnnSearch = true;
+  } catch {
+    // Local libSQL may reject ANN indexes on generic BLOB vector columns.
+  }
+  const instance = new MemoriesLibsqlPersistence(
+    db,
+    options.labelPropsSearchFormatter,
+    vectorAnnSearch,
+  );
   // Proxy so extracted optional methods (e.g. syncLabelPropsSearchFeatures) keep `this`.
   return new Proxy(instance, {
     get(target, prop, receiver) {

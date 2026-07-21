@@ -13,7 +13,7 @@ afterEach(() => {
 
 describe("autolink session registry", () => {
   test("provide / require / release", () => {
-    const client = { search: () => [], mergeMemory: () => [] } as never;
+    const client = { search: () => ({ hits: [] }), mergeMemory: () => [] } as never;
     provideAutolinkSession("s1", { client });
     expect(requireAutolinkSession("s1").client).toBe(client);
     expect(getAutolinkSession("s1")?.client).toBe(client);

@@ -25,6 +25,8 @@ describe("mergeMemoryAsync", () => {
       capabilities: {
         lexicalSearch: true,
         vectorSearch: true,
+        vectorKnnSearch: true,
+        vectorAnnSearch: false,
         neighborIndex: true,
         graphIndex: true,
         multiNamespaceSearch: true,
@@ -104,6 +106,8 @@ describe("mergeMemoryAsync", () => {
       capabilities: {
         lexicalSearch: true,
         vectorSearch: true,
+        vectorKnnSearch: true,
+        vectorAnnSearch: false,
         neighborIndex: true,
         graphIndex: true,
         multiNamespaceSearch: true,

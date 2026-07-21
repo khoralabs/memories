@@ -64,7 +64,8 @@ Contract tests use a unique temp `file:` database.
 
 ## Limitations
 
-- Vector ANN (`vector_top_k` / `libsql_vector_idx`) is not required; queries use linear `vector_distance_cos`.
+- **KNN** uses linear `vector_distance_cos` (`vectorKnnSearch: true`).
+- **ANN** uses `libsql_vector_idx` + `vector_top_k` when the engine accepts the index on `vector_features`; otherwise `vectorAnnSearch` stays `false` and ANN requests noop.
 - Contract tests use a unique temp `file:` database (`file::memory:` is unreliable with interactive transactions).
 - Nested transactions are rejected.
 - Local encryption applies to `file:` URLs.

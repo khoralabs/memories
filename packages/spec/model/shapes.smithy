@@ -129,11 +129,14 @@ list SearchNeighborHitList {
 
 @documentation("""
 Optional backend feature flags. Omitted keys default via core `resolveMemoriesBackendCapabilities`
-(lexical, vector, neighbor, graph index, multi-namespace on; **unscopedSearch** off).
+(lexical, vector, neighbor, graph index, multi-namespace on; **unscopedSearch** off;
+**vectorKnnSearch** / **vectorAnnSearch** off — backends must opt in).
 
 When a flag is false, the logic layer:
 - **lexicalSearch:** skips lexical arm; text-only merge may still run if FTS is a no-op.
 - **vectorSearch:** skips vector arm; rejects merge content items with vector; vector-only search returns [].
+- **vectorKnnSearch:** exact cosine path unavailable; explicit `knn` is a noop.
+- **vectorAnnSearch:** approximate index path unavailable; explicit `ann` is a noop.
 - **neighborIndex:** skips neighbor listing and expansion in search.
 - **graphIndex:** graph topology reads on persistence return empty lists/maps.
 - **multiNamespaceSearch:** core runs separate per-namespace retrieval and merges with RRF (no `IN` list required).
@@ -147,6 +150,10 @@ structure MemoriesBackendCapabilities {
     lexicalSearch: Boolean
     /// When false, logic rejects merge vectors and skips vector arm.
     vectorSearch: Boolean
+    /// When true, exact / linear cosine vector search (`knn`) is available.
+    vectorKnnSearch: Boolean
+    /// When true, approximate vector index search (`ann`) is available.
+    vectorAnnSearch: Boolean
     /// When false, search ignores neighbor listing and expansion.
     neighborIndex: Boolean
     /// When false, graph topology reads return empty structures.
@@ -157,6 +164,14 @@ structure MemoriesBackendCapabilities {
     unscopedSearch: Boolean
     /// When true, hybrid search honors `asOfTimestampMs` (memory `_ts_created` cutoff).
     asOfTimestampMsSearch: Boolean
+}
+
+enum VectorSearchMethod {
+    @enumValue("knn")
+    KNN
+
+    @enumValue("ann")
+    ANN
 }
 
 /// Retrieval scope for hybrid search (`SearchLexicalSourceMapIds` / `SearchVectorSourceMapIds`).
@@ -332,8 +347,10 @@ structure SearchOptions {
     neighbors: NeighborSearchOption
     maxNeighbors: Integer
     arms: SearchArms
-    /// Drop vector KNN candidates whose distance exceeds this value before RRF (omit = no cutoff).
+    /// Drop vector candidates whose distance exceeds this value before RRF (omit = no cutoff).
     maxVectorDistance: Double
+    /// Select `knn` or `ann`; omit = ANN if available else KNN. Unsupported selection is a noop.
+    vectorSearchMethod: VectorSearchMethod
 }
 
 enum SearchScopeMode {
@@ -361,6 +378,8 @@ structure SearchParams {
 
 structure SearchOutput {
     hits: SearchHitList
+    /// Vector method that ran (`knn` or `ann`); omit when the vector arm did not run.
+    vectorSearchMethod: VectorSearchMethod
 }
 
 list SearchHitList {

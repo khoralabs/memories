@@ -161,11 +161,17 @@ export async function handleDatabaseSearch(
   if (scoped.params === undefined) {
     throw new HttpError("params is required", 400);
   }
-  const hits = await searchAsync(
+  const result = await searchAsync(
     { persistence: handle.persistence },
     scoped.params as unknown as SearchParams,
   );
-  return Response.json({ hits: hits.map(serializeSearchHit), database });
+  return Response.json({
+    hits: result.hits.map(serializeSearchHit),
+    ...(result.vectorSearchMethod !== undefined
+      ? { vectorSearchMethod: result.vectorSearchMethod }
+      : {}),
+    database,
+  });
 }
 
 function stripRemoteAttribution<T extends object>(params: T): Omit<T, "attribution"> {

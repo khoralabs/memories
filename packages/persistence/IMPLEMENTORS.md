@@ -89,7 +89,9 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 
 ## Search arms and ranking
 
-- `searchLexicalSourceMapIds` and `searchVectorSourceMapIds` return **ordered lists of `source_map` ids** (best-first). There is **no separate score contract**: `fuseRrf` in `@khoralabs/memories-core` (`packages/core/src/rrf`) uses **rank position** and configured arm weights only.
+- `searchLexicalSourceMapIds` returns an **ordered list** of `source_map` ids (best-first).
+- `searchVectorSourceMapIds` takes a resolved **`method: "knn" | "ann"`** and returns `{ sourceMapIds; vectorSearchMethod? }`. Unsupported methods are a **noop** (`sourceMapIds: []`, no method). There is **no separate score contract**: `fuseRrf` in `@khoralabs/memories-core` uses **rank position** and configured arm weights only.
+- Public `SearchParams.options.vectorSearchMethod` may be `"knn"`, `"ann"`, or omitted. Core resolves via [`resolveVectorSearchMethod`](./core/src/persistence/types.ts): explicit selection noops when the capability is off; omitted prefers **ANN then KNN**. `SearchOutput.vectorSearchMethod` reports the method that ran.
 - **Namespace scope:** Both methods take **`scope: SearchNamespaceScope`**:
   - `{ kind: "pathSubtree"; namespaces }` — prefix match on primary **`memories.namespace`** (canonical overlapping roots).
   - `{ kind: "scopeDag"; roots }` — scope ids; match memories in **`memory_scopes`** whose scope is a **descendant** of some root in **`scope_closure`**.
@@ -113,12 +115,14 @@ Optional property on the persistence object:
 capabilities?: Partial<MemoriesBackendCapabilities>;
 ```
 
-[`resolveMemoriesBackendCapabilities`](./core/src/persistence/types.ts) merges with [`DEFAULT_MEMORIES_BACKEND_CAPABILITIES`](./core/src/persistence/types.ts) (lexical, vector, neighbor, and multi-namespace search on; **unscoped** off). Set flags to declare MVP backends:
+[`resolveMemoriesBackendCapabilities`](./core/src/persistence/types.ts) merges with [`DEFAULT_MEMORIES_BACKEND_CAPABILITIES`](./core/src/persistence/types.ts) (lexical, vector, neighbor, and multi-namespace search on; **unscoped** off; **`vectorKnnSearch` / `vectorAnnSearch` off** — backends must opt in). Set flags to declare MVP backends:
 
 | Flag | When `false`, logic layer … |
 | ----------------------- | ------------------------------------------------------------------------------------------- |
 | `lexicalSearch`         | Skips lexical arm; merge with text-only content may still run if you implement FTS no-ops. |
-| `vectorSearch`          | Skips vector arm; **rejects** merge content items with `vector`; vector-only search returns `[]`. |
+| `vectorSearch`          | Skips vector arm; **rejects** merge content items with `vector`; vector-only search returns empty hits. |
+| `vectorKnnSearch`       | Exact cosine path unavailable; explicit `knn` is a noop. |
+| `vectorAnnSearch`       | Approximate index path unavailable; explicit `ann` is a noop. |
 | `neighborIndex`         | Skips neighbor listing and expansion in search.                                            |
 | `graphIndex`            | Graph topology reads (`loadGraphEdgesForNamespace`, `loadNodeLabelsForNamespace`, `loadNodePropertiesForNamespace`, `listIncidentGraphEdges`, `loadGraphNode`, …) return **empty** / **null** as documented. |
 | `multiNamespaceSearch` | For hybrid search with **multiple** namespaces in `scope`, runs **separate** per-namespace retrieval calls and merges with RRF in core (no need to implement `IN` lists yourself). |

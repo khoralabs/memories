@@ -31,6 +31,8 @@ describe("resolveStrategyCapabilities", () => {
     expect(resolveStrategyCapabilities({ kind: "remote", endpoint: "https://x" })).toEqual({
       lexicalSearch: true,
       vectorSearch: true,
+      vectorKnnSearch: false,
+      vectorAnnSearch: false,
       neighborIndex: true,
       graphIndex: true,
       multiNamespaceSearch: true,
@@ -48,6 +50,8 @@ describe("resolveStrategyCapabilities", () => {
     ).toEqual({
       lexicalSearch: true,
       vectorSearch: false,
+      vectorKnnSearch: false,
+      vectorAnnSearch: false,
       neighborIndex: true,
       graphIndex: false,
       multiNamespaceSearch: true,

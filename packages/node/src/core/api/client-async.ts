@@ -18,6 +18,7 @@ import {
 import type { Store } from "./resolve-sourcemap.js";
 import {
   type SearchHit,
+  type SearchOutput,
   type SearchParams,
   searchAsync as searchHandlerAsync,
 } from "./search-async";
@@ -38,6 +39,11 @@ export type TypedSearchHitAsync<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
 > = SearchHit<LabelKind<TNode>, LabelKind<TEdge>>;
+
+export type TypedSearchOutputAsync<
+  TNode extends LabelSchemaMap,
+  TEdge extends LabelSchemaMap,
+> = SearchOutput<LabelKind<TNode>, LabelKind<TEdge>>;
 
 /**
  * Async variant of {@link MemoriesClient} for {@link MemoriesPersistenceAsync} backends.
@@ -144,7 +150,7 @@ export class MemoriesClientAsync<
 
   async search(
     params: TypedSearchParamsAsync<TNode, TEdge>,
-  ): Promise<TypedSearchHitAsync<TNode, TEdge>[]> {
+  ): Promise<TypedSearchOutputAsync<TNode, TEdge>> {
     return searchHandlerAsync(this.mutationCtx, params);
   }
 

@@ -18,7 +18,7 @@ test("memory_search forwards additionalNamespaces to client.search", async () =>
     client: {
       search(params: SearchParams) {
         captured = params;
-        return [];
+        return { hits: [] };
       },
     } as never,
     namespace: "ns/a",

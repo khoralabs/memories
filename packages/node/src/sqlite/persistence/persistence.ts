@@ -80,17 +80,10 @@ import { insertSourceMap, updateSourceMapContentHash } from "./models/source-map
 import { insertLexicalFeature } from "./models/text-features";
 import { insertVectorFeature } from "./models/vector-features";
 import { listVectorEmbeddingIndexDimensions as listVectorEmbeddingIndexDimensionsQuery } from "./models/vector-index-dimensions";
+import { hasVectorAnnSearch } from "./search-indexes";
 
 export class MemoriesPersistence implements IMemoriesPersistence {
-  readonly capabilities: MemoriesBackendCapabilities = {
-    lexicalSearch: true,
-    vectorSearch: true,
-    neighborIndex: true,
-    graphIndex: true,
-    multiNamespaceSearch: true,
-    unscopedSearch: true,
-    asOfTimestampMsSearch: true,
-  };
+  readonly capabilities: MemoriesBackendCapabilities;
 
   private readonly stmts: MemoriesSqliteStmts;
 
@@ -98,6 +91,17 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     private readonly db: Database,
     private readonly labelPropsSearchFormatter?: LabelPropsSearchFormatter,
   ) {
+    this.capabilities = {
+      lexicalSearch: true,
+      vectorSearch: true,
+      vectorKnnSearch: true,
+      vectorAnnSearch: hasVectorAnnSearch(db),
+      neighborIndex: true,
+      graphIndex: true,
+      multiNamespaceSearch: true,
+      unscopedSearch: true,
+      asOfTimestampMsSearch: true,
+    };
     this.stmts = prepareMemoriesSqliteStmts(db);
   }
 
@@ -389,7 +393,14 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOfTimestampMs?: number;
-  }): string[] {
+    method: "knn" | "ann";
+  }): { sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" } {
+    if (input.method === "ann" && !this.capabilities.vectorAnnSearch) {
+      return { sourceMapIds: [] };
+    }
+    if (input.method === "knn" && !this.capabilities.vectorKnnSearch) {
+      return { sourceMapIds: [] };
+    }
     return searchVectorSourceMapIds(this.readCtx(), input);
   }
 

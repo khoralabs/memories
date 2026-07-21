@@ -68,6 +68,7 @@ export type SearchParamsWire = {
     maxNeighbors?: number;
     arms?: { vector?: number; lexical?: number };
     maxVectorDistance?: number;
+    vectorSearchMethod?: "knn" | "ann";
   };
   asOfTimestampMs?: number;
 };
@@ -87,7 +88,10 @@ export type DatabaseHashRequest = {
 export type DatabaseHashResponse = { hash: string | null };
 
 export type DatabaseSearchRequest = DatabaseScopedBody<{ params: SearchParamsWire }>;
-export type DatabaseSearchResponse = { hits: SearchHitWire[] };
+export type DatabaseSearchResponse = {
+  hits: SearchHitWire[];
+  vectorSearchMethod?: "knn" | "ann";
+};
 
 export type DatabaseMergeRequest = DatabaseScopedBody<{
   params: Record<string, unknown>;

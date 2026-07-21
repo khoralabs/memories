@@ -50,7 +50,7 @@ export async function prefetchRelatedMemories<
         },
       }),
     );
-    for (const hit of hits) {
+    for (const hit of hits.hits) {
       if (seenHits.has(hit.memory._id)) continue;
       seenHits.add(hit.memory._id);
       contentSearchHits.push(hit);

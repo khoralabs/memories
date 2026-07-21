@@ -76,7 +76,7 @@ describe("autolinkIntegrate via Local World", () => {
     const merges: unknown[] = [];
     const client = {
       search(_params: SearchParams) {
-        return [nodeHit("n1", 0.9)];
+        return { hits: [nodeHit("n1", 0.9)] };
       },
       mergeMemory(params: unknown) {
         merges.push(params);
