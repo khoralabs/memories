@@ -1,7 +1,7 @@
 {
   "name": "@khoralabs/memories-service",
   "version": "0.1.0",
-  "description": "Multi-tenant memory service: lifecycle, routing, HTTP, auth, and storage backends.",
+  "description": "Multi-tenant memory service: lifecycle, HTTP, auth, storage. ./storage/sqlite requires Bun; ./storage/libsql and ./storage/turso-serverless are Node-safe.",
   "license": "MIT",
   "type": "module",
   "repository": {

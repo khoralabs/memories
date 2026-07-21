@@ -40,8 +40,8 @@ async function ensureScopeChain(
 ): Promise<void> {
   if (scopePaths.length === 0) return;
   const op = { now: Date.now() };
-  if (handle.sqlite !== undefined) {
-    const persistence = handle.sqlite.syncPersistence;
+  if (handle.sync !== undefined) {
+    const persistence = handle.sync.syncPersistence;
     persistence.withTransaction(() => {
       persistence.upsertScope(op, { scopeId: scopePaths[0] ?? GLOBAL_ROOT });
       for (let i = 0; i < scopePaths.length - 1; i++) {
@@ -204,8 +204,8 @@ export async function handleDatabaseMerge(
   const ontology = ontologyFromMergeParams(scoped.params);
 
   let memoryIds: string[];
-  if (handle.sqlite !== undefined) {
-    const client = new MemoriesClient(handle.sqlite.syncPersistence, ontology);
+  if (handle.sync !== undefined) {
+    const client = new MemoriesClient(handle.sync.syncPersistence, ontology);
     memoryIds = client.mergeMemory(params);
   } else {
     const client = new MemoriesClientAsync(handle.persistence, ontology);
@@ -241,8 +241,8 @@ export async function handleDatabaseDeleteMemory(
     ...(attribution !== undefined ? { attribution } : {}),
   };
 
-  if (handle.sqlite !== undefined) {
-    const client = new MemoriesClient(handle.sqlite.syncPersistence, {
+  if (handle.sync !== undefined) {
+    const client = new MemoriesClient(handle.sync.syncPersistence, {
       nodeLabels: {},
       edgeLabels: {},
     });

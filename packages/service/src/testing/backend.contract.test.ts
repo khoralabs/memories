@@ -13,8 +13,8 @@ export type MemoriesDatabaseBackendContractOptions = {
   supportsCheckpoint: boolean;
   /** When false, `snapshot(id)` must throw `UnsupportedStorageFeatureError`. */
   supportsSnapshot: boolean;
-  /** When true, opened handles must expose `sqlite`. */
-  requiresSqliteHandle: boolean;
+  /** When true, opened handles must expose `sync` (sync MemoriesPersistence). */
+  requiresSyncHandle: boolean;
   /**
    * When true, `delete(id)` makes `exists(id)` false.
    * Remote backends that keep schema metadata may set this false.
@@ -46,10 +46,10 @@ export function runMemoriesDatabaseBackendContractTests(
       expect(await backend.exists(id)).toBe(false);
       const opened = await backend.open(id);
       expect(opened.persistence).toBeDefined();
-      if (options.requiresSqliteHandle) {
-        expect(opened.sqlite).toBeDefined();
+      if (options.requiresSyncHandle) {
+        expect(opened.sync).toBeDefined();
       } else {
-        expect(opened.sqlite).toBeUndefined();
+        expect(opened.sync).toBeUndefined();
       }
       expect(await backend.exists(id)).toBe(true);
 

@@ -32,7 +32,7 @@ describe.skipIf(!integration)("turso-serverless live backend", () => {
       canEnumerate: false,
       supportsCheckpoint: true,
       supportsSnapshot: false,
-      requiresSqliteHandle: false,
+      requiresSyncHandle: false,
       deleteClearsExistence: false,
     },
   );

@@ -7,12 +7,14 @@ Individual memory node: `MemoriesClient`, persistence contracts (via `@khoralabs
 | Export | Contents |
 |--------|----------|
 | `.` | Client, merge/search/delete, IDs, provenance (re-exports contracts) |
-| `./sqlite` | SQLite persistence + projections |
-| `./libsql` | LibSQL persistence + projections (+ Turso-local projection helpers) |
-| `./turso-serverless` | Turso Cloud persistence |
+| `./sqlite` | SQLite persistence + projections (**Bun runtime required** — uses `bun:sqlite`) |
+| `./libsql` | LibSQL persistence + projections (+ Turso-local projection helpers); Node-safe |
+| `./turso-serverless` | Turso Cloud persistence; Node-safe |
 | `./projections` | UMAP/layout math |
 | `./attestation` | Contributor attestation |
 | `./autolink` | Search-then-link |
 | `./testing` | Conformance test runners |
 
 Backend drivers are optional peer dependencies — see the [root README](../../README.md) install matrix.
+
+**Runtime:** `@khoralabs/memories-node/sqlite` requires [Bun](https://bun.sh). Use `./libsql` or `./turso-serverless` on Node and other runtimes.

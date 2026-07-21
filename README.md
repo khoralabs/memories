@@ -16,10 +16,11 @@ Each memory has one or more **source maps** (one per content chunk), each indexe
 
 ## Packages
 
-Public surface (5 runtime + 1 IDL). Legacy package names remain as thin re-export shims for one major cycle.
+Public surface (runtime + IDL + contract leaf). Legacy package names remain as thin re-export shims for one major cycle.
 
 | Package | Path | Role |
 |---------|------|------|
+| `@khoralabs/memories-persistence-core` | [`packages/persistence/core`](packages/persistence/core) | Persistence contracts / IDs / provenance (Bun-free leaf) |
 | `@khoralabs/memories-ontologies` | [`packages/ontologies`](packages/ontologies) | Ontological primitives (`defineOntology`, families) |
 | `@khoralabs/memories-node` | [`packages/node`](packages/node) | Individual memory node: client, contracts, backends, projections, attestation, autolink |
 | `@khoralabs/memories-service` | [`packages/service`](packages/service) | Multi-tenant service: lifecycle, HTTP, auth, storage backends |
@@ -31,21 +32,23 @@ Public surface (5 runtime + 1 IDL). Legacy package names remain as thin re-expor
 
 | Package | Entrypoints |
 |---------|-------------|
-| `memories-node` | `.`, `./sqlite`, `./libsql`, `./turso-serverless`, `./projections`, `./attestation`, `./autolink`, `./testing` |
-| `memories-service` | `.`, `./client`, `./http`, `./auth`, `./storage/sqlite`, `./storage/libsql`, `./storage/turso-serverless`, `./testing` |
+| `memories-node` | `.`, `./sqlite` (**Bun only**), `./libsql`, `./turso-serverless`, `./projections`, `./attestation`, `./autolink`, `./testing` |
+| `memories-service` | `.`, `./client`, `./http`, `./auth`, `./storage/sqlite` (**Bun only**), `./storage/libsql`, `./storage/turso-serverless`, `./testing` |
 | `memories-agents` | `./tools`, `./adapter`, `./integrator`, `./investigator` |
+
+`./sqlite` and `./storage/sqlite` use `bun:sqlite` and require the [Bun](https://bun.sh) runtime. Shared package roots (`.`, `./client`, agents, ontologies) are Bun-free — use `./libsql` or `./turso-serverless` on Node.
 
 ### Install matrix (backends)
 
 Heavy drivers are **optional peerDependencies** of `@khoralabs/memories-node`. Install only what you import:
 
-| Import | Peers |
-|--------|-------|
-| `@khoralabs/memories-node/sqlite` | `sqlite-vec`, `@khoralabs/sqlite-crypto`, `@khoralabs/sqlite-migrate`, `ajv` |
-| `@khoralabs/memories-node/libsql` | `@libsql/client`, `ajv` |
-| `@khoralabs/memories-node/turso-serverless` | `@tursodatabase/serverless`, `ajv` |
-| `@khoralabs/memories-node/projections` | `umap-js` |
-| `@khoralabs/memories-node/autolink` | `workflow` (for `./autolink/workflows`) |
+| Import | Runtime | Peers |
+|--------|---------|-------|
+| `@khoralabs/memories-node/sqlite` | **Bun** | `sqlite-vec`, `@khoralabs/sqlite-crypto`, `@khoralabs/sqlite-migrate`, `ajv` |
+| `@khoralabs/memories-node/libsql` | Node / Bun | `@libsql/client`, `ajv` |
+| `@khoralabs/memories-node/turso-serverless` | Node / Bun | `@tursodatabase/serverless`, `ajv` |
+| `@khoralabs/memories-node/projections` | Node / Bun | `umap-js` |
+| `@khoralabs/memories-node/autolink` | Node / Bun | `workflow` (for `./autolink/workflows`) |
 
 External runtime dependencies:
 
@@ -118,7 +121,8 @@ For the full system guide — mental model, schema, indexing, and agent integrat
 
 | Script | Description |
 |--------|-------------|
-| `bun run typecheck` | Typecheck all workspace packages |
+| `bun run typecheck` | Typecheck primary packages |
+| `bun run assert:no-bun-sqlite-leak` | Fail if `bun:sqlite` imports leak outside Bun-only entrypoints |
 | `bun test` | Run tests across the repo |
 | `bun run check` | Biome lint + format check |
 | `bun run format` | Auto-fix with Biome |
@@ -130,7 +134,28 @@ brew install sqlite
 export SQLITE_CUSTOM_LIB="$(brew --prefix sqlite)/lib/libsqlite3.dylib"
 ```
 
-See [`packages/persistence/sqlite/README.md`](packages/persistence/sqlite/README.md) for details.
+See [`packages/node/README.md`](packages/node/README.md) (`./sqlite`) for details.
+
+## Releasing
+
+Packages share a **unified version**. Publish via GitHub Actions:
+
+1. Ensure the `NPM_TOKEN` repository secret can publish to `@khoralabs` on npm.
+2. Run **Actions → Release → Run workflow**:
+   - `version`: semver without `v` (e.g. `0.2.0`)
+   - `primary_only`: skip deprecated shim packages if desired
+   - `dry_run`: bump/check without publishing
+3. Or push a git tag `vX.Y.Z` (publishes that version).
+
+Local helpers:
+
+```bash
+bun run release:bump 0.2.0
+bun run release:publish --dry-run          # or --primary-only
+bun run release:publish                    # requires npm auth / NPM_TOKEN
+```
+
+Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (persistence-core → ontologies → node → service/agents/react-graph/spec → shims). Deprecated shim packages re-export the primary surface and will be removed in a future major.
 
 ## License
 

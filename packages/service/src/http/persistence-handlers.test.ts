@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { MemoriesClient } from "@khoralabs/memories-node";
 import { decodeUmapInput, UMAP_INPUT_ENCODING_HEADER } from "@khoralabs/memories-node/projections";
+import { getMemoriesSqliteDatabase } from "@khoralabs/memories-node/sqlite";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 import { createNoneAuthStrategy } from "../auth/index";
@@ -138,9 +139,9 @@ describe("memories service persistence http handlers", () => {
     const { service } = stack;
     const database = { kind: "account", ownerKey: "owner-reads" };
     const handle = await service.getHandle(database);
-    const sqlite = handle.sqlite;
-    if (sqlite === undefined) throw new Error("expected sqlite handle");
-    new MemoriesClient(sqlite.syncPersistence, testOntology).mergeMemory({
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sync.syncPersistence, testOntology).mergeMemory({
       kind: "node",
       key: "n1",
       namespace: "ns/a",
@@ -204,9 +205,9 @@ describe("memories service persistence http handlers", () => {
     expect(mergeRes.status).toBe(200);
 
     const handle = await stack.service.getHandle(database);
-    const sqlite = handle.sqlite;
-    if (sqlite === undefined) throw new Error("expected sqlite handle");
-    const row = sqlite.db
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const row = getMemoriesSqliteDatabase(sync.syncPersistence)
       .query<{ event_json: string; intent_snapshot_id: string | null }, []>(
         `SELECT event_json, intent_snapshot_id FROM memory_provenance LIMIT 1`,
       )
@@ -249,9 +250,9 @@ describe("memories service persistence http handlers", () => {
     expect(res.status).toBe(200);
 
     const handle = await stack.service.getHandle(database);
-    const sqlite = handle.sqlite;
-    if (sqlite === undefined) throw new Error("expected sqlite handle");
-    const row = sqlite.db
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const row = getMemoriesSqliteDatabase(sync.syncPersistence)
       .query<{ event_json: string }, []>(`SELECT event_json FROM memory_provenance LIMIT 1`)
       .get();
     const event = JSON.parse(row?.event_json ?? "{}") as {
@@ -307,9 +308,9 @@ describe("memories service persistence http handlers", () => {
     expect(res.status).toBe(200);
 
     const handle = await stack.service.getHandle(database);
-    const sqlite = handle.sqlite;
-    if (sqlite === undefined) throw new Error("expected sqlite handle");
-    const row = sqlite.db
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const row = getMemoriesSqliteDatabase(sync.syncPersistence)
       .query<{ event_json: string }, []>(
         `SELECT event_json FROM memory_provenance ORDER BY rowid DESC LIMIT 1`,
       )
@@ -364,9 +365,9 @@ describe("memories service persistence http handlers", () => {
     expect(res.status).toBe(200);
 
     const handle = await stack.service.getHandle(database);
-    const sqlite = handle.sqlite;
-    if (sqlite === undefined) throw new Error("expected sqlite handle");
-    const row = sqlite.db
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const row = getMemoriesSqliteDatabase(sync.syncPersistence)
       .query<{ event_json: string }, []>(`SELECT event_json FROM memory_provenance LIMIT 1`)
       .get();
     const event = JSON.parse(row?.event_json ?? "{}") as {
@@ -407,9 +408,9 @@ describe("memories service persistence http handlers", () => {
     expect(res.status).toBe(200);
 
     const handle = await stack.service.getHandle(database);
-    const sqlite = handle.sqlite;
-    if (sqlite === undefined) throw new Error("expected sqlite handle");
-    const row = sqlite.db
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const row = getMemoriesSqliteDatabase(sync.syncPersistence)
       .query<{ event_json: string; intent_snapshot_id: string | null }, []>(
         `SELECT event_json, intent_snapshot_id FROM memory_provenance LIMIT 1`,
       )
@@ -436,9 +437,9 @@ describe("memories service persistence http handlers", () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-projection" };
     const handle = await stack.service.getHandle(database);
-    const sqlite = handle.sqlite;
-    if (sqlite === undefined) throw new Error("expected sqlite handle");
-    new MemoriesClient(sqlite.syncPersistence, testOntology).mergeMemory({
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sync.syncPersistence, testOntology).mergeMemory({
       kind: "node",
       key: "n1",
       namespace: "ns/a",
@@ -520,9 +521,9 @@ describe("remote memories client over http", () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "remote-projection" };
     const handle = await stack.service.getHandle(database);
-    const sqlite = handle.sqlite;
-    if (sqlite === undefined) throw new Error("expected sqlite handle");
-    new MemoriesClient(sqlite.syncPersistence, testOntology).mergeMemory({
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sync.syncPersistence, testOntology).mergeMemory({
       kind: "node",
       key: "n1",
       namespace: "ns/a",

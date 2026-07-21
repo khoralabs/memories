@@ -1,7 +1,7 @@
 {
   "name": "@khoralabs/memories-node",
   "version": "0.1.0",
-  "description": "Individual memory node: client, persistence contracts, backends, projections, attestation, and autolink.",
+  "description": "Individual memory node: client, contracts, backends, projections, attestation, autolink. ./sqlite requires Bun (bun:sqlite); ./libsql and ./turso-serverless are Node-safe.",
   "license": "MIT",
   "type": "module",
   "repository": {

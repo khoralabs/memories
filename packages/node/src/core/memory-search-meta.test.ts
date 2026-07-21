@@ -1,4 +1,3 @@
-import type { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import {
   buildCanonicalMemorySearchMetaTextForMerge,
@@ -22,9 +21,11 @@ function openTestDb() {
   return openTestMemoriesDatabase();
 }
 
+type TestDb = ReturnType<typeof openTestMemoriesDatabase>;
+
 const vec512 = (): number[] => Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));
 
-function loadUserVectorRowsForNamespace(db: Database, namespace: string): number[][] {
+function loadUserVectorRowsForNamespace(db: TestDb, namespace: string): number[][] {
   const rows = db
     .query<{ vector: Buffer | Uint8Array }, [string]>(
       `SELECT vf.vector AS vector

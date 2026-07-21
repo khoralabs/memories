@@ -36,7 +36,7 @@ runMemoriesDatabaseBackendContractTests(
     canEnumerate: true,
     supportsCheckpoint: true,
     supportsSnapshot: false,
-    requiresSqliteHandle: false,
+    requiresSyncHandle: false,
     deleteClearsExistence: true,
   },
 );

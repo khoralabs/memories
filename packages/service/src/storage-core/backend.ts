@@ -1,4 +1,3 @@
-import type { Database } from "bun:sqlite";
 import type {
   MemoriesBackendCapabilities,
   MemoriesPersistence,
@@ -96,8 +95,12 @@ export function resolveStrategyCapabilities(
   return resolveMemoriesBackendCapabilities({ capabilities: partial });
 }
 
-export type SqliteDatabaseContext = {
-  db: Database;
+/**
+ * Optional sync persistence bag on an open handle.
+ * Present for local SQLite (and any backend that exposes sync mutations).
+ * Intentionally Bun-free — raw SQLite Database handles stay in `./storage/sqlite`.
+ */
+export type SyncPersistenceContext = {
   syncPersistence: MemoriesPersistence;
 };
 
@@ -105,8 +108,8 @@ export type MemoriesDatabaseHandle = {
   persistence: MemoriesPersistenceAsync;
   close(): Promise<void>;
   checkpoint?(): Promise<void>;
-  /** Present for SQLite backends; required for graph reads and sync mutations. */
-  sqlite?: SqliteDatabaseContext;
+  /** Present when the backend exposes sync `MemoriesPersistence` (e.g. local SQLite). */
+  sync?: SyncPersistenceContext;
 };
 
 export type MemoriesDatabaseBackend = {

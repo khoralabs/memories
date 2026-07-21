@@ -60,7 +60,15 @@ function openLocalDatabase(
   ensureCustomSqliteForExtensions();
   const filename = resolveEncodedDatabasePath(strategy.dataDir, id);
   mkdirSync(path.dirname(filename), { recursive: true });
-  const db = openMemoriesDatabase(filename, { sqlCipherKey: strategy.sqlCipherKey });
+  let db: Database;
+  try {
+    db = openMemoriesDatabase(filename, { sqlCipherKey: strategy.sqlCipherKey });
+  } catch (e) {
+    // First open can race: ensureCustomSqlite loads libsqlite before SQLCipher setCustomSQLite.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/SQLite already loaded/i.test(msg)) throw e;
+    db = openMemoriesDatabase(filename, { sqlCipherKey: strategy.sqlCipherKey });
+  }
   const persistence = createMemoriesPersistence(db);
   return { persistence, db };
 }
@@ -69,7 +77,7 @@ function createHandle(opened: OpenedLocalDatabase): MemoriesDatabaseHandle {
   let closed = false;
   return {
     persistence: wrapSyncMemoriesPersistenceAsAsync(opened.persistence),
-    sqlite: { db: opened.db, syncPersistence: opened.persistence },
+    sync: { syncPersistence: opened.persistence },
     async close() {
       if (closed) return;
       closed = true;

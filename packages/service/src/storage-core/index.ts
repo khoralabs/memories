@@ -6,8 +6,8 @@ export type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabaseHandle,
   SqliteBackendStrategy,
-  SqliteDatabaseContext,
   StrategyCapabilities,
+  SyncPersistenceContext,
   TursoServerlessBackendStrategy,
 } from "./backend";
 export {
