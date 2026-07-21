@@ -1,0 +1,41 @@
+---
+description: Keep packages/spec Smithy aligned with TS; flag Spec-impacting changes.
+alwaysApply: true
+---
+
+# Smithy Spec ↔ implementation sync
+
+`packages/spec` (`model/*.smithy`) is the **logical** contract for:
+
+- Public API: `@khoralabs/memories-node` (`mergeMemory`, `search`, `deleteMemory`, attribution, search options)
+- Persistence: `@khoralabs/memories-persistence-core` (`MemoriesPersistence`, provenance, capabilities, row shapes)
+
+It is **not** the HTTP wire model for `memories-service` (except where service handlers are thin adapters over the public/persistence APIs).
+
+## When editing implementation
+
+If a change touches any of the following, **stop and call it out** before finishing:
+
+- New/renamed/removed public or persistence methods or ops
+- Request/response fields, requiredness, or discriminants (node vs edge, provenance event kinds)
+- Provenance: event shapes, `content_hash`, attribution, outbox, head/root hex
+- `MemoriesBackendCapabilities` or search scope / as-of / distance options
+- Row / hit shapes that Spec already models
+
+**Required response behavior:**
+
+1. Explicitly flag: “This requires a Spec update” (or “Spec already covers this”).
+2. Prefer updating `packages/spec/model/*.smithy` in the **same change** as the TS.
+3. If Spec cannot be updated in-session, leave a clear TODO naming the shapes/ops to change — do not silently leave Spec stale.
+
+## When editing Spec
+
+- Rebase Spec on TypeScript source of truth (`packages/persistence/core`, `packages/node/src/core`), not on HTTP JSON alone.
+- Keep capability module membership and docs accurate when adding optional ops (`?` methods in TS → document as optional in Spec).
+- Bump service `version` dates when the contract meaningfully changes.
+
+## Out of scope for Spec (do not expand Spec just for these)
+
+- Service lifecycle / ontology registry HTTP routes
+- Wire renames (`memoryIds` vs `_id` camelCase in HTTP DTOs) unless they mirror the logical public API
+- Bun-only sqlite internals

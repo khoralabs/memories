@@ -10,7 +10,7 @@ Lexical mutation + catalog + edges + search-meta (text path) + lexical retrieval
 Minimum profile for a lexical-only backend: typically **Core** + **MemoriesPersistenceReads**.
 """)
 service MemoriesPersistenceCore {
-    version: "2026-04-11"
+    version: "2026-07-21"
     operations: [
         WithTransaction
         ListNeighborMemoriesForNode
@@ -28,6 +28,7 @@ service MemoriesPersistenceCore {
         EnsureNodeLabel
         InsertNodeLabelAssignment
         FindMemoryIdByKey
+        FindMemoryAssociation
         NodeExists
         InsertEdge
         EnsureEdgeLabel
@@ -37,6 +38,7 @@ service MemoriesPersistenceCore {
         DeleteMemoryRootRows
         GetProvenanceHeadRootHex
         AppendProvenanceEvent
+        AppendContentOutbox
         UpdateSourceMapContentHash
         SearchLexicalSourceMapIds
         HydrateSourceMapHits
@@ -48,7 +50,7 @@ Vector features, hybrid meta vector upsert, vector search, and embedding-dimensi
 Omit entire module when `vectorSearch` is `false`.
 """)
 service MemoriesPersistenceVector {
-    version: "2026-04-11"
+    version: "2026-07-21"
     operations: [
         InsertVectorFeature
         UpsertMemorySearchMetaVector
@@ -61,9 +63,10 @@ service MemoriesPersistenceVector {
 Neighbor listing for search expansion and filters. Omit when `neighborIndex` is `false`.
 """)
 service MemoriesPersistenceNeighbors {
-    version: "2026-04-11"
+    version: "2026-07-21"
     operations: [
         ListNeighborsForMemory
+        ListNeighborsForEdgeMemory
     ]
 }
 
@@ -71,7 +74,7 @@ service MemoriesPersistenceNeighbors {
 Label-props lexical chunks for ontology props search. Optional; omit if unsupported.
 """)
 service MemoriesPersistenceLabelProps {
-    version: "2026-04-11"
+    version: "2026-07-21"
     operations: [
         SyncLabelPropsSearchFeatures
     ]
@@ -81,10 +84,13 @@ service MemoriesPersistenceLabelProps {
 Prefetch and export reads (not required for minimal in-process stores, but common for tooling).
 """)
 service MemoriesPersistenceReads {
-    version: "2026-04-11"
+    version: "2026-07-21"
     operations: [
+        ListMemoryNamespaces
         ListSourceMapsForMemory
         ListTextFeatureExportRowsForMemory
+        GetSourceMapTextPreview
+        GetProvenanceTimestampMsForRootHex
     ]
 }
 
@@ -96,7 +102,7 @@ service MemoriesPersistenceReads {
 
 **Capability modules:** Implementors may conform to a subset; see the module services above. Hosts expose
 optional **MemoriesBackendCapabilities** alongside operations (not modeled as RPC). TypeScript interfaces:
-MemoriesMutation, MemoriesRetrieval, MemoriesNeighborIndex, MemoriesPersistenceReads in `@khoralabs/memories-core`.
+`MemoriesPersistence` (and capability slices) in `@khoralabs/memories-persistence-core`; public API in `@khoralabs/memories-node`.
 
 **Capability matrix (modules ↔ `MemoriesBackendCapabilities`):**
 - **MemoriesPersistenceCore** — baseline for merge/delete + lexical search + hydrate.
@@ -105,12 +111,13 @@ MemoriesMutation, MemoriesRetrieval, MemoriesNeighborIndex, MemoriesPersistenceR
 - **Graph topology reads** (`MemoriesGraphIndex` in TS on `MemoriesPersistence`) — **LoadGraphEdgesForNamespace**, **LoadNodeLabelsForNamespace**, **LoadNodePropertiesForNamespace**, **ListIncidentGraphEdges**, **LoadNodeLabelsForMemory**, **LoadNodePropertiesForMemory**, **LoadGraphEdge**, **LoadGraphNode** — omit when `graphIndex` is `false`.
 - **MemoriesPersistenceLabelProps** — optional (`syncLabelPropsSearchFeatures?` in TS).
 - **MemoriesPersistenceReads** — prefetch/export; commonly implemented with Core.
+- **AppendContentOutbox** / **GetProvenanceTimestampMsForRootHex** — optional methods in TS (`?`).
 
-`multiNamespaceSearch` and `unscopedSearch` constrain search **behavior**, not operation membership.
+`multiNamespaceSearch`, `unscopedSearch`, and `asOfTimestampMsSearch` constrain search **behavior**, not operation membership.
 
 **Transactions:** Prefer one outer transaction per merge/delete. Nesting depends on the driver.
 
-**clearMemorySubtree** vs **DeleteMemoryRootRows:** subtree clear removes dependents while roots may remain until root delete. Delete is idempotent if already absent.
+**clearMemorySubtree** vs **DeleteMemoryRootRows:** subtree clear removes dependents while roots may remain until root delete. Both take a **node** vs **edge** discriminant (`memoryKind`). Delete is idempotent if already absent.
 
 **Search-meta:** reserved `source_key` for hybrid meta chunk; **SyncMemorySearchMeta** rebuilds canonical text and optional vector.
 
@@ -118,12 +125,12 @@ MemoriesMutation, MemoriesRetrieval, MemoriesNeighborIndex, MemoriesPersistenceR
 
 **Async:** Mirror with Promise/async method signatures in language bindings.
 
-**Read helpers:** **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory** (prefetch / JSONL export). **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable; implementations that can infer widths from stored indexes should return them.
+**Read helpers:** **ListMemoryNamespaces**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable.
 
-**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete) and nullable **`source_maps.content_hash`** body commitments. Normative hashing lives in `@khoralabs/memories-persistence-core/provenance` (see SQLite implementors guide).
+**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY`). Normative hashing lives in `@khoralabs/memories-persistence-core/provenance` (see SQLite implementors guide).
 """)
 service MemoriesPersistenceService {
-    version: "2026-04-11"
+    version: "2026-07-21"
     operations: [
         WithTransaction
         ListNeighborMemoriesForNode
@@ -142,6 +149,7 @@ service MemoriesPersistenceService {
         EnsureNodeLabel
         InsertNodeLabelAssignment
         FindMemoryIdByKey
+        FindMemoryAssociation
         NodeExists
         InsertEdge
         EnsureEdgeLabel
@@ -153,13 +161,18 @@ service MemoriesPersistenceService {
         DeleteMemoryRootRows
         GetProvenanceHeadRootHex
         AppendProvenanceEvent
+        AppendContentOutbox
         UpdateSourceMapContentHash
         SearchLexicalSourceMapIds
         SearchVectorSourceMapIds
         HydrateSourceMapHits
         ListNeighborsForMemory
+        ListNeighborsForEdgeMemory
+        ListMemoryNamespaces
         ListSourceMapsForMemory
         ListTextFeatureExportRowsForMemory
+        GetSourceMapTextPreview
+        GetProvenanceTimestampMsForRootHex
         ListVectorEmbeddingIndexDimensions
         LoadGraphEdgesForNamespace
         LoadNodeLabelsForNamespace
@@ -218,10 +231,25 @@ operation ClearMemorySubtree {
     output: ClearMemorySubtreeOutput
 }
 
-structure ClearMemorySubtreeInput {
-    op: MemoryOpContext
+/// Discriminated target: node (clears incident edges) vs edge (clears features; keeps edges row for replace).
+union ClearMemorySubtreeTarget {
+    node: ClearMemorySubtreeNodeTarget
+    edge: ClearMemorySubtreeEdgeTarget
+}
+
+structure ClearMemorySubtreeNodeTarget {
     memoryId: String
     nodeId: String
+}
+
+structure ClearMemorySubtreeEdgeTarget {
+    memoryId: String
+    edgeId: String
+}
+
+structure ClearMemorySubtreeInput {
+    op: MemoryOpContext
+    target: ClearMemorySubtreeTarget
 }
 
 structure ClearMemorySubtreeOutput {}
@@ -231,10 +259,22 @@ operation UpsertMemory {
     output: UpsertMemoryOutput
 }
 
+enum MemoryKind {
+    @enumValue("node")
+    NODE
+
+    @enumValue("edge")
+    EDGE
+}
+
 structure UpsertMemoryInput {
     op: MemoryOpContext
     namespace: MemoryNamespace
     key: String
+    /// Defaults to `node` in storage when omitted.
+    kind: MemoryKind
+    /// Required when `kind` is `edge` after the graph edge exists.
+    edgeId: String
 }
 
 structure UpsertMemoryOutput {
@@ -435,6 +475,40 @@ structure FindMemoryIdByKeyOutput {
     memoryId: String
 }
 
+@documentation("""
+Resolve graph association for a logical key (`undefined` / omitted output when no memory row).
+Node memories infer `nodeId`; edge memories require stored `edge_id`.
+""")
+operation FindMemoryAssociation {
+    input: FindMemoryAssociationInput
+    output: FindMemoryAssociationOutput
+}
+
+structure FindMemoryAssociationInput {
+    namespace: MemoryNamespace
+    key: String
+}
+
+union MemoryAssociation {
+    node: MemoryAssociationNode
+    edge: MemoryAssociationEdge
+}
+
+structure MemoryAssociationNode {
+    memoryId: String
+    nodeId: String
+}
+
+structure MemoryAssociationEdge {
+    memoryId: String
+    edgeId: String
+}
+
+structure FindMemoryAssociationOutput {
+    /// Omitted when no memory exists for the key.
+    association: MemoryAssociation
+}
+
 operation NodeExists {
     input: NodeExistsInput
     output: NodeExistsOutput
@@ -561,9 +635,23 @@ operation DeleteMemoryRootRows {
     output: DeleteMemoryRootRowsOutput
 }
 
-structure DeleteMemoryRootRowsInput {
+/// Node: delete memory + primary node. Edge: delete graph `edges` row (CASCADE removes memory + features).
+union DeleteMemoryRootRowsTarget {
+    node: DeleteMemoryRootRowsNodeTarget
+    edge: DeleteMemoryRootRowsEdgeTarget
+}
+
+structure DeleteMemoryRootRowsNodeTarget {
     memoryId: String
     nodeId: String
+}
+
+structure DeleteMemoryRootRowsEdgeTarget {
+    edgeId: String
+}
+
+structure DeleteMemoryRootRowsInput {
+    target: DeleteMemoryRootRowsTarget
 }
 
 structure DeleteMemoryRootRowsOutput {}
@@ -579,6 +667,8 @@ structure SearchLexicalSourceMapIdsInput {
     text: String
     limit: Integer
     memoryIds: StringList
+    /// Only memories with `_ts_created <= asOfTimestampMs` participate (backend-dependent).
+    asOfTimestampMs: Long
 }
 
 structure SearchLexicalSourceMapIdsOutput {
@@ -596,6 +686,10 @@ structure SearchVectorSourceMapIdsInput {
     vector: DoubleList
     limit: Integer
     memoryIds: StringList
+    /// sqlite-vec KNN distance upper bound; omit = top-k without a distance cutoff.
+    maxVectorDistance: Double
+    /// Only memories with `_ts_created <= asOfTimestampMs` participate (backend-dependent).
+    asOfTimestampMs: Long
 }
 
 structure SearchVectorSourceMapIdsOutput {
@@ -630,6 +724,34 @@ structure ListNeighborsForMemoryOutput {
     neighbors: HydratedNeighborList
 }
 
+@documentation("""
+Endpoint node memories for a graph edge (neighbor expansion when the search root is an edge memory).
+""")
+operation ListNeighborsForEdgeMemory {
+    input: ListNeighborsForEdgeMemoryInput
+    output: ListNeighborsForEdgeMemoryOutput
+}
+
+structure ListNeighborsForEdgeMemoryInput {
+    namespace: MemoryNamespace
+    edgeId: String
+    filters: NeighborFilter
+}
+
+structure ListNeighborsForEdgeMemoryOutput {
+    neighbors: HydratedNeighborList
+}
+
+operation ListMemoryNamespaces {
+    input: Unit
+    output: ListMemoryNamespacesOutput
+}
+
+structure ListMemoryNamespacesOutput {
+    /// Distinct primary memory namespaces, sorted for stable UI.
+    namespaces: MemoryNamespaceList
+}
+
 operation ListSourceMapsForMemory {
     input: ListSourceMapsForMemoryInput
     output: ListSourceMapsForMemoryOutput
@@ -656,6 +778,40 @@ structure ListTextFeatureExportRowsForMemoryInput {
 
 structure ListTextFeatureExportRowsForMemoryOutput {
     rows: TextFeatureExportRowList
+}
+
+@documentation("Display text attached to one source map row, truncated to `maxChars` when supplied.")
+operation GetSourceMapTextPreview {
+    input: GetSourceMapTextPreviewInput
+    output: GetSourceMapTextPreviewOutput
+}
+
+structure GetSourceMapTextPreviewInput {
+    sourceMapId: String
+    maxChars: Integer
+}
+
+structure GetSourceMapTextPreviewOutput {
+    /// Omitted / null when no text is attached.
+    text: String
+}
+
+@documentation("""
+Timestamp (`memory_provenance._ts_created`) for a chain link `root_hex`, when known.
+Optional on implementors (`getProvenanceTimestampMsForRootHex?` in TS).
+""")
+operation GetProvenanceTimestampMsForRootHex {
+    input: GetProvenanceTimestampMsForRootHexInput
+    output: GetProvenanceTimestampMsForRootHexOutput
+}
+
+structure GetProvenanceTimestampMsForRootHexInput {
+    rootHex: String
+}
+
+structure GetProvenanceTimestampMsForRootHexOutput {
+    /// Omitted when the root is unknown.
+    timestampMs: Long
 }
 
 @documentation("""
@@ -823,6 +979,7 @@ structure GetProvenanceHeadRootHexOutput {
 
 @documentation("""
 Append one row advancing the linear chain. Must run inside **WithTransaction**. `event` is stored as canonical JSON in `memory_provenance.event_json`; implementations derive `root_hex` per `@khoralabs/memories-persistence-core/provenance`.
+Returns the new chain head.
 """)
 operation AppendProvenanceEvent {
     input: AppendProvenanceEventInput
@@ -831,13 +988,54 @@ operation AppendProvenanceEvent {
 
 structure AppendProvenanceEventInput {
     op: MemoryOpContext
-    event: Document
+    event: MemoryProvenanceEvent
 }
 
-structure AppendProvenanceEventOutput {}
+structure AppendProvenanceEventOutput {
+    rootHex: String
+}
 
 @documentation("""
-Persist **content_hash** for one source map after lexical and/or vector features exist (`SHA-256(MEMORIES_SOURCE_BODY_v1 …)` over a canonical descriptor). Merge pipelines call this once per content item in the same transaction.
+Write raw content to the append-only outbox so point-in-time reconstruction is possible.
+Must run in the same transaction as **AppendProvenanceEvent**, immediately after.
+For `MERGE_MEMORY` pass one entry per user content item; for `DELETE_MEMORY` pass empty `entries`.
+Optional on implementors (`appendContentOutbox?` in TS).
+""")
+operation AppendContentOutbox {
+    input: AppendContentOutboxInput
+    output: AppendContentOutboxOutput
+}
+
+enum ProvenanceEventType {
+    @enumValue("MERGE_MEMORY")
+    MERGE_MEMORY
+
+    @enumValue("DELETE_MEMORY")
+    DELETE_MEMORY
+}
+
+structure ContentOutboxEntry {
+    sourceKey: String
+    text: String
+}
+
+list ContentOutboxEntryList {
+    member: ContentOutboxEntry
+}
+
+structure AppendContentOutboxInput {
+    op: MemoryOpContext
+    rootHex: String
+    eventType: ProvenanceEventType
+    namespace: String
+    memoryKey: String
+    entries: ContentOutboxEntryList
+}
+
+structure AppendContentOutboxOutput {}
+
+@documentation("""
+Persist **content_hash** for one source map after lexical and/or vector features exist (`SHA-256(MEMORIES_SOURCE_BODY_v1 …)` over a canonical descriptor). Merge pipelines call this once per content item in the same transaction. `text` and `vector` are both optional (at least the parts that exist for that content item).
 """)
 operation UpdateSourceMapContentHash {
     input: UpdateSourceMapContentHashInput

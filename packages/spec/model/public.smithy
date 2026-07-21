@@ -6,10 +6,11 @@ namespace khora.memories
 Logical client API: validates content and ontology at the app layer, then drives persistence.
 Label kinds are opaque strings here (Zod / closed enums live in app packages).
 
-Merge returns keys whose search-meta lexical row was rebuilt.
+Merge returns stable memory ids touched by the operation (primary + neighbors whose search-meta was synced).
+Attribution (`contributor` / `intentSnapshotId`) is optional on merge and delete and feeds provenance.
 """)
 service MemoriesPublic {
-    version: "2026-04-11"
+    version: "2026-07-21"
     operations: [
         MergeMemory
         Search

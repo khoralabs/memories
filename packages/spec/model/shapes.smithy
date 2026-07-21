@@ -12,7 +12,7 @@ list MemoryNamespaceList {
     member: MemoryNamespace
 }
 
-// --- Row / hit shapes (storage-agnostic, aligned with @khoralabs/memories-core db/rows + search) ---
+// --- Row / hit shapes (storage-agnostic, aligned with @khoralabs/memories-persistence-core) ---
 
 structure MemoryRow {
     _id: String
@@ -30,6 +30,8 @@ structure SourceMapRow {
     _ts_created: Long
     memory_id: String
     source_key: String
+    /// Lowercase SHA-256 hex body commitment (`MEMORIES_SOURCE_BODY_v1`); omitted when unset.
+    content_hash: String
 }
 
 structure EdgeRow {
@@ -136,6 +138,7 @@ When a flag is false, the logic layer:
 - **graphIndex:** graph topology reads on persistence return empty lists/maps.
 - **multiNamespaceSearch:** core runs separate per-namespace retrieval and merges with RRF (no `IN` list required).
 - **unscopedSearch:** rejects `searchEntireDatabase` on SearchParams; unscoped scope is not used.
+- **asOfTimestampMsSearch:** when true, `SearchParams.asOfTimestampMs` is applied; when omitted/false, as-of search is rejected.
 
 Thin single-namespace adapters should set **multiNamespaceSearch** false; core still works via fallback.
 """)
@@ -152,6 +155,8 @@ structure MemoriesBackendCapabilities {
     multiNamespaceSearch: Boolean
     /// When false, `searchEntireDatabase` on SearchParams is rejected.
     unscopedSearch: Boolean
+    /// When true, hybrid search honors `asOfTimestampMs` (memory `_ts_created` cutoff).
+    asOfTimestampMsSearch: Boolean
 }
 
 /// Retrieval scope for hybrid search (`SearchLexicalSourceMapIds` / `SearchVectorSourceMapIds`).
@@ -189,8 +194,15 @@ structure UnscopedScope {}
 structure MergeMemoryContentItem {
     /// User content key; must not be reserved (`__` prefix or search-meta key).
     key: String
+    /// At least one of `text` or `vector` must be present (Zod refine in TS).
     text: String
     vector: DoubleList
+}
+
+/// Caller-supplied attribution for merge/delete (feeds `MemoryOpContext`).
+structure MemoryMutationAttribution {
+    contributor: ContributorAttestation
+    intentSnapshotId: String
 }
 
 list DoubleList {
@@ -226,8 +238,10 @@ structure MergeMemoryParamsNode {
     labels: OntologyLabelInstanceList
     properties: Document
     edges: MergeMemoryEdgeList
-    /// Optional extra DAG scope attachments (`attachScopes` in TS); primary namespace is always attached by merge.
+    /// Extra DAG scope attachments; primary namespace is always attached by merge.
+    attachScopes: MemoryNamespaceList
     searchMetaVector: DoubleList
+    attribution: MemoryMutationAttribution
 }
 
 structure MergeMemoryEdgeAssociation {
@@ -243,8 +257,10 @@ structure MergeMemoryParamsEdge {
     content: MergeMemoryContentItemList
     /// Endpoints and edge label for the single graph edge this memory owns.
     edge: MergeMemoryEdgeAssociation
-    /// Optional scope attachments (`attachScopes` in TS), same semantics as node merge.
+    /// Extra DAG scope attachments; same semantics as node merge.
+    attachScopes: MemoryNamespaceList
     searchMetaVector: DoubleList
+    attribution: MemoryMutationAttribution
 }
 
 list MergeMemoryContentItemList {
@@ -256,13 +272,14 @@ list MergeMemoryEdgeList {
 }
 
 structure MergeMemoryOutput {
-    /// Keys whose search-meta lexical row was rebuilt.
-    invalidatedMetaKeys: StringList
+    /// Stable memory ids touched by the merge (primary + any neighbors whose search-meta was synced).
+    memoryIds: StringList
 }
 
 structure DeleteMemoryParams {
     namespace: MemoryNamespace
     key: String
+    attribution: MemoryMutationAttribution
 }
 
 structure DeleteMemoryOutput {}
@@ -315,14 +332,31 @@ structure SearchOptions {
     neighbors: NeighborSearchOption
     maxNeighbors: Integer
     arms: SearchArms
+    /// Drop vector KNN candidates whose distance exceeds this value before RRF (omit = no cutoff).
+    maxVectorDistance: Double
+}
+
+enum SearchScopeMode {
+    @enumValue("pathSubtree")
+    PATH_SUBTREE
+
+    @enumValue("scopeDag")
+    SCOPE_DAG
+
+    @enumValue("exactScope")
+    EXACT_SCOPE
 }
 
 structure SearchParams {
     namespace: MemoryNamespace
     additionalNamespaces: MemoryNamespaceList
     searchEntireDatabase: Boolean
+    /// How `namespace` + `additionalNamespaces` are interpreted when not searching the entire DB. Default `pathSubtree`.
+    searchScopeMode: SearchScopeMode
     content: SearchContent
     options: SearchOptions
+    /// Only memories with `_ts_created <= asOfTimestampMs` participate. Requires `asOfTimestampMsSearch`.
+    asOfTimestampMs: Long
 }
 
 structure SearchOutput {
@@ -360,9 +394,10 @@ list IntegerList {
     member: Integer
 }
 
-// --- Persistence: shared op context ---
+// --- Persistence: shared op context + provenance events ---
 
 structure ContributorAttestation {
+    /// Schema version; TS requires literal `1`.
     v: Integer
     format: String
     principal: String
@@ -376,6 +411,40 @@ structure MemoryOpContext {
     now: Long
     contributor: ContributorAttestation
     intentSnapshotId: String
+}
+
+/// Provenance event stored as canonical JSON in `memory_provenance.event_json`.
+union MemoryProvenanceEvent {
+    MERGE_MEMORY: MergeMemoryProvenanceEvent
+    DELETE_MEMORY: DeleteMemoryProvenanceEvent
+}
+
+structure MergeMemoryProvenanceEvent {
+    /// Schema version; TS requires literal `1`.
+    v: Integer
+    namespace: String
+    memory_key: String
+    memory_id: String
+    source_keys: StringList
+    /// Map of source_key → content_hash hex (when body digests were computed).
+    content_hashes: StringStringMap
+    contributor: ContributorAttestation
+    intent_snapshot_id: String
+}
+
+structure DeleteMemoryProvenanceEvent {
+    /// Schema version; TS requires literal `1`.
+    v: Integer
+    namespace: String
+    memory_key: String
+    memory_id: String
+    contributor: ContributorAttestation
+    intent_snapshot_id: String
+}
+
+map StringStringMap {
+    key: String
+    value: String
 }
 
 structure GraphEdgeLink {

@@ -1,14 +1,16 @@
 # @khoralabs/memories-spec
 
-Smithy wire model for the memories persistence contract. Describes operation sets, row shapes, and capability modules that `@khoralabs/memories-core` and `@khoralabs/memories-sqlite` implement in TypeScript.
+Smithy model for the memories **logical** persistence + public API contract. Describes operation sets, row shapes, and capability modules that `@khoralabs/memories-persistence-core` and `@khoralabs/memories-node` implement in TypeScript.
+
+This package is **not** the HTTP wire model for `@khoralabs/memories-service` (lifecycle, ontology registry, and JSON field renames live in the service docs). Spec tracks the in-process TS surfaces; keep them in sync when either side changes.
 
 ## Layout
 
 | Path | Contents |
 |------|----------|
 | `model/persistence.smithy` | `MemoriesPersistenceService` and capability modules (`MemoriesPersistenceCore`, `MemoriesPersistenceVector`, …) |
-| `model/shapes.smithy` | Shared shapes |
-| `model/public.smithy` | Public service surface |
+| `model/shapes.smithy` | Shared shapes (rows, search/merge, provenance events, capabilities) |
+| `model/public.smithy` | Public service surface (`MergeMemory`, `Search`, `DeleteMemory`) |
 | `smithy-build.json` | Smithy build config |
 
 ## Capability modules
@@ -17,7 +19,7 @@ Use modules to see what a minimal backend can omit; use the aggregate `MemoriesP
 
 | Smithy service | Approximate TypeScript |
 |----------------|----------------------|
-| `MemoriesPersistenceCore` | Lexical mutation + catalog + lexical search |
+| `MemoriesPersistenceCore` | Lexical mutation + catalog + lexical search + provenance |
 | `MemoriesPersistenceVector` | Vector features + vector search |
 | `MemoriesPersistenceNeighbors` | `MemoriesNeighborIndex` |
 | `MemoriesPersistenceLabelProps` | `syncLabelPropsSearchFeatures` |
