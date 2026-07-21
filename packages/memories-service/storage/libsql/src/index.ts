@@ -1,6 +1,2 @@
-export {
-  type CreateLocalLibsqlBackendOptions,
-  createLocalLibsqlBackend,
-  createLocalLibsqlBackendFactory,
-  resolveLocalLibsqlDatabasePath,
-} from "./local-libsql-backend";
+/** @deprecated Deprecated: use @khoralabs/memories-service/storage/libsql */
+export * from "@khoralabs/memories-service/storage/libsql";

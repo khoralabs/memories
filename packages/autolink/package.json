@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-autolink",
   "version": "0.1.0",
-  "description": "Search-then-link graph integration for memories.",
+  "description": "Deprecated: use @khoralabs/memories-node/autolink",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/autolink"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/autolink#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -25,26 +18,18 @@
       "default": "./src/index.ts"
     },
     "./workflows": {
-      "types": "./src/workflows/index.ts",
-      "import": "./src/workflows/index.ts",
-      "default": "./src/workflows/index.ts"
+      "types": "./src/workflows.ts",
+      "import": "./src/workflows.ts",
+      "default": "./src/workflows.ts"
     }
   },
   "dependencies": {
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-ontologies": "workspace:*",
-    "workflow": "^4.5.0"
-  },
-  "scripts": {
-    "test": "bun test"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "@workflow/vitest": "^4.0.12",
-    "@workflow/world-local": "^4.2.1",
-    "undici": "^7.28.0"
+    "@khoralabs/memories-node": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-sqlite",
   "version": "0.1.0",
-  "description": "SQLite reference backend for memories persistence (FTS5 + sqlite-vec).",
+  "description": "Deprecated: use @khoralabs/memories-node/sqlite",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/persistence/sqlite"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/persistence/sqlite#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -26,18 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-persistence-core": "workspace:*",
-    "@khoralabs/sqlite-crypto": "^0.1.0",
-    "@khoralabs/sqlite-migrate": "^0.1.0",
-    "ajv": "^8",
-    "sqlite-vec": "^0.1.9"
-  },
-  "devDependencies": {
-    "@khoralabs/memories-persistence-contract": "workspace:*",
-    "@types/bun": "latest"
+    "@khoralabs/memories-node": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

@@ -1,13 +1,11 @@
 {
   "name": "@khoralabs/memories-service-storage-sqlite",
   "version": "0.1.0",
-  "description": "Local SQLCipher file backend and SQLite placement registry for the Memories database service.",
+  "description": "Deprecated: use @khoralabs/memories-service/storage/sqlite",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/storage-sqlite"
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "src",
@@ -21,20 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-persistence-core": "workspace:*",
-    "@khoralabs/memories-service": "workspace:*",
-    "@khoralabs/memories-service-storage-core": "workspace:*",
-    "@khoralabs/memories-service-storage-libsql": "workspace:*",
-    "@khoralabs/memories-service-storage-turso-serverless": "workspace:*",
-    "@khoralabs/memories-sqlite": "workspace:*",
-    "@khoralabs/sqlite-crypto": "^0.1.0"
-  },
-  "devDependencies": {
-    "@khoralabs/memories-service-storage-contract": "workspace:*",
-    "@khoralabs/sqlite-crypto": "^0.1.0",
-    "@types/bun": "latest"
+    "@khoralabs/memories-service": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-adapter",
   "version": "0.1.0",
-  "description": "Memory adapter agent: domain objects to memory drafts.",
+  "description": "Deprecated: use @khoralabs/memories-agents/adapter",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/agents/adapter"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/agents/adapter#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -26,20 +19,12 @@
     }
   },
   "dependencies": {
-    "@ai-sdk/provider-utils": "^5.0.2",
-    "@khoralabs/agent-capabilities": "^0.2.0",
-    "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
-    "@khoralabs/agent-capabilities-otel": "^0.2.0",
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-ontologies": "workspace:*",
-    "@khoralabs/memories-tools": "workspace:*",
-    "ai": "^7.0.9",
-    "zod": "^4"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
+    "@khoralabs/memories-agents": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

@@ -1,0 +1,774 @@
+import { describe, expect, test } from "bun:test";
+import { ids, namespacePath } from "@khoralabs/memories-persistence-core";
+import type {
+  MemoriesPersistenceAsync,
+  MemoryOpContext,
+} from "@khoralabs/memories-persistence-core/persistence";
+import { resolveMemoriesBackendCapabilities } from "@khoralabs/memories-persistence-core/persistence";
+import {
+  computeSourceMapContentHash,
+  nextProvenanceRoot,
+} from "@khoralabs/memories-persistence-core/provenance";
+import { deleteMemoryAsync, mergeMemoryAsync, searchAsync } from "../../core/index";
+
+export type MemoriesPersistenceContractFactory = () =>
+  | MemoriesPersistenceAsync
+  | Promise<MemoriesPersistenceAsync>;
+
+/** Unique path segment so remote shared DBs (Turso) do not collide across runs. */
+function uniqueNs(prefix: string): string {
+  return `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+const makeVec = (fill: number): number[] => Array.from(new Float32Array(512).fill(fill));
+
+export function runMemoriesPersistenceContractTests(
+  name: string,
+  create: MemoriesPersistenceContractFactory,
+): void {
+  describe(`${name} persistence contract`, () => {
+    test("mergeMemoryAsync + lexical search returns the memory", async () => {
+      const persistence = await create();
+      const caps = resolveMemoriesBackendCapabilities(persistence);
+      if (!caps.lexicalSearch) return;
+
+      const namespace = uniqueNs("contract/lexical");
+      const key = "doc-a";
+      const token = `lex_token_${Math.random().toString(36).slice(2, 10)}`;
+
+      await mergeMemoryAsync(
+        { persistence },
+        {
+          namespace,
+          key,
+          content: [{ key: "body", text: `hello ${token} world` }],
+          labels: [],
+          edges: [],
+        },
+      );
+
+      expect(await persistence.findMemoryIdByKey(namespace, key)).toBeDefined();
+
+      const hits = await searchAsync(
+        { persistence },
+        {
+          namespace,
+          content: { text: token },
+          options: { topK: 5 },
+        },
+      );
+      expect(hits.some((h) => h.memory.key === key)).toBe(true);
+    });
+
+    test("pathSubtree lexical search finds memories under a prefix namespace", async () => {
+      const persistence = await create();
+      const caps = resolveMemoriesBackendCapabilities(persistence);
+      if (!caps.lexicalSearch) return;
+
+      const root = uniqueNs("contract/lex-subtree");
+      const leafNs = namespacePath(`${root}/team/ns`);
+      const token = `subtree_${Math.random().toString(36).slice(2, 10)}`;
+      await mergeMemoryAsync(
+        { persistence },
+        {
+          key: "leaf",
+          namespace: leafNs,
+          content: [{ key: "x", text: `doc ${token}` }],
+          labels: [],
+          edges: [],
+        },
+      );
+
+      const hits = await searchAsync(
+        { persistence },
+        {
+          namespace: namespacePath(`${root}/team`),
+          content: { text: token },
+          options: { topK: 10 },
+        },
+      );
+      expect(hits.some((h) => h.memory.key === "leaf")).toBe(true);
+    });
+
+    test("listMemoryNamespaces returns namespaces that have memories", async () => {
+      const persistence = await create();
+      const namespace = uniqueNs("contract/namespaces");
+      await mergeMemoryAsync(
+        { persistence },
+        {
+          key: "a",
+          namespace,
+          content: [{ key: "b", text: "a" }],
+          labels: [],
+          edges: [],
+        },
+      );
+      const namespaces = await persistence.listMemoryNamespaces();
+      expect(namespaces).toContain(namespace);
+    });
+
+    describe("scopes", () => {
+      test("scopeDag finds memories attached under descendant scopes", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.lexicalSearch) return;
+
+        const rootScope = namespacePath(uniqueNs("contract/scopes/root"));
+        const childScope = namespacePath(`${rootScope}/child`);
+        const op = { now: Date.now() };
+        await persistence.withTransaction(async () => {
+          await persistence.linkScopes(op, {
+            parentScopeId: rootScope,
+            childScopeId: childScope,
+          });
+        });
+
+        const memNs = namespacePath(uniqueNs("contract/scopes/mem"));
+        const token = `scopedag_${Math.random().toString(36).slice(2, 10)}`;
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "invoice",
+            namespace: memNs,
+            content: [{ key: "body", text: token }],
+            labels: [],
+            edges: [],
+            attachScopes: [childScope],
+          },
+        );
+
+        const hits = await searchAsync(
+          { persistence },
+          {
+            namespace: rootScope,
+            content: { text: token },
+            options: { topK: 5 },
+            searchScopeMode: "scopeDag",
+          },
+        );
+        expect(hits.some((h) => h.memory.key === "invoice")).toBe(true);
+      });
+
+      test("exactScope matches only listed scopes (no DAG descent)", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.lexicalSearch) return;
+
+        const rootScope = namespacePath(uniqueNs("contract/exact/root"));
+        const childScope = namespacePath(`${rootScope}/ledger`);
+        const op = { now: Date.now() };
+        await persistence.withTransaction(async () => {
+          await persistence.linkScopes(op, {
+            parentScopeId: rootScope,
+            childScopeId: childScope,
+          });
+        });
+
+        const token = `exactscope_${Math.random().toString(36).slice(2, 10)}`;
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "entry",
+            namespace: namespacePath(uniqueNs("contract/exact/mem")),
+            content: [{ key: "body", text: token }],
+            labels: [],
+            edges: [],
+            attachScopes: [childScope],
+          },
+        );
+
+        const dagHits = await searchAsync(
+          { persistence },
+          {
+            namespace: rootScope,
+            content: { text: token },
+            options: { topK: 5 },
+            searchScopeMode: "scopeDag",
+          },
+        );
+        expect(dagHits.some((h) => h.memory.key === "entry")).toBe(true);
+
+        const exactParent = await searchAsync(
+          { persistence },
+          {
+            namespace: rootScope,
+            content: { text: token },
+            options: { topK: 5 },
+            searchScopeMode: "exactScope",
+          },
+        );
+        expect(exactParent.some((h) => h.memory.key === "entry")).toBe(false);
+
+        const exactChild = await searchAsync(
+          { persistence },
+          {
+            namespace: childScope,
+            content: { text: token },
+            options: { topK: 5 },
+            searchScopeMode: "exactScope",
+          },
+        );
+        expect(exactChild.some((h) => h.memory.key === "entry")).toBe(true);
+      });
+    });
+
+    describe("provenance", () => {
+      test("merge advances provenance head from prior parent", async () => {
+        const persistence = await create();
+        const namespace = uniqueNs("contract/prov");
+        const key = "mem";
+        const memoryId = ids.memory(namespace, key);
+        const parent = await persistence.getProvenanceHeadRootHex();
+
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key,
+            namespace,
+            content: [{ key: "alpha", text: "hello" }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const head = await persistence.getProvenanceHeadRootHex();
+        const event = {
+          v: 1 as const,
+          kind: "MERGE_MEMORY" as const,
+          namespace,
+          memory_key: key,
+          memory_id: memoryId,
+          source_keys: ["alpha"],
+          content_hashes: {
+            alpha: computeSourceMapContentHash({ text: "hello" }),
+          },
+        };
+        expect(head).toBe(nextProvenanceRoot(parent, event).root_hex);
+      });
+
+      test("delete advances chain; duplicate delete does not change head", async () => {
+        const persistence = await create();
+        const namespace = uniqueNs("contract/prov-del");
+        const key = "x";
+
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key,
+            namespace,
+            content: [{ key: "s", text: "a" }],
+            labels: [],
+            edges: [],
+          },
+        );
+        const afterMerge = await persistence.getProvenanceHeadRootHex();
+        expect(afterMerge).toBeDefined();
+
+        await deleteMemoryAsync({ persistence }, { namespace, key });
+        const deleteEvent = {
+          v: 1 as const,
+          kind: "DELETE_MEMORY" as const,
+          namespace,
+          memory_key: key,
+          memory_id: ids.memory(namespace, key),
+        };
+        const afterDelete = await persistence.getProvenanceHeadRootHex();
+        expect(afterDelete).toBe(nextProvenanceRoot(afterMerge, deleteEvent).root_hex);
+
+        await deleteMemoryAsync({ persistence }, { namespace, key });
+        expect(await persistence.getProvenanceHeadRootHex()).toBe(afterDelete);
+      });
+
+      test("getProvenanceTimestampMsForRootHex returns a timestamp for the head", async () => {
+        const persistence = await create();
+        if (persistence.getProvenanceTimestampMsForRootHex === undefined) return;
+
+        const namespace = uniqueNs("contract/prov-ts");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "y",
+            namespace,
+            content: [{ key: "s", text: "z" }],
+            labels: [],
+            edges: [],
+          },
+        );
+        const head = await persistence.getProvenanceHeadRootHex();
+        expect(head).toBeDefined();
+        if (head === undefined) throw new Error("expected provenance head");
+        const ts = await persistence.getProvenanceTimestampMsForRootHex(head);
+        expect(typeof ts).toBe("number");
+        expect(ts).toBeGreaterThan(0);
+      });
+
+      test("appendProvenanceEvent rolls back with the transaction on throw", async () => {
+        const persistence = await create();
+        const op: MemoryOpContext = { now: Date.now() };
+        const namespace = uniqueNs("contract/prov-rb");
+        const before = await persistence.getProvenanceHeadRootHex();
+        await expect(
+          persistence.withTransaction(async () => {
+            await persistence.appendProvenanceEvent(op, {
+              v: 1,
+              kind: "MERGE_MEMORY",
+              namespace,
+              memory_key: "ghost",
+              memory_id: ids.memory(namespace, "ghost"),
+              source_keys: ["only"],
+            });
+            throw new Error("abort txn");
+          }),
+        ).rejects.toThrow("abort txn");
+        expect(await persistence.getProvenanceHeadRootHex()).toBe(before);
+      });
+
+      test("appendProvenanceEvent advances head for contributor + intent snapshot events", async () => {
+        const persistence = await create();
+        const op: MemoryOpContext = { now: Date.now() };
+        const namespace = uniqueNs("contract/prov-contrib");
+        const parent = await persistence.getProvenanceHeadRootHex();
+        const event = {
+          v: 1 as const,
+          kind: "MERGE_MEMORY" as const,
+          namespace,
+          memory_key: "signed",
+          memory_id: ids.memory(namespace, "signed"),
+          source_keys: ["source"],
+          contributor: {
+            v: 1 as const,
+            format: "khora.direct-principal-v1",
+            principal: "did:key:z-test",
+            payload: "eyJ2IjoxfQ",
+            signature: "MEUCIQD",
+            alg: "EdDSA",
+            keyId: "did:key:z-test#z-test",
+          },
+          intent_snapshot_id: "agent-run-1",
+        };
+
+        await persistence.withTransaction(async () => {
+          await persistence.appendProvenanceEvent(op, event);
+        });
+
+        expect(await persistence.getProvenanceHeadRootHex()).toBe(
+          nextProvenanceRoot(parent, event).root_hex,
+        );
+      });
+    });
+
+    describe("graph", () => {
+      test("loadGraphNode matches split loaders; loadGraphEdge; listIncidentGraphEdges", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.graphIndex) return;
+
+        const namespace = uniqueNs("contract/graph");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "a",
+            namespace,
+            content: [{ key: "b", text: "a" }],
+            labels: [{ kind: "topic", props: { t: 1 } }],
+            edges: [],
+            properties: { nodeProp: true },
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "b",
+            namespace,
+            content: [{ key: "b", text: "b" }],
+            labels: [],
+            edges: [
+              {
+                peer_memory_id: ids.memory(namespace, "a"),
+                direction: "out",
+                label: { kind: "rel", props: {} },
+              },
+            ],
+          },
+        );
+
+        const labelsA = await persistence.loadNodeLabelsForMemory(namespace, "a");
+        expect(labelsA.map((l) => l.kind)).toContain("topic");
+
+        const propsA = await persistence.loadNodePropertiesForMemory(namespace, "a");
+        expect(propsA).toEqual({ nodeProp: true });
+
+        const gnA = await persistence.loadGraphNode(namespace, "a");
+        expect(gnA).not.toBeNull();
+        expect(gnA?.namespace).toBe(namespace);
+        expect(gnA?.memoryKey).toBe("a");
+        expect(gnA?.nodeId).toBe(ids.node(namespace, "a"));
+        expect(gnA?.labels.map((l) => l.kind)).toContain("topic");
+        expect(gnA?.properties).toEqual({ nodeProp: true });
+
+        expect(await persistence.loadNodePropertiesForMemory(namespace, "unknown")).toBeNull();
+        expect(await persistence.loadGraphNode(namespace, "unknown")).toBeNull();
+
+        const edges = await persistence.loadGraphEdgesForNamespace(namespace);
+        expect(edges).toHaveLength(1);
+        const firstEdge = edges[0];
+        if (!firstEdge) throw new Error("expected one edge");
+        const edgeId = firstEdge.edgeId;
+        expect(firstEdge.properties).toBeTruthy();
+        expect((firstEdge.properties as { directed?: boolean }).directed).toBe(true);
+
+        const one = await persistence.loadGraphEdge(namespace, edgeId);
+        expect(one?.edgeId).toBe(edgeId);
+        expect(one?.fromKey).toBe("b");
+        expect(one?.toKey).toBe("a");
+        expect(one?.labels.some((l) => l.kind === "rel")).toBe(true);
+
+        expect(await persistence.loadGraphEdge(namespace, "no_such_edge")).toBeNull();
+        expect(await persistence.loadGraphEdge("other", edgeId)).toBeNull();
+
+        const inc = await persistence.listIncidentGraphEdges(namespace, "a");
+        expect(inc).toHaveLength(1);
+        expect(inc[0]?.edgeId).toBe(edgeId);
+      });
+    });
+
+    describe("vector search", () => {
+      test("pathSubtree returns only in-namespace vectors", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch) return;
+
+        const targetNs = uniqueNs("contract/vec/target");
+        const otherNs = uniqueNs("contract/vec/other");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "target",
+            namespace: namespacePath(targetNs),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "noise",
+            namespace: namespacePath(otherNs),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const hits = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(targetNs),
+            content: { vector: makeVec(1.0) },
+            options: { topK: 10, arms: { vector: 1, lexical: 0 } },
+          },
+        );
+        expect(hits.some((h) => h.memory.key === "target")).toBe(true);
+        expect(hits.some((h) => h.memory.key === "noise")).toBe(false);
+      });
+
+      test("maxVectorDistance filters far vectors", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch) return;
+
+        const namespace = uniqueNs("contract/vec/dist");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "close",
+            namespace: namespacePath(namespace),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "far",
+            namespace: namespacePath(namespace),
+            content: [{ key: "body", vector: makeVec(-1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const hits = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { vector: makeVec(1.0) },
+            options: {
+              topK: 10,
+              arms: { vector: 1, lexical: 0 },
+              maxVectorDistance: 0.1,
+            },
+          },
+        );
+        expect(hits.some((h) => h.memory.key === "close")).toBe(true);
+        expect(hits.some((h) => h.memory.key === "far")).toBe(false);
+      });
+
+      test("searchEntireDatabase finds vectors across namespaces", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch || !caps.unscopedSearch) return;
+
+        const nsA = uniqueNs("contract/vec/unscoped-a");
+        const nsB = uniqueNs("contract/vec/unscoped-b");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "mem-a",
+            namespace: namespacePath(nsA),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "mem-b",
+            namespace: namespacePath(nsB),
+            content: [{ key: "body", vector: makeVec(0.9) }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const hits = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(nsA),
+            searchEntireDatabase: true,
+            content: { vector: makeVec(1.0) },
+            options: { topK: 10, arms: { vector: 1, lexical: 0 } },
+          },
+        );
+        const keys = new Set(hits.map((h) => h.memory.key));
+        expect(keys.has("mem-a")).toBe(true);
+        expect(keys.has("mem-b")).toBe(true);
+      });
+
+      test("asOfTimestampMs=0 excludes all memories", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch || caps.asOfTimestampMsSearch !== true) return;
+
+        const namespace = uniqueNs("contract/vec/asof");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "mem",
+            namespace: namespacePath(namespace),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const hits = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { vector: makeVec(1.0) },
+            options: { topK: 10, arms: { vector: 1, lexical: 0 } },
+            asOfTimestampMs: 0,
+          },
+        );
+        expect(hits).toHaveLength(0);
+      });
+
+      test("topK limits vector hits", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch || !caps.unscopedSearch) return;
+
+        const root = uniqueNs("contract/vec/topk");
+        for (let i = 0; i < 5; i++) {
+          await mergeMemoryAsync(
+            { persistence },
+            {
+              key: `m${i}`,
+              namespace: namespacePath(`${root}/${i}`),
+              content: [{ key: "body", vector: makeVec(1.0) }],
+              labels: [],
+              edges: [],
+            },
+          );
+        }
+
+        const hits = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(root),
+            searchEntireDatabase: true,
+            content: { vector: makeVec(1.0) },
+            options: { topK: 3, arms: { vector: 1, lexical: 0 } },
+          },
+        );
+        expect(hits.length).toBeLessThanOrEqual(3);
+      });
+
+      test("pathSubtree still returns in-scope hit when out-of-scope vectors are closer", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch) return;
+
+        const root = uniqueNs("contract/vec/scope-regress");
+        const otherNs = namespacePath(`${root}/other`);
+        const targetNs = namespacePath(`${root}/target`);
+        for (let i = 0; i < 5; i++) {
+          await mergeMemoryAsync(
+            { persistence },
+            {
+              key: `noise-${i}`,
+              namespace: otherNs,
+              content: [{ key: "body", vector: makeVec(0.99) }],
+              labels: [],
+              edges: [],
+            },
+          );
+        }
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "target",
+            namespace: targetNs,
+            content: [{ key: "body", vector: makeVec(0.9) }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const hits = await searchAsync(
+          { persistence },
+          {
+            namespace: targetNs,
+            content: { vector: makeVec(1.0) },
+            options: { topK: 3, arms: { vector: 1, lexical: 0 } },
+          },
+        );
+        expect(hits.some((h) => h.memory.key === "target")).toBe(true);
+        expect(hits.every((h) => h.memory.namespace === targetNs)).toBe(true);
+      });
+
+      test("exactScope vector search matches only listed scopes", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch) return;
+
+        const nsA = uniqueNs("contract/vec/exact-a");
+        const nsB = uniqueNs("contract/vec/exact-b");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "in-scope",
+            namespace: namespacePath(nsA),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "out-scope",
+            namespace: namespacePath(nsB),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const hits = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(nsA),
+            content: { vector: makeVec(1.0) },
+            options: { topK: 10, arms: { vector: 1, lexical: 0 } },
+            searchScopeMode: "exactScope",
+          },
+        );
+        expect(hits.some((h) => h.memory.key === "in-scope")).toBe(true);
+        expect(hits.some((h) => h.memory.key === "out-scope")).toBe(false);
+      });
+
+      test("searchVectorSourceMapIds memoryIds allowlist restricts results", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch || !caps.unscopedSearch) return;
+
+        const namespace = uniqueNs("contract/vec/allow");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "allowed",
+            namespace: namespacePath(namespace),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "blocked",
+            namespace: namespacePath(namespace),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+        const allowedId = await persistence.findMemoryIdByKey(namespacePath(namespace), "allowed");
+        if (!allowedId) throw new Error("allowed memory not found");
+
+        const result = await persistence.searchVectorSourceMapIds({
+          scope: { kind: "unscoped" },
+          vector: makeVec(1.0),
+          limit: 10,
+          memoryIds: [allowedId],
+        });
+        expect(result).toHaveLength(1);
+
+        const empty = await persistence.searchVectorSourceMapIds({
+          scope: { kind: "unscoped" },
+          vector: makeVec(1.0),
+          limit: 10,
+          memoryIds: [],
+        });
+        expect(empty).toEqual([]);
+      });
+
+      test("searchVectorSourceMapIds empty scope arrays return nothing", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch) return;
+
+        expect(
+          await persistence.searchVectorSourceMapIds({
+            scope: { kind: "pathSubtree", namespaces: [] },
+            vector: makeVec(1.0),
+            limit: 10,
+          }),
+        ).toEqual([]);
+
+        expect(
+          await persistence.searchVectorSourceMapIds({
+            scope: { kind: "exactScope", scopes: [] },
+            vector: makeVec(1.0),
+            limit: 10,
+          }),
+        ).toEqual([]);
+      });
+    });
+  });
+}

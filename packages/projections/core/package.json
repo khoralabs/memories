@@ -1,13 +1,11 @@
 {
   "name": "@khoralabs/memories-projections",
   "version": "0.1.0",
-  "description": "Strategy-neutral graph projection math and source interfaces for Memories.",
+  "description": "Deprecated: use @khoralabs/memories-node/projections",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/projections/core"
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "src",
@@ -21,13 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-persistence-core": "workspace:*",
-    "umap-js": "^1.4.0"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
+    "@khoralabs/memories-node": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

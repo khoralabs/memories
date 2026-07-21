@@ -1,0 +1,62 @@
+{
+  "name": "@khoralabs/memories-agents",
+  "version": "0.1.0",
+  "description": "Memory agents: tools, adapter, integrator, and investigator.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/memories-agents"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/memories-agents#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    "./tools": {
+      "types": "./src/tools/index.ts",
+      "import": "./src/tools/index.ts",
+      "default": "./src/tools/index.ts"
+    },
+    "./adapter": {
+      "types": "./src/adapter/index.ts",
+      "import": "./src/adapter/index.ts",
+      "default": "./src/adapter/index.ts"
+    },
+    "./integrator": {
+      "types": "./src/integrator/index.ts",
+      "import": "./src/integrator/index.ts",
+      "default": "./src/integrator/index.ts"
+    },
+    "./investigator": {
+      "types": "./src/investigator/index.ts",
+      "import": "./src/investigator/index.ts",
+      "default": "./src/investigator/index.ts"
+    }
+  },
+  "dependencies": {
+    "@ai-sdk/provider-utils": "^5.0.2",
+    "@khoralabs/agent-capabilities": "^0.2.0",
+    "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
+    "@khoralabs/agent-capabilities-otel": "^0.2.0",
+    "@khoralabs/memories-node": "workspace:*",
+    "@khoralabs/memories-ontologies": "workspace:*",
+    "ai": "^7.0.9",
+    "zod": "^4"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

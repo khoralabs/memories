@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-core",
   "version": "0.1.0",
-  "description": "Logic layer and contracts for knowledge-graph memory store.",
+  "description": "Deprecated: use @khoralabs/memories-node",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/core"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/core#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -25,14 +18,14 @@
       "default": "./src/index.ts"
     },
     "./persistence": {
-      "types": "./src/persistence/index.ts",
-      "import": "./src/persistence/index.ts",
-      "default": "./src/persistence/index.ts"
+      "types": "./src/persistence.ts",
+      "import": "./src/persistence.ts",
+      "default": "./src/persistence.ts"
     },
     "./provenance": {
-      "types": "./src/provenance/index.ts",
-      "import": "./src/provenance/index.ts",
-      "default": "./src/provenance/index.ts"
+      "types": "./src/provenance.ts",
+      "import": "./src/provenance.ts",
+      "default": "./src/provenance.ts"
     },
     "./search-meta-constants": {
       "types": "./src/search-meta-constants.ts",
@@ -40,27 +33,18 @@
       "default": "./src/search-meta-constants.ts"
     },
     "./helpers": {
-      "types": "./src/helpers/index.ts",
-      "import": "./src/helpers/index.ts",
-      "default": "./src/helpers/index.ts"
+      "types": "./src/helpers.ts",
+      "import": "./src/helpers.ts",
+      "default": "./src/helpers.ts"
     }
   },
-  "devDependencies": {
-    "@khoralabs/memories-autolink": "workspace:*",
-    "@khoralabs/memories-sqlite": "workspace:*",
-    "@types/bun": "latest",
-    "zod": "^4.2"
+  "dependencies": {
+    "@khoralabs/memories-node": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
-  "dependencies": {
-    "@ai-sdk/provider-utils": "^5.0.2",
-    "@khoralabs/memories-ontologies": "workspace:*",
-    "@khoralabs/memories-persistence-core": "workspace:*",
-    "@khoralabs/sourcemaps": "^0.1.0",
-    "@standard-schema/spec": "^1.1.0",
-    "ai": "^7.0.9",
-    "zod": "^4"
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

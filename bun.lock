@@ -21,15 +21,7 @@
       "name": "@khoralabs/memories-adapter",
       "version": "0.1.0",
       "dependencies": {
-        "@ai-sdk/provider-utils": "^5.0.2",
-        "@khoralabs/agent-capabilities": "^0.2.0",
-        "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
-        "@khoralabs/agent-capabilities-otel": "^0.2.0",
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
-        "@khoralabs/memories-tools": "workspace:*",
-        "ai": "^7.0.9",
-        "zod": "^4",
+        "@khoralabs/memories-agents": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -42,15 +34,7 @@
       "name": "@khoralabs/memories-integrator",
       "version": "0.1.0",
       "dependencies": {
-        "@ai-sdk/provider-utils": "^5.0.2",
-        "@khoralabs/agent-capabilities": "^0.2.0",
-        "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
-        "@khoralabs/agent-capabilities-otel": "^0.2.0",
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
-        "@khoralabs/memories-tools": "workspace:*",
-        "ai": "^7.0.9",
-        "zod": "^4.4.3",
+        "@khoralabs/memories-agents": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -63,15 +47,7 @@
       "name": "@khoralabs/memories-investigator",
       "version": "0.1.0",
       "dependencies": {
-        "@ai-sdk/provider-utils": "^5.0.2",
-        "@khoralabs/agent-capabilities": "^0.2.0",
-        "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
-        "@khoralabs/agent-capabilities-otel": "^0.2.0",
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
-        "@khoralabs/memories-tools": "workspace:*",
-        "ai": "^7.0.9",
-        "zod": "^4",
+        "@khoralabs/memories-agents": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -84,12 +60,7 @@
       "name": "@khoralabs/memories-tools",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/agent-capabilities": "^0.2.0",
-        "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
-        "@khoralabs/agent-capabilities-otel": "^0.2.0",
-        "@khoralabs/memories-core": "workspace:*",
-        "ai": "^7.0.9",
-        "zod": "^4",
+        "@khoralabs/memories-agents": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -102,7 +73,7 @@
       "name": "@khoralabs/memories-attestation",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-persistence-core": "workspace:*",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -115,15 +86,10 @@
       "name": "@khoralabs/memories-autolink",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
-        "workflow": "^4.5.0",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
-        "@workflow/vitest": "^4.0.12",
-        "@workflow/world-local": "^4.2.1",
-        "undici": "^7.28.0",
       },
       "peerDependencies": {
         "typescript": "^5",
@@ -133,19 +99,30 @@
       "name": "@khoralabs/memories-core",
       "version": "0.1.0",
       "dependencies": {
+        "@khoralabs/memories-node": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/memories-agents": {
+      "name": "@khoralabs/memories-agents",
+      "version": "0.1.0",
+      "dependencies": {
         "@ai-sdk/provider-utils": "^5.0.2",
+        "@khoralabs/agent-capabilities": "^0.2.0",
+        "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
+        "@khoralabs/agent-capabilities-otel": "^0.2.0",
+        "@khoralabs/memories-node": "workspace:*",
         "@khoralabs/memories-ontologies": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/sourcemaps": "^0.1.0",
-        "@standard-schema/spec": "^1.1.0",
         "ai": "^7.0.9",
         "zod": "^4",
       },
       "devDependencies": {
-        "@khoralabs/memories-autolink": "workspace:*",
-        "@khoralabs/memories-sqlite": "workspace:*",
         "@types/bun": "latest",
-        "zod": "^4.2",
       },
       "peerDependencies": {
         "typescript": "^5",
@@ -155,7 +132,7 @@
       "name": "@khoralabs/memories-service-auth",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-service-storage-core": "workspace:*",
+        "@khoralabs/memories-service": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -168,16 +145,9 @@
       "name": "@khoralabs/memories-service-client",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/memories-projections": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
-        "@khoralabs/memories-service-storage-core": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-service": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -188,39 +158,7 @@
       "name": "@khoralabs/memories-service-http",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-attestation": "workspace:*",
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/memories-projections": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
-        "@khoralabs/memories-service-auth": "workspace:*",
-        "@khoralabs/memories-service-client": "workspace:*",
-        "@khoralabs/memories-service-storage-core": "workspace:*",
-      },
-      "devDependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-service": "workspace:*",
-        "@khoralabs/memories-service-auth": "workspace:*",
-        "@khoralabs/memories-service-client": "workspace:*",
-        "@khoralabs/memories-service-storage-sqlite": "workspace:*",
-        "@khoralabs/memories-sqlite": "workspace:*",
-        "@khoralabs/sqlite-crypto": "^0.1.0",
-        "@types/bun": "latest",
-      },
-      "peerDependencies": {
-        "typescript": "^5",
-      },
-    },
-    "packages/memories-service/service": {
-      "name": "@khoralabs/memories-service",
-      "version": "0.1.0",
-      "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/memories-service-storage-core": "workspace:*",
-        "lru-cache": "^11.5.1",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -233,7 +171,7 @@
       "name": "@khoralabs/memories-service-storage-contract",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-service-storage-core": "workspace:*",
+        "@khoralabs/memories-service": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -246,10 +184,9 @@
       "name": "@khoralabs/memories-service-storage-core",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-persistence-core": "workspace:*",
+        "@khoralabs/memories-service": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-service-storage-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -260,11 +197,9 @@
       "name": "@khoralabs/memories-service-storage-libsql",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-libsql": "workspace:*",
-        "@khoralabs/memories-service-storage-core": "workspace:*",
+        "@khoralabs/memories-service": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-service-storage-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -275,17 +210,9 @@
       "name": "@khoralabs/memories-service-storage-sqlite",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-persistence-core": "workspace:*",
         "@khoralabs/memories-service": "workspace:*",
-        "@khoralabs/memories-service-storage-core": "workspace:*",
-        "@khoralabs/memories-service-storage-libsql": "workspace:*",
-        "@khoralabs/memories-service-storage-turso-serverless": "workspace:*",
-        "@khoralabs/memories-sqlite": "workspace:*",
-        "@khoralabs/sqlite-crypto": "^0.1.0",
       },
       "devDependencies": {
-        "@khoralabs/memories-service-storage-contract": "workspace:*",
-        "@khoralabs/sqlite-crypto": "^0.1.0",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -296,16 +223,64 @@
       "name": "@khoralabs/memories-service-storage-turso-serverless",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-service-storage-core": "workspace:*",
-        "@khoralabs/memories-turso-serverless": "workspace:*",
+        "@khoralabs/memories-service": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-service-storage-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
         "typescript": "^5",
       },
+    },
+    "packages/node": {
+      "name": "@khoralabs/memories-node",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ai-sdk/provider-utils": "^5.0.2",
+        "@khoralabs/memories-ontologies": "workspace:*",
+        "@khoralabs/memories-persistence-core": "workspace:*",
+        "@khoralabs/sourcemaps": "^0.1.0",
+        "@standard-schema/spec": "^1.1.0",
+        "ai": "^7.0.9",
+        "js-sha256": "^0.11.0",
+        "zod": "^4",
+      },
+      "devDependencies": {
+        "@khoralabs/sqlite-crypto": "^0.1.0",
+        "@khoralabs/sqlite-migrate": "^0.1.0",
+        "@libsql/client": "^0.17.4",
+        "@tursodatabase/serverless": "^0.2.0",
+        "@types/bun": "latest",
+        "@workflow/vitest": "^4.0.12",
+        "@workflow/world-local": "^4.2.1",
+        "ajv": "^8",
+        "sqlite-vec": "^0.1.9",
+        "umap-js": "^1.4.0",
+        "undici": "^7.28.0",
+        "workflow": "^4.5.0",
+        "zod": "^4.2",
+      },
+      "peerDependencies": {
+        "@khoralabs/sqlite-crypto": "^0.1.0",
+        "@khoralabs/sqlite-migrate": "^0.1.0",
+        "@libsql/client": "^0.17.4",
+        "@tursodatabase/serverless": "^0.2.0",
+        "ajv": "^8",
+        "sqlite-vec": "^0.1.9",
+        "typescript": "^5",
+        "umap-js": "^1.4.0",
+        "workflow": "^4.5.0",
+      },
+      "optionalPeers": [
+        "@khoralabs/sqlite-crypto",
+        "@khoralabs/sqlite-migrate",
+        "@libsql/client",
+        "@tursodatabase/serverless",
+        "ajv",
+        "sqlite-vec",
+        "umap-js",
+        "workflow",
+      ],
     },
     "packages/ontologies": {
       "name": "@khoralabs/memories-ontologies",
@@ -326,8 +301,7 @@
       "name": "@khoralabs/memories-persistence-contract",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -355,13 +329,9 @@
       "name": "@khoralabs/memories-libsql",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@libsql/client": "^0.17.4",
-        "ajv": "^8",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-persistence-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -372,15 +342,9 @@
       "name": "@khoralabs/memories-sqlite",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/sqlite-crypto": "^0.1.0",
-        "@khoralabs/sqlite-migrate": "^0.1.0",
-        "ajv": "^8",
-        "sqlite-vec": "^0.1.9",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-persistence-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -391,13 +355,9 @@
       "name": "@khoralabs/memories-turso-serverless",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@tursodatabase/serverless": "^0.2.0",
-        "ajv": "^8",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-persistence-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -408,9 +368,7 @@
       "name": "@khoralabs/memories-projections-contract",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-core": "workspace:*",
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/memories-projections": "workspace:*",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -423,8 +381,7 @@
       "name": "@khoralabs/memories-projections",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "umap-js": "^1.4.0",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -437,12 +394,9 @@
       "name": "@khoralabs/memories-projections-libsql",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/memories-projections": "workspace:*",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-libsql": "workspace:*",
-        "@khoralabs/memories-projections-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -453,12 +407,9 @@
       "name": "@khoralabs/memories-projections-sqlite",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/memories-projections": "workspace:*",
-        "@khoralabs/memories-sqlite": "workspace:*",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-projections-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -469,12 +420,9 @@
       "name": "@khoralabs/memories-projections-turso",
       "version": "0.1.0",
       "dependencies": {
-        "@khoralabs/memories-persistence-core": "workspace:*",
-        "@khoralabs/memories-projections": "workspace:*",
+        "@khoralabs/memories-node": "workspace:*",
       },
       "devDependencies": {
-        "@khoralabs/memories-libsql": "workspace:*",
-        "@khoralabs/memories-projections-contract": "workspace:*",
         "@types/bun": "latest",
       },
       "peerDependencies": {
@@ -513,6 +461,26 @@
         "three": "^0.183",
         "typescript": "^5",
       },
+    },
+    "packages/service": {
+      "name": "@khoralabs/memories-service",
+      "version": "0.1.0",
+      "dependencies": {
+        "@khoralabs/memories-node": "workspace:*",
+        "@khoralabs/memories-ontologies": "workspace:*",
+        "lru-cache": "^11.5.1",
+      },
+      "devDependencies": {
+        "@khoralabs/sqlite-crypto": "^0.1.0",
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "@khoralabs/sqlite-crypto": "^0.1.0",
+        "typescript": "^5",
+      },
+      "optionalPeers": [
+        "@khoralabs/sqlite-crypto",
+      ],
     },
     "packages/spec": {
       "name": "@khoralabs/memories-spec",
@@ -650,13 +618,15 @@
 
     "@keyv/serialize": ["@keyv/serialize@1.1.1", "", {}, "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="],
 
-    "@khoralabs/agent-capabilities": ["@khoralabs/agent-capabilities@0.1.1", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-JigiwTSewgyICse9eL8AvOcBgdzNkVtv4UyGPWQJEWRLQEutMziOnDqutAQ2W1gGu4LsP+EunhcJrXQv74Ofdg=="],
+    "@khoralabs/agent-capabilities": ["@khoralabs/agent-capabilities@0.2.0", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-efO+DCD/YLDS1ZonP5XHJTKxLFaLwJox7K84ubYvNPwRQSEWyB0mZFWTOJBaYdSKzDsZW7jHz9mDSkq3wI6Mxw=="],
 
-    "@khoralabs/agent-capabilities-ai-sdk": ["@khoralabs/agent-capabilities-ai-sdk@0.1.1", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.2.0", "ai": "^6" }, "peerDependencies": { "typescript": "^5" } }, "sha512-Ps6lelpvWVRklrgURbk+kGDCzYJAEpW0TTs3ie3jkCP6vjVYlU/T1kmdd5gwar5+kTusQodiX1FDExQfQ2qAJQ=="],
+    "@khoralabs/agent-capabilities-ai-sdk": ["@khoralabs/agent-capabilities-ai-sdk@0.2.0", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.1.1", "ai": "^7.0.9" }, "peerDependencies": { "typescript": "^5" } }, "sha512-xBlKeXzN3IF8nkntQNNGvP2EW3BQo4ebpo9uvs2AJiAKFpxtiWQjfcHplwTS0SsIc7zsIYEwzZq2PQJZEWQ90Q=="],
 
-    "@khoralabs/agent-capabilities-otel": ["@khoralabs/agent-capabilities-otel@0.1.1", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.2.0", "@opentelemetry/api": "^1.9.0", "pino": "^9.6.0" }, "peerDependencies": { "typescript": "^5" } }, "sha512-dsJSsS4IONrmwsWp/sqLwZVkzvHwr1mf9sZXNF2z9ELp6Bs+7e5HM7FMnN9JvhlAx63CI8YQuDhVOHRcrPt+zw=="],
+    "@khoralabs/agent-capabilities-otel": ["@khoralabs/agent-capabilities-otel@0.2.0", "", { "dependencies": { "@khoralabs/agent-capabilities": "^0.1.1", "@opentelemetry/api": "^1.9.0", "pino": "^9.6.0" }, "peerDependencies": { "typescript": "^5" } }, "sha512-hv1SDJhLel/iR3WEfkkzC9/hDc+hbxFWuwMmiW89kk1G8USeeJuESMYPx5pM7vHoYz90DSJqYfolwxyngiXFGA=="],
 
     "@khoralabs/memories-adapter": ["@khoralabs/memories-adapter@workspace:packages/agents/adapter"],
+
+    "@khoralabs/memories-agents": ["@khoralabs/memories-agents@workspace:packages/memories-agents"],
 
     "@khoralabs/memories-attestation": ["@khoralabs/memories-attestation@workspace:packages/attestation"],
 
@@ -669,6 +639,8 @@
     "@khoralabs/memories-investigator": ["@khoralabs/memories-investigator@workspace:packages/agents/investigator"],
 
     "@khoralabs/memories-libsql": ["@khoralabs/memories-libsql@workspace:packages/persistence/libsql"],
+
+    "@khoralabs/memories-node": ["@khoralabs/memories-node@workspace:packages/node"],
 
     "@khoralabs/memories-ontologies": ["@khoralabs/memories-ontologies@workspace:packages/ontologies"],
 
@@ -688,7 +660,7 @@
 
     "@khoralabs/memories-react-graph": ["@khoralabs/memories-react-graph@workspace:packages/react/graph"],
 
-    "@khoralabs/memories-service": ["@khoralabs/memories-service@workspace:packages/memories-service/service"],
+    "@khoralabs/memories-service": ["@khoralabs/memories-service@workspace:packages/service"],
 
     "@khoralabs/memories-service-auth": ["@khoralabs/memories-service-auth@workspace:packages/memories-service/auth"],
 
@@ -2138,7 +2110,9 @@
 
     "zwitch": ["zwitch@2.0.4", "", {}, "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="],
 
-    "@khoralabs/agent-capabilities-ai-sdk/ai": ["ai@6.0.197", "", { "dependencies": { "@ai-sdk/gateway": "3.0.125", "@ai-sdk/provider": "3.0.10", "@ai-sdk/provider-utils": "4.0.27", "@opentelemetry/api": "^1.9.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-U3KsjkqwQXGHC0u0VeUDqUaNaBS/uQc7v4Vj92Cjv5lPx5DIyRBQYk4Hipy5vwD9AQKIG8uRvdaN9R+pAvrtcQ=="],
+    "@khoralabs/agent-capabilities-ai-sdk/@khoralabs/agent-capabilities": ["@khoralabs/agent-capabilities@0.1.1", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-JigiwTSewgyICse9eL8AvOcBgdzNkVtv4UyGPWQJEWRLQEutMziOnDqutAQ2W1gGu4LsP+EunhcJrXQv74Ofdg=="],
+
+    "@khoralabs/agent-capabilities-otel/@khoralabs/agent-capabilities": ["@khoralabs/agent-capabilities@0.1.1", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-JigiwTSewgyICse9eL8AvOcBgdzNkVtv4UyGPWQJEWRLQEutMziOnDqutAQ2W1gGu4LsP+EunhcJrXQv74Ofdg=="],
 
     "@nuxt/kit/exsolve": ["exsolve@1.1.0", "", {}, "sha512-D+42+T12DdIlJM3uepa55qGiL3sYdLBOxIl2ifQCzCHz4c7eiolaHsi3BIqEr7JxBzxv2pYZQX9kw16ziMcEmw=="],
 
@@ -2375,12 +2349,6 @@
     "wrap-ansi/strip-ansi": ["strip-ansi@6.0.1", "", { "dependencies": { "ansi-regex": "^5.0.1" } }, "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A=="],
 
     "wsl-utils/is-wsl": ["is-wsl@3.1.1", "", { "dependencies": { "is-inside-container": "^1.0.0" } }, "sha512-e6rvdUCiQCAuumZslxRJWR/Doq4VpPR82kqclvcS0efgt430SlGIk05vdCN58+VrzgtIcfNODjozVielycD4Sw=="],
-
-    "@khoralabs/agent-capabilities-ai-sdk/ai/@ai-sdk/gateway": ["@ai-sdk/gateway@3.0.125", "", { "dependencies": { "@ai-sdk/provider": "3.0.10", "@ai-sdk/provider-utils": "4.0.27", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-tocl7cUDoTpmhZqeW8XVKMMznZQwwQAEunF0VyNKmf64qt8NbMIAEiet/vRMzh7Jr9WcFeb6EZjmhLTP4Qx2Og=="],
-
-    "@khoralabs/agent-capabilities-ai-sdk/ai/@ai-sdk/provider": ["@ai-sdk/provider@3.0.10", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-Q3BZ27qfpYqnCYGvE3vt+Qi6LGOF9R5Nmzn+9JoM1lCRsD9mYaIhfJLkSunN48nfGXJ6n+XNV0J/XVpqGQl7Dw=="],
-
-    "@khoralabs/agent-capabilities-ai-sdk/ai/@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@4.0.27", "", { "dependencies": { "@ai-sdk/provider": "3.0.10", "@standard-schema/spec": "^1.1.0", "eventsource-parser": "^3.0.8" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-ubkAJ+xODouwtmN1tYlvTPphH1hPOBfZaEQe8U7skGvFAnIRs9PPpsq57bC2+Ky/MB4yzhd6YOsxTAx9sGpazw=="],
 
     "@radix-ui/react-accordion/@radix-ui/react-primitive/@radix-ui/react-slot": ["@radix-ui/react-slot@1.2.3", "", { "dependencies": { "@radix-ui/react-compose-refs": "1.1.2" }, "peerDependencies": { "@types/react": "*", "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc" }, "optionalPeers": ["@types/react"] }, "sha512-aeNmHnBxbi2St0au6VBVC7JXFlhLlOnvIIlePNniyUNAClzmtAUEY8/pBiK3iHjufOlwA+c20/8jngo7xcrg8A=="],
 

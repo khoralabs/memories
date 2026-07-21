@@ -1,13 +1,11 @@
 {
   "name": "@khoralabs/memories-service-storage-core",
   "version": "0.1.0",
-  "description": "Storage contracts, strategies, lifecycle helpers, and control-plane stores for the Memories database service.",
+  "description": "Deprecated: use @khoralabs/memories-service",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/storage/core"
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "src",
@@ -21,13 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-persistence-core": "workspace:*"
-  },
-  "devDependencies": {
-    "@khoralabs/memories-service-storage-contract": "workspace:*",
-    "@types/bun": "latest"
+    "@khoralabs/memories-service": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

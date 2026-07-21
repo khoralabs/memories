@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-projections-contract",
   "version": "0.1.0",
-  "description": "Shared conformance tests for Memories projection strategy adapters.",
+  "description": "Deprecated: use @khoralabs/memories-node/testing",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/projections/contract"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/projections/contract#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -25,19 +18,13 @@
       "default": "./src/index.ts"
     }
   },
-  "scripts": {
-    "test": "bun test",
-    "typecheck": "tsc --noEmit"
-  },
   "dependencies": {
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-persistence-core": "workspace:*",
-    "@khoralabs/memories-projections": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
+    "@khoralabs/memories-node": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

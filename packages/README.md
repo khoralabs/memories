@@ -9,36 +9,36 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
 ### Architecture overview
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  @khoralabs/memories-core          (logic + contracts)      │
-│  MemoriesClient, mergeMemory, search, provenance, IDs       │
-└───────────────┬─────────────────────────────────────────────┘
-                │
-    ┌───────────▼──────────┐
-    │ memories-sqlite      │
-    │ (reference backend)  │
-    └───────────┬──────────┘
-                │
-    ┌───────────▼──────────┐     ┌─────────────────────────────┐
-    │ projections/*        │     │ agents/*, autolink,         │
-    │ (core + strategies)  │     │ ontologies, react/graph, spec │
-    └──────────────────────┘     └─────────────────────────────┘
+┌──────────────────────┐
+│ memories-ontologies  │  ontological primitives
+└──────────┬───────────┘
+           │
+┌──────────▼───────────────────────────────────────────────┐
+│ @khoralabs/memories-node                                 │
+│ client + contracts + ./sqlite|libsql|turso-serverless    │
+│ ./projections ./attestation ./autolink ./testing         │
+└───────┬───────────────────────────────┬──────────────────┘
+        │                               │
+┌───────▼────────────────┐   ┌──────────▼──────────────────┐
+│ memories-service       │   │ memories-agents             │
+│ ./client ./http ./auth │   │ ./tools ./adapter           │
+│ ./storage/* ./testing  │   │ ./integrator ./investigator │
+└────────────────────────┘   └─────────────────────────────┘
+        optional: memories-react-graph, memories-spec
 ```
 
 ### Packages in this repo
 
 | Package | Path | Role |
 |---------|------|------|
-| `@khoralabs/memories-core` | [`core/`](core) | Contracts, merge/search/delete APIs, IDs, provenance, helpers |
-| `@khoralabs/memories-sqlite` | [`persistence/sqlite/`](persistence/sqlite) | Reference sync `MemoriesPersistence` (FTS5 + sqlite-vec) |
-| `@khoralabs/memories-projections` | [`projections/core/`](projections/core) | Strategy-neutral projection source interfaces, UMAP layout math, and async visualization helpers |
-| `@khoralabs/memories-projections-sqlite` | [`projections/sqlite/`](projections/sqlite) | SQLite projection strategy for `@khoralabs/memories-sqlite` |
-| `@khoralabs/memories-projections-turso` | [`projections/turso/`](projections/turso) | Turso/libSQL projection strategy for already-local Turso-family databases |
-| `@khoralabs/memories-ontologies` | [`ontologies/`](ontologies) | Default personal/agent ontology vocabulary |
-| `@khoralabs/memories-spec` | [`spec/`](spec) | Smithy wire model |
-| `@khoralabs/memories-autolink` | [`autolink/`](autolink) | Search-then-link graph integration |
-| `@khoralabs/memories-*` agents | [`agents/`](agents) | LLM agents (adapter, integrator, investigator, tools) |
+| `@khoralabs/memories-ontologies` | [`ontologies/`](ontologies) | Ontological primitives |
+| `@khoralabs/memories-node` | [`node/`](node) | Individual memory node (client + backends + projections + attestation + autolink) |
+| `@khoralabs/memories-service` | [`service/`](service) | Multi-tenant service (lifecycle, HTTP, auth, storage) |
+| `@khoralabs/memories-agents` | [`memories-agents/`](memories-agents) | Agent toolkit + adapter / integrator / investigator |
 | `@khoralabs/memories-react-graph` | [`react/graph/`](react/graph) | Graph visualization UI |
+| `@khoralabs/memories-spec` | [`spec/`](spec) | Smithy wire model |
+
+Legacy names (`memories-core`, `memories-sqlite`, `memories-tools`, …) are thin re-export shims.
 
 ### Mental model
 

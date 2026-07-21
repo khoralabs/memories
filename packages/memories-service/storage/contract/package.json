@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-service-storage-contract",
   "version": "0.1.0",
-  "description": "Shared conformance tests for Memories service storage backends and control-plane stores.",
+  "description": "Deprecated: use @khoralabs/memories-service/testing",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/storage/contract"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/memories-service/storage/contract#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -25,17 +18,13 @@
       "default": "./src/index.ts"
     }
   },
-  "scripts": {
-    "test": "bun test",
-    "typecheck": "tsc --noEmit"
-  },
   "dependencies": {
-    "@khoralabs/memories-service-storage-core": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
+    "@khoralabs/memories-service": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

@@ -1,0 +1,81 @@
+{
+  "name": "@khoralabs/memories-service",
+  "version": "0.1.0",
+  "description": "Multi-tenant memory service: lifecycle, routing, HTTP, auth, and storage backends.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/service"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/service#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "import": "./src/client/index.ts",
+      "default": "./src/client/index.ts"
+    },
+    "./http": {
+      "types": "./src/http/index.ts",
+      "import": "./src/http/index.ts",
+      "default": "./src/http/index.ts"
+    },
+    "./auth": {
+      "types": "./src/auth/index.ts",
+      "import": "./src/auth/index.ts",
+      "default": "./src/auth/index.ts"
+    },
+    "./storage/sqlite": {
+      "types": "./src/storage/sqlite/index.ts",
+      "import": "./src/storage/sqlite/index.ts",
+      "default": "./src/storage/sqlite/index.ts"
+    },
+    "./storage/libsql": {
+      "types": "./src/storage/libsql/index.ts",
+      "import": "./src/storage/libsql/index.ts",
+      "default": "./src/storage/libsql/index.ts"
+    },
+    "./storage/turso-serverless": {
+      "types": "./src/storage/turso-serverless/index.ts",
+      "import": "./src/storage/turso-serverless/index.ts",
+      "default": "./src/storage/turso-serverless/index.ts"
+    },
+    "./testing": {
+      "types": "./src/testing/index.ts",
+      "import": "./src/testing/index.ts",
+      "default": "./src/testing/index.ts"
+    }
+  },
+  "dependencies": {
+    "@khoralabs/memories-node": "workspace:*",
+    "@khoralabs/memories-ontologies": "workspace:*",
+    "lru-cache": "^11.5.1"
+  },
+  "peerDependencies": {
+    "@khoralabs/sqlite-crypto": "^0.1.0",
+    "typescript": "^5"
+  },
+  "peerDependenciesMeta": {
+    "@khoralabs/sqlite-crypto": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@khoralabs/sqlite-crypto": "^0.1.0",
+    "@types/bun": "latest"
+  }
+}

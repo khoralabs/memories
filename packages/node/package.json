@@ -1,0 +1,170 @@
+{
+  "name": "@khoralabs/memories-node",
+  "version": "0.1.0",
+  "description": "Individual memory node: client, persistence contracts, backends, projections, attestation, and autolink.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/node"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/node#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./persistence": {
+      "types": "./src/reexports/persistence.ts",
+      "import": "./src/reexports/persistence.ts",
+      "default": "./src/reexports/persistence.ts"
+    },
+    "./provenance": {
+      "types": "./src/reexports/provenance.ts",
+      "import": "./src/reexports/provenance.ts",
+      "default": "./src/reexports/provenance.ts"
+    },
+    "./search-meta-constants": {
+      "types": "./src/core/search-meta-constants.ts",
+      "import": "./src/core/search-meta-constants.ts",
+      "default": "./src/core/search-meta-constants.ts"
+    },
+    "./helpers": {
+      "types": "./src/core/helpers/index.ts",
+      "import": "./src/core/helpers/index.ts",
+      "default": "./src/core/helpers/index.ts"
+    },
+    "./sqlite": {
+      "types": "./src/sqlite/index.ts",
+      "import": "./src/sqlite/index.ts",
+      "default": "./src/sqlite/index.ts"
+    },
+    "./libsql": {
+      "types": "./src/libsql/index.ts",
+      "import": "./src/libsql/index.ts",
+      "default": "./src/libsql/index.ts"
+    },
+    "./turso-serverless": {
+      "types": "./src/turso-serverless/index.ts",
+      "import": "./src/turso-serverless/index.ts",
+      "default": "./src/turso-serverless/index.ts"
+    },
+    "./projections": {
+      "types": "./src/projections/index.ts",
+      "import": "./src/projections/index.ts",
+      "default": "./src/projections/index.ts"
+    },
+    "./attestation": {
+      "types": "./src/attestation/index.ts",
+      "import": "./src/attestation/index.ts",
+      "default": "./src/attestation/index.ts"
+    },
+    "./attestation/attestation": {
+      "types": "./src/attestation/attestation.ts",
+      "import": "./src/attestation/attestation.ts",
+      "default": "./src/attestation/attestation.ts"
+    },
+    "./attestation/registry": {
+      "types": "./src/attestation/registry.ts",
+      "import": "./src/attestation/registry.ts",
+      "default": "./src/attestation/registry.ts"
+    },
+    "./attestation/formats/direct-principal-v1": {
+      "types": "./src/attestation/formats/direct-principal-v1.ts",
+      "import": "./src/attestation/formats/direct-principal-v1.ts",
+      "default": "./src/attestation/formats/direct-principal-v1.ts"
+    },
+    "./attestation/formats/http-request-v1": {
+      "types": "./src/attestation/formats/http-request-v1.ts",
+      "import": "./src/attestation/formats/http-request-v1.ts",
+      "default": "./src/attestation/formats/http-request-v1.ts"
+    },
+    "./autolink": {
+      "types": "./src/autolink/index.ts",
+      "import": "./src/autolink/index.ts",
+      "default": "./src/autolink/index.ts"
+    },
+    "./autolink/workflows": {
+      "types": "./src/autolink/workflows/index.ts",
+      "import": "./src/autolink/workflows/index.ts",
+      "default": "./src/autolink/workflows/index.ts"
+    },
+    "./testing": {
+      "types": "./src/testing/index.ts",
+      "import": "./src/testing/index.ts",
+      "default": "./src/testing/index.ts"
+    }
+  },
+  "dependencies": {
+    "@ai-sdk/provider-utils": "^5.0.2",
+    "@khoralabs/memories-ontologies": "workspace:*",
+    "@khoralabs/sourcemaps": "^0.1.0",
+    "@standard-schema/spec": "^1.1.0",
+    "ai": "^7.0.9",
+    "js-sha256": "^0.11.0",
+    "zod": "^4",
+    "@khoralabs/memories-persistence-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@khoralabs/sqlite-crypto": "^0.1.0",
+    "@khoralabs/sqlite-migrate": "^0.1.0",
+    "@libsql/client": "^0.17.4",
+    "@tursodatabase/serverless": "^0.2.0",
+    "ajv": "^8",
+    "sqlite-vec": "^0.1.9",
+    "typescript": "^5",
+    "umap-js": "^1.4.0",
+    "workflow": "^4.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@khoralabs/sqlite-crypto": {
+      "optional": true
+    },
+    "@khoralabs/sqlite-migrate": {
+      "optional": true
+    },
+    "@libsql/client": {
+      "optional": true
+    },
+    "@tursodatabase/serverless": {
+      "optional": true
+    },
+    "ajv": {
+      "optional": true
+    },
+    "sqlite-vec": {
+      "optional": true
+    },
+    "umap-js": {
+      "optional": true
+    },
+    "workflow": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@khoralabs/sqlite-crypto": "^0.1.0",
+    "@khoralabs/sqlite-migrate": "^0.1.0",
+    "@libsql/client": "^0.17.4",
+    "@tursodatabase/serverless": "^0.2.0",
+    "@types/bun": "latest",
+    "@workflow/vitest": "^4.0.12",
+    "@workflow/world-local": "^4.2.1",
+    "ajv": "^8",
+    "sqlite-vec": "^0.1.9",
+    "umap-js": "^1.4.0",
+    "undici": "^7.28.0",
+    "workflow": "^4.5.0",
+    "zod": "^4.2"
+  }
+}

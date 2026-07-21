@@ -1,13 +1,11 @@
 {
   "name": "@khoralabs/memories-service-http",
   "version": "0.1.0",
-  "description": "HTTP adapter for the Memories database service.",
+  "description": "Deprecated: use @khoralabs/memories-service/http",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/http"
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "src",
@@ -21,27 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-attestation": "workspace:*",
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-ontologies": "workspace:*",
-    "@khoralabs/memories-persistence-core": "workspace:*",
-    "@khoralabs/memories-projections": "workspace:*",
-    "@khoralabs/memories-service": "workspace:*",
-    "@khoralabs/memories-service-auth": "workspace:*",
-    "@khoralabs/memories-service-client": "workspace:*",
-    "@khoralabs/memories-service-storage-core": "workspace:*"
-  },
-  "devDependencies": {
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-service": "workspace:*",
-    "@khoralabs/memories-service-auth": "workspace:*",
-    "@khoralabs/memories-service-client": "workspace:*",
-    "@khoralabs/memories-service-storage-sqlite": "workspace:*",
-    "@khoralabs/memories-sqlite": "workspace:*",
-    "@khoralabs/sqlite-crypto": "^0.1.0",
-    "@types/bun": "latest"
+    "@khoralabs/memories-service": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

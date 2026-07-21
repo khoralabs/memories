@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-service-storage-libsql",
   "version": "0.1.0",
-  "description": "Local libSQL file backend for the Memories database service.",
+  "description": "Deprecated: use @khoralabs/memories-service/storage/libsql",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/storage/libsql"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/memories-service/storage/libsql#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -26,14 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-libsql": "workspace:*",
-    "@khoralabs/memories-service-storage-core": "workspace:*"
-  },
-  "devDependencies": {
-    "@khoralabs/memories-service-storage-contract": "workspace:*",
-    "@types/bun": "latest"
+    "@khoralabs/memories-service": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

@@ -1,13 +1,11 @@
 {
   "name": "@khoralabs/memories-service-storage-turso-serverless",
   "version": "0.1.0",
-  "description": "Turso Cloud serverless backend factory for the Memories database service.",
+  "description": "Deprecated: use @khoralabs/memories-service/storage/turso-serverless",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-service/storage-turso-serverless"
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "src",
@@ -21,14 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-service-storage-core": "workspace:*",
-    "@khoralabs/memories-turso-serverless": "workspace:*"
-  },
-  "devDependencies": {
-    "@khoralabs/memories-service-storage-contract": "workspace:*",
-    "@types/bun": "latest"
+    "@khoralabs/memories-service": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

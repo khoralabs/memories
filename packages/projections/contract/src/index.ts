@@ -1,5 +1,2 @@
-export {
-  type MemoriesProjectionsContractFactory,
-  type MemoriesProjectionsContractHandles,
-  runMemoriesProjectionsContractTests,
-} from "./contract.test.ts";
+/** @deprecated Deprecated: use @khoralabs/memories-node/testing */
+export * from "@khoralabs/memories-node/testing";

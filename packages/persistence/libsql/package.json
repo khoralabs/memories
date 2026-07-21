@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-libsql",
   "version": "0.1.0",
-  "description": "LibSQL backend for Memories persistence (FTS5 + native vectors + encryption).",
+  "description": "Deprecated: use @khoralabs/memories-node/libsql",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/persistence/libsql"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/persistence/libsql#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -26,16 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-persistence-core": "workspace:*",
-    "@libsql/client": "^0.17.4",
-    "ajv": "^8"
-  },
-  "devDependencies": {
-    "@khoralabs/memories-persistence-contract": "workspace:*",
-    "@types/bun": "latest"
+    "@khoralabs/memories-node": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

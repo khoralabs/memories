@@ -16,26 +16,41 @@ Each memory has one or more **source maps** (one per content chunk), each indexe
 
 ## Packages
 
+Public surface (5 runtime + 1 IDL). Legacy package names remain as thin re-export shims for one major cycle.
+
 | Package | Path | Role |
 |---------|------|------|
-| `@khoralabs/memories-core` | [`packages/core`](packages/core) | `MemoriesClient`, merge/search/delete, RRF, provenance, stable IDs |
-| `@khoralabs/memories-sqlite` | [`packages/persistence/sqlite`](packages/persistence/sqlite) | Reference backend: FTS5 + sqlite-vec, SQLite schema and migrations |
-| `@khoralabs/memories-projections` | [`packages/projections/core`](packages/projections/core) | Persistence-agnostic projection interfaces, layout math, and visualization helpers |
-| `@khoralabs/memories-projections-sqlite` | [`packages/projections/sqlite`](packages/projections/sqlite) | SQLite projection strategy for local SQLite stores |
-| `@khoralabs/memories-projections-turso` | [`packages/projections/turso`](packages/projections/turso) | Turso/libSQL projection strategy for already-local Turso-family stores |
-| `@khoralabs/memories-ontologies` | [`packages/ontologies`](packages/ontologies) | Default ontology vocabulary (people, places, facts, …) |
-| `@khoralabs/memories-autolink` | [`packages/autolink`](packages/autolink) | Search-then-link graph integration |
-| `@khoralabs/memories-spec` | [`packages/spec`](packages/spec) | Smithy wire model for persistence |
-| `@khoralabs/memories-tools` | [`packages/agents/tools`](packages/agents/tools) | `memory_search` toolkit for agent sessions |
-| `@khoralabs/memories-adapter` | [`packages/agents/adapter`](packages/agents/adapter) | Domain payload → ontology-typed memory draft agent |
-| `@khoralabs/memories-integrator` | [`packages/agents/integrator`](packages/agents/integrator) | Decompose + embed + merge agent |
-| `@khoralabs/memories-investigator` | [`packages/agents/investigator`](packages/agents/investigator) | Multi-step Q&A over memories |
-| `@khoralabs/memories-react-graph` | [`packages/react/graph`](packages/react/graph) | React 3D graph: search, namespace selector, investigator overlay |
+| `@khoralabs/memories-ontologies` | [`packages/ontologies`](packages/ontologies) | Ontological primitives (`defineOntology`, families) |
+| `@khoralabs/memories-node` | [`packages/node`](packages/node) | Individual memory node: client, contracts, backends, projections, attestation, autolink |
+| `@khoralabs/memories-service` | [`packages/service`](packages/service) | Multi-tenant service: lifecycle, HTTP, auth, storage backends |
+| `@khoralabs/memories-agents` | [`packages/memories-agents`](packages/memories-agents) | Agents: `./tools`, `./adapter`, `./integrator`, `./investigator` |
+| `@khoralabs/memories-react-graph` | [`packages/react/graph`](packages/react/graph) | React 3D graph UI (host-injected projection/search) |
+| `@khoralabs/memories-spec` | [`packages/spec`](packages/spec) | Smithy wire model |
+
+### Entrypoints
+
+| Package | Entrypoints |
+|---------|-------------|
+| `memories-node` | `.`, `./sqlite`, `./libsql`, `./turso-serverless`, `./projections`, `./attestation`, `./autolink`, `./testing` |
+| `memories-service` | `.`, `./client`, `./http`, `./auth`, `./storage/sqlite`, `./storage/libsql`, `./storage/turso-serverless`, `./testing` |
+| `memories-agents` | `./tools`, `./adapter`, `./integrator`, `./investigator` |
+
+### Install matrix (backends)
+
+Heavy drivers are **optional peerDependencies** of `@khoralabs/memories-node`. Install only what you import:
+
+| Import | Peers |
+|--------|-------|
+| `@khoralabs/memories-node/sqlite` | `sqlite-vec`, `@khoralabs/sqlite-crypto`, `@khoralabs/sqlite-migrate`, `ajv` |
+| `@khoralabs/memories-node/libsql` | `@libsql/client`, `ajv` |
+| `@khoralabs/memories-node/turso-serverless` | `@tursodatabase/serverless`, `ajv` |
+| `@khoralabs/memories-node/projections` | `umap-js` |
+| `@khoralabs/memories-node/autolink` | `workflow` (for `./autolink/workflows`) |
 
 External runtime dependencies:
 
 - [`@khoralabs/sourcemaps`](https://github.com/khoralabs/sourcemaps) — separates indexed projections from canonical source content; `Store.resolve()` fetches originals on demand
-- [`@khoralabs/agent-capabilities`](https://github.com/khoralabs/agent-capabilities) — agent registry, tool loops, and composable toolkit primitives used by all agent packages
+- [`@khoralabs/agent-capabilities`](https://github.com/khoralabs/agent-capabilities) — agent registry, tool loops, and composable toolkit primitives used by agent packages
 - [`@khoralabs/sqlite-crypto`](https://github.com/khoralabs/sqlite-utils), [`@khoralabs/sqlite-migrate`](https://github.com/khoralabs/sqlite-utils) — encrypted DB and schema migrations for the SQLite backend
 
 ## Quick start
@@ -49,16 +64,16 @@ bun test
 ### Minimal SQLite usage
 
 ```ts
-import { MemoriesClient, namespacePath } from "@khoralabs/memories-core";
+import { MemoriesClient, namespacePath } from "@khoralabs/memories-node";
 import { canonicalOntology } from "@khoralabs/memories-ontologies";
 import {
   createMemoriesPersistence,
   openMemoriesDatabase,
-} from "@khoralabs/memories-sqlite";
+} from "@khoralabs/memories-node/sqlite";
 
 const db = openMemoriesDatabase(":memory:", { sqlCipherKey: "test-key" });
 const persistence = createMemoriesPersistence(db);
-const client = new MemoriesClient(canonicalOntology, { persistence });
+const client = new MemoriesClient(persistence, canonicalOntology);
 
 await client.mergeMemory({
   namespace: namespacePath("demo"),
@@ -71,8 +86,8 @@ await client.mergeMemory({
 ### Attaching memory search to an agent session
 
 ```ts
-import { memorySearchToolkit } from "@khoralabs/memories-tools";
-import { MemoryInvestigatorClient } from "@khoralabs/memories-investigator";
+import { memorySearchToolkit } from "@khoralabs/memories-agents/tools";
+import { MemoryInvestigatorClient } from "@khoralabs/memories-agents/investigator";
 
 const inv = new MemoryInvestigatorClient({
   registry,

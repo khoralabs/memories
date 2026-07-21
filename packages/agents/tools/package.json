@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-tools",
   "version": "0.1.0",
-  "description": "Hybrid memory_search toolkit for agent sessions.",
+  "description": "Deprecated: use @khoralabs/memories-agents/tools",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/agents/tools"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/agents/tools#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -26,20 +19,12 @@
     }
   },
   "dependencies": {
-    "@khoralabs/agent-capabilities": "^0.2.0",
-    "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
-    "@khoralabs/agent-capabilities-otel": "^0.2.0",
-    "@khoralabs/memories-core": "workspace:*",
-    "ai": "^7.0.9",
-    "zod": "^4"
-  },
-  "scripts": {
-    "test": "bun test"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
+    "@khoralabs/memories-agents": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

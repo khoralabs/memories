@@ -1,16 +1,9 @@
 {
   "name": "@khoralabs/memories-investigator",
   "version": "0.1.0",
-  "description": "Memory investigator agent: multi-step Q&A over memories.",
+  "description": "Deprecated: use @khoralabs/memories-agents/investigator",
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/agents/investigator"
-  },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/agents/investigator#readme",
-  "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -26,23 +19,12 @@
     }
   },
   "dependencies": {
-    "@ai-sdk/provider-utils": "^5.0.2",
-    "@khoralabs/agent-capabilities": "^0.2.0",
-    "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
-    "@khoralabs/agent-capabilities-otel": "^0.2.0",
-    "@khoralabs/memories-core": "workspace:*",
-    "@khoralabs/memories-ontologies": "workspace:*",
-    "@khoralabs/memories-tools": "workspace:*",
-    "ai": "^7.0.9",
-    "zod": "^4"
-  },
-  "scripts": {
-    "test": "bun test"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
+    "@khoralabs/memories-agents": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
   }
 }

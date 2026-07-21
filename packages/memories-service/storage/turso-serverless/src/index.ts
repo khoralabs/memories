@@ -1,9 +1,2 @@
-export {
-  resolveTursoCredentials,
-  resolveTursoDatabaseUrl,
-} from "./resolve-credentials";
-export {
-  type CreateTursoServerlessBackendOptions,
-  createTursoServerlessBackend,
-  createTursoServerlessBackendFactory,
-} from "./turso-serverless-backend";
+/** @deprecated Deprecated: use @khoralabs/memories-service/storage/turso-serverless */
+export * from "@khoralabs/memories-service/storage/turso-serverless";
