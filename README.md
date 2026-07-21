@@ -140,7 +140,7 @@ See [`packages/node/README.md`](packages/node/README.md) (`./sqlite`) for detail
 
 Packages share a **unified version**. Publish via GitHub Actions:
 
-1. Ensure the `NPM_TOKEN` repository secret can publish to `@khoralabs` on npm.
+1. Ensure the `NPM_TOKEN` repository secret can publish to `@khoralabs` on npm (mapped to `NPM_CONFIG_TOKEN` for `bun publish`).
 2. Run **Actions → Release → Run workflow**:
    - `version`: semver without `v` (e.g. `0.2.0`)
    - `primary_only`: skip deprecated shim packages if desired
@@ -152,7 +152,7 @@ Local helpers:
 ```bash
 bun run release:bump 0.2.0
 bun run release:publish --dry-run          # or --primary-only
-bun run release:publish                    # requires npm auth / NPM_TOKEN
+bun run release:publish                    # requires NPM_CONFIG_TOKEN or NPM_TOKEN
 ```
 
 Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (persistence-core → ontologies → node → service/agents/react-graph/spec → shims). Deprecated shim packages re-export the primary surface and will be removed in a future major.

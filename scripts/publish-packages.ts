@@ -2,7 +2,7 @@
  * Publish packages in dependency order.
  * Usage: bun run scripts/publish-packages.ts [--dry-run] [--primary-only]
  *
- * Requires NPM_TOKEN (or npm login). Uses `bun publish`.
+ * Auth: bun publish uses NPM_CONFIG_TOKEN (set from NPM_TOKEN if needed).
  */
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
@@ -15,8 +15,12 @@ const primaryOnly = args.has("--primary-only");
 const root = join(import.meta.dir, "..");
 const list = primaryOnly ? PUBLISH_ORDER.filter((p) => p.kind === "primary") : PUBLISH_ORDER;
 
-if (!process.env.NPM_TOKEN && !dryRun) {
-  console.warn("Warning: NPM_TOKEN is not set; bun publish may fail without npm auth.");
+const token = process.env.NPM_CONFIG_TOKEN ?? process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN;
+
+if (!token && !dryRun) {
+  console.warn(
+    "Warning: NPM_CONFIG_TOKEN (or NPM_TOKEN) is not set; bun publish may fail without auth.",
+  );
 }
 
 for (const pkg of list) {
@@ -31,9 +35,7 @@ for (const pkg of list) {
     stdio: "inherit",
     env: {
       ...process.env,
-      // npm / bun honor this for registry auth
-      NODE_AUTH_TOKEN: process.env.NODE_AUTH_TOKEN ?? process.env.NPM_TOKEN,
-      NPM_TOKEN: process.env.NPM_TOKEN,
+      ...(token ? { NPM_CONFIG_TOKEN: token } : {}),
     },
   });
   if (result.status !== 0) {

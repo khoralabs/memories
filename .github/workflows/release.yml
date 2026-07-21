@@ -67,21 +67,13 @@ jobs:
       - name: Bump package versions
         run: bun run release:bump "${{ steps.ver.outputs.version }}"
 
-      - name: Setup npm auth
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
-        run: |
-          test -n "$NPM_TOKEN" || (echo "NPM_TOKEN secret is required" && exit 1)
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          echo "registry=https://registry.npmjs.org/" >> ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Publish packages
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # bun publish reads NPM_CONFIG_TOKEN (not NPM_TOKEN / NODE_AUTH_TOKEN)
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          test -n "$NPM_CONFIG_TOKEN" || (echo "NPM_TOKEN secret is required" && exit 1)
           EXTRA=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.primary_only }}" = "true" ]; then
             EXTRA="--primary-only"
