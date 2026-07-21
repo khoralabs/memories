@@ -1,9 +1,9 @@
 import type { LabelPropsSearchFormatter } from "@khoralabs/memories-persistence-core";
 import z from "zod";
-import { mergeOntologies } from "../merge-ontologies";
-import { defineOntology } from "../ontology";
-import { nl, s } from "./format-helpers";
-import { retrievalSimilarityOntology } from "./retrieval";
+import { mergeOntologies } from "../merge-ontologies.ts";
+import { defineOntology } from "../ontology.ts";
+import { nl, s } from "./format-helpers.ts";
+import { retrievalSimilarityOntology } from "./retrieval.ts";
 
 /** A compressible slice of high information density from prose. */
 export const zSalienceFacet = z.object({

@@ -1,12 +1,12 @@
-import { canonicalEntityNodeLabelShapes } from "./families/entities";
-import { canonicalKnowledgeNodeLabelShapes } from "./families/knowledge";
-import { canonicalPreferenceNodeLabelShapes } from "./families/preferences";
-import { canonicalRelationEdgeLabelShapes } from "./families/relations";
+import { canonicalEntityNodeLabelShapes } from "./families/entities.ts";
+import { canonicalKnowledgeNodeLabelShapes } from "./families/knowledge.ts";
+import { canonicalPreferenceNodeLabelShapes } from "./families/preferences.ts";
+import { canonicalRelationEdgeLabelShapes } from "./families/relations.ts";
 import {
   canonicalTemporalEdgeLabelShapes,
   canonicalTemporalNodeLabelShapes,
-} from "./families/temporal";
-import { defineOntology } from "./ontology";
+} from "./families/temporal.ts";
+import { defineOntology } from "./ontology.ts";
 
 /**
  * Default graph vocabulary for personal/agent memory: people, places, time, facts, and how they relate.

@@ -1,4 +1,4 @@
-import { defineOntology, type LabelSchemaMap, type OntologyDefinition } from "./ontology";
+import { defineOntology, type LabelSchemaMap, type OntologyDefinition } from "./ontology.ts";
 
 type OntologyDef = OntologyDefinition<LabelSchemaMap, LabelSchemaMap>;
 

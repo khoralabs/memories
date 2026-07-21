@@ -1,7 +1,7 @@
 import type { LabelPropsSearchFormatter } from "@khoralabs/memories-persistence-core";
 import z from "zod";
-import { defineOntology } from "../ontology";
-import { nl, s } from "./format-helpers";
+import { defineOntology } from "../ontology.ts";
+import { nl, s } from "./format-helpers.ts";
 
 /** Edge kind for search-derived similarity between two memories. */
 export const RETRIEVAL_SIMILARITY_EDGE_KIND = "retrieval_similarity" as const;

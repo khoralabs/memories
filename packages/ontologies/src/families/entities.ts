@@ -1,6 +1,6 @@
 import type { LabelPropsSearchFormatter } from "@khoralabs/memories-persistence-core";
 import z from "zod";
-import { nl, s } from "./format-helpers";
+import { nl, s } from "./format-helpers.ts";
 
 export const personNodeLabelShape = z
   .object({

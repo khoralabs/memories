@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { RETRIEVAL_SIMILARITY_EDGE_KIND } from "./retrieval";
+import { RETRIEVAL_SIMILARITY_EDGE_KIND } from "./retrieval.ts";
 import {
   canonicalSalienceLabelPropsSearchFormatter,
   MEMORY_NODE_KIND,
@@ -9,7 +9,7 @@ import {
   zMemoryNodeProps,
   zRelatedMemoryEdgeProps,
   zSalienceFacet,
-} from "./salience";
+} from "./salience.ts";
 
 describe("salience ontology family", () => {
   test("defines generic memory and related edge labels", () => {

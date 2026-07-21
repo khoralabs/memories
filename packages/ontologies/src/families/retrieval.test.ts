@@ -6,7 +6,7 @@ import {
   retrievalSimilarityOntology,
   zRetrievalSeedNodeProps,
   zRetrievalSimilarityEdgeProps,
-} from "./retrieval";
+} from "./retrieval.ts";
 
 describe("retrieval ontology family", () => {
   test("defines neutral retrieval label kinds", () => {
