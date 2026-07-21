@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/memories-service-storage-libsql",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deprecated: use @khoralabs/memories-service/storage/libsql",
   "license": "MIT",
   "type": "module",

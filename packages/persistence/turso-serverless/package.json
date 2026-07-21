@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/memories-turso-serverless",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deprecated: use @khoralabs/memories-node/turso-serverless",
   "license": "MIT",
   "type": "module",

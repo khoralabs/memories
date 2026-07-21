@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/memories-service-auth",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deprecated: use @khoralabs/memories-service/auth",
   "license": "MIT",
   "type": "module",
