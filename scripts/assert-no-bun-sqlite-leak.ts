@@ -8,13 +8,16 @@ import { join, relative } from "node:path";
 const ROOT = join(import.meta.dir, "..");
 
 /** Paths (relative to repo root) where bun:sqlite is allowed. */
-const ALLOWED_PREFIXES = ["packages/node/src/sqlite/", "packages/service/src/storage/sqlite/"];
+const ALLOWED_PREFIXES = [
+  "packages/node/src/persistence/sqlite/",
+  "packages/service/src/storage/sqlite/",
+];
 
 /** Roots to scan for leaks. */
 const SCAN_ROOTS = [
   "packages/node/src",
   "packages/service/src",
-  "packages/memories-agents",
+  "packages/agents",
   "packages/ontologies",
   "packages/persistence/core",
   "packages/react/graph",

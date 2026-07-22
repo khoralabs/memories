@@ -1,6 +1,6 @@
 /**
  * Publish packages in dependency order.
- * Usage: bun run scripts/publish-packages.ts [--dry-run] [--primary-only]
+ * Usage: bun run scripts/publish-packages.ts [--dry-run]
  *
  * Auth: bun publish uses NPM_CONFIG_TOKEN (set from NPM_TOKEN if needed).
  */
@@ -10,10 +10,8 @@ import { PUBLISH_ORDER } from "./publishable-packages";
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
-const primaryOnly = args.has("--primary-only");
 
 const root = join(import.meta.dir, "..");
-const list = primaryOnly ? PUBLISH_ORDER.filter((p) => p.kind === "primary") : PUBLISH_ORDER;
 
 const token = process.env.NPM_CONFIG_TOKEN ?? process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN;
 
@@ -23,9 +21,9 @@ if (!token && !dryRun) {
   );
 }
 
-for (const pkg of list) {
+for (const pkg of PUBLISH_ORDER) {
   const cwd = join(root, pkg.dir);
-  console.log(`\n→ publishing ${pkg.name} (${pkg.kind}) from ${pkg.dir}`);
+  console.log(`\n→ publishing ${pkg.name} from ${pkg.dir}`);
   if (dryRun) {
     console.log("  (dry-run) bun publish --access public");
     continue;
@@ -44,4 +42,4 @@ for (const pkg of list) {
   }
 }
 
-console.log(`\nPublished ${list.length} package(s)${dryRun ? " (dry-run)" : ""}.`);
+console.log(`\nPublished ${PUBLISH_ORDER.length} package(s)${dryRun ? " (dry-run)" : ""}.`);

@@ -7,9 +7,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khoralabs/memories.git",
-    "directory": "packages/memories-agents"
+    "directory": "packages/agents"
   },
-  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/memories-agents#readme",
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/agents#readme",
   "bugs": "https://github.com/khoralabs/memories/issues",
   "publishConfig": {
     "access": "public"

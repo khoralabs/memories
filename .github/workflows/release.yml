@@ -7,11 +7,6 @@ on:
         description: "Semver to publish (e.g. 0.2.0). Do not include a leading v."
         required: true
         type: string
-      primary_only:
-        description: "Publish only primary packages (skip deprecated shims)"
-        required: false
-        type: boolean
-        default: false
       dry_run:
         description: "Run checks and version bump preview without publishing"
         required: false
@@ -74,20 +69,11 @@ jobs:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           test -n "$NPM_CONFIG_TOKEN" || (echo "NPM_TOKEN secret is required" && exit 1)
-          EXTRA=""
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.primary_only }}" = "true" ]; then
-            EXTRA="--primary-only"
-          fi
-          bun run release:publish $EXTRA
+          bun run release:publish
 
       - name: Dry-run publish preview
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
-        run: |
-          EXTRA=""
-          if [ "${{ inputs.primary_only }}" = "true" ]; then
-            EXTRA="--primary-only"
-          fi
-          bun run release:publish --dry-run $EXTRA
+        run: bun run release:publish --dry-run
 
       - name: Commit version bumps and tag
         if: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run }}

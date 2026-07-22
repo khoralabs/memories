@@ -16,7 +16,7 @@ Each memory has one or more **source maps** (one per content chunk), each indexe
 
 ## Packages
 
-Public surface (runtime + IDL + contract leaf). Legacy package names remain as thin re-export shims for one major cycle.
+Public surface (runtime + IDL + contract leaf):
 
 | Package | Path | Role |
 |---------|------|------|
@@ -24,7 +24,7 @@ Public surface (runtime + IDL + contract leaf). Legacy package names remain as t
 | `@khoralabs/memories-ontologies` | [`packages/ontologies`](packages/ontologies) | Ontological primitives (`defineOntology`, families) |
 | `@khoralabs/memories-node` | [`packages/node`](packages/node) | Individual memory node: client, contracts, backends, projections, attestation, autolink |
 | `@khoralabs/memories-service` | [`packages/service`](packages/service) | Multi-tenant service: lifecycle, HTTP, auth, storage backends |
-| `@khoralabs/memories-agents` | [`packages/memories-agents`](packages/memories-agents) | Agents: `./tools`, `./adapter`, `./integrator`, `./investigator` |
+| `@khoralabs/memories-agents` | [`packages/agents`](packages/agents) | Agents: `./tools`, `./adapter`, `./integrator`, `./investigator` |
 | `@khoralabs/memories-react-graph` | [`packages/react/graph`](packages/react/graph) | React 3D graph UI (host-injected projection/search) |
 | `@khoralabs/memories-spec` | [`packages/spec`](packages/spec) | Smithy wire model |
 
@@ -144,7 +144,6 @@ Packages share a **unified version**. Publish via GitHub Actions:
 1. Ensure the `NPM_TOKEN` repository secret can publish to `@khoralabs` on npm (mapped to `NPM_CONFIG_TOKEN` for `bun publish`).
 2. Run **Actions → Release → Run workflow**:
    - `version`: semver without `v` (e.g. `0.2.0`)
-   - `primary_only`: skip deprecated shim packages if desired
    - `dry_run`: bump/check without publishing
 3. Or push a git tag `vX.Y.Z` (publishes that version).
 
@@ -152,11 +151,11 @@ Local helpers:
 
 ```bash
 bun run release:bump 0.2.0
-bun run release:publish --dry-run          # or --primary-only
+bun run release:publish --dry-run
 bun run release:publish                    # requires NPM_CONFIG_TOKEN or NPM_TOKEN
 ```
 
-Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (persistence-core → ontologies → node → service/agents/react-graph/spec → shims). Deprecated shim packages re-export the primary surface and will be removed in a future major.
+Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (persistence-core → ontologies → node → service → agents → react-graph → spec).
 
 ## License
 
