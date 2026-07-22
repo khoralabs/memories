@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Memory, SearchHit, SearchParams } from "../core/index";
+import type { SearchHit, SearchParams } from "../core/index";
+import type { Memory } from "../persistence/core";
 import {
   provideAutolinkSession,
   resetAutolinkSessionRegistryForTests,

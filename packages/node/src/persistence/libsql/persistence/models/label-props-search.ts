@@ -7,7 +7,7 @@ import {
   MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
   memoryEdgeLabelPropsSourceKey,
   memoryNodeLabelPropsSourceKey,
-} from "@khoralabs/memories-persistence-core";
+} from "../../../../persistence/core";
 import type { DbCtx } from "../context";
 import { ctxExec, ctxQueryAll, ctxQueryOne } from "../db";
 import { parsePropsColumn } from "../sql";

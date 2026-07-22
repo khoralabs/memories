@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { ids } from "@khoralabs/memories-persistence-core";
+import { ids } from "../persistence/core";
+import {
+  MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
+  MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
+} from "../persistence/core/search-meta-constants";
 import {
   createMemoriesPersistence,
   openTestMemoriesDatabase,
 } from "../persistence/sqlite/persistence/index";
 import { mergeMemory } from "./api/merge-memory";
 import { search } from "./api/search";
-import {
-  MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
-  MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
-} from "./search-meta-constants";
 
 function openTestDb() {
   return openTestMemoriesDatabase();

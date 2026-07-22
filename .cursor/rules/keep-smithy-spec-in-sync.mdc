@@ -8,7 +8,7 @@ alwaysApply: true
 `packages/spec` (`model/*.smithy`) is the **logical** contract for:
 
 - Public API: `@khoralabs/memories-node` (`mergeMemory`, `search`, `deleteMemory`, attribution, search options)
-- Persistence: `@khoralabs/memories-persistence-core` (`MemoriesPersistence`, provenance, capabilities, row shapes)
+- Persistence: `@khoralabs/memories-persistence/core` (`MemoriesPersistence`, provenance, capabilities, row shapes)
 
 It is **not** the HTTP wire model for `memories-service` (except where service handlers are thin adapters over the public/persistence APIs).
 

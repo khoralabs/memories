@@ -1,9 +1,9 @@
 import type { LabelSchemaMap } from "@khoralabs/memories-ontologies";
-import type { NamespacePath, OntologyLabelInstance } from "@khoralabs/memories-persistence-core";
+import type { NamespacePath, OntologyLabelInstance } from "../../persistence/core";
 import type {
   MemoriesPersistence,
   MemoriesPersistenceAsync,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 import type { MemoriesClient } from "../api/client.js";
 import type { MemoriesClientAsync } from "../api/client-async.js";
 import type {

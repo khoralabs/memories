@@ -79,3 +79,51 @@ describe("fixDeclarationSpecifiers", () => {
     );
   });
 });
+
+describe("bun nested export * from external", () => {
+  // Bun preserves top-level `export * from "pkg"` on an entry, but nested
+  // `export * from "pkg"` inside a re-exported barrel becomes `__reExport(ns, name)`
+  // without binding `name` — which throws at runtime. Keep external star re-exports
+  // on the package entry root (see packages/node/src/index.ts).
+  async function buildWithFakeExternal(entrySource: Record<string, string>): Promise<string> {
+    const dir = mkdtempSync(path.join(tmpdir(), "memories-reexport-"));
+    const pkgName = "@test/external-mod";
+    mkdirSync(path.join(dir, "node_modules", pkgName), { recursive: true });
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(
+      path.join(dir, "node_modules", pkgName, "package.json"),
+      JSON.stringify({ name: pkgName, type: "module", exports: { ".": "./index.js" } }),
+    );
+    writeFileSync(path.join(dir, "node_modules", pkgName, "index.js"), `export const value = 1;\n`);
+    for (const [rel, source] of Object.entries(entrySource)) {
+      const abs = path.join(dir, rel);
+      mkdirSync(path.dirname(abs), { recursive: true });
+      writeFileSync(abs, source.replaceAll("__PKG__", pkgName));
+    }
+    const outdir = path.join(dir, "out");
+    const result = await Bun.build({
+      entrypoints: [path.join(dir, "src/index.ts")],
+      outdir,
+      packages: "external",
+      target: "node",
+    });
+    expect(result.success).toBe(true);
+    return readFileSync(path.join(outdir, "index.js"), "utf8");
+  }
+
+  test("top-level export * from external is preserved", async () => {
+    const js = await buildWithFakeExternal({
+      "src/index.ts": `export * from "__PKG__";\nexport const local = 2;\n`,
+    });
+    expect(js).toContain('export * from "@test/external-mod"');
+    expect(js).not.toContain("__reExport");
+  });
+
+  test("nested export * from external becomes broken __reExport", async () => {
+    const js = await buildWithFakeExternal({
+      "src/core.ts": `export * from "__PKG__";\nexport const local = 2;\n`,
+      "src/index.ts": `export * from "./core.ts";\n`,
+    });
+    expect(js).toContain("__reExport");
+  });
+});

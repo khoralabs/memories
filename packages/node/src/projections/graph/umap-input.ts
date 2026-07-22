@@ -4,7 +4,7 @@ import type {
   GraphEdgeLink,
   GraphMemoryEmbedding,
   OntologyLabelInstance,
-} from "@khoralabs/memories-persistence-core";
+} from "../../persistence/core";
 import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source";
 import type { GraphLayoutEdge } from "./layout-types";
 import { qualifyMemoryKey } from "./qualified-memory-key";

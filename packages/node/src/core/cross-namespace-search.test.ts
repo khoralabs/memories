@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { HydratedSourceMapHit } from "@khoralabs/memories-persistence-core";
-import { namespacePath } from "@khoralabs/memories-persistence-core";
-import type { MemoriesPersistence } from "@khoralabs/memories-persistence-core/persistence";
+import type { HydratedSourceMapHit } from "../persistence/core";
+import { namespacePath } from "../persistence/core";
+import type { MemoriesPersistence } from "../persistence/core/persistence";
 import {
   createMemoriesPersistence,
   openTestMemoriesDatabase,

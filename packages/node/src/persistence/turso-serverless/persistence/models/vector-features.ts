@@ -1,5 +1,5 @@
-import { ids } from "@khoralabs/memories-persistence-core";
-import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-persistence-core/persistence";
+import { ids } from "../../../../persistence/core";
+import { memoriesPersistenceDocumentSchema } from "../../../../persistence/core/persistence";
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "../context";
 import { ctxExec } from "../db";

@@ -2,7 +2,7 @@ import {
   ids,
   isSystemSearchMetaSourceKey,
   MEMORY_SEARCH_META_SOURCE_KEY,
-} from "@khoralabs/memories-persistence-core";
+} from "../../../../persistence/core";
 import type { DbCtx } from "../context";
 import { ctxExec, ctxQueryAll, ctxQueryOne } from "../db";
 import { loadGraphEdge } from "./graph-index";

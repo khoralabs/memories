@@ -1,4 +1,4 @@
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core";
+import type { MemoriesPersistenceAsync } from "../persistence/core";
 import { buildNamespaceGraphLayoutFromSource } from "./graph/build-namespace-graph-layout";
 import { buildNamespaceSubtreeGraphLayoutFromSource } from "./graph/build-namespace-subtree-graph-layout";
 import type { NamespaceGraphLayout } from "./graph/layout-types";

@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { ids, mergeMemory } from "../../../../core/index";
 import {
   canonicalJson,
   computeSourceMapContentHash,
   GENESIS_PARENT_HEX,
   nextProvenanceRoot,
-} from "@khoralabs/memories-persistence-core/provenance";
-import { ids, mergeMemory } from "../../../../core/index";
+} from "../../../../persistence/core/provenance";
 import { createMemoriesPersistence, openTestMemoriesDatabase } from "../index";
 
 /**

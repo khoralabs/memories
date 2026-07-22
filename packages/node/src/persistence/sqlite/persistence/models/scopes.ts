@@ -1,5 +1,5 @@
-import { namespacePath, stableId } from "@khoralabs/memories-persistence-core";
-import { memoriesPersistenceDocumentSchema } from "@khoralabs/memories-persistence-core/persistence";
+import { namespacePath, stableId } from "../../../../persistence/core";
+import { memoriesPersistenceDocumentSchema } from "../../../../persistence/core/persistence";
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "./context";
 

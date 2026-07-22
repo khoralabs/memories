@@ -3,12 +3,12 @@ import type {
   MemoryGraphAssociation,
   NeighborFilter,
   OntologyLabelInstance,
-} from "@khoralabs/memories-persistence-core";
+} from "../../persistence/core";
 import {
   canonicalizeNamespacePrefixes,
   type NamespacePath,
   namespacePath,
-} from "@khoralabs/memories-persistence-core";
+} from "../../persistence/core";
 import type {
   Edge,
   MemoriesBackendCapabilities,
@@ -16,12 +16,12 @@ import type {
   SearchNamespaceScope,
   SourceMapRow,
   VectorSearchMethod,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 import {
   type MemoriesPersistence,
   resolveMemoriesBackendCapabilities,
   resolveVectorSearchMethod,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtx } from "./merge-memory";
 

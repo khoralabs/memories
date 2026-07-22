@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { ids, namespacePath } from "@khoralabs/memories-persistence-core";
+import { deleteMemoryAsync, mergeMemoryAsync, searchAsync } from "../../../core/index";
+import { ids, namespacePath } from "../../../persistence/core";
 import type {
   MemoriesPersistenceAsync,
   MemoryOpContext,
-} from "@khoralabs/memories-persistence-core/persistence";
-import { resolveMemoriesBackendCapabilities } from "@khoralabs/memories-persistence-core/persistence";
+} from "../../../persistence/core/persistence";
+import { resolveMemoriesBackendCapabilities } from "../../../persistence/core/persistence";
 import {
   computeSourceMapContentHash,
   nextProvenanceRoot,
-} from "@khoralabs/memories-persistence-core/provenance";
-import { deleteMemoryAsync, mergeMemoryAsync, searchAsync } from "../../../core/index";
+} from "../../../persistence/core/provenance";
 
 export type MemoriesPersistenceContractFactory = () =>
   | MemoriesPersistenceAsync

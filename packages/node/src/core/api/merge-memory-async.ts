@@ -1,14 +1,11 @@
-import type { NamespacePath } from "@khoralabs/memories-persistence-core";
-import { ids, zNamespacePath } from "@khoralabs/memories-persistence-core";
-import type {
-  MemoriesPersistenceAsync,
-  MemoryOpContext,
-} from "@khoralabs/memories-persistence-core/persistence";
+import type { NamespacePath } from "../../persistence/core";
+import { ids, zNamespacePath } from "../../persistence/core";
+import type { MemoriesPersistenceAsync, MemoryOpContext } from "../../persistence/core/persistence";
 import {
   resolveMemoriesBackendCapabilities,
   zVectorPayload,
-} from "@khoralabs/memories-persistence-core/persistence";
-import { computeSourceMapContentHash } from "@khoralabs/memories-persistence-core/provenance";
+} from "../../persistence/core/persistence";
+import { computeSourceMapContentHash } from "../../persistence/core/provenance";
 import {
   buildMemoryOpContext,
   catalogSchemaJsonForEdgeKind,

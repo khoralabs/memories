@@ -1,5 +1,5 @@
-import type { LabelPropsSearchFormatter } from "@khoralabs/memories-persistence-core";
 import z from "zod";
+import type { LabelPropsSearchFormatter } from "../label-props-search.ts";
 import { mergeOntologies } from "../merge-ontologies.ts";
 import { defineOntology } from "../ontology.ts";
 import { nl, s } from "./format-helpers.ts";

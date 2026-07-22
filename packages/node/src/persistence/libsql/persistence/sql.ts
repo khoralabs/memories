@@ -4,7 +4,7 @@ import {
   namespacePrefixFieldForDepth,
   namespaceSegments,
   type SearchNamespaceScope,
-} from "@khoralabs/memories-persistence-core";
+} from "../../../persistence/core";
 
 export function placeholders(count: number): string {
   return Array.from({ length: count }, () => "?").join(", ");

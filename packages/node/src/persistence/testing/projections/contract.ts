@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { ids, namespacePath } from "@khoralabs/memories-persistence-core";
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
-import { resolveMemoriesBackendCapabilities } from "@khoralabs/memories-persistence-core/persistence";
 import { mergeMemoryAsync } from "../../../core/index";
+import { ids, namespacePath } from "../../../persistence/core";
+import type { MemoriesPersistenceAsync } from "../../../persistence/core/persistence";
+import { resolveMemoriesBackendCapabilities } from "../../../persistence/core/persistence";
 import {
   buildNamespaceGraphLayoutFromSource,
   type GraphProjectionSource,

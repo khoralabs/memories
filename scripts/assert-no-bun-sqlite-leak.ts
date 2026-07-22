@@ -19,7 +19,6 @@ const SCAN_ROOTS = [
   "packages/service/src",
   "packages/agents",
   "packages/ontologies",
-  "packages/persistence/core",
   "packages/react/graph",
 ];
 

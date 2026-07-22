@@ -1,9 +1,5 @@
-import type {
-  GraphEdgeLink,
-  GraphNode,
-  OntologyLabelInstance,
-} from "@khoralabs/memories-persistence-core";
-import { ids } from "@khoralabs/memories-persistence-core";
+import type { GraphEdgeLink, GraphNode, OntologyLabelInstance } from "../../../../persistence/core";
+import { ids } from "../../../../persistence/core";
 import type { DbCtx } from "../context";
 import type { LibsqlDatabase } from "../db";
 import { ctxQueryAll, readQueryAll } from "../db";

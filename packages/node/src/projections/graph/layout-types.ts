@@ -1,4 +1,4 @@
-import type { OntologyLabelInstance } from "@khoralabs/memories-persistence-core";
+import type { OntologyLabelInstance } from "../../persistence/core";
 
 export type GraphLayoutNode = {
   key: string;

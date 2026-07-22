@@ -1,6 +1,6 @@
 # @khoralabs/memories-spec
 
-Smithy model for the memories **logical** persistence + public API contract. Describes operation sets, row shapes, and capability modules that `@khoralabs/memories-persistence-core` and `@khoralabs/memories-node` implement in TypeScript.
+Smithy model for the memories **logical** persistence + public API contract. Describes operation sets, row shapes, and capability modules that `@khoralabs/memories-node` implements in TypeScript.
 
 This package is **not** the HTTP wire model for `@khoralabs/memories-service` (lifecycle, ontology registry, and JSON field renames live in the service docs). Spec tracks the in-process TS surfaces; keep them in sync when either side changes.
 

@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type {
-  SourceMap,
-  SourceMapLocators,
-} from "@khoralabs/memories-persistence-core/persistence";
 import type { ResolvedSource, SourceRef } from "@khoralabs/sourcemaps";
+import type { SourceMap, SourceMapLocators } from "../../persistence/core/persistence";
 
 describe("SourceMap ref contract", () => {
   test("SourceMap satisfies SourceRef<SourceMapLocators>", () => {

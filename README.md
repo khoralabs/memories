@@ -20,9 +20,8 @@ Public surface (runtime + IDL + contract leaf):
 
 | Package | Path | Role |
 |---------|------|------|
-| `@khoralabs/memories-persistence-core` | [`packages/persistence/core`](packages/persistence/core) | Persistence contracts / IDs / provenance (Bun-free leaf) |
 | `@khoralabs/memories-ontologies` | [`packages/ontologies`](packages/ontologies) | Ontological primitives (`defineOntology`, families) |
-| `@khoralabs/memories-node` | [`packages/node`](packages/node) | Individual memory node: client, contracts, backends, projections, attestation, autolink |
+| `@khoralabs/memories-node` | [`packages/node`](packages/node) | Individual memory node: client, persistence contracts, backends, projections, attestation, autolink |
 | `@khoralabs/memories-service` | [`packages/service`](packages/service) | Multi-tenant service: lifecycle, HTTP, auth, storage backends |
 | `@khoralabs/memories-agents` | [`packages/agents`](packages/agents) | Agents: `./tools`, `./adapter`, `./integrator`, `./investigator` |
 | `@khoralabs/memories-react-graph` | [`packages/react/graph`](packages/react/graph) | React 3D graph UI (host-injected projection/search) |
@@ -158,7 +157,7 @@ bun run release:publish                    # build + publish; requires NPM_CONFI
 
 Publish ships `dist/` (JavaScript from `bun build`, `.d.ts` from `tsc --emitDeclarationOnly`). Workspace `exports` still point at `src/` for local Bun; the publish script rewrites them to `dist/` for npm.
 
-Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (persistence-core → ontologies → node → service → agents → react-graph → spec).
+Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (ontologies → node → service → agents → react-graph → spec).
 
 ## License
 

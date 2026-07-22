@@ -1,6 +1,6 @@
 # @khoralabs/memories-node
 
-Individual memory node: `MemoriesClient`, persistence contracts (via `@khoralabs/memories-persistence-core`), backends, projections, attestation, and autolink.
+Individual memory node: `MemoriesClient`, persistence contracts (`.`, `./persistence`, `./provenance`), backends, projections, attestation, and autolink.
 
 ## Entrypoints
 

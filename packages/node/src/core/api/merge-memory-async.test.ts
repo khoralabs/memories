@@ -1,10 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { ids } from "@khoralabs/memories-persistence-core";
-import type {
-  MemoriesPersistenceAsync,
-  MemoryOpContext,
-} from "@khoralabs/memories-persistence-core/persistence";
-import type { MemoryProvenanceEvent } from "@khoralabs/memories-persistence-core/provenance";
+import { ids } from "../../persistence/core";
+import type { MemoriesPersistenceAsync, MemoryOpContext } from "../../persistence/core/persistence";
+import type { MemoryProvenanceEvent } from "../../persistence/core/provenance";
 import { mergeMemoryAsync } from "./merge-memory-async";
 
 const vec512 = (): number[] => Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));

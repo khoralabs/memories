@@ -1,7 +1,15 @@
-import type { OntologyLabelInstance } from "@khoralabs/memories-persistence-core";
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from "@standard-schema/spec";
 
-export type { OntologyLabelInstance, StandardJSONSchemaV1, StandardSchemaV1 };
+/**
+ * One ontology label assignment instance: catalog **kind** plus JSON **props** (validated by Zod / JSON Schema).
+ */
+export type OntologyLabelInstance = {
+  kind: string;
+  /** Properties for this kind; omit or `{}` when the kind has no fields. */
+  props: Record<string, unknown>;
+};
+
+export type { StandardJSONSchemaV1, StandardSchemaV1 };
 
 /**
  * Maps each **label kind** (discriminant) to a Standard Schema for that label's `props`.

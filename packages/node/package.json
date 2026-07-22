@@ -37,11 +37,6 @@
       "import": "./src/persistence/reexports/provenance.ts",
       "default": "./src/persistence/reexports/provenance.ts"
     },
-    "./search-meta-constants": {
-      "types": "./src/core/search-meta-constants.ts",
-      "import": "./src/core/search-meta-constants.ts",
-      "default": "./src/core/search-meta-constants.ts"
-    },
     "./helpers": {
       "types": "./src/core/helpers/index.ts",
       "import": "./src/core/helpers/index.ts",
@@ -120,8 +115,7 @@
     "@standard-schema/spec": "^1.1.0",
     "ai": "^7.0.9",
     "js-sha256": "^0.11.0",
-    "zod": "^4",
-    "@khoralabs/memories-persistence-core": "workspace:*"
+    "zod": "^4"
   },
   "peerDependencies": {
     "@khoralabs/sqlite-crypto": "^0.1.0",

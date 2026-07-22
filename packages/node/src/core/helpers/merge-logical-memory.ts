@@ -5,7 +5,7 @@ import {
   resolveMemoriesBackendCapabilities,
   upsertMemorySearchMetaVector,
   upsertMemorySearchMetaVectorAsync,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 import type { MemoriesClient, TypedSearchHit } from "../api/client";
 import { MemoriesClientAsync } from "../api/client-async";
 import type { MergeMemoryContentItem, MergeMemoryParamsNode } from "../api/merge-memory";

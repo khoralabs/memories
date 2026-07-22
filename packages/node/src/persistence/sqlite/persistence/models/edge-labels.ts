@@ -1,4 +1,4 @@
-import { ids } from "@khoralabs/memories-persistence-core";
+import { ids } from "../../../../persistence/core";
 import type { DbCtx } from "./context";
 
 /** Returns `_id` for an `edge_labels` catalog row, inserting when missing. */

@@ -1,4 +1,4 @@
-import { ids } from "@khoralabs/memories-persistence-core";
+import { ids } from "../../../../persistence/core";
 import type { DbCtx } from "../context";
 import { ctxExec, ctxQueryOne } from "../db";
 

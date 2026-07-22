@@ -1,4 +1,4 @@
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+import type { MemoriesPersistenceAsync } from "../../../persistence/core/persistence";
 import { createMemoriesTursoServerlessPersistence } from "./persistence";
 
 export function hasTursoIntegrationEnv(): boolean {

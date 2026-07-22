@@ -1,1 +1,1 @@
-export * from "@khoralabs/memories-persistence-core/persistence";
+export * from "../../persistence/core/persistence";

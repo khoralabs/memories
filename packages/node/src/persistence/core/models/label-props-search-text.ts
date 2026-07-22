@@ -1,15 +1,15 @@
 /**
  * Human-readable lines for lexical indexing of ontology label props (avoid raw JSON).
  */
+export type {
+  LabelPropsSearchFormatter,
+  LabelPropsSearchRole,
+} from "@khoralabs/memories-ontologies";
 
-export type LabelPropsSearchRole = "node" | "edge";
-
-/** Optional per-kind override; return empty string to fall back to generic formatting. */
-export type LabelPropsSearchFormatter = (
-  kind: string,
-  role: LabelPropsSearchRole,
-  props: Record<string, unknown>,
-) => string;
+import type {
+  LabelPropsSearchFormatter,
+  LabelPropsSearchRole,
+} from "@khoralabs/memories-ontologies";
 
 function isNonEmptyProps(props: unknown): props is Record<string, unknown> {
   return (

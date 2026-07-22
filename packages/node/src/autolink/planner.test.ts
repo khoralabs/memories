@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Memory, SearchHit } from "../core/index";
+import type { SearchHit } from "../core/index";
+import type { Memory } from "../persistence/core";
 import {
   computeLexicalLinkMergeSlice,
   RETRIEVAL_SEED_NODE_KIND,

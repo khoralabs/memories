@@ -1,5 +1,5 @@
-import type { ContributorAttestation } from "@khoralabs/memories-persistence-core/provenance";
-import { canonicalJson } from "@khoralabs/memories-persistence-core/provenance";
+import type { ContributorAttestation } from "../persistence/core/provenance";
+import { canonicalJson } from "../persistence/core/provenance";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -8,7 +8,7 @@ const BASE64URL_RE = /^[A-Za-z0-9_-]*$/;
 export type {
   ContributorAttestation,
   MemoryMutationAttribution,
-} from "@khoralabs/memories-persistence-core/provenance";
+} from "../persistence/core/provenance";
 
 export function base64UrlEncode(bytes: Uint8Array): string {
   let binary = "";

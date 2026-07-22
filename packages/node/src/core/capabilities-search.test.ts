@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { MemoriesPersistence } from "@khoralabs/memories-persistence-core/persistence";
+import type { MemoriesPersistence } from "../persistence/core/persistence";
 import { mergeMemory } from "./api/merge-memory";
 import { search } from "./api/search";
 

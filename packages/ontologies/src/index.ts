@@ -6,5 +6,6 @@ export * from "./families/relations.ts";
 export * from "./families/retrieval.ts";
 export * from "./families/salience.ts";
 export * from "./families/temporal.ts";
+export * from "./label-props-search.ts";
 export * from "./merge-ontologies.ts";
 export * from "./ontology.ts";

@@ -9,13 +9,13 @@ import type {
   NeighborFilter,
   OntologyLabelInstance,
   SearchNamespaceScope,
-} from "@khoralabs/memories-persistence-core";
+} from "../../../persistence/core";
 import type {
   MemoriesPersistenceAsync,
   SourceMap,
   TextFeatureExportRow,
-} from "@khoralabs/memories-persistence-core/persistence";
-import type { MemoryProvenanceEvent } from "@khoralabs/memories-persistence-core/provenance";
+} from "../../../persistence/core/persistence";
+import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
 import { createTursoClients, execSql, queryAll, type TursoCredentials } from "./client";
 import { type DbCtx, readCtx, writeCtx } from "./context";
 import type { TursoDatabase } from "./db";

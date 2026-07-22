@@ -4,8 +4,8 @@ import {
   validateEdgeLabel,
   validateNodeLabel,
 } from "@khoralabs/memories-ontologies";
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
 import type { ResolvedSource } from "@khoralabs/sourcemaps";
+import type { MemoriesPersistenceAsync } from "../../persistence/core/persistence";
 import type { DeleteMemoryParams } from "../models/delete-memory";
 import { deleteMemoryAsync } from "../models/delete-memory-async";
 import type { DefaultEntityMap, MemoriesClientOptions } from "./client";

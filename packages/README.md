@@ -31,9 +31,8 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
 
 | Package | Path | Role |
 |---------|------|------|
-| `@khoralabs/memories-persistence-core` | [`persistence/core/`](persistence/core) | Persistence contracts (Bun-free leaf; published) |
 | `@khoralabs/memories-ontologies` | [`ontologies/`](ontologies) | Ontological primitives |
-| `@khoralabs/memories-node` | [`node/`](node) | Individual memory node (client + backends + projections + attestation + autolink); `./sqlite` is Bun-only |
+| `@khoralabs/memories-node` | [`node/`](node) | Individual memory node (client + persistence contracts + backends + projections + attestation + autolink); `./sqlite` is Bun-only |
 | `@khoralabs/memories-service` | [`service/`](service) | Multi-tenant service (lifecycle, HTTP, auth, storage); `./storage/sqlite` is Bun-only |
 | `@khoralabs/memories-agents` | [`agents/`](agents) | Agent toolkit + adapter / integrator / investigator |
 | `@khoralabs/memories-react-graph` | [`react/graph/`](react/graph) | Graph visualization UI |

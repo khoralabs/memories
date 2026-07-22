@@ -3,17 +3,17 @@ import type {
   NamespacePath,
   NeighborFilter,
   OntologyLabelInstance,
-} from "@khoralabs/memories-persistence-core";
+} from "../../persistence/core";
 import type {
   MemoriesBackendCapabilities,
   MemoriesPersistenceAsync,
   SearchNamespaceScope,
   VectorSearchMethod,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 import {
   resolveMemoriesBackendCapabilities,
   resolveVectorSearchMethod,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtxAsync } from "./merge-memory-async";
 import {

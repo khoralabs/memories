@@ -8,12 +8,9 @@ import type {
   MemoryOpContext,
   NeighborFilter,
   SearchNamespaceScope,
-} from "@khoralabs/memories-persistence-core";
-import type {
-  SourceMap,
-  TextFeatureExportRow,
-} from "@khoralabs/memories-persistence-core/persistence";
-import type { MemoryProvenanceEvent } from "@khoralabs/memories-persistence-core/provenance";
+} from "../../../persistence/core";
+import type { SourceMap, TextFeatureExportRow } from "../../../persistence/core/persistence";
+import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
 import {
   appendDeleteOutboxEntry,
   appendMergeOutboxEntries,

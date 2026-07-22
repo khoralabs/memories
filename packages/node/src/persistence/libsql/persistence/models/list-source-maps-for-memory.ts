@@ -1,4 +1,4 @@
-import type { SourceMap } from "@khoralabs/memories-persistence-core/persistence";
+import type { SourceMap } from "../../../../persistence/core/persistence";
 import type { DbCtx } from "../context";
 import { ctxQueryAll } from "../db";
 

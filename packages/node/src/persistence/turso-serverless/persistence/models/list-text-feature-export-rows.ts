@@ -1,4 +1,4 @@
-import type { TextFeatureExportRow } from "@khoralabs/memories-persistence-core/persistence";
+import type { TextFeatureExportRow } from "../../../../persistence/core/persistence";
 import type { DbCtx } from "../context";
 import { ctxQueryAll } from "../db";
 

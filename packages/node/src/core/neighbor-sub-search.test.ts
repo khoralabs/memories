@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ids } from "@khoralabs/memories-persistence-core";
+import { ids } from "../persistence/core";
 import {
   createMemoriesPersistence,
   openTestMemoriesDatabase,

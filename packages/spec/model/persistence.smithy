@@ -102,7 +102,7 @@ service MemoriesPersistenceReads {
 
 **Capability modules:** Implementors may conform to a subset; see the module services above. Hosts expose
 optional **MemoriesBackendCapabilities** alongside operations (not modeled as RPC). TypeScript interfaces:
-`MemoriesPersistence` (and capability slices) in `@khoralabs/memories-persistence-core`; public API in `@khoralabs/memories-node`.
+`MemoriesPersistence` (and capability slices) in `@khoralabs/memories-node`; public API in `@khoralabs/memories-node`.
 
 **Capability matrix (modules ↔ `MemoriesBackendCapabilities`):**
 - **MemoriesPersistenceCore** — baseline for merge/delete + lexical search + hydrate.
@@ -127,7 +127,7 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 
 **Read helpers:** **ListMemoryNamespaces**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable.
 
-**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY`). Normative hashing lives in `@khoralabs/memories-persistence-core/provenance` (see SQLite implementors guide).
+**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY`). Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide).
 """)
 service MemoriesPersistenceService {
     version: "2026-07-21"
@@ -982,7 +982,7 @@ structure GetProvenanceHeadRootHexOutput {
 }
 
 @documentation("""
-Append one row advancing the linear chain. Must run inside **WithTransaction**. `event` is stored as canonical JSON in `memory_provenance.event_json`; implementations derive `root_hex` per `@khoralabs/memories-persistence-core/provenance`.
+Append one row advancing the linear chain. Must run inside **WithTransaction**. `event` is stored as canonical JSON in `memory_provenance.event_json`; implementations derive `root_hex` per `@khoralabs/memories-node/provenance`.
 Returns the new chain head.
 """)
 operation AppendProvenanceEvent {

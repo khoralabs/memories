@@ -1,15 +1,15 @@
 export {
-  /** @deprecated Import from ../persistence-core/index instead. */
+  formatLabelPropsForSearch,
   ids,
-  /** @deprecated Import from ../persistence-core/index instead. */
+  isNonEmptyProps,
+  type LabelPropsSearchFormatter,
+  type LabelPropsSearchRole,
+  propsToHumanSearchText,
   stableId,
-} from "@khoralabs/memories-persistence-core";
-/** @deprecated Import from ../persistence-core/persistence/index instead. */
-export * from "@khoralabs/memories-persistence-core/persistence";
+} from "../persistence/core";
+export * from "../persistence/core/search-meta-constants";
+// Persistence contract re-exports live on the package root (`src/index.ts`) so Bun
+// does not emit a broken nested `export *` from an external package.
 export * from "./api/index";
 export * from "./graph/index";
-/** @deprecated Import from ../persistence-core/index instead. */
-export * from "./models/label-props-search-text";
-/** @deprecated Import from ../persistence-core/index instead. */
-export * from "./search-meta-constants";
 export { elapsedMs, nowMs } from "./timing";

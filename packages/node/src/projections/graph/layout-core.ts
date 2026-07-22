@@ -1,7 +1,4 @@
-import type {
-  GraphMemoryEmbedding,
-  OntologyLabelInstance,
-} from "@khoralabs/memories-persistence-core";
+import type { GraphMemoryEmbedding, OntologyLabelInstance } from "../../persistence/core";
 import {
   LABEL_PROPERTY_SYNTH_DIM,
   labelPropertySyntheticEmbedding,

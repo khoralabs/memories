@@ -1,6 +1,8 @@
 export type {
   /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
   EdgeLabelInstance,
+  LabelPropsSearchFormatter,
+  LabelPropsSearchRole,
   /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
   LabelSchemaMap,
   /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
@@ -31,8 +33,6 @@ export {
 export type {
   HydratedNeighbor,
   HydratedSourceMapHit,
-  LabelPropsSearchFormatter,
-  LabelPropsSearchRole,
   MemoryGraphAssociation,
   NamespacePath,
   NamespacePathLiteral,
@@ -41,7 +41,7 @@ export type {
   NeighborConstraint,
   NeighborFilter,
   NeighborNodesFilter,
-} from "@khoralabs/memories-persistence-core";
+} from "../../persistence/core";
 export {
   canonicalizeNamespacePrefixes,
   formatLabelPropsForSearch,
@@ -61,7 +61,7 @@ export {
   namespaceSegments,
   propsToHumanSearchText,
   zNamespacePath,
-} from "@khoralabs/memories-persistence-core";
+} from "../../persistence/core";
 export type {
   MemoriesBackendCapabilities,
   MemoriesGraph,
@@ -79,7 +79,7 @@ export type {
   SearchNamespaceScope,
   SearchVectorSourceMapIdsResult,
   VectorSearchMethod,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 export {
   buildCanonicalMemorySearchMetaTextAsync,
   DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
@@ -87,7 +87,7 @@ export {
   resolveVectorSearchMethod,
   upsertMemorySearchMetaVectorAsync,
   wrapSyncMemoriesPersistenceAsAsync,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 export type { DeleteMemoryParams } from "../models/delete-memory";
 export { deleteMemory } from "../models/delete-memory";
 export { deleteMemoryAsync } from "../models/delete-memory-async";

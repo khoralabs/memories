@@ -3,7 +3,7 @@ import {
   buildCanonicalMemorySearchMetaTextForMerge,
   ids,
   MEMORY_SEARCH_META_SOURCE_KEY,
-} from "@khoralabs/memories-persistence-core";
+} from "../persistence/core";
 import {
   blobToVector,
   createMemoriesPersistence,

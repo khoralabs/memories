@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
-import type { LabelPropsSearchFormatter } from "@khoralabs/memories-persistence-core";
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+import type { LabelPropsSearchFormatter } from "../../../persistence/core";
+import type { MemoriesPersistenceAsync } from "../../../persistence/core/persistence";
 import {
   createMemoriesPersistence,
   type MemoriesPersistence as IMemoriesPersistence,

@@ -5,38 +5,34 @@ import type {
   OntologyDefinition,
 } from "@khoralabs/memories-ontologies";
 import { propsSchemaToJson } from "@khoralabs/memories-ontologies";
-import type { NamespacePath } from "@khoralabs/memories-persistence-core";
-import {
-  ids,
-  MEMORY_SEARCH_META_SOURCE_KEY,
-  zNamespacePath,
-} from "@khoralabs/memories-persistence-core";
+import z from "zod";
+import type { NamespacePath } from "../../persistence/core";
+import { ids, MEMORY_SEARCH_META_SOURCE_KEY, zNamespacePath } from "../../persistence/core";
 import {
   type MemoriesPersistence,
   type MemoryOpContext,
   resolveMemoriesBackendCapabilities,
   zVectorPayload,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 import {
   computeSourceMapContentHash,
   type MemoryMutationAttribution,
-} from "@khoralabs/memories-persistence-core/provenance";
-import z from "zod";
+} from "../../persistence/core/provenance";
 
 export {
   buildCanonicalMemorySearchMetaTextForMerge,
   MEMORY_SEARCH_META_SOURCE_KEY,
-} from "@khoralabs/memories-persistence-core";
+} from "../../persistence/core";
 export {
   buildCanonicalMemorySearchMetaText,
   upsertMemorySearchMetaVector,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 
 export interface MutationCtx {
   persistence: MemoriesPersistence;
 }
 
-export type { MemoryMutationAttribution } from "@khoralabs/memories-persistence-core/provenance";
+export type { MemoryMutationAttribution } from "../../persistence/core/provenance";
 
 export function buildMemoryOpContext(attribution?: MemoryMutationAttribution): MemoryOpContext {
   return {

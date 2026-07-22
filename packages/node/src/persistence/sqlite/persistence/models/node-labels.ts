@@ -1,4 +1,4 @@
-import { ids } from "@khoralabs/memories-persistence-core";
+import { ids } from "../../../../persistence/core";
 import type { DbCtx } from "./context";
 
 /** Returns `_id` for a `node_labels` row (catalog kind), inserting when missing. */

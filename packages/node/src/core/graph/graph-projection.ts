@@ -2,13 +2,13 @@ import type {
   GraphEdgeLink,
   GraphNode,
   MemoriesRuntimeCtx,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 
 export type {
   GraphEdgeLink,
   GraphMemoryEmbedding,
   GraphNode,
-} from "@khoralabs/memories-persistence-core/persistence";
+} from "../../persistence/core/persistence";
 
 /**
  * Undirected edge list for a namespace: structural relatedness between memories.

@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { buildWorkflowTests, setupWorkflowTests, teardownWorkflowTests } from "@workflow/vitest";
 import { Agent } from "undici";
 import { start } from "workflow/api";
-import type { Memory, SearchHit, SearchParams } from "../../core/index";
+import type { SearchHit, SearchParams } from "../../core/index";
+import type { Memory } from "../../persistence/core";
 import {
   provideAutolinkSession,
   releaseAutolinkSession,

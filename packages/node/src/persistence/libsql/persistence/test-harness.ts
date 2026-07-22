@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { MemoriesPersistenceAsync } from "@khoralabs/memories-persistence-core/persistence";
+import type { MemoriesPersistenceAsync } from "../../../persistence/core/persistence";
 import { createMemoriesLibsqlPersistence } from "./persistence";
 
 /**
