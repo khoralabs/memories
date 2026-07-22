@@ -5,7 +5,7 @@ import {
   GENESIS_PARENT_HEX,
   nextProvenanceRoot,
 } from "@khoralabs/memories-persistence-core/provenance";
-import { ids, mergeMemory } from "../../../core/index";
+import { ids, mergeMemory } from "../../../../core/index";
 import { createMemoriesPersistence, openTestMemoriesDatabase } from "../index";
 
 /**

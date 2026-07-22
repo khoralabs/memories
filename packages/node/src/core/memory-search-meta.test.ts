@@ -8,7 +8,7 @@ import {
   blobToVector,
   createMemoriesPersistence,
   openTestMemoriesDatabase,
-} from "../sqlite/persistence/index";
+} from "../persistence/sqlite/persistence/index";
 import {
   buildCanonicalMemorySearchMetaText,
   mergeMemory,
@@ -36,7 +36,7 @@ function loadUserVectorRowsForNamespace(db: TestDb, namespace: string): number[]
          AND sm.source_key NOT GLOB '__*'`,
     )
     .all(namespace);
-  return rows.map((row) =>
+  return rows.map((row: { vector: Buffer | Uint8Array }) =>
     Array.from(
       blobToVector(row.vector instanceof Buffer ? new Uint8Array(row.vector) : row.vector),
     ),

@@ -1,5 +1,5 @@
 import type { GraphMemoryEmbedding } from "@khoralabs/memories-persistence-core";
-import type { GraphProjectionSource } from "../../projections/index";
+import type { GraphProjectionSource } from "../../../projections/index";
 
 export type LibsqlProjectionRow = Record<string, unknown>;
 

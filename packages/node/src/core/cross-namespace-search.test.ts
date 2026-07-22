@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import type { HydratedSourceMapHit } from "@khoralabs/memories-persistence-core";
 import { namespacePath } from "@khoralabs/memories-persistence-core";
 import type { MemoriesPersistence } from "@khoralabs/memories-persistence-core/persistence";
-import { createMemoriesPersistence, openTestMemoriesDatabase } from "../sqlite/persistence/index";
+import {
+  createMemoriesPersistence,
+  openTestMemoriesDatabase,
+} from "../persistence/sqlite/persistence/index";
 import { mergeMemory } from "./api/merge-memory";
 import { MAX_ADDITIONAL_NAMESPACES, search } from "./api/search";
 

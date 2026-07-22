@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { ids } from "@khoralabs/memories-persistence-core";
-import { createMemoriesPersistence, openTestMemoriesDatabase } from "../sqlite/persistence/index";
+import {
+  createMemoriesPersistence,
+  openTestMemoriesDatabase,
+} from "../persistence/sqlite/persistence/index";
 import { mergeMemory } from "./api/merge-memory";
 import { search } from "./api/search";
 import {

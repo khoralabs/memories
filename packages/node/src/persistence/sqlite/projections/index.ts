@@ -14,7 +14,7 @@ import {
   type NamespaceUmapInput,
   qualifyMemoryKey,
   type Umap3DLayoutOptions,
-} from "../../projections/index";
+} from "../../../projections/index";
 import { listNamespacesUnderPrefix } from "../persistence/index";
 import {
   createSqliteGraphProjectionSource,
@@ -51,7 +51,7 @@ export {
   type Umap3DLayoutOptions,
   umap3DLayout,
   validateUmapInput,
-} from "../../projections/index";
+} from "../../../projections/index";
 export {
   createSqliteGraphProjectionSource,
   loadMeanEmbeddingsForNamespace,

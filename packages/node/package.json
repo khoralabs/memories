@@ -25,14 +25,14 @@
       "default": "./src/index.ts"
     },
     "./persistence": {
-      "types": "./src/reexports/persistence.ts",
-      "import": "./src/reexports/persistence.ts",
-      "default": "./src/reexports/persistence.ts"
+      "types": "./src/persistence/reexports/persistence.ts",
+      "import": "./src/persistence/reexports/persistence.ts",
+      "default": "./src/persistence/reexports/persistence.ts"
     },
     "./provenance": {
-      "types": "./src/reexports/provenance.ts",
-      "import": "./src/reexports/provenance.ts",
-      "default": "./src/reexports/provenance.ts"
+      "types": "./src/persistence/reexports/provenance.ts",
+      "import": "./src/persistence/reexports/provenance.ts",
+      "default": "./src/persistence/reexports/provenance.ts"
     },
     "./search-meta-constants": {
       "types": "./src/core/search-meta-constants.ts",
@@ -45,19 +45,19 @@
       "default": "./src/core/helpers/index.ts"
     },
     "./sqlite": {
-      "types": "./src/sqlite/index.ts",
-      "import": "./src/sqlite/index.ts",
-      "default": "./src/sqlite/index.ts"
+      "types": "./src/persistence/sqlite/index.ts",
+      "import": "./src/persistence/sqlite/index.ts",
+      "default": "./src/persistence/sqlite/index.ts"
     },
     "./libsql": {
-      "types": "./src/libsql/index.ts",
-      "import": "./src/libsql/index.ts",
-      "default": "./src/libsql/index.ts"
+      "types": "./src/persistence/libsql/index.ts",
+      "import": "./src/persistence/libsql/index.ts",
+      "default": "./src/persistence/libsql/index.ts"
     },
     "./turso-serverless": {
-      "types": "./src/turso-serverless/index.ts",
-      "import": "./src/turso-serverless/index.ts",
-      "default": "./src/turso-serverless/index.ts"
+      "types": "./src/persistence/turso-serverless/index.ts",
+      "import": "./src/persistence/turso-serverless/index.ts",
+      "default": "./src/persistence/turso-serverless/index.ts"
     },
     "./projections": {
       "types": "./src/projections/index.ts",

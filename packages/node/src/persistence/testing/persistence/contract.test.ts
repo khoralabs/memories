@@ -9,7 +9,7 @@ import {
   computeSourceMapContentHash,
   nextProvenanceRoot,
 } from "@khoralabs/memories-persistence-core/provenance";
-import { deleteMemoryAsync, mergeMemoryAsync, searchAsync } from "../../core/index";
+import { deleteMemoryAsync, mergeMemoryAsync, searchAsync } from "../../../core/index";
 
 export type MemoriesPersistenceContractFactory = () =>
   | MemoriesPersistenceAsync

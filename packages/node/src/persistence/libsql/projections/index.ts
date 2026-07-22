@@ -6,7 +6,7 @@ import {
   createMemoriesVisualizationFromSource,
   type NamespaceUmapInput,
   type Umap3DLayoutOptions,
-} from "../../projections/index";
+} from "../../../projections/index";
 import { createLibsqlGraphProjectionSource, type LibsqlProjectionQueryClient } from "./source";
 
 export {
@@ -37,7 +37,7 @@ export {
   type Umap3DLayoutOptions,
   umap3DLayout,
   validateUmapInput,
-} from "../../projections/index";
+} from "../../../projections/index";
 export {
   createLibsqlGraphProjectionSource,
   type LibsqlProjectionQueryClient,

@@ -4,7 +4,7 @@ import type { TextFeatureExportRow } from "@khoralabs/memories-persistence-core/
 import {
   createMemoriesPersistence,
   openTestMemoriesDatabase,
-} from "../../sqlite/persistence/index";
+} from "../../persistence/sqlite/persistence/index";
 import { MemoriesClient } from "./client";
 import type { Store } from "./resolve-sourcemap";
 
