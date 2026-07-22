@@ -7,7 +7,6 @@ export type PublishablePackage = {
 };
 
 export const PUBLISH_ORDER: PublishablePackage[] = [
-  { name: "@khoralabs/memories-ontologies", dir: "packages/ontologies" },
   { name: "@khoralabs/memories-node", dir: "packages/node" },
   { name: "@khoralabs/memories-service", dir: "packages/service" },
   { name: "@khoralabs/memories-agents", dir: "packages/agents" },

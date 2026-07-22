@@ -1,9 +1,9 @@
-import type { EdgeLabelInstance, NodeLabelInstance } from "@khoralabs/memories-ontologies";
+import type { SearchHit } from "../core/index";
 import type {
   RetrievalSimilarityEdgeLabels,
   RetrievalSimilarityNodeLabels,
-} from "@khoralabs/memories-ontologies/families/retrieval";
-import type { SearchHit } from "../core/index";
+} from "../ontology/families/retrieval.ts";
+import type { EdgeLabelInstance, NodeLabelInstance } from "../ontology/ontology.ts";
 import {
   RETRIEVAL_SEED_NODE_KIND,
   RETRIEVAL_SIMILARITY_EDGE_KIND,

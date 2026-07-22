@@ -1,7 +1,7 @@
 import {
   runMemoriesDatabaseOntologyStoreContractTests,
   runMemoriesDatabasePlacementStoreContractTests,
-} from "../testing/index";
+} from "../../testing/index";
 import { createInMemoryOntologyStore, createInMemoryPlacementStore } from "./index";
 
 runMemoriesDatabasePlacementStoreContractTests("in-memory", () =>

@@ -20,8 +20,7 @@ Public surface (runtime + IDL + contract leaf):
 
 | Package | Path | Role |
 |---------|------|------|
-| `@khoralabs/memories-ontologies` | [`packages/ontologies`](packages/ontologies) | Ontological primitives (`defineOntology`, families) |
-| `@khoralabs/memories-node` | [`packages/node`](packages/node) | Individual memory node: client, persistence contracts, backends, projections, attestation, autolink |
+| `@khoralabs/memories-node` | [`packages/node`](packages/node) | Individual memory node: client, ontology, persistence contracts, backends, projections, attestation, autolink |
 | `@khoralabs/memories-service` | [`packages/service`](packages/service) | Multi-tenant service: lifecycle, HTTP, auth, storage backends |
 | `@khoralabs/memories-agents` | [`packages/agents`](packages/agents) | Agents: `./tools`, `./adapter`, `./integrator`, `./investigator` |
 | `@khoralabs/memories-react-graph` | [`packages/react/graph`](packages/react/graph) | React 3D graph UI (host-injected projection/search) |
@@ -31,11 +30,11 @@ Public surface (runtime + IDL + contract leaf):
 
 | Package | Entrypoints |
 |---------|-------------|
-| `memories-node` | `.`, `./sqlite` (**Bun only**), `./libsql`, `./turso-serverless`, `./projections`, `./projections/umap-input`, `./attestation`, `./autolink`, `./testing` |
+| `memories-node` | `.`, `./ontology`, `./ontology/families/*`, `./sqlite` (**Bun only**), `./libsql`, `./turso-serverless`, `./projections`, `./projections/umap-input`, `./attestation`, `./autolink`, `./testing` |
 | `memories-service` | `.`, `./client`, `./http`, `./auth`, `./storage/sqlite` (**Bun only**), `./storage/libsql`, `./storage/turso-serverless`, `./testing` |
 | `memories-agents` | `./tools`, `./adapter`, `./integrator`, `./investigator` |
 
-`./sqlite` and `./storage/sqlite` use `bun:sqlite` and require the [Bun](https://bun.sh) runtime. Shared package roots (`.`, `./client`, agents, ontologies) are Bun-free — use `./libsql` or `./turso-serverless` on Node.
+`./sqlite` and `./storage/sqlite` use `bun:sqlite` and require the [Bun](https://bun.sh) runtime. Shared package roots (`.`, `./client`, `./ontology`, agents) are Bun-free — use `./libsql` or `./turso-serverless` on Node.
 
 ### Install matrix (backends)
 
@@ -68,7 +67,7 @@ bun test
 
 ```ts
 import { MemoriesClient, namespacePath } from "@khoralabs/memories-node";
-import { canonicalOntology } from "@khoralabs/memories-ontologies";
+import { canonicalOntology } from "@khoralabs/memories-node/ontology";
 import {
   createMemoriesPersistence,
   openMemoriesDatabase,
@@ -157,7 +156,7 @@ bun run release:publish                    # build + publish; requires NPM_CONFI
 
 Publish ships `dist/` (JavaScript from `bun build`, `.d.ts` from `tsc --emitDeclarationOnly`). Workspace `exports` still point at `src/` for local Bun; the publish script rewrites them to `dist/` for npm.
 
-Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (ontologies → node → service → agents → react-graph → spec).
+Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (node → service → agents → react-graph → spec).
 
 ## License
 

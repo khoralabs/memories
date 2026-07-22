@@ -26,7 +26,6 @@
         "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
         "@khoralabs/agent-capabilities-otel": "^0.2.0",
         "@khoralabs/memories-node": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
         "ai": "^7.0.9",
         "zod": "^4",
       },
@@ -42,7 +41,6 @@
       "version": "0.4.0",
       "dependencies": {
         "@ai-sdk/provider-utils": "^5.0.2",
-        "@khoralabs/memories-ontologies": "workspace:*",
         "@khoralabs/sourcemaps": "^0.1.0",
         "@standard-schema/spec": "^1.1.0",
         "ai": "^7.0.9",
@@ -86,20 +84,6 @@
         "workflow",
       ],
     },
-    "packages/ontologies": {
-      "name": "@khoralabs/memories-ontologies",
-      "version": "0.4.0",
-      "dependencies": {
-        "@standard-schema/spec": "^1.1.0",
-        "zod": "^4.2",
-      },
-      "devDependencies": {
-        "@types/bun": "latest",
-      },
-      "peerDependencies": {
-        "typescript": "^5",
-      },
-    },
     "packages/react/graph": {
       "name": "@khoralabs/memories-react-graph",
       "version": "0.4.0",
@@ -138,7 +122,6 @@
       "version": "0.4.0",
       "dependencies": {
         "@khoralabs/memories-node": "workspace:*",
-        "@khoralabs/memories-ontologies": "workspace:*",
         "lru-cache": "^11.5.1",
       },
       "devDependencies": {
@@ -298,8 +281,6 @@
     "@khoralabs/memories-agents": ["@khoralabs/memories-agents@workspace:packages/agents"],
 
     "@khoralabs/memories-node": ["@khoralabs/memories-node@workspace:packages/node"],
-
-    "@khoralabs/memories-ontologies": ["@khoralabs/memories-ontologies@workspace:packages/ontologies"],
 
     "@khoralabs/memories-react-graph": ["@khoralabs/memories-react-graph@workspace:packages/react/graph"],
 

@@ -46,7 +46,6 @@
     "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
     "@khoralabs/agent-capabilities-otel": "^0.2.0",
     "@khoralabs/memories-node": "workspace:*",
-    "@khoralabs/memories-ontologies": "workspace:*",
     "ai": "^7.0.9",
     "zod": "^4"
   },

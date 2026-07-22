@@ -1,5 +1,5 @@
-import type { LabelSchemaMap } from "@khoralabs/memories-ontologies";
 import { start } from "workflow/api";
+import type { LabelSchemaMap } from "../../ontology/ontology.ts";
 import {
   type AutolinkIntegrateDeps,
   type IntegrateNewMemoryArgs,

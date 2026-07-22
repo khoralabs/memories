@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 import { createNoneAuthStrategy } from "../auth/index";
 import {

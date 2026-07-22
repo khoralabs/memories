@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { canonicalOntology } from "@khoralabs/memories-ontologies";
+import { canonicalOntology } from "../../ontology/canonical.ts";
 import type { TextFeatureExportRow } from "../../persistence/core/persistence";
 import {
   createMemoriesPersistence,

@@ -1,11 +1,11 @@
+import z from "zod";
 import type {
   EdgeLabelInstance,
   LabelSchemaMap,
   NodeLabelInstance,
   OntologyDefinition,
-} from "@khoralabs/memories-ontologies";
-import { propsSchemaToJson } from "@khoralabs/memories-ontologies";
-import z from "zod";
+} from "../../ontology/ontology.ts";
+import { propsSchemaToJson } from "../../ontology/ontology.ts";
 import type { NamespacePath } from "../../persistence/core";
 import { ids, MEMORY_SEARCH_META_SOURCE_KEY, zNamespacePath } from "../../persistence/core";
 import {

@@ -12,7 +12,7 @@ import {
   mergeLogicalMemoryWithMergeSlice,
   type ProcessedLogicalMemory,
 } from "@khoralabs/memories-node/helpers";
-import type { LabelSchemaMap } from "@khoralabs/memories-ontologies";
+import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
 import type { LanguageModel } from "ai";
 import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "../tools/index";
 import { MemoryIntegratorClient } from "./client.js";

@@ -1,4 +1,4 @@
-import type { LabelSchemaMap } from "@khoralabs/memories-ontologies";
+import type { LabelSchemaMap } from "../../ontology/ontology.ts";
 import {
   buildCanonicalMemorySearchMetaText,
   buildCanonicalMemorySearchMetaTextAsync,

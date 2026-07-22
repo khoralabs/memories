@@ -5,6 +5,7 @@ import {
   type SearchParams,
   searchAsync,
 } from "@khoralabs/memories-node";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import {
   collectNamespaceUmapInput,
   encodeUmapInput,
@@ -15,7 +16,6 @@ import {
   type UmapInputScope,
 } from "@khoralabs/memories-node/projections/umap-input";
 import type { MemoryMutationAttribution } from "@khoralabs/memories-node/provenance";
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,

@@ -4,12 +4,12 @@
 export type {
   LabelPropsSearchFormatter,
   LabelPropsSearchRole,
-} from "@khoralabs/memories-ontologies";
+} from "../../../ontology/label-props-search.ts";
 
 import type {
   LabelPropsSearchFormatter,
   LabelPropsSearchRole,
-} from "@khoralabs/memories-ontologies";
+} from "../../../ontology/label-props-search.ts";
 
 function isNonEmptyProps(props: unknown): props is Record<string, unknown> {
   return (

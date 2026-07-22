@@ -3,7 +3,7 @@ import type {
   RegisteredAgentAffordances,
   ToolRuntimeContext,
 } from "@khoralabs/agent-capabilities";
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import { type generateObject, type LanguageModel, Output } from "ai";
 import z from "zod";
 import {

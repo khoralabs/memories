@@ -1,36 +1,4 @@
 export type {
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  EdgeLabelInstance,
-  LabelPropsSearchFormatter,
-  LabelPropsSearchRole,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  LabelSchemaMap,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  NodeLabelInstance,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  OntologyDefinition,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  OntologyLabelInstance,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  StandardJSONSchemaV1,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  StandardSchemaV1,
-} from "@khoralabs/memories-ontologies";
-export {
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  defineOntology,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  edgeLabelPropsSchema,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  nodeLabelPropsSchema,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  propsSchemaToJson,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  validateEdgeLabel,
-  /** @deprecated Import ontology APIs from @khoralabs/memories-ontologies instead. */
-  validateNodeLabel,
-} from "@khoralabs/memories-ontologies";
-export type {
   HydratedNeighbor,
   HydratedSourceMapHit,
   MemoryGraphAssociation,

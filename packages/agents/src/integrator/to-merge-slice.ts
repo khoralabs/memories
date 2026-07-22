@@ -4,7 +4,7 @@ import type {
   LabelSchemaMap,
   NodeLabelInstance,
   OntologyDefinition,
-} from "@khoralabs/memories-ontologies";
+} from "@khoralabs/memories-node/ontology";
 import type z from "zod";
 import type { IntegratorEdgeWire, IntegratorPlanWire } from "./integrator-output.js";
 import { integratorLabelKindsFromOntology } from "./integrator-output.js";

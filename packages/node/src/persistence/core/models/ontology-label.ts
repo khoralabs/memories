@@ -1,1 +1,1 @@
-export type { OntologyLabelInstance } from "@khoralabs/memories-ontologies";
+export type { OntologyLabelInstance } from "../../../ontology/ontology.ts";

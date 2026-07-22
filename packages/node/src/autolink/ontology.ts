@@ -2,7 +2,7 @@ export type {
   RetrievalSimilarityEdgeLabels,
   RetrievalSimilarityNodeLabels,
   RetrievalSimilarityOntology,
-} from "@khoralabs/memories-ontologies/families/retrieval";
+} from "../ontology/families/retrieval.ts";
 export {
   canonicalRetrievalEdgeLabelShapes,
   canonicalRetrievalLabelPropsSearchFormatter,
@@ -13,4 +13,4 @@ export {
   zRetrievalSearchConfig,
   zRetrievalSeedNodeProps,
   zRetrievalSimilarityEdgeProps,
-} from "@khoralabs/memories-ontologies/families/retrieval";
+} from "../ontology/families/retrieval.ts";

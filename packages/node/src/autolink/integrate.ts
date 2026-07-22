@@ -1,4 +1,3 @@
-import type { LabelSchemaMap, NodeLabelInstance } from "@khoralabs/memories-ontologies";
 import type {
   MemoriesClient,
   MemoriesClientAsync,
@@ -8,6 +7,7 @@ import type {
   SearchHit,
   SearchParams,
 } from "../core/index";
+import type { LabelSchemaMap, NodeLabelInstance } from "../ontology/ontology.ts";
 import { type ComputeLexicalLinkOptions, computeLexicalLinkMergeSlice } from "./planner.js";
 import { normalizeSearchConfigSnapshot } from "./search-config.js";
 

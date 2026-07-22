@@ -65,7 +65,6 @@
   },
   "dependencies": {
     "@khoralabs/memories-node": "workspace:*",
-    "@khoralabs/memories-ontologies": "workspace:*",
     "lru-cache": "^11.5.1"
   },
   "peerDependencies": {

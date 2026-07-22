@@ -1,7 +1,7 @@
 {
   "name": "@khoralabs/memories-node",
   "version": "0.4.0",
-  "description": "Individual memory node: client, contracts, backends, projections, attestation, autolink. ./sqlite requires Bun (bun:sqlite); ./libsql and ./turso-serverless are Node-safe.",
+  "description": "Individual memory node: client, ontology, contracts, backends, projections, attestation, autolink. ./sqlite requires Bun (bun:sqlite); ./libsql and ./turso-serverless are Node-safe.",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -41,6 +41,56 @@
       "types": "./src/core/helpers/index.ts",
       "import": "./src/core/helpers/index.ts",
       "default": "./src/core/helpers/index.ts"
+    },
+    "./ontology": {
+      "types": "./src/ontology/index.ts",
+      "import": "./src/ontology/index.ts",
+      "default": "./src/ontology/index.ts"
+    },
+    "./ontology/core": {
+      "types": "./src/ontology/ontology.ts",
+      "import": "./src/ontology/ontology.ts",
+      "default": "./src/ontology/ontology.ts"
+    },
+    "./ontology/merge-ontologies": {
+      "types": "./src/ontology/merge-ontologies.ts",
+      "import": "./src/ontology/merge-ontologies.ts",
+      "default": "./src/ontology/merge-ontologies.ts"
+    },
+    "./ontology/families/entities": {
+      "types": "./src/ontology/families/entities.ts",
+      "import": "./src/ontology/families/entities.ts",
+      "default": "./src/ontology/families/entities.ts"
+    },
+    "./ontology/families/knowledge": {
+      "types": "./src/ontology/families/knowledge.ts",
+      "import": "./src/ontology/families/knowledge.ts",
+      "default": "./src/ontology/families/knowledge.ts"
+    },
+    "./ontology/families/preferences": {
+      "types": "./src/ontology/families/preferences.ts",
+      "import": "./src/ontology/families/preferences.ts",
+      "default": "./src/ontology/families/preferences.ts"
+    },
+    "./ontology/families/relations": {
+      "types": "./src/ontology/families/relations.ts",
+      "import": "./src/ontology/families/relations.ts",
+      "default": "./src/ontology/families/relations.ts"
+    },
+    "./ontology/families/retrieval": {
+      "types": "./src/ontology/families/retrieval.ts",
+      "import": "./src/ontology/families/retrieval.ts",
+      "default": "./src/ontology/families/retrieval.ts"
+    },
+    "./ontology/families/salience": {
+      "types": "./src/ontology/families/salience.ts",
+      "import": "./src/ontology/families/salience.ts",
+      "default": "./src/ontology/families/salience.ts"
+    },
+    "./ontology/families/temporal": {
+      "types": "./src/ontology/families/temporal.ts",
+      "import": "./src/ontology/families/temporal.ts",
+      "default": "./src/ontology/families/temporal.ts"
     },
     "./sqlite": {
       "types": "./src/persistence/sqlite/index.ts",
@@ -110,7 +160,6 @@
   },
   "dependencies": {
     "@ai-sdk/provider-utils": "^5.0.2",
-    "@khoralabs/memories-ontologies": "workspace:*",
     "@khoralabs/sourcemaps": "^0.1.0",
     "@standard-schema/spec": "^1.1.0",
     "ai": "^7.0.9",

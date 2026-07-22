@@ -1,4 +1,4 @@
-import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
+import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import { Output } from "ai";
 import z from "zod";
 

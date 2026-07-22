@@ -1,7 +1,7 @@
 import type { AgentRegistry } from "@khoralabs/agent-capabilities";
 import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type { MemoriesClient, MemoriesClientAsync } from "@khoralabs/memories-node";
-import type { LabelSchemaMap } from "@khoralabs/memories-ontologies";
+import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
 import type { LanguageModel } from "ai";
 import type { EmbeddingModel } from "../tools/index";
 import { DEFAULT_INVESTIGATOR_MAX_STEPS, memoryAgentSessionHooks } from "../tools/index";

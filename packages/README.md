@@ -9,13 +9,10 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
 ### Architecture overview
 
 ```text
-┌──────────────────────┐
-│ memories-ontologies  │  ontological primitives
-└──────────┬───────────┘
-           │
-┌──────────▼───────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────┐
 │ @khoralabs/memories-node                                 │
-│ client + contracts + ./sqlite|libsql|turso-serverless    │
+│ client + ./ontology + contracts                          │
+│ ./sqlite|libsql|turso-serverless                         │
 │ ./projections ./attestation ./autolink ./testing         │
 └───────┬───────────────────────────────┬──────────────────┘
         │                               │
@@ -31,8 +28,7 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
 
 | Package | Path | Role |
 |---------|------|------|
-| `@khoralabs/memories-ontologies` | [`ontologies/`](ontologies) | Ontological primitives |
-| `@khoralabs/memories-node` | [`node/`](node) | Individual memory node (client + persistence contracts + backends + projections + attestation + autolink); `./sqlite` is Bun-only |
+| `@khoralabs/memories-node` | [`node/`](node) | Individual memory node (client + ontology + persistence contracts + backends + projections + attestation + autolink); `./sqlite` is Bun-only |
 | `@khoralabs/memories-service` | [`service/`](service) | Multi-tenant service (lifecycle, HTTP, auth, storage); `./storage/sqlite` is Bun-only |
 | `@khoralabs/memories-agents` | [`agents/`](agents) | Agent toolkit + adapter / integrator / investigator |
 | `@khoralabs/memories-react-graph` | [`react/graph/`](react/graph) | Graph visualization UI |

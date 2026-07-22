@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { defineOntology } from "@khoralabs/memories-ontologies";
+import { defineOntology } from "@khoralabs/memories-node/ontology";
 import z from "zod";
 import {
   type IntegratorPlanWire,
