@@ -4,15 +4,20 @@ Reusable packages for managing many Memories databases per principal: route requ
 
 ## Packages
 
-| Package | Role |
-|---------|------|
-| `@khoralabs/memories-service` | Backend-agnostic database lifecycle: ids, validation, placement interfaces, resolver, LRU connection cache |
-| `@khoralabs/memories-service-storage-sqlite` | Local SQLCipher file backend, SQLite placement registry, and ontology registry |
-| `@khoralabs/memories-service-http` | HTTP adapter (lifecycle, persistence, reads, ontology) |
-| `@khoralabs/memories-service-auth` | HTTP auth strategies (`none`, `server-admin`) |
-| `@khoralabs/memories-service-client` | Management HTTP client, remote `MemoriesClientAsync`, read client, ontology helpers |
+`@khoralabs/memories-service` is a single package with subpath exports:
 
-The core service depends only on `@khoralabs/memories-core` and `lru-cache`. SQLite and HTTP auth live in sibling packages.
+| Export | Role |
+|--------|------|
+| `.` | Backend-agnostic lifecycle: ids, placement interfaces, resolver, LRU cache |
+| `./http` | HTTP adapter (lifecycle, persistence, reads, ontology, attribution) |
+| `./auth` | Auth strategies (`none`, `server-admin`) |
+| `./client` | Management HTTP client, remote `MemoriesClientAsync`, read client, ontology helpers |
+| `./storage/sqlite` | Local SQLCipher backend, SQLite placement + ontology registries, turnkey stack (**Bun**) |
+| `./storage/libsql` | Local libSQL backend (Node-safe) |
+| `./storage/turso-serverless` | Turso serverless backend (Node-safe) |
+| `./testing` | Conformance runners |
+
+Attestation formats used by HTTP attribution live in `@khoralabs/memories-node/attestation`.
 
 ## Database identity
 
@@ -83,7 +88,7 @@ type MemoriesDatabaseBackendResolver = {
 };
 ```
 
-Each strategy advertises what its opened database supports: hybrid search arms, graph index reads, multi-namespace search, unscoped search, as-of search, and so on. The shape matches `MemoriesPersistence.capabilities` from `@khoralabs/memories-core`. Omitted keys resolve via `resolveStrategyCapabilities(strategy)` — sqlite defaults to the full `@khoralabs/memories-sqlite` feature set; other kinds fall back to core defaults unless overridden.
+Each strategy advertises what its opened database supports: hybrid search arms, graph index reads, multi-namespace search, unscoped search, as-of search, and so on. The shape matches `MemoriesPersistence.capabilities` from `@khoralabs/memories-node/persistence`. Omitted keys resolve via `resolveStrategyCapabilities(strategy)` — sqlite defaults to the full local SQLite feature set; other kinds use their strategy defaults unless overridden.
 
 Hosts can read placement strategies before opening a database to decide whether agent workloads (vector search, graph expansion, integrator merges) are viable on that backend.
 
@@ -92,6 +97,7 @@ Mixed node strategies are enabled by a composite backend factory:
 ```ts
 const factory = createCompositeBackendFactory({
   sqlite: createLocalSqliteBackendFactory(),
+  libsql: createLocalLibsqlBackendFactory(),
   "turso-serverless": createTursoServerlessBackendFactory(),
 });
 ```
@@ -150,7 +156,7 @@ Helpers: `ontologyToStoredJsonSchema()` (from runtime `defineOntology`), `canoni
 
 Namespaces remain client-defined at merge time. There is no namespace policy registry in this phase.
 
-See [roadmap/ontology-registry.md](./roadmap/ontology-registry.md) for phase-2 merge enforcement and runtime rehydration from stored JSON.
+Phase-2 merge enforcement and runtime rehydration from stored JSON remain open; see [roadmap/](./roadmap/).
 
 ## Service API
 
@@ -179,7 +185,7 @@ Open connections are cached by database id. LRU eviction calls `handle.close()` 
 Turnkey wiring for SQLCipher files:
 
 ```ts
-import { createLocalSqliteServiceStack } from "@khoralabs/memories-service-storage-sqlite";
+import { createLocalSqliteServiceStack } from "@khoralabs/memories-service/storage/sqlite";
 
 const { service, placement, ontology, defaultStrategy } = createLocalSqliteServiceStack({
   dataDir: "./data/memories",
@@ -193,7 +199,7 @@ This creates:
 - Default strategy `{ kind: "sqlite", dataDir, sqlCipherKey }`
 - Placement registry at `{dataDir}/registry/placements.db`
 - Ontology registry at `{dataDir}/registry/ontologies.db`
-- Resolver + service wired together
+- Composite backend factory (`sqlite`, `libsql`, `turso-serverless`) + resolver + service
 
 Per-principal overrides: `placement.setStrategy(id, strategy)`. Per-database ontology: `ontology.registerOntology(schema)` then `ontology.linkDatabase(id, hash)`.
 
@@ -205,7 +211,7 @@ import {
   createInMemoryPlacementStore,
   createMemoriesDatabaseService,
 } from "@khoralabs/memories-service";
-import { createLocalSqliteBackendFactory } from "@khoralabs/memories-service-storage-sqlite";
+import { createLocalSqliteBackendFactory } from "@khoralabs/memories-service/storage/sqlite";
 
 const placement = createInMemoryPlacementStore({ defaultStrategy });
 const resolver = createBackendResolver({ placement, factory: createLocalSqliteBackendFactory() });
@@ -262,7 +268,7 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 | `POST` | `/databases/ontology/current` | Current ontology link | `read` |
 | `POST` | `/databases/ontology/history` | Link history | `read` |
 
-See [roadmap/http-memory-apis.md](./roadmap/http-memory-apis.md) for client usage.
+Client usage: `@khoralabs/memories-service/client` (see [Client](#client) below).
 
 ## Authorization
 
@@ -287,7 +293,7 @@ Shipped strategies (`MEMORIES_SERVICE_AUTH`):
 | `none` | Embedded, local, or test deployments inside a trust boundary |
 | `server-admin` | Bearer token (`MEMORIES_SERVICE_ADMIN_TOKEN`) grants full access |
 
-One scheme per service instance. See [roadmap/decentralized-principal-auth.md](./roadmap/decentralized-principal-auth.md) and [roadmap/app-policy-auth.md](./roadmap/app-policy-auth.md) for planned strategies.
+One scheme per service instance. Planned strategies: [app-policy](./roadmap/README.md#app-policy-auth) and [did-principal](./roadmap/decentralized-principal-auth.md).
 
 ## Client
 
@@ -311,12 +317,4 @@ Hosts consume these from service clients, backend routes, or workflow adapters.
 
 ## Roadmap
 
-Planned work lives in [roadmap/](./roadmap/). Highlights:
-
-- [App policy auth](./roadmap/app-policy-auth.md) — delegate authorization to the embedding application
-- [Placement admin API](./roadmap/placement-admin-api.md) — HTTP routes for per-principal backend overrides
-- [Ontology registry extensions](./roadmap/ontology-registry.md) — merge enforcement, runtime rehydration
-- [Remote backends](./roadmap/remote-backends.md) — libSQL, remote nodes, principal-registered endpoints
-- [Decentralized principal auth](./roadmap/decentralized-principal-auth.md) — DID request proofs, grants, portable credentials, revocation
-
-Shipped: [HTTP memory APIs](./roadmap/http-memory-apis.md) (persistence, reads, remote client).
+Status and planned work: [roadmap/](./roadmap/). Spec for remaining DID auth: [decentralized-principal-auth.md](./roadmap/decentralized-principal-auth.md).

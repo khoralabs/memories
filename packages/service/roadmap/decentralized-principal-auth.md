@@ -2,25 +2,28 @@
 
 DID-based authorization for the HTTP adapter: clients prove control of a principal, optionally present delegation from the database owner, and verify revocation without server-local grant state.
 
-**Status:** Phase 1 shipped. The attestation signing infrastructure (`@khoralabs/memories-attestation`) and server-side HTTP attribution (`MemoriesServiceHttpOptions.attribution`) are live. The `did-principal` auth scheme, DID proof verification, nonce handling, and delegation grants are not yet implemented.
+**Status:** Phase 1 shipped. Attestation formats (`@khoralabs/memories-node/attestation`) and server-side HTTP attribution (`MemoriesServiceHttpOptions.attribution` on `@khoralabs/memories-service/http`) are live. The `did-principal` auth scheme, DID proof verification, nonce handling, and delegation grants are not yet implemented.
+
+Shipped auth schemes today (`@khoralabs/memories-service/auth`): `none`, `server-admin`. See [README.md](./README.md) for related planned work (app-policy, placement admin).
 
 ## What is shipped
 
-### `@khoralabs/memories-attestation`
+### `@khoralabs/memories-node/attestation`
 
 Formats for cryptographically signed contributor envelopes stored in provenance events:
 
 - **`khora.direct-principal-v1`** — caller-signed attestation binding a principal to a merge/delete scope. Used for in-process attribution where the caller controls the signing key.
 - **`khora.http-request-v1`** — server-signed attestation binding a principal to an HTTP request (method, path, `SHA-256(body)`, `issuedAt`). Built server-side; never trusted from clients.
 
-Both formats share the same `ContributorAttestation` envelope (`v`, `format`, `principal`, `payload`, `signature`, `alg?`, `keyId?`) and the same build/decode/verify pattern with caller-supplied sign and verify callbacks.
+Both formats share the same `ContributorAttestation` envelope (`v`, `format`, `principal`, `payload`, `signature`, `alg?`, `keyId?`) and the same build/decode/verify pattern with caller-supplied sign and verify callbacks. Canonicalization helpers: `canonicalPayloadBytes` / `canonicalJson`.
 
-### HTTP-safe attribution (`memories-service-http`)
+### HTTP-safe attribution (`@khoralabs/memories-service/http`)
 
 `MemoriesServiceHttpOptions.attribution` lets operators configure server-side contributor signing:
 
 ```ts
-import { createMemoriesServiceHttpServer } from "@khoralabs/memories-service-http";
+import { createMemoriesServiceHttpServer } from "@khoralabs/memories-service/http";
+import { createServerAdminAuthStrategy } from "@khoralabs/memories-service/auth";
 
 createMemoriesServiceHttpServer({
   service,
@@ -39,7 +42,7 @@ On every merge or delete request:
 1. `auth.authenticate` and `auth.authorize` run first
 2. A `khora.http-request-v1` attestation is built from the returned `AuthenticatedActor` and request metadata (method, path, body SHA-256, issuedAt)
 3. The attestation is injected as `attribution.contributor` before persistence; any client-supplied `contributor` is stripped
-4. Clients may send `intentSnapshotId` at the top level of merge/delete request bodies; this is preserved and written to `intent_snapshot_id` column
+4. Clients may send `intentSnapshotId` at the top level of merge/delete request bodies; this is preserved and written to `intent_snapshot_id`
 
 Client-side (`RemoteMemoriesClientAsync`): `attribution.contributor` is stripped before wire serialization; `attribution.intentSnapshotId` is promoted to top-level `intentSnapshotId`.
 
@@ -50,7 +53,7 @@ With `MEMORIES_SERVICE_AUTH=did-principal`, a client can access a database when 
 1. Proves control of the DID named by `database.ownerKey`, or
 2. Presents a valid grant from that DID (or an authorized delegate)
 
-The core `@khoralabs/memories-service` package stays unchanged. All DID verification, nonce handling, credential parsing, and revocation checks live in `@khoralabs/memories-service-auth`.
+The core service lifecycle stays unchanged. DID verification, nonce handling, credential parsing, and revocation checks live in `@khoralabs/memories-service/auth`.
 
 ## Auth scheme (not yet implemented)
 
@@ -154,7 +157,7 @@ Per-request verification:
 - Credential is within validity window
 - Credential is not revoked
 
-Credentials must be canonicalized before signing (canonical JSON or typed binary) so all nodes verify the same bytes. The existing `canonicalPayloadBytes` / `canonicalJson` utilities in `@khoralabs/memories-attestation` are reusable here.
+Credentials must be canonicalized before signing (canonical JSON or typed binary) so all nodes verify the same bytes. Reuse `canonicalPayloadBytes` / `canonicalJson` from `@khoralabs/memories-node/attestation`.
 
 ## Issuer-signed revocation log
 
@@ -200,7 +203,7 @@ Provenance events will carry server-attested HTTP attribution from day one witho
 - `@khoralabs/relay-contracts` — header names and message format
 - `@khoralabs/relay-crypto` — DID key resolution and signature verification
 - Nonce store (same pattern as Relay/Khora)
-- `@khoralabs/memories-attestation` — already shipped; `canonicalPayloadBytes` reusable for credential signing
+- `@khoralabs/memories-node/attestation` — already shipped; `canonicalPayloadBytes` reusable for credential signing
 
 ## Implementation order
 
