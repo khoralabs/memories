@@ -1,6 +1,7 @@
 import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source";
 import type { NamespaceGraphLayout } from "./layout-types";
-import { buildNamespaceGraphLayoutFromUmapInput, collectNamespaceUmapInput } from "./umap-input";
+import { collectNamespaceUmapInput } from "./umap-input";
+import { buildNamespaceGraphLayoutFromUmapInput } from "./umap-input-layout";
 import type { Umap3DLayoutOptions } from "./umap-layout";
 
 /**

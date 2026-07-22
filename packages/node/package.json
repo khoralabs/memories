@@ -64,6 +64,11 @@
       "import": "./src/projections/index.ts",
       "default": "./src/projections/index.ts"
     },
+    "./projections/umap-input": {
+      "types": "./src/projections/graph/umap-input.ts",
+      "import": "./src/projections/graph/umap-input.ts",
+      "default": "./src/projections/graph/umap-input.ts"
+    },
     "./attestation": {
       "types": "./src/attestation/index.ts",
       "import": "./src/attestation/index.ts",

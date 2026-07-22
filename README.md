@@ -32,7 +32,7 @@ Public surface (runtime + IDL + contract leaf). Legacy package names remain as t
 
 | Package | Entrypoints |
 |---------|-------------|
-| `memories-node` | `.`, `./sqlite` (**Bun only**), `./libsql`, `./turso-serverless`, `./projections`, `./attestation`, `./autolink`, `./testing` |
+| `memories-node` | `.`, `./sqlite` (**Bun only**), `./libsql`, `./turso-serverless`, `./projections`, `./projections/umap-input`, `./attestation`, `./autolink`, `./testing` |
 | `memories-service` | `.`, `./client`, `./http`, `./auth`, `./storage/sqlite` (**Bun only**), `./storage/libsql`, `./storage/turso-serverless`, `./testing` |
 | `memories-agents` | `./tools`, `./adapter`, `./integrator`, `./investigator` |
 
@@ -48,6 +48,7 @@ Heavy drivers are **optional peerDependencies** of `@khoralabs/memories-node`. I
 | `@khoralabs/memories-node/libsql` | Node / Bun | `@libsql/client`, `ajv` |
 | `@khoralabs/memories-node/turso-serverless` | Node / Bun | `@tursodatabase/serverless`, `ajv` |
 | `@khoralabs/memories-node/projections` | Node / Bun | `umap-js` |
+| `@khoralabs/memories-node/projections/umap-input` | Node / Bun | _(none — wire codec only)_ |
 | `@khoralabs/memories-node/autolink` | Node / Bun | `workflow` (for `./autolink/workflows`) |
 
 External runtime dependencies:

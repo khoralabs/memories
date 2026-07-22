@@ -2,12 +2,12 @@ import { describe, expect, test } from "bun:test";
 import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source";
 import { buildNamespaceGraphLayoutFromSource } from "./build-namespace-graph-layout";
 import {
-  buildNamespaceGraphLayoutFromUmapInput,
   collectNamespaceUmapInput,
   decodeUmapInput,
   encodeUmapInput,
   validateUmapInput,
 } from "./umap-input";
+import { buildNamespaceGraphLayoutFromUmapInput } from "./umap-input-layout";
 
 const source: GraphProjectionSource = {
   async listNamespacesUnderPrefix(prefix) {

@@ -13,7 +13,7 @@ import {
   UMAP_INPUT_ENCODING_HEADER,
   type UmapInputCompression,
   type UmapInputScope,
-} from "@khoralabs/memories-node/projections";
+} from "@khoralabs/memories-node/projections/umap-input";
 import type { MemoryMutationAttribution } from "@khoralabs/memories-node/provenance";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 import {

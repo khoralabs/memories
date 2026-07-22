@@ -6,10 +6,8 @@ import type {
   OntologyLabelInstance,
 } from "@khoralabs/memories-persistence-core";
 import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source";
-import { buildNamespaceGraphLayoutFromRows } from "./layout-core";
-import type { GraphLayoutEdge, NamespaceGraphLayout } from "./layout-types";
+import type { GraphLayoutEdge } from "./layout-types";
 import { qualifyMemoryKey } from "./qualified-memory-key";
-import type { Umap3DLayoutOptions } from "./umap-layout";
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
@@ -188,10 +186,6 @@ function serializeMap<T>(map: Map<string, T>): Array<[string, T]> {
   return [...map.entries()];
 }
 
-function deserializeMap<T>(entries: Array<[string, T]>): Map<string, T> {
-  return new Map(entries);
-}
-
 function qualifyEdges(namespace: string, edges: GraphEdgeLink[]): GraphLayoutEdge[] {
   return edges.map((edge) => ({
     edgeId: qualifyMemoryKey(namespace, edge.edgeId),
@@ -285,20 +279,6 @@ export async function collectNamespaceUmapInput(
       ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
       : {}),
   };
-}
-
-export function buildNamespaceGraphLayoutFromUmapInput(
-  input: NamespaceUmapInput,
-  umapOptions?: Umap3DLayoutOptions,
-): NamespaceGraphLayout {
-  return buildNamespaceGraphLayoutFromRows({
-    namespace: input.namespace,
-    edges: input.edges,
-    embeddings: input.embeddings,
-    labelsByKey: deserializeMap(input.labelsByKey),
-    propertiesByKey: deserializeMap(input.propertiesByKey),
-    umapOptions,
-  });
 }
 
 export async function encodeUmapInput(

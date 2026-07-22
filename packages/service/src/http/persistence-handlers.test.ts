@@ -3,7 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { MemoriesClient } from "@khoralabs/memories-node";
-import { decodeUmapInput, UMAP_INPUT_ENCODING_HEADER } from "@khoralabs/memories-node/projections";
+import {
+  decodeUmapInput,
+  UMAP_INPUT_ENCODING_HEADER,
+} from "@khoralabs/memories-node/projections/umap-input";
 import { getMemoriesSqliteDatabase } from "@khoralabs/memories-node/sqlite";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
