@@ -6,7 +6,7 @@ import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 import {
   normalizeStoredOntologyJsonSchema,
   type StoredOntologyJsonSchema,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 
 import { createSqliteOntologyStore } from "./ontology-registry";
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { unsupportedStorageFeature } from "../storage-core/index";
+import { unsupportedStorageFeature } from "../storage/core/index";
 import type {
   MemoriesDatabaseBackend,
   MemoriesDatabaseBackendFactory,

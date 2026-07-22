@@ -1,6 +1,6 @@
 import { LRUCache } from "lru-cache";
-import type { MemoriesDatabaseHandle, MemoriesDatabaseId } from "../storage-core/index";
-import { cacheKeyForId, validateMemoriesDatabaseId } from "../storage-core/index";
+import type { MemoriesDatabaseHandle, MemoriesDatabaseId } from "../storage/core/index";
+import { cacheKeyForId, validateMemoriesDatabaseId } from "../storage/core/index";
 
 export type CachedConnection = {
   id: MemoriesDatabaseId;

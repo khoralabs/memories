@@ -14,7 +14,7 @@ import type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabaseHandle,
   MemoriesDatabaseId,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 import {
   createReversibleOwnerKeyEncoder,
   DATABASE_FILENAME,
@@ -22,7 +22,7 @@ import {
   resolveEncodedDatabasePath,
   unsupportedStorageFeature,
   validateMemoriesDatabaseId,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 
 function sidecarPaths(dbPath: string): string[] {
   return [`${dbPath}-wal`, `${dbPath}-shm`];

@@ -1,7 +1,7 @@
 import type {
   MemoriesDatabaseBackendFactory,
   MemoriesDatabaseBackendStrategy,
-} from "../storage-core/index";
+} from "../storage/core/index";
 
 export type CompositeBackendFactoryMap = Record<string, MemoriesDatabaseBackendFactory>;
 

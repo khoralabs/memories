@@ -11,7 +11,7 @@ import type {
   MemoriesDatabaseOntologyStore,
   MemoriesDatabasePlacementStore,
   SqliteBackendStrategy,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 import { createLocalLibsqlBackendFactory } from "../libsql/index";
 import { createTursoServerlessBackendFactory } from "../turso-serverless/index";
 import { createLocalSqliteBackendFactory } from "./local-sqlite-backend";

@@ -2,7 +2,7 @@ import type {
   MemoriesDatabaseId,
   MemoriesDatabaseOntologyStore,
   StoredOntologyJsonSchema,
-} from "../storage-core/index";
+} from "../storage/core/index";
 
 import { HttpError, parseDatabaseIdBody } from "./handlers";
 

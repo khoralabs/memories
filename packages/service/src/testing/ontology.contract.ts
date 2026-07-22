@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type {
   MemoriesDatabaseOntologyStore,
   StoredOntologyJsonSchema,
-} from "../storage-core/index";
-import { hashStoredOntology, STORED_ONTOLOGY_JSON_SCHEMA_URI } from "../storage-core/index";
+} from "../storage/core/index";
+import { hashStoredOntology, STORED_ONTOLOGY_JSON_SCHEMA_URI } from "../storage/core/index";
 
 export type MemoriesDatabaseOntologyStoreContractFactory = () =>
   | MemoriesDatabaseOntologyStore

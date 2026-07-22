@@ -5,7 +5,7 @@ import type {
   MemoriesDatabaseHandle,
   MemoriesDatabaseId,
   MemoriesDatabaseSnapshot,
-} from "../storage-core/index";
+} from "../storage/core/index";
 
 export type { DatabaseKind, DatabaseListFilter, MemoriesDatabaseId };
 

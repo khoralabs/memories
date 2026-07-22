@@ -7,7 +7,7 @@ import type {
   MemoriesDatabaseOntologyStore,
   OntologyLinkRecord,
   StoredOntologyJsonSchema,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 import {
   currentLinkForRows,
   hashStoredOntology,
@@ -16,7 +16,7 @@ import {
   ontologyMatchesLabelKinds,
   parseDatabaseKey,
   validateMemoriesDatabaseId,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 
 const ONTOLOGY_SCHEMA = `
 CREATE TABLE IF NOT EXISTS ontologies (

@@ -1,6 +1,6 @@
 import type { TursoCredentials } from "@khoralabs/memories-node/turso-serverless";
-import type { MemoriesDatabaseId, TursoServerlessBackendStrategy } from "../../storage-core/index";
-import { validateMemoriesDatabaseId } from "../../storage-core/index";
+import type { MemoriesDatabaseId, TursoServerlessBackendStrategy } from "../../storage/core/index";
+import { validateMemoriesDatabaseId } from "../../storage/core/index";
 
 const OWNER_KEY_PLACEHOLDER = "{ownerKey}";
 const KIND_PLACEHOLDER = "{kind}";

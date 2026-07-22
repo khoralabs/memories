@@ -7,7 +7,7 @@ import {
   type MemoriesDatabaseId,
   type MemoriesDatabasePlacementStore,
   strategyCacheKey,
-} from "../storage-core/index";
+} from "../storage/core/index";
 
 export type MemoriesDatabaseBackendResolver = {
   resolve(id: MemoriesDatabaseId): Promise<MemoriesDatabaseBackend>;

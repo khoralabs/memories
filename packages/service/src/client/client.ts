@@ -1,4 +1,4 @@
-import type { DatabaseListFilter, MemoriesDatabaseId } from "../storage-core/index";
+import type { DatabaseListFilter, MemoriesDatabaseId } from "../storage/core/index";
 
 export type MemoriesServiceClientAuthProvider = {
   applyAuth(req: RequestInit): RequestInit | Promise<RequestInit>;

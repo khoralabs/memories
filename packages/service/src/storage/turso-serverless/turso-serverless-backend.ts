@@ -11,8 +11,8 @@ import type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabaseHandle,
   TursoServerlessBackendStrategy,
-} from "../../storage-core/index";
-import { unsupportedStorageFeature } from "../../storage-core/index";
+} from "../../storage/core/index";
+import { unsupportedStorageFeature } from "../../storage/core/index";
 import { resolveTursoCredentials } from "./resolve-credentials";
 
 /** Tables cleared by {@link deleteTursoPrincipalData}; order respects FK dependencies. */

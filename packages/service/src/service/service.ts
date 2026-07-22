@@ -4,8 +4,8 @@ import type {
   MemoriesDatabaseHandle,
   MemoriesDatabaseId,
   MemoriesDatabaseSnapshot,
-} from "../storage-core/index";
-import { validateMemoriesDatabaseId } from "../storage-core/index";
+} from "../storage/core/index";
+import { validateMemoriesDatabaseId } from "../storage/core/index";
 
 import {
   createConnectionCache,

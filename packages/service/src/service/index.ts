@@ -1,5 +1,5 @@
-/** @deprecated Storage contracts are owned by ../storage-core/index. */
-export * from "../storage-core/index";
+/** @deprecated Storage contracts are owned by ../storage/core/index. */
+export * from "../storage/core/index";
 export {
   type CompositeBackendFactoryMap,
   createCompositeBackendFactory,

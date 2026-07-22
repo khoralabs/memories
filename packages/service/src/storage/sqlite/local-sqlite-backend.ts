@@ -17,7 +17,7 @@ import type {
   MemoriesDatabaseHandle,
   MemoriesDatabaseId,
   SqliteBackendStrategy,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 import {
   createReversibleOwnerKeyEncoder,
   DATABASE_FILENAME,
@@ -25,7 +25,7 @@ import {
   resolveEncodedDatabasePath,
   unsupportedStorageFeature,
   validateMemoriesDatabaseId,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 
 type OpenedLocalDatabase = {
   persistence: MemoriesPersistence;

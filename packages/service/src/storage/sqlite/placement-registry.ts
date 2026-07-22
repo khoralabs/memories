@@ -5,12 +5,12 @@ import { openEncryptedDatabaseSync } from "@khoralabs/sqlite-crypto";
 import type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabasePlacementStore,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 import {
   parseStrategy,
   serializeStrategy,
   validateMemoriesDatabaseId,
-} from "../../storage-core/index";
+} from "../../storage/core/index";
 
 const PLACEMENT_SCHEMA = `
 CREATE TABLE IF NOT EXISTS placement_defaults (

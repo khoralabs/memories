@@ -16,7 +16,7 @@ import {
   type UmapInputCompression,
 } from "@khoralabs/memories-node/projections/umap-input";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-ontologies";
-import type { MemoriesDatabaseId } from "../storage-core/index";
+import type { MemoriesDatabaseId } from "../storage/core/index";
 
 import { MemoriesServiceClient, type MemoriesServiceClientOptions } from "./client";
 import {

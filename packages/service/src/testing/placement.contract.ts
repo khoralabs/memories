@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type {
   MemoriesDatabaseBackendStrategy,
   MemoriesDatabasePlacementStore,
-} from "../storage-core/index";
+} from "../storage/core/index";
 
 export type MemoriesDatabasePlacementStoreContractFactory = () =>
   | MemoriesDatabasePlacementStore

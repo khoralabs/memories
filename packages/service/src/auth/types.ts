@@ -1,4 +1,4 @@
-import type { MemoriesDatabaseId } from "../storage-core/index";
+import type { MemoriesDatabaseId } from "../storage/core/index";
 
 export type DatabaseAction = "read" | "write" | "manage";
 

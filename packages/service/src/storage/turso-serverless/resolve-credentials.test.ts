@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { TursoServerlessBackendStrategy } from "../../storage-core/index";
+import type { TursoServerlessBackendStrategy } from "../../storage/core/index";
 
 import { resolveTursoCredentials, resolveTursoDatabaseUrl } from "./resolve-credentials";
 

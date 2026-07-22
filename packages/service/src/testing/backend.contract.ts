@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { MemoriesDatabaseBackend, MemoriesDatabaseId } from "../storage-core/index";
-import { databaseKey, UnsupportedStorageFeatureError } from "../storage-core/index";
+import type { MemoriesDatabaseBackend, MemoriesDatabaseId } from "../storage/core/index";
+import { databaseKey, UnsupportedStorageFeatureError } from "../storage/core/index";
 
 export type MemoriesDatabaseBackendContractFactory = () =>
   | MemoriesDatabaseBackend
