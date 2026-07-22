@@ -28,14 +28,14 @@
       "default": "./src/index.ts"
     },
     "./persistence": {
-      "types": "./src/persistence/reexports/persistence.ts",
-      "import": "./src/persistence/reexports/persistence.ts",
-      "default": "./src/persistence/reexports/persistence.ts"
+      "types": "./src/persistence/core/persistence/index.ts",
+      "import": "./src/persistence/core/persistence/index.ts",
+      "default": "./src/persistence/core/persistence/index.ts"
     },
     "./provenance": {
-      "types": "./src/persistence/reexports/provenance.ts",
-      "import": "./src/persistence/reexports/provenance.ts",
-      "default": "./src/persistence/reexports/provenance.ts"
+      "types": "./src/persistence/core/provenance/index.ts",
+      "import": "./src/persistence/core/provenance/index.ts",
+      "default": "./src/persistence/core/provenance/index.ts"
     },
     "./helpers": {
       "types": "./src/core/helpers/index.ts",
