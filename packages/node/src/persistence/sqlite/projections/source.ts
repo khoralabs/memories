@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { GraphMemoryEmbedding } from "@khoralabs/memories-persistence-core";
-import type { GraphProjectionSource } from "../../projections/index";
+import type { GraphProjectionSource } from "../../../projections/index";
 import { blobToVector, listNamespacesUnderPrefix } from "../persistence/index";
 
 export function loadMeanEmbeddingsForNamespace(
