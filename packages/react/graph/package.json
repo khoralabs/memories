@@ -15,7 +15,7 @@
     "access": "public"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
   "exports": {
@@ -26,6 +26,7 @@
     }
   },
   "scripts": {
+    "build": "bun run ../../../scripts/build-package.ts .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

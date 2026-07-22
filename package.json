@@ -11,6 +11,7 @@
     "format:check": "biome check .",
     "typecheck": "tsc --noEmit -p packages/persistence/core/tsconfig.json && tsc --noEmit -p packages/ontologies/tsconfig.json && tsc --noEmit -p packages/node/tsconfig.json && tsc --noEmit -p packages/service/tsconfig.json && tsc --noEmit -p packages/agents/tsconfig.json && tsc --noEmit -p packages/react/graph/tsconfig.json",
     "assert:no-bun-sqlite-leak": "bun run scripts/assert-no-bun-sqlite-leak.ts",
+    "build": "bun run scripts/build-packages.ts",
     "release:bump": "bun run scripts/bump-versions.ts",
     "release:publish": "bun run scripts/publish-packages.ts",
     "test": "bun test",

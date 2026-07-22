@@ -136,7 +136,7 @@ export function zExpandedMemoryWireFromOntology<
 export function memoryAdapterExpandedOutput<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
->(ontology: OntologyDefinition<TNode, TEdge>) {
+>(ontology: OntologyDefinition<TNode, TEdge>): ReturnType<typeof Output.object> {
   return Output.object({
     name: "ExpandedMemory",
     description:

@@ -15,7 +15,7 @@
     "access": "public"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
   "exports": {
@@ -51,6 +51,7 @@
     "zod": "^4"
   },
   "scripts": {
+    "build": "bun run ../../scripts/build-package.ts .",
     "test": "bun test"
   },
   "devDependencies": {

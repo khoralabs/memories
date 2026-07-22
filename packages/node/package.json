@@ -15,9 +15,12 @@
     "access": "public"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
+  "scripts": {
+    "build": "bun run ../../scripts/build-package.ts ."
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -105,9 +108,9 @@
       "default": "./src/autolink/workflows/index.ts"
     },
     "./testing": {
-      "types": "./src/testing/index.ts",
-      "import": "./src/testing/index.ts",
-      "default": "./src/testing/index.ts"
+      "types": "./src/persistence/testing/index.ts",
+      "import": "./src/persistence/testing/index.ts",
+      "default": "./src/persistence/testing/index.ts"
     }
   },
   "dependencies": {

@@ -2,12 +2,12 @@ export {
   type MemoriesDatabaseBackendContractFactory,
   type MemoriesDatabaseBackendContractOptions,
   runMemoriesDatabaseBackendContractTests,
-} from "./backend.contract.test.ts";
+} from "./backend.contract.ts";
 export {
   type MemoriesDatabaseOntologyStoreContractFactory,
   runMemoriesDatabaseOntologyStoreContractTests,
-} from "./ontology.contract.test.ts";
+} from "./ontology.contract.ts";
 export {
   type MemoriesDatabasePlacementStoreContractFactory,
   runMemoriesDatabasePlacementStoreContractTests,
-} from "./placement.contract.test.ts";
+} from "./placement.contract.ts";

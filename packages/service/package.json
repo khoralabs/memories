@@ -15,9 +15,12 @@
     "access": "public"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
+  "scripts": {
+    "build": "bun run ../../scripts/build-package.ts ."
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",

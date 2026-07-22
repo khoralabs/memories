@@ -163,7 +163,10 @@ export type IntegratorPlanWire = {
 export function integratorPlanOutputFromOntology<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
->(ontology: OntologyDefinition<TNode, TEdge>, options?: IntegratorPlanWireOptions) {
+>(
+  ontology: OntologyDefinition<TNode, TEdge>,
+  options?: IntegratorPlanWireOptions,
+): ReturnType<typeof Output.object> {
   return Output.object({
     name: "MemoryIntegratorPlan",
     description:

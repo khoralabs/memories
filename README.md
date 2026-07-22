@@ -150,10 +150,13 @@ Packages share a **unified version**. Publish via GitHub Actions:
 Local helpers:
 
 ```bash
+bun run build                              # bun bundle JS + tsc declarations into dist/
 bun run release:bump 0.2.0
 bun run release:publish --dry-run
-bun run release:publish                    # requires NPM_CONFIG_TOKEN or NPM_TOKEN
+bun run release:publish                    # build + publish; requires NPM_CONFIG_TOKEN or NPM_TOKEN
 ```
+
+Publish ships `dist/` (JavaScript from `bun build`, `.d.ts` from `tsc --emitDeclarationOnly`). Workspace `exports` still point at `src/` for local Bun; the publish script rewrites them to `dist/` for npm.
 
 Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (persistence-core → ontologies → node → service → agents → react-graph → spec).
 

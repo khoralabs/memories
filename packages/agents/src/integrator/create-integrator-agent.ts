@@ -42,7 +42,7 @@ export type IntegratorPlanGeneration = Awaited<ReturnType<typeof generateObject>
 
 export type IntegratorPipelineGeneration = IntegratorPlanGeneration;
 
-function createIntegratorSearchCompleteOutput() {
+function createIntegratorSearchCompleteOutput(): ReturnType<typeof Output.object> {
   return Output.object({
     name: "MemoryIntegratorSearchComplete",
     description: "Signals that neighbor memory_search is complete.",

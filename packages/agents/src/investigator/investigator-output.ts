@@ -20,7 +20,7 @@ export const zInvestigatorAnswerWire = z.object({
 
 export type InvestigatorAnswerWire = z.infer<typeof zInvestigatorAnswerWire>;
 
-export function investigatorAnswerOutput() {
+export function investigatorAnswerOutput(): ReturnType<typeof Output.object> {
   return Output.object({
     name: "MemoryInvestigatorAnswer",
     description:
