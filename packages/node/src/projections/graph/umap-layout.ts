@@ -1,7 +1,25 @@
+import { createRequire } from "node:module";
 import type { UMAPParameters } from "umap-js";
-import { UMAP } from "umap-js";
 
 export type Point3 = { x: number; y: number; z: number };
+
+/** `umap-js` is an optional peer dependency; load it lazily so it's never required at import time. */
+let umapCtor:
+  | (new (
+      params: UMAPParameters,
+    ) => { fit: (data: number[][]) => number[][] })
+  | null
+  | undefined;
+function loadUmapCtor() {
+  if (umapCtor === undefined) {
+    try {
+      umapCtor = createRequire(import.meta.url)("umap-js").UMAP;
+    } catch {
+      umapCtor = null;
+    }
+  }
+  return umapCtor;
+}
 
 /** Default seed so UMAP layout is reproducible across process reloads. */
 export const DEFAULT_UMAP_LAYOUT_SEED = 0x6eed_0eed;
@@ -83,6 +101,9 @@ export function umap3DLayout(embeddings: number[][], options?: Umap3DLayoutOptio
   if (n < 4) {
     return fibonacciSphereLayout3D(n);
   }
+
+  const UMAP = loadUmapCtor();
+  if (!UMAP) return fibonacciSphereLayout3D(n);
 
   const nNeighbors = Math.min(15, Math.max(2, n - 1));
   const random = options?.random ?? createSeededRandom(options?.seed ?? DEFAULT_UMAP_LAYOUT_SEED);
