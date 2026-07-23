@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/memories-agents",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Memory agents: tools, adapter, integrator, and investigator.",
   "license": "MIT",
   "type": "module",
