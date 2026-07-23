@@ -37,10 +37,19 @@ afterEach(() => {
 });
 
 function createTestStack() {
-  return createLocalSqliteServiceStack({
-    dataDir: makeTempDataDir(),
-    sqlCipherKey: TEST_SQLCIPHER_KEY,
-  });
+  const open = () =>
+    createLocalSqliteServiceStack({
+      dataDir: makeTempDataDir(),
+      sqlCipherKey: TEST_SQLCIPHER_KEY,
+    });
+  try {
+    return open();
+  } catch (e) {
+    // First open can race: custom libsqlite vs SQLCipher setCustomSQLite.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/SQLite already loaded/i.test(msg)) throw e;
+    return open();
+  }
 }
 
 async function postJson(url: string, body: unknown, stack = createTestStack()) {
@@ -518,6 +527,117 @@ describe("remote memories client over http", () => {
     } finally {
       server.stop(true);
     }
+  });
+
+  test("HTTP merge accepts labeled nodes (permissive schema implements jsonSchema)", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "remote-labeled" };
+    const server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        return handleMemoriesServiceHttpRequest(req, {
+          service: stack.service,
+          ontology: stack.ontology,
+          auth: createNoneAuthStrategy(),
+        });
+      },
+    });
+
+    try {
+      const client = await createRemoteMemoriesClientAsync({
+        baseUrl: `http://localhost:${server.port}`,
+        database,
+        ontology: testOntology,
+      });
+
+      const memoryIds = await client.mergeMemory({
+        kind: "node",
+        key: "labeled-note",
+        namespace: "user/labeled",
+        content: [{ key: "text", text: "person memory" }],
+        labels: [{ kind: "person", props: { name: "Ada" } }],
+      });
+      expect(memoryIds.length).toBeGreaterThan(0);
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("HTTP merge validates props against linked ontology and rejects invalid", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "linked-validate" };
+    const linked = {
+      $schema: "https://json-schema.org/draft/2020-12/schema" as const,
+      type: "object" as const,
+      properties: {
+        nodeLabels: {
+          type: "object" as const,
+          additionalProperties: false as const,
+          properties: {
+            person: {
+              type: "object",
+              properties: { name: { type: "string" } },
+              required: ["name"],
+              additionalProperties: false,
+            },
+          },
+        },
+        edgeLabels: {
+          type: "object" as const,
+          additionalProperties: false as const,
+          properties: {},
+        },
+      },
+      required: ["nodeLabels", "edgeLabels"] as ["nodeLabels", "edgeLabels"],
+      additionalProperties: false as const,
+    };
+    const { hash } = await stack.ontology.registerOntology(linked);
+    await stack.service.open(database);
+    await stack.ontology.linkDatabase(database, hash);
+
+    const httpOpts = {
+      service: stack.service,
+      ontology: stack.ontology,
+      auth: createNoneAuthStrategy(),
+    };
+
+    const invalid = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            kind: "node",
+            key: "bad-person",
+            namespace: "user/linked",
+            content: [{ key: "text", text: "missing name" }],
+            labels: [{ kind: "person", props: {} }],
+          },
+        }),
+      }),
+      httpOpts,
+    );
+    expect(invalid.status).toBe(400);
+
+    const valid = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            kind: "node",
+            key: "good-person",
+            namespace: "user/linked",
+            content: [{ key: "text", text: "has name" }],
+            labels: [{ kind: "person", props: { name: "Ada" } }],
+          },
+        }),
+      }),
+      httpOpts,
+    );
+    expect(valid.status).toBe(200);
   });
 
   test("read client fetches and decodes umap input", async () => {

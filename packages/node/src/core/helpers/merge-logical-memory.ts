@@ -7,12 +7,21 @@ import {
   upsertMemorySearchMetaVectorAsync,
 } from "../../persistence/core/persistence";
 import type { MemoriesClient, TypedSearchHit } from "../api/client";
-import { MemoriesClientAsync } from "../api/client-async";
+import type { MemoriesClientAsync } from "../api/client-async";
 import type { MergeMemoryContentItem, MergeMemoryParamsNode } from "../api/merge-memory";
 import type { SearchContent } from "../api/search";
 import type { EmbeddingModel } from "./embedding-model";
 import { embedTextChunks } from "./embedding-model";
 import type { ProcessedLogicalMemory } from "./logical-memory";
+
+/** Avoid `instanceof MemoriesClientAsync` — duplicate class copies across entrypoints break it. */
+function isThenable<T>(value: T | PromiseLike<T>): value is PromiseLike<T> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as PromiseLike<T>).then === "function"
+  );
+}
 
 /** Strip merge `key` and narrow optional fields to {@link SearchContent}. */
 export function mergeMemoryItemToSearchContent(item: MergeMemoryContentItem): SearchContent {
@@ -73,22 +82,37 @@ export async function mergeLogicalMemoryWithMergeSlice<
   slice: Pick<MergeMemoryParamsNode<TNode, TEdge>, "labels" | "edges" | "properties">,
   embeddingModel: EmbeddingModel,
 ): Promise<void> {
-  if (client instanceof MemoriesClientAsync) {
-    const metaSyncedKeys = await client.mergeMemory({
-      key: processedLogicalMemory.key,
-      namespace: processedLogicalMemory.namespace,
-      content: processedLogicalMemory.content,
-      labels: slice.labels,
-      edges: slice.edges,
-      properties: slice.properties,
-    });
+  const mergeResult = client.mergeMemory({
+    key: processedLogicalMemory.key,
+    namespace: processedLogicalMemory.namespace,
+    content: processedLogicalMemory.content,
+    labels: slice.labels,
+    edges: slice.edges,
+    properties: slice.properties,
+  });
+  // Remote / async clients may extend a different MemoriesClientAsync copy than this module
+  // imported — detect via thenable return instead of `instanceof`.
+  const asyncMerge = isThenable(mergeResult);
+  const metaSyncedKeys = asyncMerge ? await mergeResult : mergeResult;
 
-    const namespace = processedLogicalMemory.namespace;
-    const readOp = { now: Date.now() };
+  const namespace = processedLogicalMemory.namespace;
+  const readOp = { now: Date.now() };
+
+  if (asyncMerge) {
+    const asyncClient = client as MemoriesClientAsync<TNode, TEdge>;
+    const persistence = asyncClient.persistence;
+    // Remote HTTP clients expose a partial persistence stub; merge already ran over the wire.
+    if (
+      typeof persistence.buildCanonicalMemorySearchMetaText !== "function" ||
+      typeof persistence.upsertMemorySearchMetaVector !== "function"
+    ) {
+      return;
+    }
+
     const pairs: { memoryKey: string; text: string }[] = [];
     for (const memoryKey of metaSyncedKeys) {
       const text = await buildCanonicalMemorySearchMetaTextAsync(
-        client.persistence,
+        persistence,
         readOp,
         namespace,
         memoryKey,
@@ -98,7 +122,7 @@ export async function mergeLogicalMemoryWithMergeSlice<
 
     if (pairs.length === 0) return;
 
-    const caps = resolveMemoriesBackendCapabilities(client.persistence);
+    const caps = resolveMemoriesBackendCapabilities(persistence);
     if (!caps.vectorSearch) {
       return;
     }
@@ -113,7 +137,7 @@ export async function mergeLogicalMemoryWithMergeSlice<
       );
     }
 
-    await client.persistence.withTransaction(async () => {
+    await persistence.withTransaction(async () => {
       const op = { now: Date.now() };
       for (let i = 0; i < pairs.length; i++) {
         const pair = pairs[i];
@@ -123,7 +147,7 @@ export async function mergeLogicalMemoryWithMergeSlice<
             "mergeLogicalMemoryWithMergeSlice: missing embedding for search-meta batch",
           );
         }
-        await upsertMemorySearchMetaVectorAsync(client.persistence, op, {
+        await upsertMemorySearchMetaVectorAsync(persistence, op, {
           namespace,
           memoryKey: pair.memoryKey,
           vector: new Float32Array(vec),
@@ -133,27 +157,22 @@ export async function mergeLogicalMemoryWithMergeSlice<
     return;
   }
 
-  const metaSyncedKeys = client.mergeMemory({
-    key: processedLogicalMemory.key,
-    namespace: processedLogicalMemory.namespace,
-    content: processedLogicalMemory.content,
-    labels: slice.labels,
-    edges: slice.edges,
-    properties: slice.properties,
-  });
-
-  const namespace = processedLogicalMemory.namespace;
-  const readOp = { now: Date.now() };
+  const syncClient = client as MemoriesClient<TNode, TEdge>;
   const pairs = metaSyncedKeys
     .map((memoryKey) => ({
       memoryKey,
-      text: buildCanonicalMemorySearchMetaText(client.persistence, readOp, namespace, memoryKey),
+      text: buildCanonicalMemorySearchMetaText(
+        syncClient.persistence,
+        readOp,
+        namespace,
+        memoryKey,
+      ),
     }))
     .filter((p) => p.text.length > 0);
 
   if (pairs.length === 0) return;
 
-  const caps = resolveMemoriesBackendCapabilities(client.persistence);
+  const caps = resolveMemoriesBackendCapabilities(syncClient.persistence);
   if (!caps.vectorSearch) {
     return;
   }
@@ -168,7 +187,7 @@ export async function mergeLogicalMemoryWithMergeSlice<
     );
   }
 
-  client.persistence.withTransaction(() => {
+  syncClient.persistence.withTransaction(() => {
     const op = { now: Date.now() };
     for (let i = 0; i < pairs.length; i++) {
       const pair = pairs[i];
@@ -178,7 +197,7 @@ export async function mergeLogicalMemoryWithMergeSlice<
           "mergeLogicalMemoryWithMergeSlice: missing embedding for search-meta batch",
         );
       }
-      upsertMemorySearchMetaVector(client.persistence, op, {
+      upsertMemorySearchMetaVector(syncClient.persistence, op, {
         namespace,
         memoryKey: pair.memoryKey,
         vector: new Float32Array(vec),

@@ -221,7 +221,7 @@ export async function handleMemoriesServiceHttpRequest(
         opts.attribution !== undefined
           ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
           : undefined;
-      return handleDatabaseMerge(opts.service, body, attribution);
+      return await handleDatabaseMerge(opts.service, body, attribution, opts.ontology);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/delete-memory") {

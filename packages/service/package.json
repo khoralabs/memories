@@ -65,6 +65,7 @@
   },
   "dependencies": {
     "@khoralabs/memories-node": "workspace:*",
+    "ajv": "^8",
     "lru-cache": "^11.5.1"
   },
   "peerDependencies": {

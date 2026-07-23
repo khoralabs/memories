@@ -28,9 +28,16 @@ import {
   type DatabaseVectorDimensionsRequest,
   serializeSearchHit,
 } from "../client/index";
-import type { MemoriesDatabaseHandle, MemoriesDatabaseService } from "../service/index";
+import type {
+  MemoriesDatabaseHandle,
+  MemoriesDatabaseId,
+  MemoriesDatabaseOntologyStore,
+  MemoriesDatabaseService,
+} from "../service/index";
+import type { StoredOntologyJsonSchema } from "../storage/core/index";
 
 import { HttpError, type MemoriesServiceHttpOptions, parseDatabaseIdBody } from "./handlers";
+import { labelMapsFromStoredOntology } from "./stored-ontology-label-schema";
 
 const GLOBAL_ROOT = "_global_";
 
@@ -65,7 +72,13 @@ async function ensureScopeChain(
   });
 }
 
+/** Permissive object props schema when no linked ontology (or unknown kind). */
 function permissiveLabelSchema(): LabelSchemaMap[string] {
+  const objectJsonSchema: Record<string, unknown> = {
+    type: "object",
+    additionalProperties: true,
+  };
+  // Cast: StandardSchemaV1 typing omits optional StandardJSONSchemaV1.jsonSchema.
   return {
     "~standard": {
       version: 1,
@@ -76,11 +89,19 @@ function permissiveLabelSchema(): LabelSchemaMap[string] {
         }
         return { value: value as Record<string, unknown> };
       },
+      // Required by mergeMemory → catalogSchemaJsonFor* → propsSchemaToJson
+      jsonSchema: {
+        input: () => objectJsonSchema,
+        output: () => objectJsonSchema,
+      },
     },
-  };
+  } as LabelSchemaMap[string];
 }
 
-function ontologyFromMergeParams(params: Record<string, unknown>): OntologyDefinition {
+function collectMergeLabelKinds(params: Record<string, unknown>): {
+  nodeKinds: Set<string>;
+  edgeKinds: Set<string>;
+} {
   const nodeKinds = new Set<string>();
   const edgeKinds = new Set<string>();
 
@@ -96,13 +117,38 @@ function ontologyFromMergeParams(params: Record<string, unknown>): OntologyDefin
     }
   }
 
+  return { nodeKinds, edgeKinds };
+}
+
+/**
+ * Build a merge-time ontology for the request kinds.
+ * Prefer schemas from the DB-linked stored ontology; fall back to permissive for
+ * missing registry, missing link, or kinds not present on the linked document.
+ */
+export function ontologyFromMergeParams(
+  params: Record<string, unknown>,
+  linked?: StoredOntologyJsonSchema,
+): OntologyDefinition {
+  const { nodeKinds, edgeKinds } = collectMergeLabelKinds(params);
+  const linkedMaps = linked !== undefined ? labelMapsFromStoredOntology(linked) : undefined;
+
   const nodeLabels = Object.fromEntries(
-    [...nodeKinds].map((kind) => [kind, permissiveLabelSchema()]),
+    [...nodeKinds].map((kind) => [kind, linkedMaps?.nodeLabels[kind] ?? permissiveLabelSchema()]),
   ) as LabelSchemaMap;
   const edgeLabels = Object.fromEntries(
-    [...edgeKinds].map((kind) => [kind, permissiveLabelSchema()]),
+    [...edgeKinds].map((kind) => [kind, linkedMaps?.edgeLabels[kind] ?? permissiveLabelSchema()]),
   ) as LabelSchemaMap;
   return { nodeLabels, edgeLabels };
+}
+
+async function resolveLinkedOntology(
+  ontologyStore: MemoriesDatabaseOntologyStore | undefined,
+  database: MemoriesDatabaseId,
+): Promise<StoredOntologyJsonSchema | undefined> {
+  if (ontologyStore === undefined) return undefined;
+  const link = await ontologyStore.getCurrentLink(database);
+  if (link === undefined) return undefined;
+  return ontologyStore.getOntology(link.hash);
 }
 
 function parseDatabaseScopedBody(body: unknown): {
@@ -185,6 +231,7 @@ export async function handleDatabaseMerge(
   service: MemoriesDatabaseService,
   body: unknown,
   serverAttribution?: MemoryMutationAttribution,
+  ontologyStore?: MemoriesDatabaseOntologyStore,
 ): Promise<Response> {
   const scoped = body as DatabaseMergeRequest & { intentSnapshotId?: string };
   const { database, handle } = await getHandle(service, scoped);
@@ -207,15 +254,23 @@ export async function handleDatabaseMerge(
     ...safeParams,
     ...(attribution !== undefined ? { attribution } : {}),
   };
-  const ontology = ontologyFromMergeParams(scoped.params);
+  const linked = await resolveLinkedOntology(ontologyStore, database);
+  const ontology = ontologyFromMergeParams(scoped.params, linked);
 
   let memoryIds: string[];
-  if (handle.sync !== undefined) {
-    const client = new MemoriesClient(handle.sync.syncPersistence, ontology);
-    memoryIds = client.mergeMemory(params);
-  } else {
-    const client = new MemoriesClientAsync(handle.persistence, ontology);
-    memoryIds = await client.mergeMemory(params);
+  try {
+    if (handle.sync !== undefined) {
+      const client = new MemoriesClient(handle.sync.syncPersistence, ontology);
+      memoryIds = client.mergeMemory(params);
+    } else {
+      const client = new MemoriesClientAsync(handle.persistence, ontology);
+      memoryIds = await client.mergeMemory(params);
+    }
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw new HttpError(error.message, 400);
+    }
+    throw error;
   }
 
   return Response.json({ memoryIds, database });
