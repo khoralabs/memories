@@ -1,6 +1,7 @@
 export * from "./canonical.ts";
 export * from "./families/entities.ts";
 export * from "./families/knowledge.ts";
+export * from "./families/poleo.ts";
 export * from "./families/preferences.ts";
 export * from "./families/relations.ts";
 export * from "./families/retrieval.ts";

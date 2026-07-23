@@ -67,6 +67,11 @@
       "import": "./src/ontology/families/knowledge.ts",
       "default": "./src/ontology/families/knowledge.ts"
     },
+    "./ontology/families/poleo": {
+      "types": "./src/ontology/families/poleo.ts",
+      "import": "./src/ontology/families/poleo.ts",
+      "default": "./src/ontology/families/poleo.ts"
+    },
     "./ontology/families/preferences": {
       "types": "./src/ontology/families/preferences.ts",
       "import": "./src/ontology/families/preferences.ts",
