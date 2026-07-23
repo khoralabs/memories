@@ -1,6 +1,6 @@
 # Roadmap
 
-Feature plans for `@khoralabs/memories-service`. Current implementation reference: [../spec.md](../spec.md).
+Feature plans for `@khoralabs/memories-service`. Current implementation reference: [`../spec.md`](../spec.md). Package overview: [`../README.md`](../README.md).
 
 | Feature | Status |
 |---------|--------|

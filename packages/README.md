@@ -1,17 +1,15 @@
-# Memories System
+# Memories system guide
 
-This workspace implements a **knowledge-graph memory store** with hybrid lexical + vector search, graph topology, provenance, and optional external content resolution via [`@khoralabs/sourcemaps`](https://github.com/khoralabs/sourcemaps).
+Deep dive for this workspace: mental model, package map, merge/search pipelines, schema, and where code lives. For a short product overview, see the [root README](../README.md).
 
 ---
 
 ## 1. Package structure
 
-### Architecture overview
-
 ```text
 ┌──────────────────────────────────────────────────────────┐
 │ @khoralabs/memories-node                                 │
-│ client + ./ontology + contracts                          │
+│ .  ./persistence ./provenance ./helpers ./ontology       │
 │ ./sqlite|libsql|turso-serverless                         │
 │ ./projections ./attestation ./autolink ./testing         │
 └───────┬───────────────────────────────┬──────────────────┘
@@ -24,15 +22,21 @@ This workspace implements a **knowledge-graph memory store** with hybrid lexical
         optional: memories-react-graph, memories-spec
 ```
 
-### Packages in this repo
-
 | Package | Path | Role |
 |---------|------|------|
-| `@khoralabs/memories-node` | [`node/`](node) | Individual memory node (client + ontology + persistence contracts + backends + projections + attestation + autolink); `./sqlite` is Bun-only |
-| `@khoralabs/memories-service` | [`service/`](service) | Multi-tenant service (lifecycle, HTTP, auth, storage); `./storage/sqlite` is Bun-only |
-| `@khoralabs/memories-agents` | [`agents/`](agents) | Agent toolkit + adapter / integrator / investigator |
-| `@khoralabs/memories-react-graph` | [`react/graph/`](react/graph) | Graph visualization UI |
-| `@khoralabs/memories-spec` | [`spec/`](spec) | Smithy wire model |
+| `@khoralabs/memories-node` | [`node/`](node) | Single-DB client, contracts, backends, ontology, projections, attestation, autolink |
+| `@khoralabs/memories-service` | [`service/`](service) | Multi-tenant lifecycle, placement, HTTP, auth |
+| `@khoralabs/memories-agents` | [`agents/`](agents) | `memory_search` toolkit + adapter / integrator / investigator |
+| `@khoralabs/memories-react-graph` | [`react/graph/`](react/graph) | Host-injected 3D graph UI |
+| `@khoralabs/memories-spec` | [`spec/`](spec) | Smithy capability modules (IDL only) |
+
+**Rationale for the split**
+
+- **Node** owns merge/search semantics and storage adapters so embedders never need HTTP.
+- **Service** owns principal identity, placement routing, and auth — control plane separate from the node data plane.
+- **Agents** sit on top of the client API via `@khoralabs/agent-capabilities`.
+- **React graph** stays transport-agnostic: hosts supply layout + search.
+- **Spec** documents capability modules for implementors; TypeScript does not depend on it at runtime.
 
 ### Mental model
 
@@ -50,7 +54,7 @@ Search returns **rank-ordered `source_map` ids**; core merges lexical + vector a
 
 ### Key types
 
-**Persistence contract** — [`core/src/persistence/types.ts`](core/src/persistence/types.ts):
+**Persistence contract** — [`node/src/persistence/core/persistence/types.ts`](node/src/persistence/core/persistence/types.ts) (export `@khoralabs/memories-node/persistence`):
 
 - `MemoriesPersistence` = mutation + retrieval + neighbors + reads + graph
 - `MemoriesMutationCore` — merge/delete, source maps, features, scopes, provenance
@@ -59,18 +63,18 @@ Search returns **rank-ordered `source_map` ids**; core merges lexical + vector a
 - `MemoriesBackendCapabilities` — feature flags per backend
 - `SearchNamespaceScope` — `pathSubtree | scopeDag | exactScope | unscoped`
 
-**Row model** — [`core/src/persistence/row-schemas.ts`](core/src/persistence/row-schemas.ts):
+**Row model** — [`node/src/persistence/core/persistence/row-schemas.ts`](node/src/persistence/core/persistence/row-schemas.ts):
 
 - `Memory`, `SourceMap`, `TextFeature`, `VectorFeature`, `Node`, `Edge`, scope tables, label catalogs/assignments
 - `memoriesPersistenceDocumentSchema` — Zod source of truth for all table shapes
 
-**Client API** — [`core/src/api/`](core/src/api/):
+**Client API** — [`node/src/core/api/`](node/src/core/api/):
 
-- `MemoriesClient` — typed ontology + `mergeMemory`, `search`, `deleteMemory`, optional `resolveSourcesForMemory`
+- `MemoriesClient` / `MemoriesClientAsync` — typed ontology + `mergeMemory`, `search`, `deleteMemory`, optional `resolveSourcesForMemory`
 - `MergeMemoryParams` — node or edge merge with `content[]`, labels, edges, scopes
 - `SearchParams` / `SearchHit` — hybrid search with neighbor expansion
 
-**Stable IDs** — [`core/src/models/ids.ts`](core/src/models/ids.ts):
+**Stable IDs** — [`node/src/persistence/core/models/ids.ts`](node/src/persistence/core/models/ids.ts):
 
 ```typescript
 ids.memory(namespace, key)      // mem_*
@@ -81,7 +85,7 @@ ids.vectorFeature(sourceMapId)// vf_*
 
 ### Merge flow (indexing trigger)
 
-[`core/src/api/merge-memory.ts`](core/src/api/merge-memory.ts):
+[`node/src/core/api/merge-memory.ts`](node/src/core/api/merge-memory.ts):
 
 1. `clearMemorySubtree` — wipe old features, FTS, vec rows, source maps
 2. `upsertMemory` + graph node/edge setup
@@ -90,17 +94,17 @@ ids.vectorFeature(sourceMapId)// vf_*
 5. `syncMemorySearchMeta` — synthetic topology chunk (`__mem_search_meta__`)
 6. Optional `syncLabelPropsSearchFeatures` — ontology props chunks
 7. `appendProvenanceEvent` — advances the linear hash chain; returns `{ root_hex }`
-8. Optional `appendContentOutbox` — writes raw text content alongside the provenance row for point-in-time reconstruction (SQLite implements this)
+8. Optional `appendContentOutbox` — raw text alongside the provenance row for point-in-time reconstruction (SQLite implements this)
 
 ---
 
 ## 2. SQLite schema and search
 
+Reference backend: [`node/src/persistence/sqlite/`](node/src/persistence/sqlite/). LibSQL and Turso serverless mirror the same logical schema under their own trees.
+
 ### Schema
 
-[`persistence/sqlite/src/schema.ts`](persistence/sqlite/src/schema.ts)
-
-**Core tables:**
+[`node/src/persistence/sqlite/persistence/schema.ts`](node/src/persistence/sqlite/persistence/schema.ts)
 
 | Table | Purpose |
 |-------|---------|
@@ -115,20 +119,20 @@ ids.vectorFeature(sourceMapId)// vf_*
 | `memory_provenance` | Append-only mutation chain (hash-linked) |
 | `memory_content_outbox` | Raw text per source key per merge/delete event, keyed by `root_hex` |
 
-### Virtual/index tables
+### Virtual / index tables
 
-[`persistence/sqlite/src/search-indexes.ts`](persistence/sqlite/src/search-indexes.ts):
+[`node/src/persistence/sqlite/persistence/search-indexes.ts`](node/src/persistence/sqlite/persistence/search-indexes.ts):
 
 - **`text_features_fts`** — FTS5 virtual table mirroring `text_features` (tokenizer: `porter unicode61`)
 - **`vector_features_vec_d_<dim>`** — sqlite-vec `vec0` tables, one per embedding dimension (512–3072)
 
-### Search capabilities
+### Search
 
-**Lexical** — [`persistence/sqlite/src/models/search.ts`](persistence/sqlite/src/models/search.ts): FTS5 `MATCH` with `bm25()` ranking; scoped via memory-id subquery.
+**Lexical** — FTS5 `MATCH` with `bm25()` ranking; scoped via memory-id subquery.
 
-**Vector** — same file: KNN on dimension-specific `vec0` table; optional `maxVectorDistance` cutoff.
+**Vector** — KNN on dimension-specific `vec0` table; optional `maxVectorDistance` cutoff.
 
-**Hybrid merge** — [`core/src/api/search.ts`](core/src/api/search.ts): RRF fusion (`core/src/rrf`); optional neighbor sub-search; multi-namespace merge when backend lacks `multiNamespaceSearch`.
+**Hybrid merge** — [`node/src/core/api/search.ts`](node/src/core/api/search.ts): RRF fusion (`node/src/core/rrf`); optional neighbor sub-search; multi-namespace merge when the backend lacks `multiNamespaceSearch`.
 
 **Backend capabilities** (SQLite = full):
 
@@ -142,7 +146,7 @@ ids.vectorFeature(sourceMapId)// vf_*
 | Migration | Change |
 |-----------|--------|
 | `0.0.0-0.1.0/001-initial` | Initial schema, indexes, FTS5 (`porter unicode61`) |
-| `0.1.0-0.2.0/001-add-content-outbox` | `memory_content_outbox` table for point-in-time text reconstruction |
+| `0.1.0-0.2.0/001-add-content-outbox` | `memory_content_outbox` for point-in-time text reconstruction |
 
 ---
 
@@ -159,18 +163,16 @@ Projection lives elsewhere:                   │
   text_features, vector_features, etc.  ◄───┘ keyed BY source map address
 ```
 
-**Memories-specific source maps** — [`core/src/persistence/row-schemas.ts`](core/src/persistence/row-schemas.ts):
+**Memories-specific source maps** — row schemas in `@khoralabs/memories-node/persistence`:
 
 ```typescript
 type SourceMapLocators = { memory_id: string; source_key: string };
 type SourceMap = SourceRef<SourceMapLocators> & { content_hash?: ContentHash };
 ```
 
-**Memories `Store` extension** — [`core/src/api/resolve-sourcemap.ts`](core/src/api/resolve-sourcemap.ts): optional `syncFromTextExportRows` for mirroring lexical text into an external store.
+**Client resolution** — `MemoriesClient.resolveSourcesForMemory(namespace, memoryId, limit)` lists source maps and calls `store.resolve(sm)` for each ([`node/src/core/api/resolve-sourcemap.ts`](node/src/core/api/resolve-sourcemap.ts)).
 
-**Content hash** — [`core/src/provenance/source-body-hash.ts`](core/src/provenance/source-body-hash.ts): SHA-256 over canonical descriptor of text/vector payloads; stored in `source_maps.content_hash`.
-
-**Client resolution** — `MemoriesClient.resolveSourcesForMemory(namespace, memoryId, limit)` lists source maps and calls `store.resolve(sm)` for each.
+**Content hash** — SHA-256 over canonical descriptor of text/vector payloads; stored in `source_maps.content_hash` ([`node/src/persistence/core/provenance/`](node/src/persistence/core/provenance/)).
 
 ---
 
@@ -180,14 +182,14 @@ type SourceMap = SourceRef<SourceMapLocators> & { content_hash?: ContentHash };
 
 For each `MergeMemoryContentItem: { key, text?, vector? }`:
 
-1. `insertSourceMap` — [`persistence/sqlite/src/models/source-maps.ts`](persistence/sqlite/src/models/source-maps.ts)
-2. **Lexical** — [`text-features.ts`](persistence/sqlite/src/models/text-features.ts) → `text_features` + FTS sync
-3. **Vector** — [`vector-features.ts`](persistence/sqlite/src/models/vector-features.ts) → `vector_features` + `vec0` table
+1. `insertSourceMap`
+2. **Lexical** → `text_features` + FTS sync
+3. **Vector** → `vector_features` + `vec0` table
 4. **Content hash** — `updateSourceMapContentHash`
 
 ### System-generated chunks
 
-Reserved source keys — [`core/src/search-meta-constants.ts`](core/src/search-meta-constants.ts):
+Reserved source keys — [`node/src/persistence/core/search-meta-constants.ts`](node/src/persistence/core/search-meta-constants.ts):
 
 | Key | Purpose |
 |-----|---------|
@@ -197,46 +199,70 @@ Reserved source keys — [`core/src/search-meta-constants.ts`](core/src/search-m
 
 ### Logical memory decomposition
 
-[`core/src/helpers/logical-memory.ts`](core/src/helpers/logical-memory.ts): plaintext → `text:*` chunks; files → `file:i:*` chunks. Used by the integrator agent pipeline.
+[`node/src/core/helpers/logical-memory.ts`](node/src/core/helpers/logical-memory.ts) (export `@khoralabs/memories-node/helpers`): plaintext → `text:*` chunks; files → `file:i:*` chunks. Used by the integrator agent pipeline.
 
-**Embedding** — [`core/src/helpers/embedding-model.ts`](core/src/helpers/embedding-model.ts): `embedTextChunks`, `createMemoriesEmbeddingModel`.
+**Embedding** — `embedTextChunks`, `createMemoriesEmbeddingModel` in the same helpers entrypoint.
 
 ### Search pipeline (read path)
 
-[`core/src/helpers/memory-search-pipeline.ts`](core/src/helpers/memory-search-pipeline.ts) — `runHybridMemorySearch`: embeds query, calls client search, returns slim hits for agents.
+[`node/src/core/helpers/memory-search-pipeline.ts`](node/src/core/helpers/memory-search-pipeline.ts) — `runHybridMemorySearch`: embeds query, calls client search, returns slim hits for agents.
 
 ---
 
-## 5. Agent and UI integration
+## 5. Ontology
 
-| Package | Role |
+Ontology is a Zod / Standard Schema map of node and edge label kinds. Assemble from families under `@khoralabs/memories-node/ontology/families/*`:
+
+| Family | Role |
+|--------|------|
+| `entities` | Person, place, and related entity shapes |
+| `knowledge` | Facts / claims |
+| `preferences` | Preference nodes |
+| `relations` | Canonical relation edges |
+| `temporal` | Events and temporal edges |
+| `poleo` | POLE+O (person, object, location, event, organization) |
+| `retrieval` | Similarity / retrieval edges |
+| `salience` | Salience + retrieval composition |
+
+Use `defineOntology` / `mergeOntologies`. The old `canonicalOntology` export is **deprecated** — prefer composing families for your app.
+
+---
+
+## 6. Agents, service, and UI
+
+| Surface | Role |
 |---------|------|
-| `memories-tools` | `memory_search` tool — hybrid search + provenance snapshot |
-| `memories-investigator` | Multi-step Q&A over one or many namespaces |
-| `memories-integrator` | Decompose + embed + merge logical memories |
-| `memories-adapter` | Ontology-aware adapter: domain payload → memory draft |
-| `memories-autolink` | `integrateNewMemoryIntoGraph` — search, link patch, merge |
-| `memories-react-graph` | React 3D graph: search bar, namespace selector, investigator overlay |
+| `@khoralabs/memories-agents/tools` | `memorySearchToolkit` — hybrid search + provenance snapshot |
+| `@khoralabs/memories-agents/investigator` | Multi-step Q&A over one or many namespaces |
+| `@khoralabs/memories-agents/integrator` | Decompose + embed + merge logical memories |
+| `@khoralabs/memories-agents/adapter` | Domain payload → memory draft |
+| `@khoralabs/memories-node/autolink` | `integrateNewMemoryIntoGraph` — search, link patch, merge |
+| `@khoralabs/memories-service` | Multi-tenant open/list/delete, placement, HTTP, auth |
+| `@khoralabs/memories-react-graph` | React 3D graph: search, namespaces, investigator overlay |
 
-Wire up agents with `@khoralabs/agent-capabilities` (`createAgentRegistry`, tool loops). Each agent package README has usage examples.
+Wire agents with `@khoralabs/agent-capabilities` (`createAgentRegistry`, tool loops). Each package README has package-specific usage.
+
+Service architecture: [`service/spec.md`](service/spec.md). Planned work: [`service/roadmap/`](service/roadmap/).
 
 ---
 
 ## Key file index
 
-| Area | Files |
-|------|-------|
-| Core API | `core/src/api/{client,merge-memory,search,resolve-sourcemap}.ts` |
-| Persistence types | `core/src/persistence/{types,row-schemas}.ts` |
-| Provenance | `core/src/provenance/{source-body-hash,hash-chain}.ts` |
-| SQLite schema | `persistence/sqlite/src/{schema,connection,search-indexes}.ts` |
-| SQLite models | `persistence/sqlite/src/models/{source-maps,text-features,vector-features,search,memory-search-meta,memory-subtree}.ts` |
-| Helpers | `core/src/helpers/{logical-memory,embedding-model,memory-search-pipeline}.ts` |
-| Spec | `spec/model/persistence.smithy` |
-| Implementor guide | `persistence/IMPLEMENTORS.md` |
+| Area | Path |
+|------|------|
+| Core API | `node/src/core/api/{client,merge-memory,search,resolve-sourcemap}.ts` |
+| Persistence types | `node/src/persistence/core/persistence/{types,row-schemas}.ts` |
+| Provenance | `node/src/persistence/core/provenance/` |
+| SQLite schema | `node/src/persistence/sqlite/persistence/{schema,search-indexes}.ts` |
+| SQLite models | `node/src/persistence/sqlite/persistence/models/` |
+| Helpers | `node/src/core/helpers/` |
+| Ontology | `node/src/ontology/` |
+| Implementor guide | `node/src/persistence/IMPLEMENTORS.md` |
+| Smithy | `spec/model/persistence.smithy` |
+| Service design | `service/spec.md` |
 
 ---
 
 ## Summary
 
-`@khoralabs/memories-core` owns merge/search semantics and the `MemoriesPersistence` contract; `@khoralabs/memories-sqlite` is the reference backend materializing relational rows plus FTS5/sqlite-vec indexes. **Source maps** bridge indexed projections to external canonical content via `@khoralabs/sourcemaps` `Store.resolve`, with locators `{ memory_id, source_key }`. Indexing happens transactionally on merge: one source map per content chunk, synced into lexical and vector indexes, plus system meta chunks for topology and ontology props. Agents, autolink, and `memories-react-graph` are the primary in-repo consumers.
+`@khoralabs/memories-node` owns merge/search semantics and the `MemoriesPersistence` contract; `./sqlite` is the reference Bun backend (libSQL / Turso are async peers). **Source maps** bridge indexed projections to optional external content via `@khoralabs/sourcemaps`. Indexing is transactional on merge: one source map per chunk, lexical + vector indexes, plus system meta chunks. Agents, autolink, the multi-tenant service, and `memories-react-graph` are the primary consumers.

@@ -2,7 +2,7 @@
 
 Smithy model for the memories **logical** persistence + public API contract. Describes operation sets, row shapes, and capability modules that `@khoralabs/memories-node` implements in TypeScript.
 
-This package is **not** the HTTP wire model for `@khoralabs/memories-service` (lifecycle, ontology registry, and JSON field renames live in the service docs). Spec tracks the in-process TS surfaces; keep them in sync when either side changes.
+This package is **not** the HTTP wire model for `@khoralabs/memories-service` (lifecycle, ontology registry, and JSON field renames live in [`../service/spec.md`](../service/spec.md)). Spec tracks the in-process TS surfaces; keep them in sync when either side changes.
 
 ## Layout
 
@@ -18,14 +18,14 @@ This package is **not** the HTTP wire model for `@khoralabs/memories-service` (l
 Use modules to see what a minimal backend can omit; use the aggregate `MemoriesPersistenceService` for a full adapter contract:
 
 | Smithy service | Approximate TypeScript |
-|----------------|----------------------|
+|----------------|------------------------|
 | `MemoriesPersistenceCore` | Lexical mutation + catalog + lexical search + provenance |
 | `MemoriesPersistenceVector` | Vector features + vector search |
 | `MemoriesPersistenceNeighbors` | `MemoriesNeighborIndex` |
 | `MemoriesPersistenceLabelProps` | `syncLabelPropsSearchFeatures` |
 | `MemoriesPersistenceReads` | Prefetch / export reads |
 
-See [`packages/persistence/IMPLEMENTORS.md`](../persistence/IMPLEMENTORS.md) for operational semantics mapped to these operations.
+Operational semantics: [`../node/src/persistence/IMPLEMENTORS.md`](../node/src/persistence/IMPLEMENTORS.md).
 
 ## Validation
 

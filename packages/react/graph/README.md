@@ -2,7 +2,7 @@
 
 React components for exploring a memories knowledge graph in 3D: hybrid search, namespace selection, memory preview, and an optional investigator Q&A overlay.
 
-Built on **React 19**, **@react-three/fiber**, and **three.js**. Expects graph layout and search state from a host-provided projection API shaped by `@khoralabs/memories-projections`.
+Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database — the host injects layout and search. Layout types and builders come from `@khoralabs/memories-node/projections` (or a backend-specific helper such as `@khoralabs/memories-node/sqlite` / `./libsql`).
 
 ## Exports
 
@@ -13,20 +13,17 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. Expects graph l
 | `GraphSearch` | Search input with hybrid query + optional deep-search toggle |
 | `GraphNamespaceSelector` | Namespace picker |
 | `GraphInvestigatorProvider` / `GraphInvestigatorAnswer` | Investigator Q&A overlay (requires a `GraphInvestigatorClient`) |
-| `createSyncInvestigatorClient` / `createJobStreamInvestigatorClient` | Built-in client factories for sync POST or job+SSE backends |
+| `createSyncInvestigatorClient` / `createJobStreamInvestigatorClient` | Sync POST or job+SSE investigator transports |
 | `GraphPreviewDock` | Selected memory preview panel |
 | `GraphLoading`, `GraphFetchError` | Loading and error states |
-| `buildNamespaceGraphLayout` consumers | Use layout types from `@khoralabs/memories-projections` in the host |
 
 Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei`.
 
 ## Host integration
 
-The graph UI does not open a database itself. The host:
-
-1. Builds a `NamespaceGraphLayout` via the projection strategy matching the host persistence store.
-2. Exposes search and layout through HTTP or in-process handlers.
-3. Wraps the scene in `GraphProjectionProvider` with fetch callbacks and namespace state.
+1. Build a `NamespaceGraphLayout` via `@khoralabs/memories-node/projections` (or sqlite/libsql projection helpers).
+2. Expose search and layout through HTTP or in-process handlers.
+3. Wrap the scene in `GraphProjectionProvider` with fetch callbacks and namespace state.
 
 ```tsx
 import { GraphProjectionProvider, GraphScene, GraphSearch } from "@khoralabs/memories-react-graph";
@@ -75,4 +72,4 @@ For async job + SSE backends, use `createJobStreamInvestigatorClient` with host-
 bun run typecheck   # from this package
 ```
 
-Typecheck is included in the root `bun run typecheck` workspace script.
+Included in the root `bun run typecheck` workspace script.
