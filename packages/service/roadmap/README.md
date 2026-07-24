@@ -15,6 +15,7 @@ Feature plans for `@khoralabs/memories-service`. Current implementation referenc
 | Placement admin HTTP API | Not implemented |
 | Remote Memories node backend | Not implemented |
 | Principal-registered nodes | Not implemented |
+| Telemetry event ingest (`POST /telemetry/events`) | Not implemented (v1: in-process OTEL only; see [`../otel/README.md`](../otel/README.md)) |
 
 ---
 
@@ -105,6 +106,20 @@ A placement strategy that opens a client-backed `MemoriesPersistenceAsync` again
 ```
 
 Distinct from the shipped remote *HTTP clients* (callers talking to this service). Sidecars and WAL stay hidden. Order after that: principal node registration/discovery (resolve `database.ownerKey` to an authorized endpoint; registration signed by owner DID; coupled with [DID auth](./decentralized-principal-auth.md)). Placement store is the natural home for `{ id → remote strategy }` overrides once the admin API exists.
+
+### Telemetry event ingest (phase 2)
+
+v1 ships in-process aggregation only: pass `telemetry` from `@khoralabs/memories-otel` into `createMemoriesDatabaseService`. Networked nodes need a typed ingress so the service can enrich and re-export without embedding `otelcol`.
+
+Proposed:
+
+```text
+POST /telemetry/events
+```
+
+Body: JSON array (or single object) matching the `MemoriesOpEvent` / `MemoriesDatabaseLifecycleEvent` catalog from `@khoralabs/memories-node/telemetry`. Auth: `manage` or a dedicated telemetry grant. Handler stamps `memories.database.*` from the authenticated database id (or body, when authorized) and calls `MemoriesTelemetry.emit*`.
+
+Non-goals: full OTLP collector, multi-tenant routing UI, replacing the host’s OTel SDK/exporters. See [`../otel/README.md`](../otel/README.md).
 
 ### Decentralized principal auth
 

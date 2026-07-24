@@ -27,6 +27,7 @@ export {
   MEMORY_SEARCH_TOOL_NAME,
   type MemorySearchEnv,
   type MemorySearchHit,
+  type MemorySearchLogger,
   type MemorySearchToolInput,
   memorySearchBudgetPolicy,
   memorySearchIdentityLinkSupplement,
@@ -35,6 +36,7 @@ export {
   zMemorySearchToolInput,
 } from "./memory-search-toolkit.js";
 export type { MemoriesLogPayloadMap } from "./telemetry.js";
+export { memoriesLog, memoriesLogToolBodies } from "./telemetry.js";
 export { elapsedMs } from "./timing.js";
 export {
   createMemorySearchToolLoopAgent,

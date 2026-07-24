@@ -1,3 +1,4 @@
+import { runWithOpTelemetrySync } from "../../telemetry/index.js";
 import {
   buildMemoryOpContext,
   type MemoryMutationAttribution,
@@ -16,51 +17,60 @@ export interface DeleteMemoryParams {
  * Idempotent when the memory was already absent.
  */
 export function deleteMemory(ctx: MutationCtx, params: DeleteMemoryParams): void {
-  const { persistence } = ctx;
-  const op = buildMemoryOpContext(params.attribution);
+  runWithOpTelemetrySync({
+    telemetry: ctx.telemetry,
+    op: "delete",
+    namespace: params.namespace,
+    memoryKey: params.key,
+    getProvenanceRootHex: () => ctx.persistence.getProvenanceHeadRootHex() ?? "",
+    fn: () => {
+      const { persistence } = ctx;
+      const op = buildMemoryOpContext(params.attribution);
 
-  persistence.withTransaction(() => {
-    const assoc = persistence.findMemoryAssociation(params.namespace, params.key);
-    if (assoc === undefined) {
-      return;
-    }
-    if (assoc.kind === "node") {
-      persistence.clearMemorySubtree(op, {
-        memoryKind: "node",
-        memoryId: assoc.memoryId,
-        nodeId: assoc.nodeId,
+      persistence.withTransaction(() => {
+        const assoc = persistence.findMemoryAssociation(params.namespace, params.key);
+        if (assoc === undefined) {
+          return;
+        }
+        if (assoc.kind === "node") {
+          persistence.clearMemorySubtree(op, {
+            memoryKind: "node",
+            memoryId: assoc.memoryId,
+            nodeId: assoc.nodeId,
+          });
+          persistence.deleteMemoryRootRows({
+            memoryKind: "node",
+            memoryId: assoc.memoryId,
+            nodeId: assoc.nodeId,
+          });
+        } else {
+          persistence.clearMemorySubtree(op, {
+            memoryKind: "edge",
+            memoryId: assoc.memoryId,
+            edgeId: assoc.edgeId,
+          });
+          persistence.deleteMemoryRootRows({
+            memoryKind: "edge",
+            edgeId: assoc.edgeId,
+          });
+        }
+        const { root_hex } = persistence.appendProvenanceEvent(op, {
+          v: 1,
+          kind: "DELETE_MEMORY",
+          namespace: params.namespace,
+          memory_key: params.key,
+          memory_id: assoc.memoryId,
+          ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
+          ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
+        });
+        persistence.appendContentOutbox?.(op, {
+          root_hex,
+          event_type: "DELETE_MEMORY",
+          namespace: params.namespace,
+          memoryKey: params.key,
+          entries: [],
+        });
       });
-      persistence.deleteMemoryRootRows({
-        memoryKind: "node",
-        memoryId: assoc.memoryId,
-        nodeId: assoc.nodeId,
-      });
-    } else {
-      persistence.clearMemorySubtree(op, {
-        memoryKind: "edge",
-        memoryId: assoc.memoryId,
-        edgeId: assoc.edgeId,
-      });
-      persistence.deleteMemoryRootRows({
-        memoryKind: "edge",
-        edgeId: assoc.edgeId,
-      });
-    }
-    const { root_hex } = persistence.appendProvenanceEvent(op, {
-      v: 1,
-      kind: "DELETE_MEMORY",
-      namespace: params.namespace,
-      memory_key: params.key,
-      memory_id: assoc.memoryId,
-      ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
-      ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
-    });
-    persistence.appendContentOutbox?.(op, {
-      root_hex,
-      event_type: "DELETE_MEMORY",
-      namespace: params.namespace,
-      memoryKey: params.key,
-      entries: [],
-    });
+    },
   });
 }

@@ -1,4 +1,11 @@
 import type { MemoriesPersistenceAsync } from "@khoralabs/memories-node/persistence";
+import {
+  bindMemoriesTelemetry,
+  MEMORIES_DATABASE_KIND_ATTR,
+  MEMORIES_DATABASE_OWNER_KEY_ATTR,
+  type MemoriesTelemetry,
+  runWithDatabaseLifecycleAsync,
+} from "@khoralabs/memories-node/telemetry";
 import type {
   DatabaseListFilter,
   MemoriesDatabaseHandle,
@@ -19,6 +26,8 @@ import type { MemoriesDatabaseService } from "./types";
 export type CreateMemoriesDatabaseServiceOptions = {
   resolver: MemoriesDatabaseBackendResolver;
   maxCached?: number;
+  /** Structured telemetry for database lifecycle and (via handle) node ops. */
+  telemetry?: MemoriesTelemetry;
   onLifecycleError?: (
     error: unknown,
     context: { id: MemoriesDatabaseId; operation: "close" | "delete" | "release" },
@@ -28,12 +37,45 @@ export type CreateMemoriesDatabaseServiceOptions = {
 
 const DEFAULT_MAX_CACHED = 64;
 
+function bindDatabaseTelemetry(
+  telemetry: MemoriesTelemetry | undefined,
+  id: MemoriesDatabaseId,
+): MemoriesTelemetry | undefined {
+  if (telemetry === undefined) return undefined;
+  return bindMemoriesTelemetry(telemetry, {
+    [MEMORIES_DATABASE_KIND_ATTR]: id.kind,
+    [MEMORIES_DATABASE_OWNER_KEY_ATTR]: id.ownerKey,
+  });
+}
+
+function withHandleTelemetry(
+  handle: MemoriesDatabaseHandle,
+  telemetry: MemoriesTelemetry | undefined,
+): MemoriesDatabaseHandle {
+  if (telemetry === undefined) return handle;
+  return { ...handle, telemetry };
+}
+
 export function createMemoriesDatabaseService(
   opts: CreateMemoriesDatabaseServiceOptions,
 ): MemoriesDatabaseService {
   const maxCached = opts.maxCached ?? DEFAULT_MAX_CACHED;
+  const rootTelemetry = opts.telemetry;
+
   const cache = createConnectionCache({
     max: maxCached,
+    onEvicted: (entry, result) => {
+      rootTelemetry?.emitDatabaseLifecycle({
+        operation: "evict",
+        ok: result.ok,
+        durationMs: result.durationMs,
+        databaseKind: entry.id.kind,
+        databaseOwnerKey: entry.id.ownerKey,
+        ...(result.error !== undefined
+          ? { error: result.error instanceof Error ? result.error.message : String(result.error) }
+          : {}),
+      });
+    },
     onEvictionCloseError: (error, entry) => {
       opts.onEvictionCloseError?.(error, { id: entry.id });
     },
@@ -48,8 +90,18 @@ export function createMemoriesDatabaseService(
     const cached = getCachedConnection(cache, validated);
     if (cached !== undefined) return cached.handle;
 
-    const backend = await opts.resolver.resolve(validated);
-    const handle = await backend.open(validated);
+    const bound = bindDatabaseTelemetry(rootTelemetry, validated);
+    const handle = await runWithDatabaseLifecycleAsync({
+      telemetry: rootTelemetry,
+      operation: "open",
+      databaseKind: validated.kind,
+      databaseOwnerKey: validated.ownerKey,
+      fn: async () => {
+        const backend = await opts.resolver.resolve(validated);
+        const opened = await backend.open(validated);
+        return withHandleTelemetry(opened, bound);
+      },
+    });
     setCachedConnection(cache, validated, handle);
     return handle;
   }
@@ -77,9 +129,17 @@ export function createMemoriesDatabaseService(
     async delete(id: MemoriesDatabaseId): Promise<void> {
       const validated = validateMemoriesDatabaseId(id);
       try {
-        await releaseCachedHandle(validated);
-        const backend = await opts.resolver.resolve(validated);
-        await backend.delete(validated);
+        await runWithDatabaseLifecycleAsync({
+          telemetry: rootTelemetry,
+          operation: "delete",
+          databaseKind: validated.kind,
+          databaseOwnerKey: validated.ownerKey,
+          fn: async () => {
+            await releaseCachedHandle(validated);
+            const backend = await opts.resolver.resolve(validated);
+            await backend.delete(validated);
+          },
+        });
       } catch (error) {
         opts.onLifecycleError?.(error, { id: validated, operation: "delete" });
         throw error;
@@ -106,9 +166,17 @@ export function createMemoriesDatabaseService(
     async close(id: MemoriesDatabaseId): Promise<void> {
       const validated = validateMemoriesDatabaseId(id);
       try {
-        await releaseCachedHandle(validated);
-        const backend = await opts.resolver.resolve(validated);
-        await backend.close(validated);
+        await runWithDatabaseLifecycleAsync({
+          telemetry: rootTelemetry,
+          operation: "close",
+          databaseKind: validated.kind,
+          databaseOwnerKey: validated.ownerKey,
+          fn: async () => {
+            await releaseCachedHandle(validated);
+            const backend = await opts.resolver.resolve(validated);
+            await backend.close(validated);
+          },
+        });
       } catch (error) {
         opts.onLifecycleError?.(error, { id: validated, operation: "close" });
         throw error;

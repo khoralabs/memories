@@ -9,9 +9,17 @@ export type CachedConnection = {
 
 export type ConnectionCache = LRUCache<string, CachedConnection>;
 
+export type EvictionCloseResult = {
+  ok: boolean;
+  durationMs: number;
+  error?: unknown;
+};
+
 export type CreateConnectionCacheOptions = {
   max: number;
   onEvictionCloseError?: (error: unknown, entry: CachedConnection) => void;
+  /** Fired after LRU eviction close settles (not for explicit {@link releaseCachedConnection}). */
+  onEvicted?: (entry: CachedConnection, result: EvictionCloseResult) => void;
 };
 
 const explicitlyClosedHandles = new WeakSet<MemoriesDatabaseHandle>();
@@ -21,9 +29,20 @@ export function createConnectionCache(opts: CreateConnectionCacheOptions): Conne
     max: opts.max,
     dispose: (entry) => {
       if (explicitlyClosedHandles.has(entry.handle)) return;
-      void entry.handle.close().catch((error) => {
-        opts.onEvictionCloseError?.(error, entry);
-      });
+      const start = performance.now();
+      void entry.handle
+        .close()
+        .then(() => {
+          opts.onEvicted?.(entry, { ok: true, durationMs: performance.now() - start });
+        })
+        .catch((error) => {
+          opts.onEvicted?.(entry, {
+            ok: false,
+            durationMs: performance.now() - start,
+            error,
+          });
+          opts.onEvictionCloseError?.(error, entry);
+        });
     },
   });
 }

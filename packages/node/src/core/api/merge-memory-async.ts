@@ -6,6 +6,7 @@ import {
   zVectorPayload,
 } from "../../persistence/core/persistence";
 import { computeSourceMapContentHash } from "../../persistence/core/provenance";
+import { type MemoriesTelemetry, runWithOpTelemetryAsync } from "../../telemetry/index.js";
 import {
   buildMemoryOpContext,
   catalogSchemaJsonForEdgeKind,
@@ -19,6 +20,8 @@ import {
 
 export interface MutationCtxAsync {
   persistence: MemoriesPersistenceAsync;
+  /** Optional structured ops telemetry sink. */
+  telemetry?: MemoriesTelemetry;
 }
 
 /**
@@ -28,37 +31,49 @@ export async function mergeMemoryAsync(
   ctx: MutationCtxAsync,
   params: MergeMemoryParams,
 ): Promise<string[]> {
-  const { persistence } = ctx;
-  const caps = resolveMemoriesBackendCapabilities(persistence);
-  const op = buildMemoryOpContext(params.attribution);
+  const memoryKind = params.kind === "edge" ? "edge" : "node";
+  return runWithOpTelemetryAsync({
+    telemetry: ctx.telemetry,
+    op: "merge",
+    namespace: params.namespace,
+    memoryKind,
+    memoryKey: params.key,
+    getProvenanceRootHex: async () => (await ctx.persistence.getProvenanceHeadRootHex()) ?? "",
+    successFields: (ids) => ({ mergedMemoryCount: ids.length }),
+    fn: async () => {
+      const { persistence } = ctx;
+      const caps = resolveMemoriesBackendCapabilities(persistence);
+      const op = buildMemoryOpContext(params.attribution);
 
-  const namespace = zNamespacePath.parse(params.namespace);
+      const namespace = zNamespacePath.parse(params.namespace);
 
-  for (const item of params.content) {
-    zMergeMemoryContentItem.parse(item);
-    if (item.vector !== undefined) {
-      if (!caps.vectorSearch) {
-        throw new Error(
-          "mergeMemoryAsync: content item includes vector but persistence.capabilities.vectorSearch is false",
-        );
+      for (const item of params.content) {
+        zMergeMemoryContentItem.parse(item);
+        if (item.vector !== undefined) {
+          if (!caps.vectorSearch) {
+            throw new Error(
+              "mergeMemoryAsync: content item includes vector but persistence.capabilities.vectorSearch is false",
+            );
+          }
+          zVectorPayload.parse(item.vector);
+        }
       }
-      zVectorPayload.parse(item.vector);
-    }
-  }
 
-  if (params.searchMetaVector !== undefined && params.searchMetaVector.length > 0) {
-    if (!caps.vectorSearch) {
-      throw new Error(
-        "mergeMemoryAsync: searchMetaVector set but persistence.capabilities.vectorSearch is false",
-      );
-    }
-    zVectorPayload.parse(params.searchMetaVector);
-  }
+      if (params.searchMetaVector !== undefined && params.searchMetaVector.length > 0) {
+        if (!caps.vectorSearch) {
+          throw new Error(
+            "mergeMemoryAsync: searchMetaVector set but persistence.capabilities.vectorSearch is false",
+          );
+        }
+        zVectorPayload.parse(params.searchMetaVector);
+      }
 
-  if (params.kind === "edge") {
-    return mergeMemoryAsyncEdge(ctx, params, namespace, op);
-  }
-  return mergeMemoryAsyncNode(ctx, params, namespace, op);
+      if (params.kind === "edge") {
+        return mergeMemoryAsyncEdge(ctx, params, namespace, op);
+      }
+      return mergeMemoryAsyncNode(ctx, params, namespace, op);
+    },
+  });
 }
 
 async function mergeMemoryAsyncNode(

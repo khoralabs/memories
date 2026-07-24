@@ -307,6 +307,16 @@ Runtime clients:
 
 Hosts consume these from service clients, backend routes, or workflow adapters.
 
+## Telemetry
+
+Optional structured telemetry via `@khoralabs/memories-node/telemetry` and `@khoralabs/memories-otel`:
+
+```ts
+createMemoriesDatabaseService({ resolver, telemetry: createMemoriesOtelTelemetry({ tracer }) });
+```
+
+Emits database lifecycle (`open` / `close` / `delete` / `evict`) and threads a database-bound sink into HTTP merge/search/delete so node ops include `memories.database.*` attributes. Libraries do not start an OTel SDK. Networked ingest (`POST /telemetry/events`) is planned — see [roadmap](./roadmap/README.md#telemetry-event-ingest-phase-2) and [otel README](../otel/README.md).
+
 ## Non-goals
 
 - Namespace policy registry (namespaces stay client-defined at merge time)
@@ -314,6 +324,7 @@ Hosts consume these from service clients, backend routes, or workflow adapters.
 - Grant storage or delegation in the core service
 - Assuming every database lives on the same filesystem
 - Rehydrating `defineOntology()` from stored JSON (hosts keep TS ontology; registry is for discovery and audit)
+- Embedding an OpenTelemetry Collector inside the service
 
 ## Roadmap
 

@@ -12,6 +12,7 @@ This is the embeddable core. For multi-tenant HTTP, see [`@khoralabs/memories-se
 | `./persistence` | `MemoriesPersistence` types, row Zod schemas, capabilities |
 | `./provenance` | Hash chain + content-hash helpers |
 | `./helpers` | Embeddings, logical-memory decomposition, hybrid search pipeline |
+| `./telemetry` | `MemoriesTelemetry` sink types + emit helpers (no OTel deps; use `@khoralabs/memories-otel` to adapt) |
 | `./ontology` | Barrel: families, `defineOntology`, `mergeOntologies`, label-props formatters |
 | `./ontology/core` | `defineOntology` only |
 | `./ontology/merge-ontologies` | `mergeOntologies` |
@@ -62,6 +63,33 @@ const persistence = createMemoriesPersistence(db);
 ```
 
 Async factories: `createMemoriesPersistenceAsync` (sqlite), `createMemoriesLibsqlPersistence`, `createMemoriesTursoServerlessPersistence`.
+
+## Telemetry
+
+Node emits typed structured events for **merge**, **delete**, and **search** when you pass a `MemoriesTelemetry` sink. The core package has **no** OpenTelemetry dependency — use [`@khoralabs/memories-otel`](../otel) to map events to spans/metrics/Pino (bring your own Tracer/Meter/Logger; the adapter does not start an SDK).
+
+```ts
+import { MemoriesClient } from "@khoralabs/memories-node";
+import { createMemoriesOtelTelemetry } from "@khoralabs/memories-otel";
+import { trace } from "@opentelemetry/api";
+
+const telemetry = createMemoriesOtelTelemetry({
+  tracer: trace.getTracer("my-app"),
+});
+
+const client = new MemoriesClient(persistence, ontology, { telemetry });
+// mergeMemory / deleteMemory / search emit memories.op.* when telemetry is set
+```
+
+You can also pass `telemetry` on a mutation context when calling `mergeMemory` / `search` / `deleteMemory` directly:
+
+```ts
+import { mergeMemory } from "@khoralabs/memories-node";
+
+mergeMemory({ persistence, telemetry }, params);
+```
+
+Helpers: `noopMemoriesTelemetry`, `bindMemoriesTelemetry` (stamp static attrs onto every emit) from `@khoralabs/memories-node/telemetry`. Span names and attribute catalog: [`../otel/README.md`](../otel/README.md).
 
 ## Attestation and autolink
 

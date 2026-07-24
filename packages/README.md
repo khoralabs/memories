@@ -10,7 +10,7 @@ Deep dive for this workspace: mental model, package map, merge/search pipelines,
 ┌──────────────────────────────────────────────────────────┐
 │ @khoralabs/memories-node                                 │
 │ .  ./persistence ./provenance ./helpers ./ontology       │
-│ ./sqlite|libsql|turso-serverless                         │
+│ ./sqlite|libsql|turso-serverless ./telemetry             │
 │ ./projections ./attestation ./autolink ./testing         │
 └───────┬───────────────────────────────┬──────────────────┘
         │                               │
@@ -18,13 +18,18 @@ Deep dive for this workspace: mental model, package map, merge/search pipelines,
 │ memories-service       │   │ memories-agents             │
 │ ./client ./http ./auth │   │ ./tools ./adapter           │
 │ ./storage/* ./testing  │   │ ./integrator ./investigator │
-└────────────────────────┘   └─────────────────────────────┘
+└───────────┬────────────┘   └─────────────────────────────┘
+            │
+┌───────────▼────────────┐
+│ memories-otel          │  OTel/Pino adapter (BYO Tracer/Meter)
+└────────────────────────┘
         optional: memories-react-graph, memories-spec
 ```
 
 | Package | Path | Role |
 |---------|------|------|
-| `@khoralabs/memories-node` | [`node/`](node) | Single-DB client, contracts, backends, ontology, projections, attestation, autolink |
+| `@khoralabs/memories-node` | [`node/`](node) | Single-DB client, contracts, backends, ontology, projections, attestation, autolink, telemetry sink |
+| `@khoralabs/memories-otel` | [`otel/`](otel) | Maps `MemoriesTelemetry` → OTel spans/metrics + optional Pino |
 | `@khoralabs/memories-service` | [`service/`](service) | Multi-tenant lifecycle, placement, HTTP, auth |
 | `@khoralabs/memories-agents` | [`agents/`](agents) | `memory_search` toolkit + adapter / integrator / investigator |
 | `@khoralabs/memories-react-graph` | [`react/graph/`](react/graph) | Host-injected 3D graph UI |

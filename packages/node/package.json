@@ -42,6 +42,11 @@
       "import": "./src/core/helpers/index.ts",
       "default": "./src/core/helpers/index.ts"
     },
+    "./telemetry": {
+      "types": "./src/telemetry/index.ts",
+      "import": "./src/telemetry/index.ts",
+      "default": "./src/telemetry/index.ts"
+    },
     "./ontology": {
       "types": "./src/ontology/index.ts",
       "import": "./src/ontology/index.ts",

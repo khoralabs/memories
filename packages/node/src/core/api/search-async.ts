@@ -14,6 +14,7 @@ import {
   resolveMemoriesBackendCapabilities,
   resolveVectorSearchMethod,
 } from "../../persistence/core/persistence";
+import { runWithOpTelemetryAsync } from "../../telemetry/index.js";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtxAsync } from "./merge-memory-async";
 import {
@@ -273,6 +274,23 @@ async function expandNeighborsWithSubSearchAsync<
 }
 
 export async function searchAsync<
+  NODE_LABELS extends string = string,
+  EDGE_LABELS extends string = string,
+>(
+  ctx: MutationCtxAsync,
+  params: SearchParams<NODE_LABELS, EDGE_LABELS>,
+): Promise<SearchOutput<NODE_LABELS, EDGE_LABELS>> {
+  return runWithOpTelemetryAsync({
+    telemetry: ctx.telemetry,
+    op: "search",
+    namespace: params.namespace,
+    getProvenanceRootHex: async () => (await ctx.persistence.getProvenanceHeadRootHex()) ?? "",
+    successFields: (out) => ({ hitCount: out.hits.length }),
+    fn: () => searchAsyncInner(ctx, params),
+  });
+}
+
+async function searchAsyncInner<
   NODE_LABELS extends string = string,
   EDGE_LABELS extends string = string,
 >(

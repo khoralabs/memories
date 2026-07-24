@@ -6,6 +6,7 @@ import {
   validateNodeLabel,
 } from "../../ontology/ontology.ts";
 import type { MemoriesPersistence } from "../../persistence/core/persistence";
+import type { MemoriesTelemetry } from "../../telemetry/index.js";
 import {
   type DeleteMemoryParams,
   deleteMemory as deleteMemoryHandler,
@@ -53,6 +54,8 @@ export type MemoriesClientOptions<EntityMap extends Record<string, unknown> = De
   store?: Store<EntityMap>;
   /** When set, overrides {@link MemoriesClientOptions.store} per merge/search namespace. */
   storeForNamespace?: (namespace: string) => Store<EntityMap> | undefined;
+  /** Optional structured ops telemetry (merge / delete / search). */
+  telemetry?: MemoriesTelemetry;
 };
 
 /**
@@ -68,6 +71,7 @@ export class MemoriesClient<
   readonly persistence: MemoriesPersistence;
   private readonly store?: Store<EntityMap>;
   private readonly storeForNamespace?: (namespace: string) => Store<EntityMap> | undefined;
+  private readonly telemetry?: MemoriesTelemetry;
 
   constructor(
     persistence: MemoriesPersistence,
@@ -78,10 +82,11 @@ export class MemoriesClient<
     this.ontology = ontology;
     this.store = options?.store;
     this.storeForNamespace = options?.storeForNamespace;
+    this.telemetry = options?.telemetry;
   }
 
   private get mutationCtx(): MutationCtx {
-    return { persistence: this.persistence };
+    return { persistence: this.persistence, telemetry: this.telemetry };
   }
 
   private storeForMergeNamespace(namespace: string): Store<EntityMap> | undefined {

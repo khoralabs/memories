@@ -29,6 +29,42 @@ Attestation formats for HTTP attribution live in `@khoralabs/memories-node/attes
 
 **Auth (shipped)** — `none`, `server-admin`. HTTP-safe contributor attribution signs `khora.http-request-v1` server-side. Planned: app-policy, `did-principal`, placement admin HTTP, remote node backend — see [roadmap](./roadmap/README.md).
 
+## Telemetry
+
+Pass a `MemoriesTelemetry` sink into the service (typically from [`@khoralabs/memories-otel`](../otel)). The service:
+
+1. Emits **database lifecycle** events: `open` (cache miss), `close`, `delete`, `evict` (LRU)
+2. Binds `memories.database.kind` / `owner_key` onto each open handle’s sink
+3. Threads that sink into HTTP merge / search / delete so node ops are correlated per database
+
+Libraries do not start an OTel SDK — bring your own Tracer (and optional Meter / Pino logger). The service is an aggregator/enricher, not an OpenTelemetry Collector.
+
+```ts
+import { createMemoriesOtelTelemetry } from "@khoralabs/memories-otel";
+import { createLocalSqliteServiceStack } from "@khoralabs/memories-service/storage/sqlite";
+import { createMemoriesServiceHttpServer } from "@khoralabs/memories-service/http";
+import { createServerAdminAuthStrategy } from "@khoralabs/memories-service/auth";
+import { trace } from "@opentelemetry/api";
+
+const telemetry = createMemoriesOtelTelemetry({
+  tracer: trace.getTracer("memories-service"),
+});
+
+const { service, ontology } = createLocalSqliteServiceStack({
+  dataDir: "./data",
+  sqlCipherKey: process.env.SQLCIPHER_KEY!,
+  telemetry,
+});
+
+const server = createMemoriesServiceHttpServer({
+  service,
+  ontology,
+  auth: createServerAdminAuthStrategy({ adminToken: process.env.ADMIN_TOKEN! }),
+});
+```
+
+Or pass `telemetry` to `createMemoriesDatabaseService({ resolver, telemetry })` when composing the stack yourself. Attribute catalog and metrics: [`../otel/README.md`](../otel/README.md). Networked ingest (`POST /telemetry/events`) is planned — see [roadmap](./roadmap/README.md#telemetry-event-ingest-phase-2).
+
 ## Docs
 
 | Doc | Role |

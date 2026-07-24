@@ -10,6 +10,9 @@ import type {
 import { runHybridMemorySearch } from "@khoralabs/memories-node/helpers";
 import z from "zod";
 
+import { memoriesLog, memoriesLogToolBodies } from "./telemetry.js";
+import { elapsedMs } from "./timing.js";
+
 /** Re-exported from `@khoralabs/memories-node/helpers` for backward compatibility. */
 export type {
   HybridMemorySearchInput,
@@ -18,6 +21,12 @@ export type {
 } from "@khoralabs/memories-node/helpers";
 /** Re-exported from `@khoralabs/memories-node/helpers` for backward compatibility. */
 export { embeddingCacheKey } from "@khoralabs/memories-node/helpers";
+
+/** Minimal logger for toolkit structured events (compatible with Pino). */
+export type MemorySearchLogger = {
+  info: (obj: object, msg?: string) => void;
+  error?: (obj: object, msg?: string) => void;
+};
 
 /** Runtime env for {@link memorySearchToolkit}: memory store, namespace, and optional embedding model (injected; not tool args). */
 export type MemorySearchEnv = {
@@ -54,6 +63,11 @@ export type MemorySearchEnv = {
    * When set, {@link memorySearchTool} adds each hit and neighbor {@code memory_key} after every search.
    */
   discoveredMemoryKeys?: Set<string>;
+  /**
+   * Optional Pino-compatible logger for toolkit structured events (`memories.toolkit.*`).
+   * Does not emit OTel op spans — those come from memories-node when `telemetry` is on the client.
+   */
+  logger?: MemorySearchLogger;
 };
 
 /** Record slim search hit keys (and neighbor keys) into a session accumulator. */
@@ -186,26 +200,75 @@ const memorySearchTool = tool<
   handler: async (ctx, input) => {
     const env = ctx.env;
     const parsed = zMemorySearchToolInput.parse(input);
-    const slim = await runHybridMemorySearch(
-      env.memoriesClient as HybridMemorySearchClient,
-      {
-        namespace: env.namespace,
-        additionalNamespaces: env.additionalNamespaces,
-        embeddingModel: env.embeddingModel,
-        embeddingCache: env.embeddingCache,
-        memoriesSnapshotRootHex: env.memoriesSnapshotRootHex,
-      },
-      parsed as HybridMemorySearchInput,
-    );
+    const start = performance.now();
+    let timing = { embedMs: 0, searchMs: 0, embedCacheHit: false };
+    const rootHex = env.memoriesSnapshotRootHex ?? "";
 
-    recordDiscoveredMemoryKeys(slim, env.discoveredMemoryKeys);
+    try {
+      const slim = await runHybridMemorySearch(
+        env.memoriesClient as HybridMemorySearchClient,
+        {
+          namespace: env.namespace,
+          additionalNamespaces: env.additionalNamespaces,
+          embeddingModel: env.embeddingModel,
+          embeddingCache: env.embeddingCache,
+          memoriesSnapshotRootHex: env.memoriesSnapshotRootHex,
+          onTiming: (t) => {
+            timing = t;
+          },
+        },
+        parsed as HybridMemorySearchInput,
+      );
 
-    const budget = env.memorySearchBudget;
-    if (budget !== undefined) {
-      budget.used += 1;
+      recordDiscoveredMemoryKeys(slim, env.discoveredMemoryKeys);
+
+      const budget = env.memorySearchBudget;
+      if (budget !== undefined) {
+        budget.used += 1;
+      }
+
+      const processTimeMs = elapsedMs(start);
+      const searchPayload = memoriesLog("memories.toolkit.memory_search", {
+        memoriesProvenanceRootHex: rootHex,
+        processTimeMs,
+        embedMs: Math.round(timing.embedMs * 100) / 100,
+        searchMs: Math.round(timing.searchMs * 100) / 100,
+        embedCacheHit: timing.embedCacheHit,
+        hitCount: slim.length,
+      });
+      env.logger?.info(searchPayload, searchPayload.phase);
+
+      const toolPayload = memoriesLog("memories.toolkit.toolCall", {
+        memoriesProvenanceRootHex: rootHex,
+        processTimeMs,
+        toolName: MEMORY_SEARCH_TOOL_NAME,
+        ok: true,
+        ...(memoriesLogToolBodies() ? { input: parsed } : {}),
+        outputSummary: {
+          hitCount: slim.length,
+          memoryKeys: slim.map((h) => h.memory_key),
+        },
+      });
+      env.logger?.info(toolPayload, toolPayload.phase);
+
+      return slim;
+    } catch (error) {
+      const processTimeMs = elapsedMs(start);
+      const toolPayload = memoriesLog("memories.toolkit.toolCall", {
+        memoriesProvenanceRootHex: rootHex,
+        processTimeMs,
+        toolName: MEMORY_SEARCH_TOOL_NAME,
+        ok: false,
+        error,
+        ...(memoriesLogToolBodies() ? { input: parsed } : {}),
+      });
+      if (env.logger?.error !== undefined) {
+        env.logger.error(toolPayload, toolPayload.phase);
+      } else {
+        env.logger?.info(toolPayload, toolPayload.phase);
+      }
+      throw error;
     }
-
-    return slim;
   },
 });
 

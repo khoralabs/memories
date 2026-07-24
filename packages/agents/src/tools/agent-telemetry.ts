@@ -4,11 +4,12 @@ import {
   type AgentTelemetryOptions,
   createAgentTelemetry,
 } from "@khoralabs/agent-capabilities-otel";
+import { MEMORIES_PROVENANCE_ROOT_HEX_ATTR as NODE_PROVENANCE_ATTR } from "@khoralabs/memories-node/telemetry";
 
 import { getMemoriesProvenanceHeadRootHex } from "./toolkit-context.js";
 
 /** OTel span attribute for the store provenance chain head (`memory_provenance.root_hex`). */
-export const MEMORIES_PROVENANCE_ROOT_HEX_ATTR = "memories.provenance_root_hex" as const;
+export const MEMORIES_PROVENANCE_ROOT_HEX_ATTR = NODE_PROVENANCE_ATTR;
 
 /** Pino binding field for the same value (matches {@link memorySearchIdentityLinkSupplement}). */
 export const MEMORIES_PROVENANCE_ROOT_HEX_LOG_FIELD = "memoriesProvenanceRootHex" as const;

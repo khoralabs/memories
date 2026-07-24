@@ -208,7 +208,7 @@ export async function handleDatabaseSearch(
     throw new HttpError("params is required", 400);
   }
   const result = await searchAsync(
-    { persistence: handle.persistence },
+    { persistence: handle.persistence, telemetry: handle.telemetry },
     scoped.params as unknown as SearchParams,
   );
   return Response.json({
@@ -260,10 +260,14 @@ export async function handleDatabaseMerge(
   let memoryIds: string[];
   try {
     if (handle.sync !== undefined) {
-      const client = new MemoriesClient(handle.sync.syncPersistence, ontology);
+      const client = new MemoriesClient(handle.sync.syncPersistence, ontology, {
+        telemetry: handle.telemetry,
+      });
       memoryIds = client.mergeMemory(params);
     } else {
-      const client = new MemoriesClientAsync(handle.persistence, ontology);
+      const client = new MemoriesClientAsync(handle.persistence, ontology, {
+        telemetry: handle.telemetry,
+      });
       memoryIds = await client.mergeMemory(params);
     }
   } catch (error) {
@@ -303,13 +307,21 @@ export async function handleDatabaseDeleteMemory(
   };
 
   if (handle.sync !== undefined) {
-    const client = new MemoriesClient(handle.sync.syncPersistence, {
-      nodeLabels: {},
-      edgeLabels: {},
-    });
+    const client = new MemoriesClient(
+      handle.sync.syncPersistence,
+      {
+        nodeLabels: {},
+        edgeLabels: {},
+      },
+      { telemetry: handle.telemetry },
+    );
     client.deleteMemory(deleteParams);
   } else {
-    const client = new MemoriesClientAsync(handle.persistence, { nodeLabels: {}, edgeLabels: {} });
+    const client = new MemoriesClientAsync(
+      handle.persistence,
+      { nodeLabels: {}, edgeLabels: {} },
+      { telemetry: handle.telemetry },
+    );
     await client.deleteMemory(deleteParams);
   }
 

@@ -7,6 +7,7 @@ import {
   DEFAULT_MEMORIES_BACKEND_CAPABILITIES,
   resolveMemoriesBackendCapabilities,
 } from "@khoralabs/memories-node/persistence";
+import type { MemoriesTelemetry } from "@khoralabs/memories-node/telemetry";
 
 import type { DatabaseListFilter, MemoriesDatabaseId } from "./database-id";
 import type { MemoriesDatabaseSnapshot } from "./snapshot";
@@ -116,6 +117,11 @@ export type MemoriesDatabaseHandle = {
   checkpoint?(): Promise<void>;
   /** Present when the backend exposes sync `MemoriesPersistence` (e.g. local SQLite). */
   sync?: SyncPersistenceContext;
+  /**
+   * Optional structured telemetry bound by the service (includes `memories.database.*` attrs).
+   * Not set by storage backends — attached in {@link createMemoriesDatabaseService}.
+   */
+  telemetry?: MemoriesTelemetry;
 };
 
 export type MemoriesDatabaseBackend = {

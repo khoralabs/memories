@@ -151,6 +151,8 @@ export type HybridMemorySearchContext = {
    * When set and non-empty, enables as-of search when persistence supports it.
    */
   memoriesSnapshotRootHex?: string;
+  /** Optional timing callback for toolkit / host structured logs (not an OTel span). */
+  onTiming?: (timing: { embedMs: number; searchMs: number; embedCacheHit: boolean }) => void;
 };
 
 export async function resolveAsOfTimestampMs(args: {
@@ -187,6 +189,9 @@ export async function runHybridMemorySearch(
   const searchScopeMode = input.searchScopeMode ?? "pathSubtree";
 
   let content: SearchContent;
+  let embedMs = 0;
+  let embedCacheHit = false;
+  const embedStart = performance.now();
   if (vectorWeight > 0) {
     const model = context.embeddingModel;
     if (model === undefined) {
@@ -212,7 +217,10 @@ export async function runHybridMemorySearch(
         );
       }
       cache?.set(cacheKey, vector);
+    } else {
+      embedCacheHit = true;
     }
+    embedMs = performance.now() - embedStart;
 
     content = lexicalWeight > 0 ? { text: queryText, vector } : { vector };
   } else {
@@ -240,8 +248,14 @@ export async function runHybridMemorySearch(
       : undefined,
   };
 
+  const searchStart = performance.now();
   const raw = await Promise.resolve(client.search(searchParams));
+  const searchMs = performance.now() - searchStart;
   const rawHits = Array.isArray(raw) ? raw : raw.hits;
 
-  return mapSearchHits(rawHits as SearchHit[]);
+  const hits = mapSearchHits(rawHits as SearchHit[]);
+  if (context.onTiming !== undefined) {
+    context.onTiming({ embedMs, searchMs, embedCacheHit });
+  }
+  return hits;
 }

@@ -11,6 +11,7 @@ export {
   type CreateConnectionCacheOptions,
   createConnectionCache,
   deleteCachedConnection,
+  type EvictionCloseResult,
   getCachedConnection,
   releaseCachedConnection,
   setCachedConnection,

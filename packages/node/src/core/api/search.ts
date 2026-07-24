@@ -22,6 +22,7 @@ import {
   resolveMemoriesBackendCapabilities,
   resolveVectorSearchMethod,
 } from "../../persistence/core/persistence";
+import { runWithOpTelemetrySync } from "../../telemetry/index.js";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtx } from "./merge-memory";
 
@@ -423,6 +424,20 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
 }
 
 export function search<NODE_LABELS extends string = string, EDGE_LABELS extends string = string>(
+  ctx: MutationCtx,
+  params: SearchParams<NODE_LABELS, EDGE_LABELS>,
+): SearchOutput<NODE_LABELS, EDGE_LABELS> {
+  return runWithOpTelemetrySync({
+    telemetry: ctx.telemetry,
+    op: "search",
+    namespace: params.namespace,
+    getProvenanceRootHex: () => ctx.persistence.getProvenanceHeadRootHex() ?? "",
+    successFields: (out) => ({ hitCount: out.hits.length }),
+    fn: () => searchInner(ctx, params),
+  });
+}
+
+function searchInner<NODE_LABELS extends string = string, EDGE_LABELS extends string = string>(
   ctx: MutationCtx,
   params: SearchParams<NODE_LABELS, EDGE_LABELS>,
 ): SearchOutput<NODE_LABELS, EDGE_LABELS> {

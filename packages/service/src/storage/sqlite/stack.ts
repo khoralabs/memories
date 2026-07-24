@@ -1,5 +1,6 @@
 import path from "node:path";
 import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-node/sqlite";
+import type { MemoriesTelemetry } from "@khoralabs/memories-node/telemetry";
 import {
   createBackendResolver,
   createCompositeBackendFactory,
@@ -26,6 +27,8 @@ export type CreateLocalSqliteServiceStackOptions = {
   /** Override the node backend factory; defaults to the local SQLite node backend. */
   backendFactory?: MemoriesDatabaseBackendFactory;
   maxCached?: number;
+  /** Structured telemetry for database lifecycle and HTTP node ops. */
+  telemetry?: MemoriesTelemetry;
 };
 
 export type LocalSqliteServiceStack = {
@@ -67,6 +70,7 @@ export function createLocalSqliteServiceStack(
   const service = createMemoriesDatabaseService({
     resolver,
     maxCached: opts.maxCached,
+    telemetry: opts.telemetry,
   });
   return { service, placement, ontology, defaultStrategy };
 }

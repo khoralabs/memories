@@ -18,6 +18,8 @@ import {
   computeSourceMapContentHash,
   type MemoryMutationAttribution,
 } from "../../persistence/core/provenance";
+import type { MemoriesTelemetry } from "../../telemetry/index.js";
+import { runWithOpTelemetrySync } from "../../telemetry/index.js";
 
 export {
   buildCanonicalMemorySearchMetaTextForMerge,
@@ -30,6 +32,8 @@ export {
 
 export interface MutationCtx {
   persistence: MemoriesPersistence;
+  /** Optional structured ops telemetry sink. */
+  telemetry?: MemoriesTelemetry;
 }
 
 export type { MemoryMutationAttribution } from "../../persistence/core/provenance";
@@ -228,10 +232,22 @@ function insertContentItems(
  * @returns Sorted memory ids whose search-meta lexical row was rebuilt (primary, neighbors, edge endpoints).
  */
 export function mergeMemory(ctx: MutationCtx, params: MergeMemoryParams): string[] {
-  if (params.kind === "edge") {
-    return mergeMemoryEdge(ctx, params);
-  }
-  return mergeMemoryNode(ctx, params);
+  const memoryKind = params.kind === "edge" ? "edge" : "node";
+  return runWithOpTelemetrySync({
+    telemetry: ctx.telemetry,
+    op: "merge",
+    namespace: params.namespace,
+    memoryKind,
+    memoryKey: params.key,
+    getProvenanceRootHex: () => ctx.persistence.getProvenanceHeadRootHex() ?? "",
+    successFields: (ids) => ({ mergedMemoryCount: ids.length }),
+    fn: () => {
+      if (params.kind === "edge") {
+        return mergeMemoryEdge(ctx, params);
+      }
+      return mergeMemoryNode(ctx, params);
+    },
+  });
 }
 
 function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
