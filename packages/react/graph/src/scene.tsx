@@ -29,6 +29,8 @@ import { useSuppressBenignResizeObserverErrors } from "./use-suppress-benign-res
  * Padding around the node AABB (drei `Bounds` `margin` equivalent). Tighter than the old `margin={2}`.
  */
 const GRAPH_BOUNDS_MARGIN = 1.32;
+/** Min AABB extent (world units after SCALE) so 1-node graphs don't collapse the camera. */
+const MIN_GRAPH_FIT_EXTENT = 2;
 
 const _min = new THREE.Vector3();
 const _max = new THREE.Vector3();
@@ -60,7 +62,7 @@ function fitPerspectiveCameraToGraph(
   const cx = (_min.x + _max.x) / 2;
   const cy = (_min.y + _max.y) / 2;
   const cz = (_min.z + _max.z) / 2;
-  const maxSize = Math.max(_max.x - _min.x, _max.y - _min.y, _max.z - _min.z, 1e-6);
+  const maxSize = Math.max(_max.x - _min.x, _max.y - _min.y, _max.z - _min.z, MIN_GRAPH_FIT_EXTENT);
 
   // Same vertical/horizontal fit as @react-three/drei Bounds `getSize` (perspective).
   const fitHeightDistance = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360));
