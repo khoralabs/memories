@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/memories-otel",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "OpenTelemetry and Pino adapter for @khoralabs/memories-node telemetry.",
   "license": "MIT",
   "type": "module",
@@ -40,7 +40,7 @@
     "typescript": "^5"
   },
   "peerDependencies": {
-    "@khoralabs/memories-node": "^0.5.2",
+    "@khoralabs/memories-node": "^0.5.3",
     "@opentelemetry/api": "^1",
     "pino": "^9",
     "typescript": "^5"
