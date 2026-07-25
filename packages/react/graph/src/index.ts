@@ -37,7 +37,11 @@ export {
 } from "./graph-namespace-selector.js";
 export { GraphOverlayContainer } from "./graph-overlay-container.js";
 export { GraphPinnedEscHint } from "./graph-pinned-esc-hint.js";
-export { GraphPreviewDock } from "./graph-preview-dock.js";
+export {
+  GraphPreviewDock,
+  type GraphPreviewDockContent,
+  type GraphPreviewDockProps,
+} from "./graph-preview-dock.js";
 export type { GraphSceneEdgeProps } from "./graph-scene-edge.js";
 export type { GraphSceneNodeProps } from "./graph-scene-node.js";
 export type {
