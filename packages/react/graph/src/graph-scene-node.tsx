@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { MeasuredText } from "./components/measured-text.js";
+import { useGraphSceneRender } from "./graph-scene-slots.js";
 import { FONT_TOOLTIP_BODY, FONT_TOOLTIP_KINDS } from "./lib/pretext-measure.js";
-import { type ProjectionPoint, SCALE } from "./projection-types.js";
+import type { GraphSceneNodeItem } from "./projection-types.js";
+import { useProjection } from "./use-projection.js";
 
 /** Screen-space scale vs distance; pairs with camera FOV / zoom (see drei `Html`). */
 const MARKER_DISTANCE_FACTOR = 5;
@@ -16,45 +18,29 @@ const MARKER_DISTANCE_FACTOR = 5;
 const _nodeNdc = new THREE.Vector3();
 const _centroidNdc = new THREE.Vector3();
 
-export function Marker({
-  point,
-  dimmed,
-  forceTooltipOpen,
-  tooltipCentroid,
-  nodeLabelsVisible = true,
-  searchHitPreviews = true,
-  searchHitSnippet,
-  onSelect,
-  onHoverStart,
-  onHoverEnd,
-}: {
-  point: ProjectionPoint;
-  dimmed: boolean;
-  /** When true, subgraph nodes request tooltip stay-open (only when there is tooltip body content). */
-  forceTooltipOpen: boolean;
-  /** Mean position (scaled world space) for outward tooltip side: subgraph or full graph. */
-  tooltipCentroid: readonly [number, number, number];
-  /** Ontology kinds / key line in tooltip. */
-  nodeLabelsVisible?: boolean;
-  /** Search hit body text in tooltip (per-node when present). */
-  searchHitPreviews?: boolean;
-  /** Matched `text_features` text for this memory's search hit source map (root hits only). */
-  searchHitSnippet?: string;
-  onSelect: (point: ProjectionPoint) => void;
-  onHoverStart: (entryId: string) => void;
-  onHoverEnd: () => void;
-}) {
+export type GraphSceneNodeProps = {
+  node: GraphSceneNodeItem;
+  className?: string;
+};
+
+/**
+ * Default graph node marker (Html button + optional tooltip).
+ * Use inside {@link GraphScene.Nodes} or as the default when that slot is omitted.
+ */
+export function GraphSceneNode({ node, className }: GraphSceneNodeProps) {
+  const { setSelected, onHoverStart, onHoverEnd } = useProjection();
+  const { nodeLabelsVisible, searchHitPreviews, tooltipCentroid } = useGraphSceneRender();
+
   const tooltipLabelsLine = (
-    point.labels.length > 0 ? point.labels.map((l) => l.kind) : [point.key]
+    node.labels.length > 0 ? node.labels.map((l) => l.kind) : [node.key]
   ).join(" • ");
-  const snippet = searchHitPreviews ? searchHitSnippet : undefined;
+  const snippet = searchHitPreviews ? node.searchHitSnippet : undefined;
   const tooltipCategoryAllowed = nodeLabelsVisible || searchHitPreviews;
   const hasTooltipContent = nodeLabelsVisible || !!snippet;
   const [userTooltipOpen, setUserTooltipOpen] = useState(false);
   const [tooltipSide, setTooltipSide] = useState<"left" | "right">("right");
-  const tooltipOpen = hasTooltipContent && (forceTooltipOpen || userTooltipOpen);
+  const tooltipOpen = hasTooltipContent && (node.forceTooltipOpen || userTooltipOpen);
   const sideRef = useRef<"left" | "right">("right");
-  /** Portal tooltips here so they share the drei Html stacking layer (not `document.body`). */
   const [tooltipPortalEl, setTooltipPortalEl] = useState<HTMLDivElement | null>(null);
   const tooltipLayerRef = useCallback((el: HTMLDivElement | null) => {
     setTooltipPortalEl(el);
@@ -62,7 +48,7 @@ export function Marker({
   const { camera } = useThree();
 
   useFrame(() => {
-    _nodeNdc.set(point.x * SCALE, point.y * SCALE, point.z * SCALE);
+    _nodeNdc.set(node.position[0], node.position[1], node.position[2]);
     _centroidNdc.set(tooltipCentroid[0], tooltipCentroid[1], tooltipCentroid[2]);
     _nodeNdc.project(camera);
     _centroidNdc.project(camera);
@@ -79,17 +65,17 @@ export function Marker({
       type="button"
       variant="outline"
       size="icon-sm"
-      className="rounded-full border border-black"
+      className={cn("rounded-full border border-black", className)}
       style={{
-        opacity: dimmed ? 0.15 : 1,
+        opacity: node.dimmed ? 0.15 : 1,
         pointerEvents: "auto",
       }}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         e.stopPropagation();
-        onSelect(point);
+        setSelected(node);
       }}
-      onPointerEnter={() => onHoverStart(point.entryId)}
+      onPointerEnter={() => onHoverStart(node.entryId)}
       onPointerLeave={() => onHoverEnd()}
     >
       <DotIcon />
@@ -104,7 +90,7 @@ export function Marker({
         open={tooltipOpen}
         onOpenChange={(open) => {
           if (!hasTooltipContent) return;
-          if (forceTooltipOpen) {
+          if (node.forceTooltipOpen) {
             setUserTooltipOpen(false);
             return;
           }
@@ -155,11 +141,7 @@ export function Marker({
   );
 
   return (
-    <group position={[point.x * SCALE, point.y * SCALE, point.z * SCALE]}>
-      {/*
-        Html root passes events through to the canvas (orbit/zoom). Only the inner control
-        uses pointer-events:auto so empty space around the dot does not eat drags/wheel.
-      */}
+    <group position={node.position}>
       <Html
         center
         distanceFactor={MARKER_DISTANCE_FACTOR}
@@ -173,3 +155,4 @@ export function Marker({
     </group>
   );
 }
+GraphSceneNode.displayName = "GraphScene.Node";

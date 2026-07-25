@@ -2,6 +2,7 @@ import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   type ComponentRef,
+  Fragment,
   type ReactNode,
   type RefObject,
   useCallback,
@@ -10,17 +11,24 @@ import {
   useRef,
 } from "react";
 import * as THREE from "three";
-import { ActiveSubgraphEdgeLabels, GraphEdgeLines, type GraphEdgeRenderMode } from "./edges.js";
+import { ActiveSubgraphEdgeLabels, type GraphEdgeRenderMode } from "./edges.js";
 import { GraphCameraChromeProvider, useGraphCameraChrome } from "./graph-camera-chrome.js";
+import { GraphSceneEdge } from "./graph-scene-edge.js";
+import { GraphSceneNode } from "./graph-scene-node.js";
 import {
   GraphSceneBottomLeft,
   GraphSceneBottomRight,
   GraphSceneCenter,
+  type GraphSceneEdgeRender,
+  GraphSceneEdges,
+  type GraphSceneNodeRender,
+  GraphSceneNodes,
+  GraphSceneRenderProvider,
   GraphSceneTopLeft,
   GraphSceneTopRight,
   partitionGraphSceneChildren,
 } from "./graph-scene-slots.js";
-import { Marker } from "./marker.js";
+import type { GraphSceneEdgeItem, GraphSceneNodeItem } from "./projection-types.js";
 import { SCALE } from "./projection-types.js";
 import { useProjection } from "./use-projection.js";
 import { useSuppressBenignResizeObserverErrors } from "./use-suppress-benign-resize-observer-errors.js";
@@ -43,7 +51,7 @@ function fitPerspectiveCameraToGraph(
   controls: { target: THREE.Vector3; update: () => void },
   points: readonly { x: number; y: number; z: number }[],
   margin: number,
-  options?: { viewDirection?: THREE.Vector3 },
+  options?: { viewDirection?: THREE.Vector3; minFitExtent?: number },
 ) {
   if (points.length === 0) return;
   _min.set(Infinity, Infinity, Infinity);
@@ -62,7 +70,8 @@ function fitPerspectiveCameraToGraph(
   const cx = (_min.x + _max.x) / 2;
   const cy = (_min.y + _max.y) / 2;
   const cz = (_min.z + _max.z) / 2;
-  const maxSize = Math.max(_max.x - _min.x, _max.y - _min.y, _max.z - _min.z, MIN_GRAPH_FIT_EXTENT);
+  const minFitExtent = options?.minFitExtent ?? MIN_GRAPH_FIT_EXTENT;
+  const maxSize = Math.max(_max.x - _min.x, _max.y - _min.y, _max.z - _min.z, minFitExtent);
 
   // Same vertical/horizontal fit as @react-three/drei Bounds `getSize` (perspective).
   const fitHeightDistance = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360));
@@ -97,10 +106,13 @@ function GraphCameraController({
   points,
   orbitTarget,
   controlsRef,
+  minFitExtent = MIN_GRAPH_FIT_EXTENT,
 }: {
   points: readonly { x: number; y: number; z: number }[];
   orbitTarget: readonly [number, number, number];
   controlsRef: RefObject<ComponentRef<typeof OrbitControls> | null>;
+  /** Min AABB extent (world units after SCALE) so small graphs don't collapse the camera. */
+  minFitExtent?: number;
 }) {
   const camera = useThree((s) => s.camera);
   const invalidate = useThree((s) => s.invalidate);
@@ -154,7 +166,10 @@ function GraphCameraController({
         ctrl as unknown as { target: THREE.Vector3; update: () => void },
         points,
         GRAPH_BOUNDS_MARGIN,
-        viewDir ? { viewDirection: viewDir } : undefined,
+        {
+          minFitExtent,
+          ...(viewDir ? { viewDirection: viewDir } : {}),
+        },
       );
       ctrl.target.set(orbitTarget[0], orbitTarget[1], orbitTarget[2]);
       ctrl.update();
@@ -165,6 +180,7 @@ function GraphCameraController({
       camera,
       controlsRef,
       invalidate,
+      minFitExtent,
       orbitTarget,
       points,
       snapshotHome,
@@ -273,20 +289,25 @@ export function resolveGraphSceneOverlay(
 function GraphSceneR3f({
   edgeRenderMode,
   overlay,
+  nodesRender,
+  edgesRender,
+  minFitExtent,
 }: {
   edgeRenderMode: GraphEdgeRenderMode;
   overlay: GraphSceneResolvedOverlay;
+  nodesRender: GraphSceneNodeRender | null;
+  edgesRender: GraphSceneEdgeRender | null;
+  minFitExtent?: number;
 }) {
   const {
     points,
     sceneEdges,
-    setSelected,
     focusEntryId,
     activeSubgraphKeys,
-    onHoverStart,
-    onHoverEnd,
-    clearHover,
+    hasGraphSubgraphFocus,
+    hasGraphSubgraphStrongFocus,
     graphSearch,
+    clearHover,
   } = useProjection();
 
   const orbitTarget = useOrbitTarget(points);
@@ -321,22 +342,115 @@ function GraphSceneR3f({
     return [sx / n, sy / n, sz / n];
   }, [points, activeSubgraphKeys]);
 
+  const nodeItems = useMemo((): GraphSceneNodeItem[] => {
+    return points.map((point) => {
+      const position: [number, number, number] = [
+        point.x * SCALE,
+        point.y * SCALE,
+        point.z * SCALE,
+      ];
+      const inActiveSubgraph = !!activeSubgraphKeys?.has(point.entryId);
+      const searchDimmed =
+        graphSearch !== null &&
+        graphSearch.relevantKeys.size > 0 &&
+        !graphSearch.relevantKeys.has(point.entryId) &&
+        !inActiveSubgraph;
+      const subgraphDimmed =
+        activeSubgraphKeys !== null &&
+        point.entryId !== focusEntryId &&
+        !activeSubgraphKeys.has(point.entryId);
+      const searchHitSnippet = overlay.searchHitPreviews
+        ? graphSearch?.hitSnippetByKey.get(point.entryId)
+        : undefined;
+      return {
+        ...point,
+        position,
+        dimmed: searchDimmed || subgraphDimmed,
+        forceTooltipOpen: !!activeSubgraphKeys?.has(point.entryId),
+        ...(searchHitSnippet !== undefined ? { searchHitSnippet } : {}),
+      };
+    });
+  }, [points, activeSubgraphKeys, focusEntryId, graphSearch, overlay.searchHitPreviews]);
+
+  const edgeItems = useMemo((): GraphSceneEdgeItem[] => {
+    if (!overlay.edgesVisible) return [];
+    if (edgeRenderMode === "activeOnly" && !hasGraphSubgraphFocus) return [];
+
+    const out: GraphSceneEdgeItem[] = [];
+    for (const e of sceneEdges) {
+      const from = posMap.get(e.fromKey);
+      const to = posMap.get(e.toKey);
+      if (!from || !to) continue;
+
+      const searchLit =
+        graphSearch === null ||
+        hasGraphSubgraphStrongFocus ||
+        (graphSearch.relevantKeys.has(e.fromKey) && graphSearch.relevantKeys.has(e.toKey));
+      const subgraphLit =
+        activeSubgraphKeys === null
+          ? !hasGraphSubgraphFocus
+          : activeSubgraphKeys.has(e.fromKey) && activeSubgraphKeys.has(e.toKey);
+      const lit = searchLit && subgraphLit;
+
+      if (edgeRenderMode === "activeOnly" && !lit) continue;
+
+      const inPinnedSubgraph = !!(
+        hasGraphSubgraphStrongFocus &&
+        activeSubgraphKeys?.has(e.fromKey) &&
+        activeSubgraphKeys.has(e.toKey)
+      );
+
+      out.push({
+        ...e,
+        from,
+        to,
+        lit,
+        opacity: lit ? 0.5 : 0.07,
+        animateDash: inPinnedSubgraph && !!e.directed,
+      });
+    }
+    return out;
+  }, [
+    overlay.edgesVisible,
+    edgeRenderMode,
+    hasGraphSubgraphFocus,
+    hasGraphSubgraphStrongFocus,
+    sceneEdges,
+    posMap,
+    graphSearch,
+    activeSubgraphKeys,
+  ]);
+
+  const renderNode = nodesRender ?? ((node: GraphSceneNodeItem) => <GraphSceneNode node={node} />);
+  const renderEdge = edgesRender ?? ((edge: GraphSceneEdgeItem) => <GraphSceneEdge edge={edge} />);
+
+  const renderCtx = useMemo(
+    () => ({
+      nodesRender,
+      edgesRender,
+      nodeLabelsVisible: overlay.nodeLabelsVisible,
+      searchHitPreviews: overlay.searchHitPreviews,
+      tooltipCentroid,
+    }),
+    [
+      nodesRender,
+      edgesRender,
+      overlay.nodeLabelsVisible,
+      overlay.searchHitPreviews,
+      tooltipCentroid,
+    ],
+  );
+
   return (
-    <>
+    <GraphSceneRenderProvider value={renderCtx}>
       <color attach="background" args={["var(--card)"]} />
       <ambientLight intensity={0.8} />
       <pointLight position={[8, 8, 8]} intensity={40} />
       <pointLight position={[-8, -8, -4]} intensity={12} color="#8ab4ff" />
       <group>
-        {overlay.edgesVisible ? (
-          <GraphEdgeLines
-            edges={sceneEdges}
-            posMap={posMap}
-            activeSubgraphKeys={activeSubgraphKeys}
-            graphSearch={graphSearch}
-            edgeRenderMode={edgeRenderMode}
-          />
-        ) : null}
+        {edgeItems.map((edge) => (
+          <Fragment key={edge.key}>{renderEdge(edge)}</Fragment>
+        ))}
         {overlay.edgeLabelsVisible ? (
           <ActiveSubgraphEdgeLabels
             edges={sceneEdges}
@@ -346,37 +460,9 @@ function GraphSceneR3f({
             hitSnippetByEdgeId={graphSearch?.hitSnippetByEdgeId}
           />
         ) : null}
-        {points.map((point) => {
-          const inActiveSubgraph = !!activeSubgraphKeys?.has(point.entryId);
-          const searchDimmed =
-            graphSearch !== null &&
-            graphSearch.relevantKeys.size > 0 &&
-            !graphSearch.relevantKeys.has(point.entryId) &&
-            !inActiveSubgraph;
-          const subgraphDimmed =
-            activeSubgraphKeys !== null &&
-            point.entryId !== focusEntryId &&
-            !activeSubgraphKeys.has(point.entryId);
-          const forceTooltipOpen = !!activeSubgraphKeys?.has(point.entryId);
-          const searchHitSnippet = overlay.searchHitPreviews
-            ? graphSearch?.hitSnippetByKey.get(point.entryId)
-            : undefined;
-          return (
-            <Marker
-              key={point.entryId}
-              point={point}
-              dimmed={searchDimmed || subgraphDimmed}
-              forceTooltipOpen={forceTooltipOpen}
-              tooltipCentroid={tooltipCentroid}
-              nodeLabelsVisible={overlay.nodeLabelsVisible}
-              searchHitPreviews={overlay.searchHitPreviews}
-              searchHitSnippet={searchHitSnippet}
-              onSelect={setSelected}
-              onHoverStart={onHoverStart}
-              onHoverEnd={onHoverEnd}
-            />
-          );
-        })}
+        {nodeItems.map((node) => (
+          <Fragment key={node.entryId}>{renderNode(node)}</Fragment>
+        ))}
       </group>
       <OrbitControls
         ref={controlsRef}
@@ -385,18 +471,29 @@ function GraphSceneR3f({
         makeDefault
         onStart={onCameraNavStart}
       />
-      <GraphCameraController controlsRef={controlsRef} orbitTarget={orbitTarget} points={points} />
-    </>
+      <GraphCameraController
+        controlsRef={controlsRef}
+        orbitTarget={orbitTarget}
+        points={points}
+        minFitExtent={minFitExtent}
+      />
+    </GraphSceneRenderProvider>
   );
 }
 
 function GraphSceneRoot({
   edgeRenderMode = "all",
   overlay,
+  minFitExtent,
   children,
 }: {
   edgeRenderMode?: GraphEdgeRenderMode;
   overlay?: GraphSceneOverlayOptions;
+  /**
+   * Minimum AABB extent (world units after SCALE) used when fitting the camera.
+   * Larger values pull the camera farther back on small/single-node graphs (default `2`).
+   */
+  minFitExtent?: number;
   children?: ReactNode;
 }) {
   useSuppressBenignResizeObserverErrors();
@@ -445,7 +542,13 @@ function GraphSceneRoot({
               preserveDrawingBuffer: false,
             }}
           >
-            <GraphSceneR3f edgeRenderMode={edgeRenderMode} overlay={overlayResolved} />
+            <GraphSceneR3f
+              edgeRenderMode={edgeRenderMode}
+              overlay={overlayResolved}
+              nodesRender={slots.nodesRender}
+              edgesRender={slots.edgesRender}
+              minFitExtent={minFitExtent}
+            />
           </Canvas>
         </div>
       </div>
@@ -454,10 +557,25 @@ function GraphSceneRoot({
 }
 
 /**
- * R3F canvas + composable overlay slots ({@link GraphScene.TopLeft}, {@link GraphScene.TopRight},
- * {@link GraphScene.BottomLeft}, {@link GraphScene.BottomRight}, {@link GraphScene.Center}). Must be wrapped in {@link GraphProjectionProvider}.
+ * R3F canvas + composable overlay slots (`TopLeft` / `TopRight` / `BottomLeft` / `BottomRight` /
+ * `Center`) and optional `Nodes` / `Edges` render-prop slots for custom markers. Must be wrapped
+ * in {@link GraphProjectionProvider}.
  *
- * Use {@link GraphSceneOverlayOptions} (`overlay` prop) to hide edges, edge/node labels, or search hit snippets in tooltips.
+ * @example
+ * ```tsx
+ * <GraphScene>
+ *   <GraphScene.Nodes>
+ *     {(node) => <GraphScene.Node node={node} className="border-primary" />}
+ *   </GraphScene.Nodes>
+ *   <GraphScene.Edges>
+ *     {(edge) => <GraphScene.Edge edge={edge} />}
+ *   </GraphScene.Edges>
+ * </GraphScene>
+ * ```
+ *
+ * Use {@link GraphSceneOverlayOptions} (`overlay` prop) to hide edges, edge/node labels, or search
+ * hit snippets in tooltips. When `Nodes` / `Edges` are omitted, built-in defaults are used.
+ * Pass `minFitExtent` to override how tightly the camera fits small/single-node graphs (default `2`).
  */
 export const GraphScene = Object.assign(GraphSceneRoot, {
   TopLeft: GraphSceneTopLeft,
@@ -465,4 +583,8 @@ export const GraphScene = Object.assign(GraphSceneRoot, {
   BottomLeft: GraphSceneBottomLeft,
   BottomRight: GraphSceneBottomRight,
   Center: GraphSceneCenter,
+  Nodes: GraphSceneNodes,
+  Node: GraphSceneNode,
+  Edges: GraphSceneEdges,
+  Edge: GraphSceneEdge,
 });

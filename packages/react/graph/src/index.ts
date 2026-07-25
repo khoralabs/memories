@@ -38,6 +38,12 @@ export {
 export { GraphOverlayContainer } from "./graph-overlay-container.js";
 export { GraphPinnedEscHint } from "./graph-pinned-esc-hint.js";
 export { GraphPreviewDock } from "./graph-preview-dock.js";
+export type { GraphSceneEdgeProps } from "./graph-scene-edge.js";
+export type { GraphSceneNodeProps } from "./graph-scene-node.js";
+export type {
+  GraphSceneEdgeRender,
+  GraphSceneNodeRender,
+} from "./graph-scene-slots.js";
 export {
   GraphSearch,
   type GraphSearchProps,

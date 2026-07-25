@@ -55,6 +55,24 @@ export type SceneEdge = {
   directed?: boolean;
 };
 
+/** Render-prop item for `GraphScene.Nodes` / `GraphScene.Node`. */
+export type GraphSceneNodeItem = ProjectionPoint & {
+  /** World position after {@link SCALE}. */
+  position: [number, number, number];
+  dimmed: boolean;
+  forceTooltipOpen: boolean;
+  searchHitSnippet?: string;
+};
+
+/** Render-prop item for `GraphScene.Edges` / `GraphScene.Edge`. */
+export type GraphSceneEdgeItem = SceneEdge & {
+  from: [number, number, number];
+  to: [number, number, number];
+  lit: boolean;
+  opacity: number;
+  animateDash: boolean;
+};
+
 export function graphLabelFingerprint(l: GraphLabelInstance): string {
   return `${l.kind}\0${JSON.stringify(l.props)}`;
 }
