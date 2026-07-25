@@ -9,9 +9,8 @@ Feature plans for `@khoralabs/memories-service`. Current implementation referenc
 | HTTP-safe contributor attribution | Shipped |
 | Local SQLite / libSQL / Turso backends + composite factory | Shipped |
 | Placement store (programmatic) | Shipped |
-| Auth: `none`, `server-admin` | Shipped |
+| Auth: `none`, `server-admin`, `app-policy` | Shipped |
 | [Decentralized principal auth](./decentralized-principal-auth.md) | Phase 1 shipped; `did-principal` + grants TBD |
-| App policy auth | Not implemented |
 | Placement admin HTTP API | Not implemented |
 | Remote Memories node backend | Not implemented |
 | Principal-registered nodes | Not implemented |
@@ -51,19 +50,13 @@ Placement is programmatic: `MemoriesDatabasePlacementStore` (`getDefaultStrategy
 
 Backup and replication stay backend-specific; the service exposes capability metadata per strategy and does not define a cross-backend protocol.
 
----
-
-## Planned
-
 ### App policy auth
 
-Host-decided access. Shipped schemes today: `none`, `server-admin` (`@khoralabs/memories-service/auth`).
+Host-decided access via `createAppPolicyAuthStrategy` (`@khoralabs/memories-service/auth`).
 
 ```text
 MEMORIES_SERVICE_AUTH=app-policy
 ```
-
-Proposed factory in auth:
 
 ```ts
 type AppPolicyAuthStrategyOptions = {
@@ -77,7 +70,11 @@ type AppPolicyAuthStrategyOptions = {
 };
 ```
 
-The host supplies identity, team/org membership, and namespace rules; the service stays limited to opaque `{ kind, ownerKey }` ids and lifecycle. Mutually exclusive with `server-admin` and `did-principal` per instance. Env alone is insufficient — requires host wiring at server creation (`createAppPolicyAuthStrategy({ authenticate, authorize })`).
+The host supplies identity, team/org membership, and namespace rules; the service stays limited to opaque `{ kind, ownerKey }` ids and lifecycle. Mutually exclusive with `server-admin` and `did-principal` per instance. Env alone is insufficient — requires host wiring at server creation (`createAppPolicyAuthStrategy({ authenticate, authorize })`). HTTP passes `namespace` into `authorize` when present on the JSON body (or `params.namespace`).
+
+---
+
+## Planned
 
 ### Placement admin HTTP API
 

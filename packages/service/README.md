@@ -11,7 +11,7 @@ Depends on [`@khoralabs/memories-node`](../node) for the data plane.
 | `.` | Lifecycle service, database ids, placement/ontology store interfaces, composite backend factory |
 | `./client` | Management client, `RemoteMemoriesClientAsync`, `RemoteMemoriesReadClient`, `MemoriesOntologyClient` |
 | `./http` | `createMemoriesServiceHttpServer` / request handler (lifecycle, persistence, reads, ontology, attribution) |
-| `./auth` | `none`, `server-admin` (+ env factory) |
+| `./auth` | `none`, `server-admin`, `app-policy` (+ env factory for `none` / `server-admin`) |
 | `./storage/sqlite` | Local SQLCipher backend, SQLite placement + ontology registries, `createLocalSqliteServiceStack` (**Bun**) |
 | `./storage/libsql` | Local libSQL backend factory; Node-safe |
 | `./storage/turso-serverless` | Turso serverless backend factory; Node-safe |
@@ -27,7 +27,7 @@ Attestation formats for HTTP attribution live in `@khoralabs/memories-node/attes
 
 **Ontology registry (phase 1)** — content-addressed register/link/history over HTTP; merge enforcement and runtime rehydration from stored JSON are still open.
 
-**Auth (shipped)** — `none`, `server-admin`. HTTP-safe contributor attribution signs `khora.http-request-v1` server-side. Planned: app-policy, `did-principal`, placement admin HTTP, remote node backend — see [roadmap](./roadmap/README.md).
+**Auth (shipped)** — `none`, `server-admin`, `app-policy` (host-wired). HTTP-safe contributor attribution signs `khora.http-request-v1` server-side. Planned: `did-principal`, placement admin HTTP, remote node backend — see [roadmap](./roadmap/README.md).
 
 ## Telemetry
 
@@ -90,3 +90,29 @@ const server = createMemoriesServiceHttpServer({
 ```
 
 Bun-only for `./storage/sqlite`. Use libSQL / Turso storage entrypoints on Node.
+
+### App policy auth
+
+When `MEMORIES_SERVICE_AUTH=app-policy`, construct the strategy at server creation (env alone cannot build it):
+
+```ts
+import {
+  createAppPolicyAuthStrategy,
+  readAuthSchemeFromEnv,
+  createAuthStrategyFromEnv,
+} from "@khoralabs/memories-service/auth";
+
+const scheme = readAuthSchemeFromEnv();
+const auth =
+  scheme === "app-policy"
+    ? createAppPolicyAuthStrategy({
+        async authenticate(req) {
+          // host identity (session, JWT, …)
+          return { scheme: "app-policy", subject: "user-1" };
+        },
+        async authorize({ actor, action, database, namespace }) {
+          // host team/org + namespace rules; throw AuthStrategyError on deny
+        },
+      })
+    : createAuthStrategyFromEnv();
+```

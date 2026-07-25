@@ -3,7 +3,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
-import { createNoneAuthStrategy, createServerAdminAuthStrategy } from "../auth/index";
+import {
+  createAppPolicyAuthStrategy,
+  createNoneAuthStrategy,
+  createServerAdminAuthStrategy,
+} from "../auth/index";
 import { createLocalSqliteServiceStack } from "../storage/sqlite/index";
 
 import { handleMemoriesServiceHttpRequest } from "./handlers";
@@ -79,5 +83,40 @@ describe("memories service http handlers", () => {
 
     expect(response.status).toBe(200);
     expect(await service.exists({ kind: "organization", ownerKey: "org-1" })).toBe(true);
+  });
+
+  test("app-policy authorize receives namespace from search body", async () => {
+    const { service } = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-ns" };
+    await service.open(database);
+
+    let seenNamespace: string | undefined;
+    const auth = createAppPolicyAuthStrategy({
+      async authenticate() {
+        return { scheme: "app-policy", subject: "tester" };
+      },
+      async authorize(input) {
+        seenNamespace = input.namespace;
+      },
+    });
+
+    const response = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            namespace: "user/a",
+            content: { text: "hello" },
+            options: { topK: 5, arms: { lexical: 1, vector: 0 } },
+          },
+        }),
+      }),
+      { service, auth },
+    );
+
+    expect(response.status).toBe(200);
+    expect(seenNamespace).toBe("user/a");
   });
 });

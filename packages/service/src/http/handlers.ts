@@ -121,10 +121,28 @@ async function authorize(
   req: Request,
   action: DatabaseAction,
   database?: MemoriesDatabaseId,
+  namespace?: string,
 ): Promise<AuthenticatedActor> {
   const actor = await auth.authenticate(req);
-  await auth.authorize({ actor, action, database });
+  await auth.authorize({
+    actor,
+    action,
+    ...(database !== undefined ? { database } : {}),
+    ...(namespace !== undefined ? { namespace } : {}),
+  });
   return actor;
+}
+
+function namespaceFromBody(body: unknown): string | undefined {
+  if (body === null || typeof body !== "object") return undefined;
+  const record = body as Record<string, unknown>;
+  if (typeof record.namespace === "string") return record.namespace;
+  const params = record.params;
+  if (params !== null && typeof params === "object") {
+    const ns = (params as Record<string, unknown>).namespace;
+    if (typeof ns === "string") return ns;
+  }
+  return undefined;
 }
 
 async function buildRequestAttribution(
@@ -209,14 +227,14 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/search") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseSearch(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/merge") {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      const actor = await authorize(opts.auth, req, "write", id);
+      const actor = await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
       const attribution =
         opts.attribution !== undefined
           ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
@@ -227,7 +245,7 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/delete-memory") {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      const actor = await authorize(opts.auth, req, "write", id);
+      const actor = await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
       const attribution =
         opts.attribution !== undefined
           ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
@@ -238,70 +256,70 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/provenance/head") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseProvenanceHead(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/capabilities") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseCapabilities(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseNamespaces(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/edge-preview") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseEdgePreview(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/source-map/text-preview") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseSourceMapTextPreview(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/vector-dimensions") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseVectorDimensions(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/projections/umap-input") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return await handleDatabaseUmapInput(opts.service, opts.projectionSource, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ensure-scope-chain") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id);
+      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
       return handleDatabaseEnsureScopeChain(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/find-memory-id") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseFindMemoryId(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/load-memory-namespace-key") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseLoadMemoryNamespaceKey(opts.service, body);
     }
 
@@ -326,28 +344,28 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/ontology/link") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id);
+      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
       return handleDatabaseOntologyLink(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ontology/current") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseOntologyCurrent(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/hash") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseHash(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ontology/history") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseOntologyHistory(requireOntology(opts), body);
     }
 

@@ -1,3 +1,7 @@
+export {
+  type AppPolicyAuthStrategyOptions,
+  createAppPolicyAuthStrategy,
+} from "./app-policy";
 export { createAuthStrategy, createAuthStrategyFromEnv } from "./factory";
 export { createNoneAuthStrategy } from "./none";
 export { createServerAdminAuthStrategy, type ServerAdminAuthStrategyOptions } from "./server-admin";

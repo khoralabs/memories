@@ -27,7 +27,7 @@ export class AuthStrategyError extends Error {
   }
 }
 
-export type MemoriesServiceAuthScheme = "none" | "server-admin";
+export type MemoriesServiceAuthScheme = "none" | "server-admin" | "app-policy";
 
 export const MEMORIES_SERVICE_AUTH_ENV = "MEMORIES_SERVICE_AUTH";
 export const MEMORIES_SERVICE_ADMIN_TOKEN_ENV = "MEMORIES_SERVICE_ADMIN_TOKEN";
@@ -41,6 +41,6 @@ export function readAuthSchemeFromEnv(
   env: Record<string, string | undefined> = process.env,
 ): MemoriesServiceAuthScheme {
   const raw = env[MEMORIES_SERVICE_AUTH_ENV]?.trim() ?? "none";
-  if (raw === "none" || raw === "server-admin") return raw;
+  if (raw === "none" || raw === "server-admin" || raw === "app-policy") return raw;
   throw new Error(`Unsupported ${MEMORIES_SERVICE_AUTH_ENV}: ${raw}`);
 }

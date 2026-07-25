@@ -4,7 +4,7 @@ DID-based authorization for the HTTP adapter: clients prove control of a princip
 
 **Status:** Phase 1 shipped. Attestation formats (`@khoralabs/memories-node/attestation`) and server-side HTTP attribution (`MemoriesServiceHttpOptions.attribution` on `@khoralabs/memories-service/http`) are live. The `did-principal` auth scheme, DID proof verification, nonce handling, and delegation grants are not yet implemented.
 
-Shipped auth schemes today (`@khoralabs/memories-service/auth`): `none`, `server-admin`. See [README.md](./README.md) for related planned work (app-policy, placement admin).
+Shipped auth schemes today (`@khoralabs/memories-service/auth`): `none`, `server-admin`, `app-policy`. See [README.md](./README.md) for related planned work (placement admin).
 
 ## What is shipped
 

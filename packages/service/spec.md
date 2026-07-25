@@ -10,7 +10,7 @@ Reusable packages for managing many Memories databases per principal: route requ
 |--------|------|
 | `.` | Backend-agnostic lifecycle: ids, placement interfaces, resolver, LRU cache |
 | `./http` | HTTP adapter (lifecycle, persistence, reads, ontology, attribution) |
-| `./auth` | Auth strategies (`none`, `server-admin`) |
+| `./auth` | Auth strategies (`none`, `server-admin`, `app-policy`) |
 | `./client` | Management HTTP client, remote `MemoriesClientAsync`, read client, ontology helpers |
 | `./storage/sqlite` | Local SQLCipher backend, SQLite placement + ontology registries, turnkey stack (**Bun**) |
 | `./storage/libsql` | Local libSQL backend (Node-safe) |
@@ -292,8 +292,9 @@ Shipped strategies (`MEMORIES_SERVICE_AUTH`):
 |--------|-----|
 | `none` | Embedded, local, or test deployments inside a trust boundary |
 | `server-admin` | Bearer token (`MEMORIES_SERVICE_ADMIN_TOKEN`) grants full access |
+| `app-policy` | Host-wired `createAppPolicyAuthStrategy({ authenticate, authorize })`; env alone cannot construct it |
 
-One scheme per service instance. Planned strategies: [app-policy](./roadmap/README.md#app-policy-auth) and [did-principal](./roadmap/decentralized-principal-auth.md).
+One scheme per service instance. Planned: [did-principal](./roadmap/decentralized-principal-auth.md). HTTP passes `namespace` into `authorize` when present on the request body (or `params.namespace`).
 
 ## Client
 
