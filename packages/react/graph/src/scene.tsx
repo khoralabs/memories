@@ -2,6 +2,7 @@ import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   type ComponentRef,
+  type CSSProperties,
   Fragment,
   type ReactNode,
   type RefObject,
@@ -11,10 +12,11 @@ import {
   useRef,
 } from "react";
 import * as THREE from "three";
+import { cn } from "@/lib/utils";
 import { ActiveSubgraphEdgeLabels, type GraphEdgeRenderMode } from "./edges.js";
 import { GraphCameraChromeProvider, useGraphCameraChrome } from "./graph-camera-chrome.js";
 import { GraphSceneEdge } from "./graph-scene-edge.js";
-import { GraphSceneNode } from "./graph-scene-node.js";
+import { GraphSceneNode, GraphSceneNodeButton, GraphSceneNodeTooltip } from "./graph-scene-node.js";
 import {
   GraphSceneBottomLeft,
   GraphSceneBottomRight,
@@ -292,12 +294,14 @@ function GraphSceneR3f({
   nodesRender,
   edgesRender,
   minFitExtent,
+  background,
 }: {
   edgeRenderMode: GraphEdgeRenderMode;
   overlay: GraphSceneResolvedOverlay;
   nodesRender: GraphSceneNodeRender | null;
   edgesRender: GraphSceneEdgeRender | null;
   minFitExtent?: number;
+  background: string;
 }) {
   const {
     points,
@@ -443,7 +447,7 @@ function GraphSceneR3f({
 
   return (
     <GraphSceneRenderProvider value={renderCtx}>
-      <color attach="background" args={["var(--card)"]} />
+      <color attach="background" args={[background]} />
       <ambientLight intensity={0.8} />
       <pointLight position={[8, 8, 8]} intensity={40} />
       <pointLight position={[-8, -8, -4]} intensity={12} color="#8ab4ff" />
@@ -481,12 +485,7 @@ function GraphSceneR3f({
   );
 }
 
-function GraphSceneRoot({
-  edgeRenderMode = "all",
-  overlay,
-  minFitExtent,
-  children,
-}: {
+export type GraphSceneProps = {
   edgeRenderMode?: GraphEdgeRenderMode;
   overlay?: GraphSceneOverlayOptions;
   /**
@@ -494,15 +493,29 @@ function GraphSceneRoot({
    * Larger values pull the camera farther back on small/single-node graphs (default `2`).
    */
   minFitExtent?: number;
+  /** Three.js scene clear color (default `var(--card)`). */
+  background?: string;
+  className?: string;
+  style?: CSSProperties;
   children?: ReactNode;
-}) {
+};
+
+function GraphSceneRoot({
+  edgeRenderMode = "all",
+  overlay,
+  minFitExtent,
+  background = "var(--card)",
+  className,
+  style,
+  children,
+}: GraphSceneProps) {
   useSuppressBenignResizeObserverErrors();
   const slots = partitionGraphSceneChildren(children);
   const overlayResolved = resolveGraphSceneOverlay(overlay);
 
   return (
     <GraphCameraChromeProvider>
-      <div className="relative h-full min-h-0 w-full">
+      <div className={cn("relative h-full min-h-0 w-full", className)} style={style}>
         {slots.topLeft != null ? (
           <div className="pointer-events-auto absolute top-0 left-0 z-20 m-4 flex flex-col gap-4">
             {slots.topLeft}
@@ -548,6 +561,7 @@ function GraphSceneRoot({
               nodesRender={slots.nodesRender}
               edgesRender={slots.edgesRender}
               minFitExtent={minFitExtent}
+              background={background}
             />
           </Canvas>
         </div>
@@ -565,7 +579,11 @@ function GraphSceneRoot({
  * ```tsx
  * <GraphScene>
  *   <GraphScene.Nodes>
- *     {(node) => <GraphScene.Node node={node} className="border-primary" />}
+ *     {(node) => (
+ *       <GraphScene.Node node={node}>
+ *         <GraphScene.NodeButton className="border-primary" />
+ *       </GraphScene.Node>
+ *     )}
  *   </GraphScene.Nodes>
  *   <GraphScene.Edges>
  *     {(edge) => <GraphScene.Edge edge={edge} />}
@@ -585,6 +603,8 @@ export const GraphScene = Object.assign(GraphSceneRoot, {
   Center: GraphSceneCenter,
   Nodes: GraphSceneNodes,
   Node: GraphSceneNode,
+  NodeButton: GraphSceneNodeButton,
+  NodeTooltip: GraphSceneNodeTooltip,
   Edges: GraphSceneEdges,
   Edge: GraphSceneEdge,
 });

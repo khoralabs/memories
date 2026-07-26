@@ -1,7 +1,19 @@
 import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { DotIcon } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import {
+  Children,
+  type ComponentProps,
+  createContext,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as THREE from "three";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,17 +30,175 @@ const MARKER_DISTANCE_FACTOR = 5;
 const _nodeNdc = new THREE.Vector3();
 const _centroidNdc = new THREE.Vector3();
 
-export type GraphSceneNodeProps = {
+type GraphSceneNodeContextValue = {
   node: GraphSceneNodeItem;
+  tooltipSide: "left" | "right";
+  tooltipPortalEl: HTMLDivElement | null;
+  nodeLabelsVisible: boolean;
+  snippet: string | undefined;
+  tooltipLabelsLine: string;
+};
+
+const GraphSceneNodeContext = createContext<GraphSceneNodeContextValue | null>(null);
+
+/** Node item + tooltip layout state for {@link GraphScene.NodeButton} / {@link GraphScene.NodeTooltip}. */
+export function useGraphSceneNode(): GraphSceneNodeContextValue {
+  const ctx = useContext(GraphSceneNodeContext);
+  if (ctx == null) {
+    throw new Error("useGraphSceneNode must be used within GraphScene.Node");
+  }
+  return ctx;
+}
+
+export type GraphSceneNodeButtonProps = ComponentProps<typeof Button>;
+
+/**
+ * Default node marker control. Provide `className` / `children` (or `asChild`) to restyle;
+ * selection and hover wiring stay attached.
+ */
+export function GraphSceneNodeButton({
+  className,
+  children,
+  variant = "outline",
+  size = "icon-sm",
+  style,
+  ...props
+}: GraphSceneNodeButtonProps) {
+  const { node } = useGraphSceneNode();
+  const { setSelected, onHoverStart, onHoverEnd } = useProjection();
+
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      size={size}
+      {...props}
+      className={cn("rounded-full border border-black", className)}
+      style={{
+        opacity: node.dimmed ? 0.15 : 1,
+        pointerEvents: "auto",
+        ...style,
+      }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        setSelected(node);
+      }}
+      onPointerEnter={() => onHoverStart(node.entryId)}
+      onPointerLeave={() => onHoverEnd()}
+    >
+      {children ?? <DotIcon />}
+    </Button>
+  );
+}
+GraphSceneNodeButton.displayName = "GraphScene.NodeButton";
+
+export type GraphSceneNodeTooltipProps = {
+  children?: ReactNode;
   className?: string;
 };
 
 /**
+ * Node hover/force tooltip body. Omit `children` for the default labels + search snippet;
+ * pass `children` to fully control tooltip text/layout (use {@link useGraphSceneNode} for data).
+ */
+export function GraphSceneNodeTooltip({ children, className }: GraphSceneNodeTooltipProps) {
+  const { nodeLabelsVisible, snippet, tooltipLabelsLine, tooltipPortalEl, tooltipSide } =
+    useGraphSceneNode();
+
+  const body =
+    children !== undefined ? (
+      children
+    ) : (
+      <>
+        {nodeLabelsVisible ? (
+          <MeasuredText
+            text={tooltipLabelsLine}
+            font={FONT_TOOLTIP_KINDS}
+            lineHeight={16}
+            maxWidth={280}
+            maxLines={2}
+            whiteSpace="normal"
+            className="text-left text-xs"
+            tooltipContainer={tooltipPortalEl}
+            tooltipSide={tooltipSide}
+          />
+        ) : null}
+        {snippet ? (
+          <MeasuredText
+            text={snippet}
+            font={FONT_TOOLTIP_BODY}
+            lineHeight={14}
+            maxWidth={320}
+            maxLines={6}
+            whiteSpace="pre-wrap"
+            className={cn(
+              "text-left text-[10px] leading-snug",
+              nodeLabelsVisible && "mt-2 border-t border-border/50 pt-2",
+            )}
+            tooltipContainer={tooltipPortalEl}
+            tooltipSide={tooltipSide}
+          />
+        ) : null}
+      </>
+    );
+
+  return (
+    <TooltipContent
+      key={tooltipSide}
+      container={tooltipPortalEl}
+      side={tooltipSide}
+      className={cn("opacity-50 p-3", className)}
+    >
+      {body}
+    </TooltipContent>
+  );
+}
+GraphSceneNodeTooltip.displayName = "GraphScene.NodeTooltip";
+
+export type GraphSceneNodeProps = {
+  node: GraphSceneNodeItem;
+  /** Applied to the default {@link GraphScene.NodeButton} when that slot is omitted. */
+  className?: string;
+  children?: ReactNode;
+};
+
+type NodeSlots = {
+  button: ReactElement | null;
+  tooltip: ReactElement | null;
+};
+
+function partitionGraphSceneNodeChildren(children: ReactNode | undefined): NodeSlots {
+  const slots: NodeSlots = { button: null, tooltip: null };
+  if (children == null) return slots;
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) return;
+    if (child.type === GraphSceneNodeButton) slots.button = child;
+    else if (child.type === GraphSceneNodeTooltip) slots.tooltip = child;
+  });
+  return slots;
+}
+
+/**
  * Default graph node marker (Html button + optional tooltip).
  * Use inside {@link GraphScene.Nodes} or as the default when that slot is omitted.
+ *
+ * Compound slots: {@link GraphScene.NodeButton}, {@link GraphScene.NodeTooltip}.
+ * Omit children (or omit a slot) to keep the built-in defaults.
+ *
+ * @example
+ * ```tsx
+ * <GraphScene.Node node={node} />
+ *
+ * <GraphScene.Node node={node}>
+ *   <GraphScene.NodeButton className="border-primary">★</GraphScene.NodeButton>
+ *   <GraphScene.NodeTooltip>
+ *     {node.labels.map((l) => l.kind).join(" · ")}
+ *   </GraphScene.NodeTooltip>
+ * </GraphScene.Node>
+ * ```
  */
-export function GraphSceneNode({ node, className }: GraphSceneNodeProps) {
-  const { setSelected, onHoverStart, onHoverEnd } = useProjection();
+export function GraphSceneNode({ node, className, children }: GraphSceneNodeProps) {
   const { nodeLabelsVisible, searchHitPreviews, tooltipCentroid } = useGraphSceneRender();
 
   const tooltipLabelsLine = (
@@ -36,7 +206,13 @@ export function GraphSceneNode({ node, className }: GraphSceneNodeProps) {
   ).join(" • ");
   const snippet = searchHitPreviews ? node.searchHitSnippet : undefined;
   const tooltipCategoryAllowed = nodeLabelsVisible || searchHitPreviews;
-  const hasTooltipContent = nodeLabelsVisible || !!snippet;
+
+  const slots = useMemo(() => partitionGraphSceneNodeChildren(children), [children]);
+  const tooltipHasCustomChildren =
+    slots.tooltip != null &&
+    (slots.tooltip.props as GraphSceneNodeTooltipProps).children !== undefined;
+  const hasTooltipContent = tooltipHasCustomChildren || nodeLabelsVisible || !!snippet;
+
   const [userTooltipOpen, setUserTooltipOpen] = useState(false);
   const [tooltipSide, setTooltipSide] = useState<"left" | "right">("right");
   const tooltipOpen = hasTooltipContent && (node.forceTooltipOpen || userTooltipOpen);
@@ -60,29 +236,22 @@ export function GraphSceneNode({ node, className }: GraphSceneNodeProps) {
     }
   });
 
-  const buttonEl = (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon-sm"
-      className={cn("rounded-full border border-black", className)}
-      style={{
-        opacity: node.dimmed ? 0.15 : 1,
-        pointerEvents: "auto",
-      }}
-      onPointerDown={(e) => {
-        if (e.button !== 0) return;
-        e.stopPropagation();
-        setSelected(node);
-      }}
-      onPointerEnter={() => onHoverStart(node.entryId)}
-      onPointerLeave={() => onHoverEnd()}
-    >
-      <DotIcon />
-    </Button>
+  const ctx = useMemo(
+    (): GraphSceneNodeContextValue => ({
+      node,
+      tooltipSide,
+      tooltipPortalEl,
+      nodeLabelsVisible,
+      snippet,
+      tooltipLabelsLine,
+    }),
+    [node, tooltipSide, tooltipPortalEl, nodeLabelsVisible, snippet, tooltipLabelsLine],
   );
 
-  const showTooltipChrome = tooltipCategoryAllowed && hasTooltipContent;
+  const buttonEl = slots.button ?? <GraphSceneNodeButton className={className} />;
+  const tooltipEl = slots.tooltip ?? <GraphSceneNodeTooltip />;
+  const showTooltipChrome =
+    hasTooltipContent && (tooltipHasCustomChildren || tooltipCategoryAllowed);
 
   const wrapped = showTooltipChrome ? (
     <TooltipProvider>
@@ -98,42 +267,7 @@ export function GraphSceneNode({ node, className }: GraphSceneNodeProps) {
         }}
       >
         <TooltipTrigger asChild>{buttonEl}</TooltipTrigger>
-        <TooltipContent
-          key={tooltipSide}
-          container={tooltipPortalEl}
-          side={tooltipSide}
-          className="opacity-50 p-3"
-        >
-          {nodeLabelsVisible ? (
-            <MeasuredText
-              text={tooltipLabelsLine}
-              font={FONT_TOOLTIP_KINDS}
-              lineHeight={16}
-              maxWidth={280}
-              maxLines={2}
-              whiteSpace="normal"
-              className="text-left text-xs"
-              tooltipContainer={tooltipPortalEl}
-              tooltipSide={tooltipSide}
-            />
-          ) : null}
-          {snippet ? (
-            <MeasuredText
-              text={snippet}
-              font={FONT_TOOLTIP_BODY}
-              lineHeight={14}
-              maxWidth={320}
-              maxLines={6}
-              whiteSpace="pre-wrap"
-              className={cn(
-                "text-left text-[10px] leading-snug",
-                nodeLabelsVisible && "mt-2 border-t border-border/50 pt-2",
-              )}
-              tooltipContainer={tooltipPortalEl}
-              tooltipSide={tooltipSide}
-            />
-          ) : null}
-        </TooltipContent>
+        {tooltipEl}
       </Tooltip>
     </TooltipProvider>
   ) : (
@@ -149,7 +283,7 @@ export function GraphSceneNode({ node, className }: GraphSceneNodeProps) {
         style={{ pointerEvents: "none" }}
       >
         <div ref={tooltipLayerRef} className="relative w-fit" style={{ pointerEvents: "auto" }}>
-          {wrapped}
+          <GraphSceneNodeContext.Provider value={ctx}>{wrapped}</GraphSceneNodeContext.Provider>
         </div>
       </Html>
     </group>

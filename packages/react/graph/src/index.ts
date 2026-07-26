@@ -43,7 +43,12 @@ export {
   type GraphPreviewDockProps,
 } from "./graph-preview-dock.js";
 export type { GraphSceneEdgeProps } from "./graph-scene-edge.js";
-export type { GraphSceneNodeProps } from "./graph-scene-node.js";
+export type {
+  GraphSceneNodeButtonProps,
+  GraphSceneNodeProps,
+  GraphSceneNodeTooltipProps,
+} from "./graph-scene-node.js";
+export { useGraphSceneNode } from "./graph-scene-node.js";
 export type {
   GraphSceneEdgeRender,
   GraphSceneNodeRender,
@@ -61,6 +66,7 @@ export * from "./projection-types.js";
 export type {
   GraphEdgeRenderMode,
   GraphSceneOverlayOptions,
+  GraphSceneProps,
   GraphSceneResolvedOverlay,
 } from "./scene.js";
 export { GraphScene, resolveGraphSceneOverlay } from "./scene.js";
