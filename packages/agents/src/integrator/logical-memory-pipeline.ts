@@ -53,8 +53,8 @@ async function resolveFindMemoryIdByKey(
 }
 
 /**
- * Drops integrator edges whose `peer_memory_id` is not an existing memory in `namespace`.
- * Prevents merge failures when the model confuses ontology kinds (e.g. `preference`) with neighbor keys.
+ * Drops integrator edges whose peer is not an existing memory in `namespace`, and rewrites
+ * `peer_memory_id` from memory key → resolved `_id` (merge expects ids, not keys).
  */
 async function filterMergeSliceEdgesToExistingMemories<
   TNode extends LabelSchemaMap,
@@ -71,11 +71,8 @@ async function filterMergeSliceEdgesToExistingMemories<
   for (const e of slice.edges) {
     const id = await resolveFindMemoryIdByKey(client.persistence, namespace, e.peer_memory_id);
     if (id !== undefined) {
-      kept.push(e);
+      kept.push({ ...e, peer_memory_id: id });
     }
-  }
-  if (kept.length === slice.edges.length) {
-    return slice;
   }
   return {
     ...slice,
