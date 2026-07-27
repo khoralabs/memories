@@ -39,7 +39,8 @@ export function loadSqliteVec(db: Database): void {
 }
 
 export type OpenMemoriesDatabaseOptions = DatabaseOptions & {
-  sqlCipherKey: string;
+  /** When set, open with SQLCipher; omit for plaintext Bun SQLite. */
+  sqlCipherKey?: string;
 };
 
 export const SQLITE_CUSTOM_LIB_ENV = "SQLITE_CUSTOM_LIB";
@@ -164,15 +165,18 @@ export function configureMemoriesSqlitePragmas(
 }
 
 /**
- * Open a SQLCipher-protected Memories database.
+ * Open a Memories database. Pass `sqlCipherKey` for SQLCipher; omit for plaintext.
  */
 export function openMemoriesDatabase(
   filename: string,
-  options: OpenMemoriesDatabaseOptions,
+  options: OpenMemoriesDatabaseOptions = {},
 ): Database {
   ensureCustomSqliteForExtensions();
   const { sqlCipherKey, ...dbOptions } = options;
-  const db = openEncryptedDatabaseSync(filename, { create: true, ...dbOptions }, sqlCipherKey);
+  const db =
+    typeof sqlCipherKey === "string" && sqlCipherKey.length > 0
+      ? openEncryptedDatabaseSync(filename, { create: true, ...dbOptions }, sqlCipherKey)
+      : new Database(filename, { create: true, ...dbOptions });
   configureMemoriesSqlitePragmas(db);
   loadSqliteVec(db);
   initMemoriesSchema(db);

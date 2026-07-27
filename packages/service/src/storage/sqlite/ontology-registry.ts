@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { openEncryptedDatabaseSync } from "@khoralabs/sqlite-crypto";
@@ -39,6 +39,12 @@ CREATE INDEX IF NOT EXISTS idx_links_database ON database_ontology_links(kind, o
 CREATE INDEX IF NOT EXISTS idx_links_hash ON database_ontology_links(ontology_hash);
 `;
 
+function openRegistryDatabase(registryPath: string, sqlCipherKey?: string): Database {
+  return typeof sqlCipherKey === "string" && sqlCipherKey.length > 0
+    ? openEncryptedDatabaseSync(registryPath, { create: true }, sqlCipherKey)
+    : new Database(registryPath, { create: true });
+}
+
 function parseOntology(json: string): StoredOntologyJsonSchema {
   return JSON.parse(json) as StoredOntologyJsonSchema;
 }
@@ -56,14 +62,15 @@ function currentLinkRow(
 
 export type SqliteOntologyStoreOptions = {
   registryPath: string;
-  sqlCipherKey: string;
+  /** When set, encrypt the registry with SQLCipher; omit for plaintext. */
+  sqlCipherKey?: string;
 };
 
 export function createSqliteOntologyStore(
   opts: SqliteOntologyStoreOptions,
 ): MemoriesDatabaseOntologyStore {
   mkdirSync(path.dirname(opts.registryPath), { recursive: true });
-  const db = openEncryptedDatabaseSync(opts.registryPath, { create: true }, opts.sqlCipherKey);
+  const db = openRegistryDatabase(opts.registryPath, opts.sqlCipherKey);
   db.run("PRAGMA journal_mode = WAL;");
   db.run("PRAGMA foreign_keys = ON;");
   db.exec(ONTOLOGY_SCHEMA);
@@ -212,9 +219,9 @@ export function createSqliteOntologyStore(
   };
 }
 
-export function openOntologyRegistryDb(registryPath: string, sqlCipherKey: string): Database {
+export function openOntologyRegistryDb(registryPath: string, sqlCipherKey?: string): Database {
   mkdirSync(path.dirname(registryPath), { recursive: true });
-  const db = openEncryptedDatabaseSync(registryPath, { create: true }, sqlCipherKey);
+  const db = openRegistryDatabase(registryPath, sqlCipherKey);
   db.exec(ONTOLOGY_SCHEMA);
   return db;
 }

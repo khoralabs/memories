@@ -165,4 +165,16 @@ describe("createLocalSqliteServiceStack", () => {
 
     expect(await service.exists(localId)).toBe(true);
   });
+
+  test("opens plaintext stack when sqlCipherKey is omitted", async () => {
+    const dataDir = makeTempDataDir();
+    const { service, defaultStrategy } = createStack({ dataDir });
+
+    expect(defaultStrategy.kind).toBe("sqlite");
+    expect(defaultStrategy.sqlCipherKey).toBeUndefined();
+
+    const id = { kind: "account", ownerKey: "plaintext-owner" };
+    await service.open(id);
+    expect(await service.exists(id)).toBe(true);
+  });
 });

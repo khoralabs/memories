@@ -182,21 +182,23 @@ Open connections are cached by database id. LRU eviction calls `handle.close()` 
 
 ## Local hosting
 
-Turnkey wiring for SQLCipher files:
+Turnkey wiring for local SQLite (SQLCipher when `sqlCipherKey` is set):
 
 ```ts
 import { createLocalSqliteServiceStack } from "@khoralabs/memories-service/storage/sqlite";
 
 const { service, placement, ontology, defaultStrategy } = createLocalSqliteServiceStack({
   dataDir: "./data/memories",
-  sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY!,
+  ...(process.env.MEMORIES_SQLCIPHER_KEY
+    ? { sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY }
+    : {}),
   maxCached: 8,
 });
 ```
 
 This creates:
 
-- Default strategy `{ kind: "sqlite", dataDir, sqlCipherKey }`
+- Default strategy `{ kind: "sqlite", dataDir, sqlCipherKey? }` (encrypted only when a key is provided)
 - Placement registry at `{dataDir}/registry/placements.db`
 - Ontology registry at `{dataDir}/registry/ontologies.db`
 - Composite backend factory (`sqlite`, `libsql`, `turso-serverless`) + resolver + service

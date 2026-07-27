@@ -12,7 +12,7 @@ Depends on [`@khoralabs/memories-node`](../node) for the data plane.
 | `./client` | Management client, `RemoteMemoriesClientAsync`, `RemoteMemoriesReadClient`, `MemoriesOntologyClient` |
 | `./http` | `createMemoriesServiceHttpServer` / request handler (lifecycle, persistence, reads, ontology, attribution) |
 | `./auth` | `none`, `server-admin`, `app-policy` (+ env factory for `none` / `server-admin`) |
-| `./storage/sqlite` | Local SQLCipher backend, SQLite placement + ontology registries, `createLocalSqliteServiceStack` (**Bun**) |
+| `./storage/sqlite` | Local SQLite backend (optional SQLCipher), placement + ontology registries, `createLocalSqliteServiceStack` (**Bun**) |
 | `./storage/libsql` | Local libSQL backend factory; Node-safe |
 | `./storage/turso-serverless` | Turso serverless backend factory; Node-safe |
 | `./testing` | Conformance runners |
@@ -52,7 +52,9 @@ const telemetry = createMemoriesOtelTelemetry({
 
 const { service, ontology } = createLocalSqliteServiceStack({
   dataDir: "./data",
-  sqlCipherKey: process.env.SQLCIPHER_KEY!,
+  ...(process.env.SQLCIPHER_KEY
+    ? { sqlCipherKey: process.env.SQLCIPHER_KEY }
+    : {}),
   telemetry,
 });
 
@@ -80,7 +82,9 @@ import { createServerAdminAuthStrategy } from "@khoralabs/memories-service/auth"
 
 const { service, ontology } = createLocalSqliteServiceStack({
   dataDir: "./data",
-  sqlCipherKey: process.env.SQLCIPHER_KEY!,
+  ...(process.env.SQLCIPHER_KEY
+    ? { sqlCipherKey: process.env.SQLCIPHER_KEY }
+    : {}),
 });
 const server = createMemoriesServiceHttpServer({
   service,
@@ -89,7 +93,7 @@ const server = createMemoriesServiceHttpServer({
 });
 ```
 
-Bun-only for `./storage/sqlite`. Use libSQL / Turso storage entrypoints on Node.
+Bun-only for `./storage/sqlite`. Omit `sqlCipherKey` for plaintext SQLite; set `SQLCIPHER_KEY` (or pass `sqlCipherKey`) to enable SQLCipher. Use libSQL / Turso storage entrypoints on Node.
 
 ### App policy auth
 

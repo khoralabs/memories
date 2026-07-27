@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { openEncryptedDatabaseSync } from "@khoralabs/sqlite-crypto";
@@ -30,9 +30,16 @@ CREATE TABLE IF NOT EXISTS placement_overrides (
 );
 `;
 
+function openRegistryDatabase(registryPath: string, sqlCipherKey?: string): Database {
+  return typeof sqlCipherKey === "string" && sqlCipherKey.length > 0
+    ? openEncryptedDatabaseSync(registryPath, { create: true }, sqlCipherKey)
+    : new Database(registryPath, { create: true });
+}
+
 export type SqlitePlacementStoreOptions = {
   registryPath: string;
-  sqlCipherKey: string;
+  /** When set, encrypt the registry with SQLCipher; omit for plaintext. */
+  sqlCipherKey?: string;
   defaultStrategy: MemoriesDatabaseBackendStrategy;
 };
 
@@ -40,7 +47,7 @@ export function createSqlitePlacementStore(
   opts: SqlitePlacementStoreOptions,
 ): MemoriesDatabasePlacementStore {
   mkdirSync(path.dirname(opts.registryPath), { recursive: true });
-  const db = openEncryptedDatabaseSync(opts.registryPath, { create: true }, opts.sqlCipherKey);
+  const db = openRegistryDatabase(opts.registryPath, opts.sqlCipherKey);
   db.run("PRAGMA journal_mode = WAL;");
   db.run("PRAGMA foreign_keys = ON;");
   db.exec(PLACEMENT_SCHEMA);
@@ -130,9 +137,9 @@ export function createSqlitePlacementStore(
   };
 }
 
-export function openPlacementRegistryDb(registryPath: string, sqlCipherKey: string): Database {
+export function openPlacementRegistryDb(registryPath: string, sqlCipherKey?: string): Database {
   mkdirSync(path.dirname(registryPath), { recursive: true });
-  const db = openEncryptedDatabaseSync(registryPath, { create: true }, sqlCipherKey);
+  const db = openRegistryDatabase(registryPath, sqlCipherKey);
   db.exec(PLACEMENT_SCHEMA);
   return db;
 }

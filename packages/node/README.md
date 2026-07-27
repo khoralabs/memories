@@ -58,7 +58,8 @@ import {
   openMemoriesDatabase,
 } from "@khoralabs/memories-node/sqlite";
 
-const db = openMemoriesDatabase(":memory:", { sqlCipherKey: "test-key" });
+// Plaintext (omit sqlCipherKey). Pass sqlCipherKey to enable SQLCipher.
+const db = openMemoriesDatabase(":memory:");
 const persistence = createMemoriesPersistence(db);
 ```
 

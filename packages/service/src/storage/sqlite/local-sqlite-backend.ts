@@ -54,20 +54,21 @@ function openLocalDatabase(
   strategy: SqliteBackendStrategy,
   id: MemoriesDatabaseId,
 ): OpenedLocalDatabase {
-  if (strategy.sqlCipherKey === undefined) {
-    throw new Error("sqlite strategy requires sqlCipherKey to open databases");
-  }
   ensureCustomSqliteForExtensions();
   const filename = resolveEncodedDatabasePath(strategy.dataDir, id);
   mkdirSync(path.dirname(filename), { recursive: true });
+  const openOpts =
+    typeof strategy.sqlCipherKey === "string" && strategy.sqlCipherKey.length > 0
+      ? { sqlCipherKey: strategy.sqlCipherKey }
+      : {};
   let db: Database;
   try {
-    db = openMemoriesDatabase(filename, { sqlCipherKey: strategy.sqlCipherKey });
+    db = openMemoriesDatabase(filename, openOpts);
   } catch (e) {
     // First open can race: ensureCustomSqlite loads libsqlite before SQLCipher setCustomSQLite.
     const msg = e instanceof Error ? e.message : String(e);
     if (!/SQLite already loaded/i.test(msg)) throw e;
-    db = openMemoriesDatabase(filename, { sqlCipherKey: strategy.sqlCipherKey });
+    db = openMemoriesDatabase(filename, openOpts);
   }
   const persistence = createMemoriesPersistence(db);
   return { persistence, db };

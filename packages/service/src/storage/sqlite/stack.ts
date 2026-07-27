@@ -21,7 +21,8 @@ import { createSqlitePlacementStore } from "./placement-registry";
 
 export type CreateLocalSqliteServiceStackOptions = {
   dataDir: string;
-  sqlCipherKey: string;
+  /** When set, encrypt node DBs and registries with SQLCipher; omit for plaintext. */
+  sqlCipherKey?: string;
   registryPath?: string;
   ontologyRegistryPath?: string;
   /** Override the node backend factory; defaults to the local SQLite node backend. */
@@ -42,22 +43,26 @@ export function createLocalSqliteServiceStack(
   opts: CreateLocalSqliteServiceStackOptions,
 ): LocalSqliteServiceStack {
   ensureCustomSqliteForExtensions();
+  const sqlCipherKey =
+    typeof opts.sqlCipherKey === "string" && opts.sqlCipherKey.length > 0
+      ? opts.sqlCipherKey
+      : undefined;
   const defaultStrategy: SqliteBackendStrategy = {
     kind: "sqlite",
     dataDir: opts.dataDir,
-    sqlCipherKey: opts.sqlCipherKey,
+    ...(sqlCipherKey !== undefined ? { sqlCipherKey } : {}),
   };
   const registryPath = opts.registryPath ?? path.join(opts.dataDir, "registry", "placements.db");
   const ontologyRegistryPath =
     opts.ontologyRegistryPath ?? path.join(opts.dataDir, "registry", "ontologies.db");
   const placement = createSqlitePlacementStore({
     registryPath,
-    sqlCipherKey: opts.sqlCipherKey,
+    ...(sqlCipherKey !== undefined ? { sqlCipherKey } : {}),
     defaultStrategy,
   });
   const ontology = createSqliteOntologyStore({
     registryPath: ontologyRegistryPath,
-    sqlCipherKey: opts.sqlCipherKey,
+    ...(sqlCipherKey !== undefined ? { sqlCipherKey } : {}),
   });
   const factory =
     opts.backendFactory ??
