@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/memories-react-graph",
-  "version": "0.5.9",
+  "version": "0.5.10",
   "description": "React 3D graph UI for exploring memories knowledge graphs.",
   "license": "MIT",
   "type": "module",
