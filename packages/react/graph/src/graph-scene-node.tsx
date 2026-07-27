@@ -37,11 +37,15 @@ type GraphSceneNodeContextValue = {
   nodeLabelsVisible: boolean;
   snippet: string | undefined;
   tooltipLabelsLine: string;
+  /** Bridged from R3F-side `useProjection` — Html uses a separate React root. */
+  setSelected: ReturnType<typeof useProjection>["setSelected"];
+  onHoverStart: ReturnType<typeof useProjection>["onHoverStart"];
+  onHoverEnd: ReturnType<typeof useProjection>["onHoverEnd"];
 };
 
 const GraphSceneNodeContext = createContext<GraphSceneNodeContextValue | null>(null);
 
-/** Node item + tooltip layout state for {@link GraphScene.NodeButton} / {@link GraphScene.NodeTooltip}. */
+/** Node item + tooltip layout + projection handlers bridged across Html’s React root. */
 export function useGraphSceneNode(): GraphSceneNodeContextValue {
   const ctx = useContext(GraphSceneNodeContext);
   if (ctx == null) {
@@ -64,8 +68,7 @@ export function GraphSceneNodeButton({
   style,
   ...props
 }: GraphSceneNodeButtonProps) {
-  const { node } = useGraphSceneNode();
-  const { setSelected, onHoverStart, onHoverEnd } = useProjection();
+  const { node, setSelected, onHoverStart, onHoverEnd } = useGraphSceneNode();
 
   return (
     <Button
@@ -199,6 +202,7 @@ function partitionGraphSceneNodeChildren(children: ReactNode | undefined): NodeS
  * ```
  */
 export function GraphSceneNode({ node, className, children }: GraphSceneNodeProps) {
+  const { setSelected, onHoverStart, onHoverEnd } = useProjection();
   const { nodeLabelsVisible, searchHitPreviews, tooltipCentroid } = useGraphSceneRender();
 
   const tooltipLabelsLine = (
@@ -244,8 +248,21 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
       nodeLabelsVisible,
       snippet,
       tooltipLabelsLine,
+      setSelected,
+      onHoverStart,
+      onHoverEnd,
     }),
-    [node, tooltipSide, tooltipPortalEl, nodeLabelsVisible, snippet, tooltipLabelsLine],
+    [
+      node,
+      tooltipSide,
+      tooltipPortalEl,
+      nodeLabelsVisible,
+      snippet,
+      tooltipLabelsLine,
+      setSelected,
+      onHoverStart,
+      onHoverEnd,
+    ],
   );
 
   const buttonEl = slots.button ?? <GraphSceneNodeButton className={className} />;
