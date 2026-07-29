@@ -2,31 +2,75 @@ import { createContext, type ReactNode, useCallback, useContext, useMemo, useSta
 import { MathUtils } from "three";
 
 /**
- * Maps normalized depth `t` in `[0, 1]` (near→far) to veil strength in `[0, 1]`.
+ * Maps normalized depth `t` in `[0, 1]` (near→far) to channel strength in `[0, 1]`.
  * Named presets or a custom function.
  */
 export type GraphSceneFogEase = "linear" | "smoothstep" | "smootherstep" | ((t: number) => number);
 
-export type GraphSceneFogOptions = {
-  /** World-space distance where fog starts (factor 0). */
+/** Per-channel distance bounds and interpolation (color wash or blur). */
+export type GraphSceneFogChannelOptions = {
+  /** World-space distance where this channel starts (factor 0). */
   near?: number;
-  /** World-space distance where fog is full (factor 1 before ease). */
+  /** World-space distance where this channel is full (factor 1 before ease). */
   far?: number;
   /**
-   * How veil strength rises over `[near, far]`. Default `"smoothstep"`.
+   * How this channel rises over `[near, far]`. Default `"smoothstep"`.
    * Custom `(t) => number` receives normalized depth `0..1` and should return strength `0..1`.
    */
   ease?: GraphSceneFogEase;
 };
 
-/** Opt-in depth fog: `true` uses auto near/far from camera fit; object overrides ranges. */
+export type GraphSceneFogColorOptions = GraphSceneFogChannelOptions & {
+  /** Max veil opacity at full strength (`0..1`). Default `1`. */
+  strength?: number;
+};
+
+export type GraphSceneFogBlurOptions = GraphSceneFogChannelOptions & {
+  /** Max CSS `blur()` radius in px at full strength. Default `4`. */
+  max?: number;
+};
+
+export type GraphSceneFogOptions = {
+  /** Shared default near for channels that omit their own. */
+  near?: number;
+  /** Shared default far for channels that omit their own. */
+  far?: number;
+  /** Shared default ease for channels that omit their own. */
+  ease?: GraphSceneFogEase;
+  /**
+   * Color wash toward the scene background. Default on when fog is enabled.
+   * Pass `false` to disable; `true` or options to configure independently of blur.
+   */
+  color?: boolean | GraphSceneFogColorOptions;
+  /**
+   * Depth blur on the marker. Default off (`fog={true}` keeps prior color-only behavior).
+   * Pass `true` or options to enable with its own bounds/ease.
+   */
+  blur?: boolean | GraphSceneFogBlurOptions;
+};
+
+/** Opt-in depth fog: `true` uses auto near/far for color wash; object configures channels. */
 export type GraphSceneFogProp = boolean | GraphSceneFogOptions;
 
-export type GraphSceneFogValue = {
+export type GraphSceneFogChannel = {
   enabled: boolean;
   near: number;
   far: number;
   ease: GraphSceneFogEase;
+  /** Color: max veil opacity. Blur: max blur radius in px. */
+  amount: number;
+};
+
+export type GraphSceneFogValue = {
+  /**
+   * Fog prop is opted in (`true` or options object). Keeps marker chrome mounted so
+   * color/blur can be toggled independently without remounting Html children.
+   */
+  active: boolean;
+  /** At least one channel is enabled. */
+  enabled: boolean;
+  color: GraphSceneFogChannel;
+  blur: GraphSceneFogChannel;
   /** Resolved CSS color used for the wash veil (matches scene clear color). */
   background: string;
   /** Update auto near/far from the last camera-fit distance `d`. */
@@ -41,6 +85,8 @@ const AUTO_FAR_FACTOR = 2.2;
 const FALLBACK_NEAR = 4;
 const FALLBACK_FAR = 12;
 const DEFAULT_EASE: GraphSceneFogEase = "smoothstep";
+const DEFAULT_COLOR_STRENGTH = 1;
+const DEFAULT_BLUR_MAX_PX = 4;
 
 function applyFogEase(t: number, ease: GraphSceneFogEase): number {
   const x = MathUtils.clamp(t, 0, 1);
@@ -49,14 +95,13 @@ function applyFogEase(t: number, ease: GraphSceneFogEase): number {
     case "linear":
       return x;
     case "smootherstep":
-      // Ken Perlin’s smootherstep
       return x * x * x * (x * (x * 6 - 15) + 10);
     case "smoothstep":
       return x * x * (3 - 2 * x);
   }
 }
 
-/** Normalized depth then eased veil strength in `[0, 1]`. */
+/** Normalized depth then eased channel strength in `[0, 1]`. */
 export function fogFactor(
   distance: number,
   near: number,
@@ -71,19 +116,120 @@ export function fogFactor(
   return applyFogEase(t, ease);
 }
 
-export function parseGraphSceneFogProp(fog: GraphSceneFogProp | undefined): {
+type ParsedChannel = {
   enabled: boolean;
   near?: number;
   far?: number;
   ease: GraphSceneFogEase;
-} {
-  if (fog == null || fog === false) return { enabled: false, ease: DEFAULT_EASE };
-  if (fog === true) return { enabled: true, ease: DEFAULT_EASE };
+  amount: number;
+};
+
+export type ParsedGraphSceneFog = {
+  /** Fog prop opted in (even if both channels are disabled). */
+  active: boolean;
+  enabled: boolean;
+  color: ParsedChannel;
+  blur: ParsedChannel;
+  /** True when any enabled channel still needs auto near and/or far from fit. */
+  needsFitDistance: boolean;
+};
+
+function parseChannelFlag(
+  flag: boolean | GraphSceneFogChannelOptions | undefined,
+  shared: { near?: number; far?: number; ease: GraphSceneFogEase },
+  defaultEnabled: boolean,
+  amount: number,
+): ParsedChannel {
+  if (flag === false) {
+    return { enabled: false, ease: shared.ease, amount };
+  }
+  if (flag == null) {
+    return {
+      enabled: defaultEnabled,
+      near: shared.near,
+      far: shared.far,
+      ease: shared.ease,
+      amount,
+    };
+  }
+  if (flag === true) {
+    return {
+      enabled: true,
+      near: shared.near,
+      far: shared.far,
+      ease: shared.ease,
+      amount,
+    };
+  }
   return {
     enabled: true,
-    near: fog.near,
-    far: fog.far,
-    ease: fog.ease ?? DEFAULT_EASE,
+    near: flag.near ?? shared.near,
+    far: flag.far ?? shared.far,
+    ease: flag.ease ?? shared.ease,
+    amount,
+  };
+}
+
+export function parseGraphSceneFogProp(fog: GraphSceneFogProp | undefined): ParsedGraphSceneFog {
+  if (fog == null || fog === false) {
+    const off: ParsedChannel = { enabled: false, ease: DEFAULT_EASE, amount: 0 };
+    return { active: false, enabled: false, color: off, blur: off, needsFitDistance: false };
+  }
+
+  const shared =
+    fog === true
+      ? {
+          near: undefined as number | undefined,
+          far: undefined as number | undefined,
+          ease: DEFAULT_EASE,
+        }
+      : {
+          near: fog.near,
+          far: fog.far,
+          ease: fog.ease ?? DEFAULT_EASE,
+        };
+
+  const colorFlag = fog === true ? true : fog.color;
+  const blurFlag = fog === true ? false : fog.blur;
+  const colorAmount =
+    fog !== true && typeof fog.color === "object" && fog.color != null
+      ? MathUtils.clamp(fog.color.strength ?? DEFAULT_COLOR_STRENGTH, 0, 1)
+      : DEFAULT_COLOR_STRENGTH;
+  const blurAmount =
+    fog !== true && typeof fog.blur === "object" && fog.blur != null
+      ? Math.max(0, fog.blur.max ?? DEFAULT_BLUR_MAX_PX)
+      : DEFAULT_BLUR_MAX_PX;
+
+  const color = parseChannelFlag(colorFlag, shared, true, colorAmount);
+  const blur = parseChannelFlag(blurFlag, shared, false, blurAmount);
+  const enabled = color.enabled || blur.enabled;
+  const needsFitDistance =
+    enabled &&
+    ((color.enabled && (color.near == null || color.far == null)) ||
+      (blur.enabled && (blur.near == null || blur.far == null)));
+
+  return { active: true, enabled, color, blur, needsFitDistance };
+}
+
+function resolveChannel(parsed: ParsedChannel, fitDistance: number | null): GraphSceneFogChannel {
+  if (!parsed.enabled) {
+    return {
+      enabled: false,
+      near: FALLBACK_NEAR,
+      far: FALLBACK_FAR,
+      ease: parsed.ease,
+      amount: parsed.amount,
+    };
+  }
+  const near =
+    parsed.near ?? (fitDistance != null ? fitDistance * AUTO_NEAR_FACTOR : FALLBACK_NEAR);
+  const far = parsed.far ?? (fitDistance != null ? fitDistance * AUTO_FAR_FACTOR : FALLBACK_FAR);
+  return {
+    enabled: true,
+    near,
+    far: Math.max(far, near + 1e-4),
+    ease: parsed.ease,
+    amount: parsed.amount,
   };
 }
 
@@ -109,6 +255,14 @@ type GraphSceneFogProviderProps = {
   children: ReactNode;
 };
 
+const DISABLED_CHANNEL: GraphSceneFogChannel = {
+  enabled: false,
+  near: FALLBACK_NEAR,
+  far: FALLBACK_FAR,
+  ease: DEFAULT_EASE,
+  amount: 0,
+};
+
 export function GraphSceneFogProvider({
   fog,
   background,
@@ -120,39 +274,35 @@ export function GraphSceneFogProvider({
 
   const setFitDistance = useCallback(
     (d: number) => {
-      if (!parsed.enabled) return;
-      if (parsed.near != null && parsed.far != null) return;
+      if (!parsed.needsFitDistance) return;
       setFitDistanceState((prev) => (prev != null && Math.abs(prev - d) < 1e-4 ? prev : d));
     },
-    [parsed.enabled, parsed.near, parsed.far],
+    [parsed.needsFitDistance],
   );
 
   const resolvedBackground = useMemo(() => {
-    if (!parsed.enabled) return background;
+    if (!parsed.active || !parsed.color.enabled) return background;
     if (typeof document === "undefined") return background;
     const host = colorHost ?? document.body;
     return resolveCssColor(background, host);
-  }, [parsed.enabled, background, colorHost]);
+  }, [parsed.active, parsed.color.enabled, background, colorHost]);
 
   const value = useMemo((): GraphSceneFogValue => {
-    if (!parsed.enabled) {
+    if (!parsed.active) {
       return {
+        active: false,
         enabled: false,
-        near: FALLBACK_NEAR,
-        far: FALLBACK_FAR,
-        ease: parsed.ease,
+        color: DISABLED_CHANNEL,
+        blur: DISABLED_CHANNEL,
         background: resolvedBackground,
         setFitDistance,
       };
     }
-    const near =
-      parsed.near ?? (fitDistance != null ? fitDistance * AUTO_NEAR_FACTOR : FALLBACK_NEAR);
-    const far = parsed.far ?? (fitDistance != null ? fitDistance * AUTO_FAR_FACTOR : FALLBACK_FAR);
     return {
-      enabled: true,
-      near,
-      far: Math.max(far, near + 1e-4),
-      ease: parsed.ease,
+      active: true,
+      enabled: parsed.enabled,
+      color: resolveChannel(parsed.color, fitDistance),
+      blur: resolveChannel(parsed.blur, fitDistance),
       background: resolvedBackground,
       setFitDistance,
     };
@@ -166,10 +316,10 @@ export function useGraphSceneFog(): GraphSceneFogValue {
   const ctx = useContext(GraphSceneFogContext);
   return (
     ctx ?? {
+      active: false,
       enabled: false,
-      near: FALLBACK_NEAR,
-      far: FALLBACK_FAR,
-      ease: DEFAULT_EASE,
+      color: DISABLED_CHANNEL,
+      blur: DISABLED_CHANNEL,
       background: "transparent",
       setFitDistance: () => {},
     }

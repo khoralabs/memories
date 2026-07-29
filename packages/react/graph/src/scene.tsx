@@ -506,9 +506,9 @@ export type GraphSceneProps = {
   /** Three.js scene clear color (default `var(--card)`). */
   background?: string;
   /**
-   * Opt-in depth fog for node markers: washes distant Html nodes toward {@link background}
-   * without lowering marker opacity. `true` auto-sets near/far from the camera fit distance.
-   * Pass `{ near, far, ease }` to set bounds and how strength rises over that range.
+   * Opt-in depth fog for node markers. Washes distant Html nodes toward {@link background}
+   * and/or applies CSS blur — each channel has its own bounds and ease.
+   * `true` enables color wash only (auto near/far). Pass `{ color, blur }` for independent control.
    */
   fog?: GraphSceneFogProp;
   className?: string;

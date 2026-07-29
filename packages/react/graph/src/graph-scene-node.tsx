@@ -42,6 +42,8 @@ type GraphSceneNodeContextValue = {
   tooltipLabelsLine: string;
   /** Bridged from R3F-side fog provider — Html uses a separate React root. */
   fog: GraphSceneFogValue;
+  fogRootRef: RefObject<HTMLDivElement | null>;
+  fogBlurRef: RefObject<HTMLDivElement | null>;
   fogVeilRef: RefObject<HTMLDivElement | null>;
   /** Bridged from R3F-side `useProjection` — Html uses a separate React root. */
   setSelected: ReturnType<typeof useProjection>["setSelected"];
@@ -74,7 +76,8 @@ export function GraphSceneNodeButton({
   style,
   ...props
 }: GraphSceneNodeButtonProps) {
-  const { node, fog, fogVeilRef, setSelected, onHoverStart, onHoverEnd } = useGraphSceneNode();
+  const { node, fog, fogRootRef, fogBlurRef, fogVeilRef, setSelected, onHoverStart, onHoverEnd } =
+    useGraphSceneNode();
 
   const button = (
     <Button
@@ -100,16 +103,24 @@ export function GraphSceneNodeButton({
     </Button>
   );
 
-  if (!fog.enabled) return button;
+  // Keep a stable Html child tree while fog is opted in so toggling color/blur
+  // independently does not remount markers (which can crash R3F/drei Html).
+  if (!fog.active) return button;
 
   return (
-    <div className="relative inline-flex">
-      {button}
+    <div ref={fogRootRef} className="relative inline-flex">
+      <div ref={fogBlurRef} className="inline-flex">
+        {button}
+      </div>
       <div
         ref={fogVeilRef}
         aria-hidden
         className="pointer-events-none absolute inset-0 rounded-full"
-        style={{ backgroundColor: fog.background, opacity: 0 }}
+        style={{
+          backgroundColor: fog.background,
+          opacity: 0,
+          visibility: fog.color.enabled ? "visible" : "hidden",
+        }}
       />
     </div>
   );
@@ -225,6 +236,8 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
   const { setSelected, onHoverStart, onHoverEnd } = useProjection();
   const { nodeLabelsVisible, searchHitPreviews, tooltipCentroid } = useGraphSceneRender();
   const fog = useGraphSceneFog();
+  const fogRootRef = useRef<HTMLDivElement | null>(null);
+  const fogBlurRef = useRef<HTMLDivElement | null>(null);
   const fogVeilRef = useRef<HTMLDivElement | null>(null);
 
   const tooltipLabelsLine = (
@@ -261,10 +274,28 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
       setTooltipSide(next);
     }
 
-    if (fog.enabled && fogVeilRef.current) {
+    if (fog.active) {
       _nodeWorld.set(node.position[0], node.position[1], node.position[2]);
-      const t = fogFactor(camera.position.distanceTo(_nodeWorld), fog.near, fog.far, fog.ease);
-      fogVeilRef.current.style.opacity = String(t);
+      const distance = camera.position.distanceTo(_nodeWorld);
+
+      if (fogVeilRef.current) {
+        if (fog.color.enabled) {
+          const t = fogFactor(distance, fog.color.near, fog.color.far, fog.color.ease);
+          fogVeilRef.current.style.opacity = String(t * fog.color.amount);
+        } else {
+          fogVeilRef.current.style.opacity = "0";
+        }
+      }
+
+      if (fogBlurRef.current) {
+        if (fog.blur.enabled) {
+          const t = fogFactor(distance, fog.blur.near, fog.blur.far, fog.blur.ease);
+          const px = t * fog.blur.amount;
+          fogBlurRef.current.style.filter = px > 0.01 ? `blur(${px}px)` : "none";
+        } else {
+          fogBlurRef.current.style.filter = "none";
+        }
+      }
     }
   });
 
@@ -277,6 +308,8 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
       snippet,
       tooltipLabelsLine,
       fog,
+      fogRootRef,
+      fogBlurRef,
       fogVeilRef,
       setSelected,
       onHoverStart,

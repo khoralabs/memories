@@ -3,37 +3,104 @@ import { fogFactor, parseGraphSceneFogProp, resolveCssColor } from "./graph-scen
 
 describe("parseGraphSceneFogProp", () => {
   test("disabled for undefined and false", () => {
-    expect(parseGraphSceneFogProp(undefined)).toEqual({ enabled: false, ease: "smoothstep" });
-    expect(parseGraphSceneFogProp(false)).toEqual({ enabled: false, ease: "smoothstep" });
+    const off = parseGraphSceneFogProp(undefined);
+    expect(off.active).toBe(false);
+    expect(off.enabled).toBe(false);
+    expect(off.color.enabled).toBe(false);
+    expect(off.blur.enabled).toBe(false);
+    expect(parseGraphSceneFogProp(false).active).toBe(false);
   });
 
-  test("true enables with default ease", () => {
-    expect(parseGraphSceneFogProp(true)).toEqual({ enabled: true, ease: "smoothstep" });
+  test("true enables color only with default ease", () => {
+    const parsed = parseGraphSceneFogProp(true);
+    expect(parsed.active).toBe(true);
+    expect(parsed.enabled).toBe(true);
+    expect(parsed.color).toMatchObject({
+      enabled: true,
+      ease: "smoothstep",
+      amount: 1,
+    });
+    expect(parsed.blur.enabled).toBe(false);
+    expect(parsed.needsFitDistance).toBe(true);
   });
 
-  test("object passes through near, far, and ease", () => {
-    const ease = (t: number) => t * t;
-    expect(parseGraphSceneFogProp({ near: 2, far: 9, ease: "linear" })).toEqual({
+  test("shared near/far/ease apply to enabled channels", () => {
+    const parsed = parseGraphSceneFogProp({
+      near: 2,
+      far: 9,
+      ease: "linear",
+      blur: true,
+    });
+    expect(parsed.color).toMatchObject({
       enabled: true,
       near: 2,
       far: 9,
       ease: "linear",
+      amount: 1,
     });
-    expect(parseGraphSceneFogProp({ ease })).toEqual({
+    expect(parsed.blur).toMatchObject({
       enabled: true,
-      near: undefined,
-      far: undefined,
-      ease,
+      near: 2,
+      far: 9,
+      ease: "linear",
+      amount: 4,
+    });
+    expect(parsed.needsFitDistance).toBe(false);
+  });
+
+  test("color and blur can use independent bounds and ease", () => {
+    const colorEase = (t: number) => t * t;
+    const parsed = parseGraphSceneFogProp({
+      color: { near: 3, far: 10, ease: colorEase, strength: 0.6 },
+      blur: { near: 5, far: 20, ease: "smootherstep", max: 8 },
+    });
+    expect(parsed.color).toEqual({
+      enabled: true,
+      near: 3,
+      far: 10,
+      ease: colorEase,
+      amount: 0.6,
+    });
+    expect(parsed.blur).toEqual({
+      enabled: true,
+      near: 5,
+      far: 20,
+      ease: "smootherstep",
+      amount: 8,
     });
   });
 
-  test("object defaults ease to smoothstep", () => {
-    expect(parseGraphSceneFogProp({ near: 1 })).toEqual({
-      enabled: true,
-      near: 1,
-      far: undefined,
-      ease: "smoothstep",
+  test("color: false disables wash while blur can stay on", () => {
+    const parsed = parseGraphSceneFogProp({
+      color: false,
+      blur: { max: 2 },
     });
+    expect(parsed.active).toBe(true);
+    expect(parsed.color.enabled).toBe(false);
+    expect(parsed.blur.enabled).toBe(true);
+    expect(parsed.blur.amount).toBe(2);
+    expect(parsed.enabled).toBe(true);
+    expect(parsed.needsFitDistance).toBe(true);
+  });
+
+  test("both channels false keeps fog active for stable chrome", () => {
+    const parsed = parseGraphSceneFogProp({ color: false, blur: false });
+    expect(parsed.active).toBe(true);
+    expect(parsed.enabled).toBe(false);
+    expect(parsed.color.enabled).toBe(false);
+    expect(parsed.blur.enabled).toBe(false);
+    expect(parsed.needsFitDistance).toBe(false);
+  });
+
+  test("channel options inherit shared defaults when partial", () => {
+    const parsed = parseGraphSceneFogProp({
+      near: 1,
+      far: 8,
+      color: { ease: "linear" },
+      blur: { near: 4 },
+    });
+    expect(parsed.color).toMatchObject({ near: 1, far: 8, ease: "linear" });
+    expect(parsed.blur).toMatchObject({ near: 4, far: 8, ease: "smoothstep" });
   });
 });
 
@@ -58,7 +125,7 @@ describe("fogFactor", () => {
   });
 
   test("smootherstep is flatter near the ends than smoothstep", () => {
-    const t = 0.25; // distance 4 in [2, 10]
+    const t = 0.25;
     const smooth = fogFactor(4, 2, 10, "smoothstep");
     const smoother = fogFactor(4, 2, 10, "smootherstep");
     expect(smoother).toBeCloseTo(t * t * t * (t * (t * 6 - 15) + 10));
