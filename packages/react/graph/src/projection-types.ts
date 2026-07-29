@@ -4,10 +4,25 @@ export type GraphLabelInstance = {
   props: Record<string, unknown>;
 };
 
+/** Undirected degree metrics for a graph layout node. */
+export type GraphNodeDegree = {
+  /** Incident-edge count within this layout. */
+  count: number;
+  /** `count / maxCount` in `[0, 1]` within this layout (`0` when max is 0). */
+  centrality: number;
+};
+
 /** Response shape from `GET /api/graph`. */
 export type GraphPayload = {
   namespace: string;
-  nodes: Array<{ key: string; x: number; y: number; z: number; labels: GraphLabelInstance[] }>;
+  nodes: Array<{
+    key: string;
+    x: number;
+    y: number;
+    z: number;
+    labels: GraphLabelInstance[];
+    degree: GraphNodeDegree;
+  }>;
   edges: Array<{
     edgeId: string;
     fromKey: string;
@@ -39,6 +54,7 @@ export type ProjectionPoint = {
   y: number;
   z: number;
   labels: GraphLabelInstance[];
+  degree: GraphNodeDegree;
 };
 
 /** World-space scale for layout coordinates. */

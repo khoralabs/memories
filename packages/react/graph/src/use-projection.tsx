@@ -159,6 +159,7 @@ function buildPoints(data: GraphPayload): ProjectionPoint[] {
     y: n.y,
     z: n.z,
     labels: n.labels,
+    degree: n.degree,
   }));
 }
 

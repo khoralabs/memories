@@ -24,6 +24,23 @@ export type NamespaceGraphLayoutInput = {
   umapOptions?: Umap3DLayoutOptions;
 };
 
+/** Undirected degree per key; self-loops count once. */
+export function undirectedDegreeByKey(edges: readonly GraphLayoutEdge[]): Map<string, number> {
+  const degreeByKey = new Map<string, number>();
+  const bump = (key: string) => {
+    degreeByKey.set(key, (degreeByKey.get(key) ?? 0) + 1);
+  };
+  for (const e of edges) {
+    if (e.fromKey === e.toKey) {
+      bump(e.fromKey);
+      continue;
+    }
+    bump(e.fromKey);
+    bump(e.toKey);
+  }
+  return degreeByKey;
+}
+
 export function buildNamespaceGraphLayoutFromRows({
   namespace,
   edges,
@@ -43,6 +60,11 @@ export function buildNamespaceGraphLayoutFromRows({
 
   const orderedKeys = [...keySet].sort();
   const embByKey = new Map(embeddings.map((e) => [e.memoryKey, e.embedding] as const));
+  const degreeByKey = undirectedDegreeByKey(edges);
+  let maxDegree = 0;
+  for (const key of orderedKeys) {
+    maxDegree = Math.max(maxDegree, degreeByKey.get(key) ?? 0);
+  }
 
   const rawPositions: Point3[] = [];
 
@@ -98,8 +120,13 @@ export function buildNamespaceGraphLayoutFromRows({
   const nodes: GraphLayoutNode[] = orderedKeys.map((key, i) => {
     const p = normalized[i];
     const labels = labelsByKey.get(key) ?? [];
-    if (!p) return { key, x: 0, y: 0, z: 0, labels };
-    return { key, x: p.x, y: p.y, z: p.z, labels };
+    const count = degreeByKey.get(key) ?? 0;
+    const degree = {
+      count,
+      centrality: maxDegree === 0 ? 0 : count / maxDegree,
+    };
+    if (!p) return { key, x: 0, y: 0, z: 0, labels, degree };
+    return { key, x: p.x, y: p.y, z: p.z, labels, degree };
   });
 
   return {
