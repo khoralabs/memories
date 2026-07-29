@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { fogFactor, parseGraphSceneFogProp, resolveCssColor } from "./graph-scene-fog.js";
+import {
+  fogBlurCssPx,
+  fogFactor,
+  parseGraphSceneFogProp,
+  resolveCssColor,
+} from "./graph-scene-fog.js";
 
 describe("parseGraphSceneFogProp", () => {
   test("disabled for undefined and false", () => {
@@ -147,6 +152,30 @@ describe("fogFactor", () => {
     expect(fogFactor(5, 5, 5, "linear")).toBe(1);
     expect(fogFactor(3, 5, 4, "linear")).toBe(0);
     expect(fogFactor(4, 5, 4, "linear")).toBe(1);
+  });
+});
+
+describe("fogBlurCssPx", () => {
+  test("scales CSS blur to counteract Html distanceFactor shrink", () => {
+    const distanceFactor = 5;
+    const amount = 4;
+    // Mid fog at distance=10 → t=0.5 linear; css px = 0.5 * 4 * (10/5) = 4
+    expect(fogBlurCssPx(10, 5, 15, amount, distanceFactor, "linear")).toBeCloseTo(4);
+    // Same t-normalized mid at different distance would differ without compensation;
+    // at far end t=1, distance=15 → css = 1 * 4 * (15/5) = 12 (screens as ~4px after scale)
+    expect(fogBlurCssPx(15, 5, 15, amount, distanceFactor, "linear")).toBeCloseTo(12);
+    expect(fogBlurCssPx(5, 5, 15, amount, distanceFactor, "linear")).toBeCloseTo(0);
+  });
+
+  test("on-screen blur (css * scale) tracks fog factor", () => {
+    const distanceFactor = 5;
+    const amount = 4;
+    for (const distance of [5, 7.5, 10, 12.5, 15]) {
+      const t = fogFactor(distance, 5, 15, "linear");
+      const css = fogBlurCssPx(distance, 5, 15, amount, distanceFactor, "linear");
+      const onScreen = css * (distanceFactor / distance);
+      expect(onScreen).toBeCloseTo(t * amount);
+    }
   });
 });
 

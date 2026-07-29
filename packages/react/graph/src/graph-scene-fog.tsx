@@ -26,7 +26,10 @@ export type GraphSceneFogColorOptions = GraphSceneFogChannelOptions & {
 };
 
 export type GraphSceneFogBlurOptions = GraphSceneFogChannelOptions & {
-  /** Max CSS `blur()` radius in px at full strength. Default `4`. */
+  /**
+   * Max on-screen blur radius in CSS px at full strength (after Html scale compensation).
+   * Default `4`.
+   */
   max?: number;
 };
 
@@ -114,6 +117,23 @@ export function fogFactor(
       : 0
     : MathUtils.clamp((distance - near) / (far - near), 0, 1);
   return applyFogEase(t, ease);
+}
+
+/**
+ * CSS `blur()` radius so on-screen softness tracks fog strength.
+ * Compensates for drei Html `distanceFactor` scaling (markers shrink with distance).
+ */
+export function fogBlurCssPx(
+  distance: number,
+  near: number,
+  far: number,
+  amount: number,
+  distanceFactor: number,
+  ease: GraphSceneFogEase = DEFAULT_EASE,
+): number {
+  const t = fogFactor(distance, near, far, ease);
+  const scale = Math.max(distanceFactor, 1e-6);
+  return t * amount * (distance / scale);
 }
 
 type ParsedChannel = {

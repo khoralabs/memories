@@ -20,7 +20,12 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { MeasuredText } from "./components/measured-text.js";
-import { fogFactor, type GraphSceneFogValue, useGraphSceneFog } from "./graph-scene-fog.js";
+import {
+  fogBlurCssPx,
+  fogFactor,
+  type GraphSceneFogValue,
+  useGraphSceneFog,
+} from "./graph-scene-fog.js";
 import { useGraphSceneRender } from "./graph-scene-slots.js";
 import { FONT_TOOLTIP_BODY, FONT_TOOLTIP_KINDS } from "./lib/pretext-measure.js";
 import type { GraphSceneNodeItem } from "./projection-types.js";
@@ -109,7 +114,7 @@ export function GraphSceneNodeButton({
 
   return (
     <div ref={fogRootRef} className="relative inline-flex">
-      <div ref={fogBlurRef} className="inline-flex">
+      <div ref={fogBlurRef} className="inline-flex" style={{ transition: "none" }}>
         {button}
       </div>
       <div
@@ -289,9 +294,16 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
 
       if (fogBlurRef.current) {
         if (fog.blur.enabled) {
-          const t = fogFactor(distance, fog.blur.near, fog.blur.far, fog.blur.ease);
-          const px = t * fog.blur.amount;
-          fogBlurRef.current.style.filter = px > 0.01 ? `blur(${px}px)` : "none";
+          const px = fogBlurCssPx(
+            distance,
+            fog.blur.near,
+            fog.blur.far,
+            fog.blur.amount,
+            MARKER_DISTANCE_FACTOR,
+            fog.blur.ease,
+          );
+          // Always set blur(...) (including 0) so the filter mode doesn't snap none↔blur.
+          fogBlurRef.current.style.filter = `blur(${px}px)`;
         } else {
           fogBlurRef.current.style.filter = "none";
         }
