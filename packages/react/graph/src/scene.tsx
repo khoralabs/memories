@@ -10,12 +10,18 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
 import { ActiveSubgraphEdgeLabels, type GraphEdgeRenderMode } from "./edges.js";
 import { GraphCameraChromeProvider, useGraphCameraChrome } from "./graph-camera-chrome.js";
 import { GraphSceneEdge } from "./graph-scene-edge.js";
+import {
+  type GraphSceneFogProp,
+  GraphSceneFogProvider,
+  useGraphSceneFog,
+} from "./graph-scene-fog.js";
 import { GraphSceneNode, GraphSceneNodeButton, GraphSceneNodeTooltip } from "./graph-scene-node.js";
 import {
   GraphSceneBottomLeft,
@@ -54,7 +60,7 @@ function fitPerspectiveCameraToGraph(
   points: readonly { x: number; y: number; z: number }[],
   margin: number,
   options?: { viewDirection?: THREE.Vector3; minFitExtent?: number },
-) {
+): number | undefined {
   if (points.length === 0) return;
   _min.set(Infinity, Infinity, Infinity);
   _max.set(-Infinity, -Infinity, -Infinity);
@@ -100,6 +106,7 @@ function fitPerspectiveCameraToGraph(
   if (typeof oc.maxDistance === "number") oc.maxDistance = distance * 10;
   camera.updateProjectionMatrix();
   controls.update();
+  return distance;
 }
 
 const _defaultOrbitView = new THREE.Vector3(1, 0.35, 1).normalize();
@@ -120,6 +127,7 @@ function GraphCameraController({
   const invalidate = useThree((s) => s.invalidate);
   const { width: viewWidth, height: viewHeight } = useThree((s) => s.size);
   const { setCameraViewDeviated, reframeRef } = useGraphCameraChrome();
+  const { setFitDistance } = useGraphSceneFog();
 
   const homePos = useRef(new THREE.Vector3());
   const homeTarget = useRef(new THREE.Vector3());
@@ -163,7 +171,7 @@ function GraphCameraController({
       const viewDir = resetOrbitToOriginal
         ? (originalOrbitDirRef.current ?? _defaultOrbitView)
         : undefined;
-      fitPerspectiveCameraToGraph(
+      const fitDistance = fitPerspectiveCameraToGraph(
         camera,
         ctrl as unknown as { target: THREE.Vector3; update: () => void },
         points,
@@ -173,6 +181,7 @@ function GraphCameraController({
           ...(viewDir ? { viewDirection: viewDir } : {}),
         },
       );
+      if (fitDistance != null) setFitDistance(fitDistance);
       ctrl.target.set(orbitTarget[0], orbitTarget[1], orbitTarget[2]);
       ctrl.update();
       invalidate();
@@ -187,6 +196,7 @@ function GraphCameraController({
       points,
       snapshotHome,
       setCameraViewDeviated,
+      setFitDistance,
       viewWidth,
       viewHeight,
     ],
@@ -495,6 +505,12 @@ export type GraphSceneProps = {
   minFitExtent?: number;
   /** Three.js scene clear color (default `var(--card)`). */
   background?: string;
+  /**
+   * Opt-in depth fog for node markers: washes distant Html nodes toward {@link background}
+   * without lowering marker opacity. `true` auto-sets near/far from the camera fit distance.
+   * Pass `{ near, far, ease }` to set bounds and how strength rises over that range.
+   */
+  fog?: GraphSceneFogProp;
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
@@ -505,6 +521,7 @@ function GraphSceneRoot({
   overlay,
   minFitExtent,
   background = "var(--card)",
+  fog,
   className,
   style,
   children,
@@ -512,6 +529,7 @@ function GraphSceneRoot({
   useSuppressBenignResizeObserverErrors();
   const slots = partitionGraphSceneChildren(children);
   const overlayResolved = resolveGraphSceneOverlay(overlay);
+  const [colorHost, setColorHost] = useState<HTMLDivElement | null>(null);
 
   return (
     <GraphCameraChromeProvider>
@@ -541,7 +559,7 @@ function GraphSceneRoot({
             {slots.center}
           </div>
         ) : null}
-        <div className="absolute inset-0 z-0 min-h-0">
+        <div ref={setColorHost} className="absolute inset-0 z-0 min-h-0">
           <Canvas
             className="h-full w-full touch-none"
             camera={{ position: [0, 0, 4.8], fov: 20 }}
@@ -555,14 +573,16 @@ function GraphSceneRoot({
               preserveDrawingBuffer: false,
             }}
           >
-            <GraphSceneR3f
-              edgeRenderMode={edgeRenderMode}
-              overlay={overlayResolved}
-              nodesRender={slots.nodesRender}
-              edgesRender={slots.edgesRender}
-              minFitExtent={minFitExtent}
-              background={background}
-            />
+            <GraphSceneFogProvider fog={fog} background={background} colorHost={colorHost}>
+              <GraphSceneR3f
+                edgeRenderMode={edgeRenderMode}
+                overlay={overlayResolved}
+                nodesRender={slots.nodesRender}
+                edgesRender={slots.edgesRender}
+                minFitExtent={minFitExtent}
+                background={background}
+              />
+            </GraphSceneFogProvider>
           </Canvas>
         </div>
       </div>

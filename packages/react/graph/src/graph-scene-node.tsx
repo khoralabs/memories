@@ -8,6 +8,7 @@ import {
   isValidElement,
   type ReactElement,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useMemo,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { MeasuredText } from "./components/measured-text.js";
+import { fogFactor, type GraphSceneFogValue, useGraphSceneFog } from "./graph-scene-fog.js";
 import { useGraphSceneRender } from "./graph-scene-slots.js";
 import { FONT_TOOLTIP_BODY, FONT_TOOLTIP_KINDS } from "./lib/pretext-measure.js";
 import type { GraphSceneNodeItem } from "./projection-types.js";
@@ -29,6 +31,7 @@ const MARKER_DISTANCE_FACTOR = 5;
 
 const _nodeNdc = new THREE.Vector3();
 const _centroidNdc = new THREE.Vector3();
+const _nodeWorld = new THREE.Vector3();
 
 type GraphSceneNodeContextValue = {
   node: GraphSceneNodeItem;
@@ -37,6 +40,9 @@ type GraphSceneNodeContextValue = {
   nodeLabelsVisible: boolean;
   snippet: string | undefined;
   tooltipLabelsLine: string;
+  /** Bridged from R3F-side fog provider — Html uses a separate React root. */
+  fog: GraphSceneFogValue;
+  fogVeilRef: RefObject<HTMLDivElement | null>;
   /** Bridged from R3F-side `useProjection` — Html uses a separate React root. */
   setSelected: ReturnType<typeof useProjection>["setSelected"];
   onHoverStart: ReturnType<typeof useProjection>["onHoverStart"];
@@ -68,9 +74,9 @@ export function GraphSceneNodeButton({
   style,
   ...props
 }: GraphSceneNodeButtonProps) {
-  const { node, setSelected, onHoverStart, onHoverEnd } = useGraphSceneNode();
+  const { node, fog, fogVeilRef, setSelected, onHoverStart, onHoverEnd } = useGraphSceneNode();
 
-  return (
+  const button = (
     <Button
       type="button"
       variant={variant}
@@ -92,6 +98,20 @@ export function GraphSceneNodeButton({
     >
       {children ?? <DotIcon />}
     </Button>
+  );
+
+  if (!fog.enabled) return button;
+
+  return (
+    <div className="relative inline-flex">
+      {button}
+      <div
+        ref={fogVeilRef}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-full"
+        style={{ backgroundColor: fog.background, opacity: 0 }}
+      />
+    </div>
   );
 }
 GraphSceneNodeButton.displayName = "GraphScene.NodeButton";
@@ -204,6 +224,8 @@ function partitionGraphSceneNodeChildren(children: ReactNode | undefined): NodeS
 export function GraphSceneNode({ node, className, children }: GraphSceneNodeProps) {
   const { setSelected, onHoverStart, onHoverEnd } = useProjection();
   const { nodeLabelsVisible, searchHitPreviews, tooltipCentroid } = useGraphSceneRender();
+  const fog = useGraphSceneFog();
+  const fogVeilRef = useRef<HTMLDivElement | null>(null);
 
   const tooltipLabelsLine = (
     node.labels.length > 0 ? node.labels.map((l) => l.kind) : [node.key]
@@ -238,6 +260,12 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
       sideRef.current = next;
       setTooltipSide(next);
     }
+
+    if (fog.enabled && fogVeilRef.current) {
+      _nodeWorld.set(node.position[0], node.position[1], node.position[2]);
+      const t = fogFactor(camera.position.distanceTo(_nodeWorld), fog.near, fog.far, fog.ease);
+      fogVeilRef.current.style.opacity = String(t);
+    }
   });
 
   const ctx = useMemo(
@@ -248,6 +276,8 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
       nodeLabelsVisible,
       snippet,
       tooltipLabelsLine,
+      fog,
+      fogVeilRef,
       setSelected,
       onHoverStart,
       onHoverEnd,
@@ -259,6 +289,7 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
       nodeLabelsVisible,
       snippet,
       tooltipLabelsLine,
+      fog,
       setSelected,
       onHoverStart,
       onHoverEnd,

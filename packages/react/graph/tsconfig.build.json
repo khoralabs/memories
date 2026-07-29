@@ -16,7 +16,6 @@
     "verbatimModuleSyntax": true,
     "rewriteRelativeImportExtensions": true,
     "types": ["bun"],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

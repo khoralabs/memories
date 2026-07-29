@@ -74,6 +74,12 @@ export {
 } from "./graph-preview-dock.js";
 export type { GraphSceneEdgeProps } from "./graph-scene-edge.js";
 export type {
+  GraphSceneFogEase,
+  GraphSceneFogOptions,
+  GraphSceneFogProp,
+} from "./graph-scene-fog.js";
+export { fogFactor, useGraphSceneFog } from "./graph-scene-fog.js";
+export type {
   GraphSceneNodeButtonProps,
   GraphSceneNodeProps,
   GraphSceneNodeTooltipProps,
