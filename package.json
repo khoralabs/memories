@@ -13,6 +13,8 @@
     "assert:no-bun-sqlite-leak": "bun run scripts/assert-no-bun-sqlite-leak.ts",
     "build": "bun run scripts/build-packages.ts",
     "release:bump": "bun run scripts/bump-versions.ts",
+    "release:refresh-lockfile": "bun run scripts/refresh-workspace-lockfile.ts",
+    "release:verify-pack": "bun run scripts/verify-packed-workspace-deps.ts",
     "release:publish": "bun run scripts/publish-packages.ts",
     "test": "bun test",
     "prepare": "husky",

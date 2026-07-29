@@ -2,7 +2,7 @@
  * Publish packages in dependency order.
  * Usage: bun run scripts/publish-packages.ts [--dry-run]
  *
- * Builds JS + .d.ts first, then rewrites package.json exports to dist/ for the publish.
+ * Refreshes bun.lock workspace versions, asserts packed deps, builds, then publishes.
  * Auth: bun publish uses NPM_CONFIG_TOKEN (set from NPM_TOKEN if needed).
  */
 import { spawnSync } from "node:child_process";
@@ -14,6 +14,20 @@ const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 
 const root = join(import.meta.dir, "..");
+
+function runScript(script: string, label: string) {
+  console.log(`\n→ ${label}`);
+  const result = spawnSync("bun", ["run", script], {
+    cwd: root,
+    stdio: "inherit",
+  });
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+}
+
+runScript("scripts/refresh-workspace-lockfile.ts", "refreshing workspace lockfile");
+runScript("scripts/verify-packed-workspace-deps.ts", "verifying packed workspace deps");
 
 const token = process.env.NPM_CONFIG_TOKEN ?? process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN;
 
