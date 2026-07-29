@@ -6,6 +6,32 @@ export {
   InputGroupText,
   InputGroupTextarea,
 } from "./components/ui/input-group.js";
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+} from "./components/ui/sidebar.js";
 export { Spinner } from "./components/ui/spinner.js";
 export {
   GraphCameraChromeProvider,
@@ -35,6 +61,10 @@ export {
   GraphNamespaceSelector,
   type GraphNamespaceSelectorProps,
 } from "./graph-namespace-selector.js";
+export {
+  GraphNamespaceTree,
+  type GraphNamespaceTreeProps,
+} from "./graph-namespace-tree.js";
 export { GraphOverlayContainer } from "./graph-overlay-container.js";
 export { GraphPinnedEscHint } from "./graph-pinned-esc-hint.js";
 export {
