@@ -17,7 +17,7 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | `GraphPreviewDock` | Selected memory preview panel |
 | `GraphLoading`, `GraphFetchError` | Loading and error states |
 
-Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei`.
+Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing` (used when `fog.blur` is enabled for screen-space edge softening).
 
 ## Host integration
 

@@ -1,14 +1,18 @@
 import { Html, Line } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { type ComponentRef, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
+import { fogChannelStrength, useGraphSceneFog } from "./graph-scene-fog.js";
 import type { GraphSceneEdgeItem, SceneEdge } from "./projection-types.js";
 import { useProjection } from "./use-projection.js";
 
 const PICK_RADIUS = 0.028;
 const DASH_SCROLL_SPEED = 10;
 const EDGE_HTML_DISTANCE_FACTOR = 5;
+
+const EDGE_LINE_BASE = new THREE.Color("black");
+const _edgeMid = new THREE.Vector3();
 
 function scrollDashedLineMaterial(material: unknown, delta: number) {
   if (!material || typeof material !== "object") return;
@@ -35,23 +39,10 @@ const dashedLineDefaults = {
   gapSize: 5,
 };
 
-function GraphDashedEdgeLineAnimated({
-  from,
-  to,
-  opacity,
-}: {
-  from: [number, number, number];
-  to: [number, number, number];
-  opacity: number;
-}) {
-  const lineRef = useRef<ComponentRef<typeof Line>>(null);
-  useFrame((_, delta) => {
-    const line = lineRef.current;
-    if (!line) return;
-    const mat = line.material;
-    scrollDashedLineMaterial(Array.isArray(mat) ? mat[0] : mat, delta);
-  });
-  return <Line ref={lineRef} points={[from, to]} opacity={opacity} {...dashedLineDefaults} />;
+function lineMaterial(line: ComponentRef<typeof Line> | null): THREE.Material | null {
+  if (!line) return null;
+  const mat = line.material;
+  return (Array.isArray(mat) ? mat[0] : mat) ?? null;
 }
 
 function GraphDashedEdgeLine({
@@ -65,10 +56,43 @@ function GraphDashedEdgeLine({
   opacity: number;
   animateDash: boolean;
 }) {
-  return animateDash ? (
-    <GraphDashedEdgeLineAnimated from={from} to={to} opacity={opacity} />
-  ) : (
-    <Line points={[from, to]} opacity={opacity} {...dashedLineDefaults} />
+  const lineRef = useRef<ComponentRef<typeof Line>>(null);
+  const fog = useGraphSceneFog();
+  const { camera } = useThree();
+  const fogBg = useMemo(() => {
+    try {
+      return new THREE.Color(fog.background);
+    } catch {
+      return new THREE.Color("white");
+    }
+  }, [fog.background]);
+
+  useFrame((_, delta) => {
+    const mat = lineMaterial(lineRef.current);
+    if (!mat) return;
+
+    if (animateDash) scrollDashedLineMaterial(mat, delta);
+
+    if (!("color" in mat) || !(mat.color instanceof THREE.Color)) return;
+
+    if (fog.color.enabled) {
+      _edgeMid.set((from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2);
+      const t = fogChannelStrength(camera.position.distanceTo(_edgeMid), fog.color);
+      mat.color.lerpColors(EDGE_LINE_BASE, fogBg, Math.min(1, Math.max(0, t)));
+    } else {
+      mat.color.copy(EDGE_LINE_BASE);
+    }
+  });
+
+  return (
+    <Line
+      ref={lineRef}
+      points={[from, to]}
+      opacity={opacity}
+      {...dashedLineDefaults}
+      // Write depth when screen blur is on so DOF can sample edge distance.
+      depthWrite={fog.blur.enabled}
+    />
   );
 }
 
@@ -127,6 +151,7 @@ export type GraphSceneEdgeProps = {
 /**
  * Default graph edge (dashed Line + pick cylinder).
  * `className` applies to a mid-edge Html hook for CSS chrome (Line stroke stays Three.js).
+ * Color fog washes the stroke toward the scene background; blur uses screen-space DOF when enabled.
  */
 export function GraphSceneEdge({ edge, className }: GraphSceneEdgeProps) {
   const mid: [number, number, number] = [

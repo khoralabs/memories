@@ -82,7 +82,12 @@ export type {
   GraphSceneFogOptions,
   GraphSceneFogProp,
 } from "./graph-scene-fog.js";
-export { fogBlurCssPx, fogFactor, useGraphSceneFog } from "./graph-scene-fog.js";
+export {
+  fogBlurCssPx,
+  fogChannelStrength,
+  fogFactor,
+  useGraphSceneFog,
+} from "./graph-scene-fog.js";
 export type {
   GraphSceneNodeButtonProps,
   GraphSceneNodeProps,

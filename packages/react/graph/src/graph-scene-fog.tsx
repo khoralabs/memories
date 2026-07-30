@@ -27,8 +27,8 @@ export type GraphSceneFogColorOptions = GraphSceneFogChannelOptions & {
 
 export type GraphSceneFogBlurOptions = GraphSceneFogChannelOptions & {
   /**
-   * Max on-screen blur radius in CSS px at full strength (after Html scale compensation).
-   * Default `4`.
+   * Max blur strength at full depth. Html markers: on-screen CSS px (after distanceFactor
+   * compensation). Screen DOF for edges: scaled into bokeh (`amount * 0.5`). Default `4`.
    */
   max?: number;
 };
@@ -41,12 +41,14 @@ export type GraphSceneFogOptions = {
   /** Shared default ease for channels that omit their own. */
   ease?: GraphSceneFogEase;
   /**
-   * Color wash toward the scene background. Default on when fog is enabled.
-   * Pass `false` to disable; `true` or options to configure independently of blur.
+   * Color wash toward the scene background (Html veil + edge line color).
+   * Default on when fog is enabled. Pass `false` to disable; `true` or options to configure
+   * independently of blur.
    */
   color?: boolean | GraphSceneFogColorOptions;
   /**
-   * Depth blur on the marker. Default off (`fog={true}` keeps prior color-only behavior).
+   * Depth blur: CSS on Html markers, half-res screen DOF on WebGL edges.
+   * Default off (`fog={true}` keeps prior color-only behavior).
    * Pass `true` or options to enable with its own bounds/ease.
    */
   blur?: boolean | GraphSceneFogBlurOptions;
@@ -134,6 +136,17 @@ export function fogBlurCssPx(
   const t = fogFactor(distance, near, far, ease);
   const scale = Math.max(distanceFactor, 1e-6);
   return t * amount * (distance / scale);
+}
+
+/**
+ * Channel strength at `distance`: eased fog factor times channel `amount`
+ * (color veil opacity scale, or mix weight toward the fog background for lines).
+ */
+export function fogChannelStrength(
+  distance: number,
+  channel: Pick<GraphSceneFogChannel, "near" | "far" | "ease" | "amount">,
+): number {
+  return fogFactor(distance, channel.near, channel.far, channel.ease) * channel.amount;
 }
 
 type ParsedChannel = {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   fogBlurCssPx,
+  fogChannelStrength,
   fogFactor,
   parseGraphSceneFogProp,
   resolveCssColor,
@@ -152,6 +153,21 @@ describe("fogFactor", () => {
     expect(fogFactor(5, 5, 5, "linear")).toBe(1);
     expect(fogFactor(3, 5, 4, "linear")).toBe(0);
     expect(fogFactor(4, 5, 4, "linear")).toBe(1);
+  });
+});
+
+describe("fogChannelStrength", () => {
+  test("is 0 below near and amount at/above far", () => {
+    const channel = { near: 2, far: 10, ease: "linear" as const, amount: 0.8 };
+    expect(fogChannelStrength(1, channel)).toBe(0);
+    expect(fogChannelStrength(2, channel)).toBe(0);
+    expect(fogChannelStrength(10, channel)).toBeCloseTo(0.8);
+    expect(fogChannelStrength(12, channel)).toBeCloseTo(0.8);
+  });
+
+  test("scales mid-range factor by amount", () => {
+    const channel = { near: 2, far: 10, ease: "linear" as const, amount: 0.5 };
+    expect(fogChannelStrength(6, channel)).toBeCloseTo(0.25);
   });
 });
 

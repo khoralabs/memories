@@ -22,6 +22,7 @@ import {
   GraphSceneFogProvider,
   useGraphSceneFog,
 } from "./graph-scene-fog.js";
+import { GraphSceneFogEffects } from "./graph-scene-fog-effects.js";
 import { GraphSceneNode, GraphSceneNodeButton, GraphSceneNodeTooltip } from "./graph-scene-node.js";
 import {
   GraphSceneBottomLeft,
@@ -491,6 +492,7 @@ function GraphSceneR3f({
         points={points}
         minFitExtent={minFitExtent}
       />
+      <GraphSceneFogEffects />
     </GraphSceneRenderProvider>
   );
 }
@@ -506,8 +508,10 @@ export type GraphSceneProps = {
   /** Three.js scene clear color (default `var(--card)`). */
   background?: string;
   /**
-   * Opt-in depth fog for node markers. Washes distant Html nodes toward {@link background}
-   * and/or applies CSS blur — each channel has its own bounds and ease.
+   * Opt-in depth fog for Html node markers and WebGL edge lines.
+   * Color washes markers (CSS veil) and edges (line color) toward {@link background}.
+   * Blur uses CSS on Html markers and a cheap half-res depth-of-field pass on the canvas
+   * (edges and other depth-writing geometry) — each channel has its own bounds and ease.
    * `true` enables color wash only (auto near/far). Pass `{ color, blur }` for independent control.
    */
   fog?: GraphSceneFogProp;

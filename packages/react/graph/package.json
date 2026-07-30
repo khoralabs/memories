@@ -45,14 +45,21 @@
     "unified": "^11.0.5"
   },
   "devDependencies": {
+    "@react-three/drei": "^10",
+    "@react-three/fiber": "^9",
+    "@react-three/postprocessing": "^3",
     "@types/bun": "latest",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/three": "^0.183.1"
+    "@types/three": "^0.183.1",
+    "react": "^19",
+    "react-dom": "^19",
+    "three": "^0.183"
   },
   "peerDependencies": {
     "@react-three/drei": "^10",
     "@react-three/fiber": "^9",
+    "@react-three/postprocessing": "^3",
     "react": "^19",
     "react-dom": "^19",
     "three": "^0.183",
