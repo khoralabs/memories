@@ -1,5 +1,6 @@
 import type {
   DeleteMemoryParams,
+  MemoriesClientOptions,
   SearchHit,
   SearchOutput,
   SearchParams,
@@ -34,7 +35,7 @@ import {
 export type RemoteMemoriesClientAsyncOptions = MemoriesServiceClientOptions & {
   database: MemoriesDatabaseId;
   ontology: OntologyDefinition<LabelSchemaMap, LabelSchemaMap>;
-};
+} & Pick<MemoriesClientOptions, "store" | "storeForNamespace">;
 
 function createRemotePersistence(
   client: MemoriesServiceClient,
@@ -71,6 +72,10 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
     super(
       createRemotePersistence(serviceClient, reads, opts.database, capabilities),
       opts.ontology,
+      {
+        store: opts.store,
+        storeForNamespace: opts.storeForNamespace,
+      },
     );
     this.#client = serviceClient;
     this.#database = opts.database;
