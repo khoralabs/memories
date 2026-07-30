@@ -49,6 +49,8 @@ export function buildNamespaceGraphLayoutFromRows({
   propertiesByKey,
   umapOptions,
 }: NamespaceGraphLayoutInput): NamespaceGraphLayout {
+  // Membership: edge endpoints ∪ embeddings ∪ keys with non-empty labels/properties.
+  // Label/property loaders pre-seed every memory with [] / null — ignore those empties.
   const keySet = new Set<string>();
   for (const e of edges) {
     keySet.add(e.fromKey);
@@ -56,6 +58,12 @@ export function buildNamespaceGraphLayoutFromRows({
   }
   for (const n of embeddings) {
     keySet.add(n.memoryKey);
+  }
+  for (const [key, labels] of labelsByKey) {
+    if (labels.length > 0) keySet.add(key);
+  }
+  for (const [key, props] of propertiesByKey) {
+    if (props != null && Object.keys(props).length > 0) keySet.add(key);
   }
 
   const orderedKeys = [...keySet].sort();

@@ -42,6 +42,44 @@ describe("buildNamespaceGraphLayoutFromRows connectivity", () => {
     expect(byKey.get("a")?.degree).toEqual({ count: 1, centrality: 0.5 });
     expect(byKey.get("lonely")?.degree).toEqual({ count: 0, centrality: 0 });
   });
+
+  test("labeled isolate without edges or embeddings appears in layout", () => {
+    const layout = buildNamespaceGraphLayoutFromRows({
+      namespace: "ns",
+      edges: [],
+      embeddings: [],
+      labelsByKey: new Map([["gia-kim", [{ kind: "Memory", props: {} }]]]),
+      propertiesByKey: new Map(),
+      umapOptions: { nEpochs: 2, seed: 1 },
+    });
+
+    expect(layout.nodes).toHaveLength(1);
+    expect(layout.nodes[0]).toMatchObject({
+      key: "gia-kim",
+      labels: [{ kind: "Memory", props: {} }],
+      degree: { count: 0, centrality: 0 },
+    });
+  });
+
+  test("pre-seeded empty labels and null props do not add membership", () => {
+    const layout = buildNamespaceGraphLayoutFromRows({
+      namespace: "ns",
+      edges: [],
+      embeddings: [],
+      labelsByKey: new Map([
+        ["ghost", []],
+        ["kept", [{ kind: "Memory", props: {} }]],
+      ]),
+      propertiesByKey: new Map([
+        ["ghost", null],
+        ["empty-props", {}],
+        ["kept", null],
+      ]),
+      umapOptions: { nEpochs: 2, seed: 1 },
+    });
+
+    expect(layout.nodes.map((n) => n.key)).toEqual(["kept"]);
+  });
 });
 
 describe("buildNamespaceGraphLayoutFromSource", () => {
