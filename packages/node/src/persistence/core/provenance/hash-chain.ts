@@ -1,4 +1,4 @@
-import { sha256 } from "js-sha256";
+import { sha256Digest } from "../models/sha256";
 import { canonicalJson } from "./canonical-json";
 
 const enc = new TextEncoder();
@@ -28,14 +28,10 @@ export function bytesToHexLower(digest: Uint8Array): string {
   return [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function sha256Bytes(data: Uint8Array): Uint8Array {
-  return new Uint8Array(sha256.arrayBuffer(data));
-}
-
 /** `SHA-256(MEMORIES_EVENT_LEAF_v1 || NUL || canonical_json(event))` as raw digest bytes. */
 export function provenanceEventLeaf(event: unknown): Uint8Array {
   const payload = enc.encode(`${MEMORIES_EVENT_LEAF_V1_PREFIX}${canonicalJson(event)}`);
-  return sha256Bytes(payload);
+  return sha256Digest(payload);
 }
 
 /** `SHA-256(parent_32 || leaf_32)` where parent is genesis zeros or previous root bytes. */
@@ -45,7 +41,7 @@ export function provenanceChainLink(parentRootHex: string, leafDigest: Uint8Arra
   const combined = new Uint8Array(64);
   combined.set(parent, 0);
   combined.set(leafDigest, 32);
-  return sha256Bytes(combined);
+  return sha256Digest(combined);
 }
 
 export type ContributorAttestation = {

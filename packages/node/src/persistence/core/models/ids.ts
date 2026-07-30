@@ -1,11 +1,10 @@
-import { sha256 } from "js-sha256";
+import { sha256Hex } from "./sha256";
 
 /**
  * Deterministic string ids: SHA-256 over `prefix` and `parts` (NUL-separated), hex truncated to 24 chars.
- * Pure JS (`js-sha256`) so the same implementation runs in Node, Bun, browsers, and Convex.
  */
 export function stableId(prefix: string, ...parts: string[]): string {
-  const h = sha256([prefix, ...parts].join("\0"));
+  const h = sha256Hex([prefix, ...parts].join("\0"));
   return `${prefix}_${h.slice(0, 24)}`;
 }
 

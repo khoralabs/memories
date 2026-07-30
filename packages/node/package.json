@@ -173,7 +173,6 @@
     "@khoralabs/sourcemaps": "^0.1.0",
     "@standard-schema/spec": "^1.1.0",
     "ai": "^7.0.9",
-    "js-sha256": "^0.11.0",
     "zod": "^4"
   },
   "peerDependencies": {
