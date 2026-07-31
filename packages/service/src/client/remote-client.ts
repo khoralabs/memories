@@ -187,6 +187,16 @@ export class RemoteMemoriesReadClient {
     return response.namespace;
   }
 
+  async deleteNamespace(input: {
+    namespace: string;
+    recursive?: boolean;
+  }): Promise<{ namespaces: string[]; deletedMemories: number }> {
+    return this.#client.postJson("/databases/namespaces/delete", {
+      database: this.#database,
+      ...input,
+    });
+  }
+
   async getEdgePreview(namespace: string, edgeId: string): Promise<Record<string, unknown>> {
     return this.#client.postJson("/databases/edge-preview", {
       database: this.#database,

@@ -193,6 +193,11 @@ export class MemoriesTursoServerlessPersistence {
     );
   }
 
+  async deleteNamespaceMetadata(op: MemoryOpContext, namespace: string): Promise<void> {
+    const ns = namespacePath(namespace);
+    await ctxExec(this.activeCtx(op), `DELETE FROM namespace_metadata WHERE _id = ?`, [ns]);
+  }
+
   async linkScopes(
     op: MemoryOpContext,
     input: { parentScopeId: string; childScopeId: string },
@@ -543,6 +548,16 @@ export class MemoriesTursoServerlessPersistence {
     return row
       ? { namespace: row.id, displayName: row.displayName, description: row.description }
       : undefined;
+  }
+
+  async listMemoryKeysInNamespace(namespace: string): Promise<string[]> {
+    const ns = namespacePath(namespace);
+    const rows = await queryAll<{ key: string }>(
+      this.db.read,
+      `SELECT key FROM memories WHERE namespace = ?`,
+      [ns],
+    );
+    return rows.map((r) => r.key);
   }
 
   async listSourceMapsForMemory(memoryId: string, limit: number): Promise<SourceMap[]> {

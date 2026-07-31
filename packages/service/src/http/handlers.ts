@@ -36,6 +36,7 @@ import {
   handleDatabaseFindMemoryId,
   handleDatabaseLoadMemoryNamespaceKey,
   handleDatabaseMerge,
+  handleDatabaseNamespaceDelete,
   handleDatabaseNamespaceGet,
   handleDatabaseNamespaces,
   handleDatabaseNamespaceUpsert,
@@ -84,6 +85,11 @@ export type MemoriesServiceHttpOptions = {
   auth: MemoriesDatabaseAccessStrategy;
   ontology?: MemoriesDatabaseOntologyStore;
   catalog?: MemoriesDatabaseCatalogStore;
+  /**
+   * Cap on distinct namespaces (memories ∪ metadata). `undefined` = unlimited.
+   * Enforced on merge and namespace metadata upsert when introducing a new path.
+   */
+  maxNamespaces?: number;
   projectionSource?: (input: {
     database: MemoriesDatabaseId;
     handle: MemoriesDatabaseHandle;
@@ -300,7 +306,13 @@ export async function handleMemoriesServiceHttpRequest(
         opts.attribution !== undefined
           ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
           : undefined;
-      return await handleDatabaseMerge(opts.service, body, attribution, opts.ontology);
+      return await handleDatabaseMerge(
+        opts.service,
+        body,
+        attribution,
+        opts.ontology,
+        opts.maxNamespaces,
+      );
     }
 
     if (req.method === "POST" && url.pathname === "/databases/delete-memory") {
@@ -346,7 +358,14 @@ export async function handleMemoriesServiceHttpRequest(
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
-      return handleDatabaseNamespaceUpsert(opts.service, body);
+      return handleDatabaseNamespaceUpsert(opts.service, body, opts.maxNamespaces);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/namespaces/delete") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      return handleDatabaseNamespaceDelete(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/edge-preview") {

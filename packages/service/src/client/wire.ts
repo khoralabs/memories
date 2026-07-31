@@ -132,6 +132,15 @@ export type DatabaseNamespaceUpsertRequest = DatabaseScopedBody<{
 }>;
 export type DatabaseNamespaceUpsertResponse = { namespace: DatabaseNamespaceMetadata };
 
+export type DatabaseNamespaceDeleteRequest = DatabaseScopedBody<{
+  namespace: string;
+  recursive?: boolean;
+}>;
+export type DatabaseNamespaceDeleteResponse = {
+  namespaces: string[];
+  deletedMemories: number;
+};
+
 export type DatabaseMetadataGetRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseMetadataGetResponse = { name: string; description: string };
 

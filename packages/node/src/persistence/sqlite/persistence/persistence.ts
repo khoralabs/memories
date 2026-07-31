@@ -56,7 +56,9 @@ import {
 } from "./models/memory-search-meta";
 import { clearMemorySubtree } from "./models/memory-subtree";
 import {
+  deleteNamespaceMetadata as deleteNamespaceMetadataQuery,
   getNamespaceMetadata as getNamespaceMetadataQuery,
+  listMemoryKeysInNamespace as listMemoryKeysInNamespaceQuery,
   listNamespacesWithMetadata as listNamespacesWithMetadataQuery,
   upsertNamespaceMetadata as upsertNamespaceMetadataQuery,
 } from "./models/namespace-metadata";
@@ -145,6 +147,10 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     },
   ): void {
     upsertNamespaceMetadataQuery(this.db, op, input);
+  }
+
+  deleteNamespaceMetadata(op: MemoryOpContext, namespace: string): void {
+    deleteNamespaceMetadataQuery(this.db, op, namespace);
   }
 
   linkScopes(op: MemoryOpContext, input: { parentScopeId: string; childScopeId: string }): void {
@@ -454,6 +460,10 @@ export class MemoriesPersistence implements IMemoriesPersistence {
 
   getNamespaceMetadata(namespace: string): NamespaceMetadataInfo | undefined {
     return getNamespaceMetadataQuery(this.db, namespace);
+  }
+
+  listMemoryKeysInNamespace(namespace: string): string[] {
+    return listMemoryKeysInNamespaceQuery(this.db, namespace);
   }
 
   listSourceMapsForMemory(memoryId: string, limit: number): SourceMap[] {

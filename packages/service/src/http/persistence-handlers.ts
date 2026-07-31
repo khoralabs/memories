@@ -1,7 +1,10 @@
 import {
+  assertNamespaceCountAllowsNew,
+  assertNamespacePath,
   MemoriesClient,
   MemoriesClientAsync,
   type MergeMemoryParams,
+  NamespaceConstraintError,
   type SearchParams,
   searchAsync,
 } from "@khoralabs/memories-node";
@@ -41,6 +44,26 @@ import { labelMapsFromStoredOntology } from "./stored-ontology-label-schema";
 
 const GLOBAL_ROOT = "_global_";
 
+function mapNamespaceConstraint(error: unknown): never {
+  if (error instanceof NamespaceConstraintError) {
+    throw new HttpError(error.message, 400);
+  }
+  throw error;
+}
+
+async function enforceMaxNamespaces(
+  handle: MemoriesDatabaseHandle,
+  namespace: string,
+  maxNamespaces: number | undefined,
+): Promise<void> {
+  if (maxNamespaces === undefined) return;
+  const listed = await handle.persistence.listNamespacesWithMetadata();
+  assertNamespaceCountAllowsNew(
+    listed.map((n) => n.namespace),
+    namespace,
+    maxNamespaces,
+  );
+}
 async function ensureScopeChain(
   handle: MemoriesDatabaseHandle,
   scopePaths: readonly string[],
@@ -232,6 +255,7 @@ export async function handleDatabaseMerge(
   body: unknown,
   serverAttribution?: MemoryMutationAttribution,
   ontologyStore?: MemoriesDatabaseOntologyStore,
+  maxNamespaces?: number,
 ): Promise<Response> {
   const scoped = body as DatabaseMergeRequest & { intentSnapshotId?: string };
   const { database, handle } = await getHandle(service, scoped);
@@ -241,6 +265,12 @@ export async function handleDatabaseMerge(
   const safeParams = stripRemoteAttribution(
     scoped.params as MergeMemoryParams,
   ) as MergeMemoryParams;
+  try {
+    const namespace = assertNamespacePath(String(safeParams.namespace ?? ""));
+    await enforceMaxNamespaces(handle, namespace, maxNamespaces);
+  } catch (error) {
+    mapNamespaceConstraint(error);
+  }
   const intentSnapshotId =
     typeof scoped.intentSnapshotId === "string" ? scoped.intentSnapshotId : undefined;
   const attribution: MergeMemoryParams["attribution"] =
@@ -271,7 +301,7 @@ export async function handleDatabaseMerge(
       memoryIds = await client.mergeMemory(params);
     }
   } catch (error) {
-    if (error instanceof RangeError) {
+    if (error instanceof NamespaceConstraintError || error instanceof RangeError) {
       throw new HttpError(error.message, 400);
     }
     throw error;
@@ -375,6 +405,7 @@ export async function handleDatabaseNamespaceGet(
 export async function handleDatabaseNamespaceUpsert(
   service: MemoriesDatabaseService,
   body: unknown,
+  maxNamespaces?: number,
 ): Promise<Response> {
   const scoped = body as {
     database?: unknown;
@@ -386,7 +417,13 @@ export async function handleDatabaseNamespaceUpsert(
   if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
     throw new HttpError("namespace is required", 400);
   }
-  const namespace = scoped.namespace.trim();
+  let namespace: string;
+  try {
+    namespace = assertNamespacePath(scoped.namespace.trim());
+    await enforceMaxNamespaces(handle, namespace, maxNamespaces);
+  } catch (error) {
+    mapNamespaceConstraint(error);
+  }
   const displayName =
     scoped.displayName === undefined
       ? undefined
@@ -427,6 +464,9 @@ export async function handleDatabaseNamespaceUpsert(
       });
     }
   } catch (error) {
+    if (error instanceof NamespaceConstraintError) {
+      throw new HttpError(error.message, 400);
+    }
     const message = error instanceof Error ? error.message : String(error);
     throw new HttpError(message, 400);
   }
@@ -436,6 +476,54 @@ export async function handleDatabaseNamespaceUpsert(
     throw new HttpError("namespace metadata missing after upsert", 500);
   }
   return Response.json({ namespace: meta, database });
+}
+
+export async function handleDatabaseNamespaceDelete(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as {
+    database?: unknown;
+    namespace?: unknown;
+    recursive?: unknown;
+  };
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
+    throw new HttpError("namespace is required", 400);
+  }
+  let namespace: string;
+  try {
+    namespace = assertNamespacePath(scoped.namespace.trim());
+  } catch (error) {
+    mapNamespaceConstraint(error);
+  }
+  const recursive = scoped.recursive !== false;
+  const params = { namespace, recursive };
+
+  try {
+    let result: { namespaces: string[]; deletedMemories: number };
+    if (handle.sync !== undefined) {
+      const client = new MemoriesClient(
+        handle.sync.syncPersistence,
+        { nodeLabels: {}, edgeLabels: {} },
+        { telemetry: handle.telemetry },
+      );
+      result = client.deleteNamespace(params);
+    } else {
+      const client = new MemoriesClientAsync(
+        handle.persistence,
+        { nodeLabels: {}, edgeLabels: {} },
+        { telemetry: handle.telemetry },
+      );
+      result = await client.deleteNamespace(params);
+    }
+    return Response.json({ ...result, database });
+  } catch (error) {
+    if (error instanceof NamespaceConstraintError) {
+      throw new HttpError(error.message, 400);
+    }
+    throw error;
+  }
 }
 
 export async function handleDatabaseEdgePreview(

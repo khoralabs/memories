@@ -1,5 +1,7 @@
 import z from "zod";
 
+import { NamespaceConstraintError } from "./namespace-constraints";
+
 /** Canonical segment separator for hierarchical memory namespaces. */
 export const NAMESPACE_SEPARATOR = "/" as const;
 
@@ -34,18 +36,27 @@ export type NamespacePathLiteral<S extends string> = S extends ""
 
 function parseSegments(s: string): string[] {
   if (s.length === 0) {
-    throw new Error("namespace path must be non-empty");
+    throw new NamespaceConstraintError("invalid_path", "namespace path must be non-empty");
   }
   if (s.startsWith("/") || s.endsWith("/") || s.includes("//")) {
-    throw new Error("invalid namespace path: no leading, trailing, or double slashes");
+    throw new NamespaceConstraintError(
+      "invalid_path",
+      "invalid namespace path: no leading, trailing, or double slashes",
+    );
   }
   const parts = s.split(NAMESPACE_SEPARATOR);
   if (parts.length === 0 || parts.length > NAMESPACE_MAX_DEPTH) {
-    throw new Error(`namespace path must have 1..${NAMESPACE_MAX_DEPTH} segments`);
+    throw new NamespaceConstraintError(
+      "max_depth",
+      `namespace path must have 1..${NAMESPACE_MAX_DEPTH} segments`,
+    );
   }
   for (const p of parts) {
     if (p.length === 0 || !NAMESPACE_SEGMENT_REGEX.test(p)) {
-      throw new Error(`invalid namespace segment (use [a-z0-9_-]+ only): ${JSON.stringify(p)}`);
+      throw new NamespaceConstraintError(
+        "invalid_path",
+        `invalid namespace segment (use [a-z0-9_-]+ only): ${JSON.stringify(p)}`,
+      );
     }
   }
   return parts;
@@ -68,7 +79,10 @@ export const zNamespacePath = z
   })
   .transform((s): NamespacePath => s);
 
-/** Validate at runtime and return a branded path. */
+/**
+ * Validate at runtime and return a branded path.
+ * Throws {@link NamespaceConstraintError} on violation.
+ */
 export function namespacePath(s: string): NamespacePath;
 export function namespacePath<S extends string>(s: NamespacePathLiteral<S>): NamespacePath;
 export function namespacePath(s: string): NamespacePath {
@@ -76,17 +90,26 @@ export function namespacePath(s: string): NamespacePath {
   return s;
 }
 
+/** Alias of {@link namespacePath} for call sites that want constraint-oriented naming. */
+export const assertNamespacePath = namespacePath;
+
 export function namespaceSegments(p: NamespacePath): readonly string[] {
   return parseSegments(p);
 }
 
 export function namespaceFromSegments(segs: readonly string[]): NamespacePath {
   if (segs.length === 0 || segs.length > NAMESPACE_MAX_DEPTH) {
-    throw new Error(`namespace must have 1..${NAMESPACE_MAX_DEPTH} segments`);
+    throw new NamespaceConstraintError(
+      "max_depth",
+      `namespace must have 1..${NAMESPACE_MAX_DEPTH} segments`,
+    );
   }
   for (const seg of segs) {
     if (seg.length === 0 || !NAMESPACE_SEGMENT_REGEX.test(seg)) {
-      throw new Error(`invalid namespace segment: ${JSON.stringify(seg)}`);
+      throw new NamespaceConstraintError(
+        "invalid_path",
+        `invalid namespace segment: ${JSON.stringify(seg)}`,
+      );
     }
   }
   return namespacePath(segs.join(NAMESPACE_SEPARATOR));

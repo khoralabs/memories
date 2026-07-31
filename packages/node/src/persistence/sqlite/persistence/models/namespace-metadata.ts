@@ -92,3 +92,22 @@ export function upsertNamespaceMetadata(
     [ns, displayName, description, op.now, op.now],
   );
 }
+
+/** Remove metadata row; no-op if missing. */
+export function deleteNamespaceMetadata(
+  db: Database,
+  _op: MemoryOpContext,
+  namespace: string,
+): void {
+  const ns = namespacePath(namespace);
+  db.run(`DELETE FROM namespace_metadata WHERE _id = ?`, [ns]);
+}
+
+/** Memory keys in one primary namespace. */
+export function listMemoryKeysInNamespace(db: Database, namespace: string): string[] {
+  const ns = namespacePath(namespace);
+  return db
+    .query<{ key: string }, [string]>(`SELECT key FROM memories WHERE namespace = ?`)
+    .all(ns)
+    .map((r) => r.key);
+}

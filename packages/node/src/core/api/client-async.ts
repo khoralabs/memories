@@ -9,6 +9,8 @@ import type { MemoriesPersistenceAsync } from "../../persistence/core/persistenc
 import type { MemoriesTelemetry } from "../../telemetry/index.js";
 import type { DeleteMemoryParams } from "../models/delete-memory";
 import { deleteMemoryAsync } from "../models/delete-memory-async";
+import type { DeleteNamespaceParams, DeleteNamespaceResult } from "../models/delete-namespace";
+import { deleteNamespaceAsync } from "../models/delete-namespace-async";
 import type { DefaultEntityMap, MemoriesClientOptions } from "./client";
 import {
   type MergeMemoryParams,
@@ -149,6 +151,10 @@ export class MemoriesClientAsync<
 
   async deleteMemory(params: DeleteMemoryParams): Promise<void> {
     return deleteMemoryAsync(this.mutationCtx, params);
+  }
+
+  async deleteNamespace(params: DeleteNamespaceParams): Promise<DeleteNamespaceResult> {
+    return deleteNamespaceAsync(this.mutationCtx, params);
   }
 
   async search(

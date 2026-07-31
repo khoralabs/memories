@@ -345,6 +345,9 @@ export interface MemoriesMutationCore {
       description?: string;
     },
   ): void;
+
+  /** Remove namespace metadata row; idempotent if missing. */
+  deleteNamespaceMetadata(op: MemoryOpContext, namespace: NamespacePath): void;
 }
 
 /** Graph node/edge catalog writes (merge-time). Combined with {@link MemoriesGraphIndex} as {@link MemoriesGraph}. */
@@ -475,6 +478,9 @@ export interface MemoriesPersistenceReads {
 
   /** Metadata row for one namespace, or `undefined` if none. */
   getNamespaceMetadata(namespace: NamespacePath): NamespaceMetadataInfo | undefined;
+
+  /** Memory keys in one primary namespace (unordered). */
+  listMemoryKeysInNamespace(namespace: NamespacePath): string[];
 
   /** Source map rows for a memory, newest first, capped at `limit`. */
   listSourceMapsForMemory(memoryId: string, limit: number): SourceMap[];

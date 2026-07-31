@@ -7,7 +7,7 @@ import type {
 } from "../../ontology/ontology.ts";
 import { propsSchemaToJson } from "../../ontology/ontology.ts";
 import type { NamespacePath } from "../../persistence/core";
-import { ids, MEMORY_SEARCH_META_SOURCE_KEY, zNamespacePath } from "../../persistence/core";
+import { assertNamespacePath, ids, MEMORY_SEARCH_META_SOURCE_KEY } from "../../persistence/core";
 import {
   type MemoriesPersistence,
   type MemoryOpContext,
@@ -257,7 +257,7 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
   const { persistence } = ctx;
   const op = buildMemoryOpContext(params.attribution);
 
-  const namespace = zNamespacePath.parse(params.namespace);
+  const namespace = assertNamespacePath(params.namespace);
   const memoryId = ids.memory(namespace, params.key);
   const nodeId = ids.node(namespace, params.key);
 
@@ -411,7 +411,7 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
   const { persistence } = ctx;
   const op = buildMemoryOpContext(params.attribution);
 
-  const namespace = zNamespacePath.parse(params.namespace);
+  const namespace = assertNamespacePath(params.namespace);
   const memoryId = ids.memory(namespace, params.key);
 
   validateContentAndMetaVector(persistence, params.content, params.searchMetaVector);

@@ -24,6 +24,7 @@ service MemoriesPersistenceCore {
         ReplaceMemoryScopes
         ListScopesForMemory
         UpsertNamespaceMetadata
+        DeleteNamespaceMetadata
         InsertSourceMap
         InsertLexicalFeature
         EnsureNodeLabel
@@ -90,6 +91,7 @@ service MemoriesPersistenceReads {
         ListMemoryNamespaces
         ListNamespacesWithMetadata
         GetNamespaceMetadata
+        ListMemoryKeysInNamespace
         ListSourceMapsForMemory
         ListTextFeatureExportRowsForMemory
         GetSourceMapTextPreview
@@ -147,6 +149,7 @@ service MemoriesPersistenceService {
         ReplaceMemoryScopes
         ListScopesForMemory
         UpsertNamespaceMetadata
+        DeleteNamespaceMetadata
         InsertSourceMap
         InsertLexicalFeature
         InsertVectorFeature
@@ -175,6 +178,7 @@ service MemoriesPersistenceService {
         ListMemoryNamespaces
         ListNamespacesWithMetadata
         GetNamespaceMetadata
+        ListMemoryKeysInNamespace
         ListSourceMapsForMemory
         ListTextFeatureExportRowsForMemory
         GetSourceMapTextPreview
@@ -345,6 +349,18 @@ structure UpsertNamespaceMetadataInput {
 }
 
 structure UpsertNamespaceMetadataOutput {}
+
+operation DeleteNamespaceMetadata {
+    input: DeleteNamespaceMetadataInput
+    output: DeleteNamespaceMetadataOutput
+}
+
+structure DeleteNamespaceMetadataInput {
+    @required
+    namespace: MemoryNamespace
+}
+
+structure DeleteNamespaceMetadataOutput {}
 
 operation LinkScopes {
     input: LinkScopesInput
@@ -799,6 +815,20 @@ structure GetNamespaceMetadataInput {
 
 structure GetNamespaceMetadataOutput {
     metadata: NamespaceMetadata
+}
+
+operation ListMemoryKeysInNamespace {
+    input: ListMemoryKeysInNamespaceInput
+    output: ListMemoryKeysInNamespaceOutput
+}
+
+structure ListMemoryKeysInNamespaceInput {
+    @required
+    namespace: MemoryNamespace
+}
+
+structure ListMemoryKeysInNamespaceOutput {
+    keys: StringList
 }
 
 operation ListSourceMapsForMemory {

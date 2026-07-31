@@ -33,6 +33,11 @@ export type CreateLocalSqliteServiceStackOptions = {
   maxCached?: number;
   /** Structured telemetry for database lifecycle and HTTP node ops. */
   telemetry?: MemoriesTelemetry;
+  /**
+   * Cap on distinct namespaces per principal DB when serving HTTP (`undefined` = unlimited).
+   * Pass through to {@link MemoriesServiceHttpOptions.maxNamespaces}.
+   */
+  maxNamespaces?: number;
 };
 
 export type LocalSqliteServiceStack = {
@@ -41,6 +46,7 @@ export type LocalSqliteServiceStack = {
   ontology: MemoriesDatabaseOntologyStore;
   catalog: MemoriesDatabaseCatalogStore;
   defaultStrategy: SqliteBackendStrategy;
+  maxNamespaces?: number;
 };
 
 export function createLocalSqliteServiceStack(
@@ -87,5 +93,12 @@ export function createLocalSqliteServiceStack(
     maxCached: opts.maxCached,
     telemetry: opts.telemetry,
   });
-  return { service, placement, ontology, catalog, defaultStrategy };
+  return {
+    service,
+    placement,
+    ontology,
+    catalog,
+    defaultStrategy,
+    ...(opts.maxNamespaces !== undefined ? { maxNamespaces: opts.maxNamespaces } : {}),
+  };
 }

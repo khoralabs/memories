@@ -104,9 +104,17 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 
 - **Table:** `namespace_metadata` (`_id` = namespace path, optional `display_name`, `description`, `_ts_created` / `_ts_updated`).
 - **`upsertNamespaceMetadata`:** may create metadata before any memories exist. `displayName: null` means UI should show the path key.
+- **`deleteNamespaceMetadata`:** remove one metadata row (idempotent if missing).
+- **`listMemoryKeysInNamespace`:** keys for one primary namespace.
 - **`listNamespacesWithMetadata`:** union of distinct `memories.namespace` and metadata keys (memory-only → `displayName: null`, empty description).
 - **`getNamespaceMetadata`:** single row or missing.
 - Distinct from scope DAG metadata — keyed to primary memory namespaces, not `scopes` rows.
+- **Namespace delete (core API):** `deleteNamespace` / `deleteNamespaceAsync` removes memories under a path (default recursive via prefix), then metadata rows. Uses per-memory `deleteMemory` provenance. Orphaned scope DAG rows may remain (best-effort; not required for correctness).
+
+## Namespace path constraints
+
+- Path grammar: 1..`NAMESPACE_MAX_DEPTH` (6) segments, `[a-z0-9_-]+`, max 128 chars. Violations throw **`NamespaceConstraintError`** (`invalid_path` | `max_depth`).
+- Optional **max distinct namespaces** (memories ∪ metadata) is enforced by hosts/service (`maxNamespaces`); introducing a new path when at the cap throws `NamespaceConstraintError` with code `max_namespaces`.
 
 ## Search arms and ranking
 

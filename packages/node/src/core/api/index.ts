@@ -9,18 +9,23 @@ export type {
   NeighborNodesFilter,
 } from "../../persistence/core";
 export {
+  assertNamespaceCountAllowsNew,
+  assertNamespacePath,
   canonicalizeNamespacePrefixes,
   formatLabelPropsForSearch,
   isPrefixOf,
   NAMESPACE_MAX_DEPTH,
   NAMESPACE_SEGMENT_REGEX,
   NAMESPACE_SEPARATOR,
+  type NamespaceConstraintCode,
+  NamespaceConstraintError,
   namespaceFromSegments,
   namespacePath,
   namespaceSegments,
   propsToHumanSearchText,
   zNamespacePath,
 } from "../../persistence/core";
+
 export type {
   MemoriesBackendCapabilities,
   MemoriesGraph,
@@ -50,6 +55,12 @@ export {
 export type { DeleteMemoryParams } from "../models/delete-memory";
 export { deleteMemory } from "../models/delete-memory";
 export { deleteMemoryAsync } from "../models/delete-memory-async";
+export type {
+  DeleteNamespaceParams,
+  DeleteNamespaceResult,
+} from "../models/delete-namespace";
+export { deleteNamespace } from "../models/delete-namespace";
+export { deleteNamespaceAsync } from "../models/delete-namespace-async";
 export * from "./client";
 export * from "./client-async";
 export type {

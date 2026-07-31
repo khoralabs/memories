@@ -1,5 +1,5 @@
 import type { NamespacePath } from "../../persistence/core";
-import { ids, zNamespacePath } from "../../persistence/core";
+import { assertNamespacePath, ids } from "../../persistence/core";
 import type { MemoriesPersistenceAsync, MemoryOpContext } from "../../persistence/core/persistence";
 import {
   resolveMemoriesBackendCapabilities,
@@ -45,7 +45,7 @@ export async function mergeMemoryAsync(
       const caps = resolveMemoriesBackendCapabilities(persistence);
       const op = buildMemoryOpContext(params.attribution);
 
-      const namespace = zNamespacePath.parse(params.namespace);
+      const namespace = assertNamespacePath(params.namespace);
 
       for (const item of params.content) {
         zMergeMemoryContentItem.parse(item);
@@ -79,7 +79,7 @@ export async function mergeMemoryAsync(
 async function mergeMemoryAsyncNode(
   ctx: MutationCtxAsync,
   params: MergeMemoryParamsNode,
-  namespace: ReturnType<typeof zNamespacePath.parse>,
+  namespace: NamespacePath,
   op: MemoryOpContext,
 ): Promise<string[]> {
   const { persistence } = ctx;
@@ -261,7 +261,7 @@ async function mergeMemoryAsyncNode(
 async function mergeMemoryAsyncEdge(
   ctx: MutationCtxAsync,
   params: MergeMemoryParamsEdge,
-  namespace: ReturnType<typeof zNamespacePath.parse>,
+  namespace: NamespacePath,
   op: MemoryOpContext,
 ): Promise<string[]> {
   const { persistence } = ctx;

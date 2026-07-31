@@ -37,6 +37,8 @@ export {
   type DatabaseMetadataGetResponse,
   type DatabaseMetadataUpsertRequest,
   type DatabaseMetadataUpsertResponse,
+  type DatabaseNamespaceDeleteRequest,
+  type DatabaseNamespaceDeleteResponse,
   type DatabaseNamespaceGetRequest,
   type DatabaseNamespaceGetResponse,
   type DatabaseNamespaceMetadata,

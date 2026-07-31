@@ -12,6 +12,11 @@ import {
   deleteMemory as deleteMemoryHandler,
 } from "../models/delete-memory";
 import {
+  type DeleteNamespaceParams,
+  type DeleteNamespaceResult,
+  deleteNamespace as deleteNamespaceHandler,
+} from "../models/delete-namespace";
+import {
   type MergeMemoryParams,
   type MutationCtx,
   mergeMemory,
@@ -164,6 +169,11 @@ export class MemoriesClient<
   /** Deletes the memory and cascaded data; delegates to the package `deleteMemory` function. */
   deleteMemory(params: DeleteMemoryParams): void {
     deleteMemoryHandler(this.mutationCtx, params);
+  }
+
+  /** Deletes a namespace (default recursive) and cascaded memories/metadata. */
+  deleteNamespace(params: DeleteNamespaceParams): DeleteNamespaceResult {
+    return deleteNamespaceHandler(this.mutationCtx, params);
   }
 
   /** Runs the package `search` function against this store. */
