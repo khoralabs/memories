@@ -19,6 +19,7 @@ export {
   CONTENT_OUTBOX_SQL,
   MEMORIES_INDEXES_SQL,
   MEMORIES_SCHEMA_SQL,
+  NAMESPACE_METADATA_SQL,
 } from "./schema";
 export {
   buildFtsMatchFromUserText,

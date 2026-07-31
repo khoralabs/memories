@@ -100,6 +100,14 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 - **`replaceMemoryScopes`:** merge replaces attachments for the focal memory; **primary namespace is always included** alongside optional `attachScopes`.
 - **Search:** `SearchNamespaceScope` adds **`scopeDag`** (roots expand through closure → attached memories) and **`exactScope`** (no descent). **`pathSubtree`** keeps prefix semantics on each row’s primary `memories.namespace`.
 
+## Namespace metadata (display)
+
+- **Table:** `namespace_metadata` (`_id` = namespace path, optional `display_name`, `description`, `_ts_created` / `_ts_updated`).
+- **`upsertNamespaceMetadata`:** may create metadata before any memories exist. `displayName: null` means UI should show the path key.
+- **`listNamespacesWithMetadata`:** union of distinct `memories.namespace` and metadata keys (memory-only → `displayName: null`, empty description).
+- **`getNamespaceMetadata`:** single row or missing.
+- Distinct from scope DAG metadata — keyed to primary memory namespaces, not `scopes` rows.
+
 ## Search arms and ranking
 
 - `searchLexicalSourceMapIds` returns an **ordered list** of `source_map` ids (best-first).

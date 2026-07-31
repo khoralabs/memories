@@ -1,4 +1,8 @@
-import type { DatabaseListFilter, MemoriesDatabaseId } from "../storage/core/index";
+import type {
+  DatabaseListFilter,
+  MemoriesDatabaseId,
+  MemoriesDatabaseMetadata,
+} from "../storage/core/index";
 
 export type MemoriesServiceClientAuthProvider = {
   applyAuth(req: RequestInit): RequestInit | Promise<RequestInit>;
@@ -35,6 +39,12 @@ export type MemoriesServiceClientOptions = {
   auth?: MemoriesServiceClientAuthProvider;
 };
 
+export type MemoriesDatabaseListEntry = {
+  id: MemoriesDatabaseId;
+  name: string;
+  description: string;
+};
+
 export class MemoriesServiceClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: MemoriesServiceFetch;
@@ -46,15 +56,40 @@ export class MemoriesServiceClient {
     this.auth = opts.auth ?? createNoAuthProvider();
   }
 
-  async listDatabases(filter?: DatabaseListFilter): Promise<MemoriesDatabaseId[]> {
+  async listDatabases(filter?: DatabaseListFilter): Promise<MemoriesDatabaseListEntry[]> {
     const qs = filter?.kind ? `?kind=${encodeURIComponent(filter.kind)}` : "";
     const response = await this.request("GET", `/databases${qs}`);
-    const body = (await response.json()) as { databases?: MemoriesDatabaseId[] };
+    const body = (await response.json()) as { databases?: MemoriesDatabaseListEntry[] };
     return body.databases ?? [];
   }
 
-  async openDatabase(id: MemoriesDatabaseId): Promise<void> {
-    await this.request("POST", "/databases/open", id);
+  async openDatabase(
+    id: MemoriesDatabaseId,
+    metadata?: { name?: string; description?: string },
+  ): Promise<void> {
+    await this.request("POST", "/databases/open", {
+      ...id,
+      ...(metadata?.name !== undefined ? { name: metadata.name } : {}),
+      ...(metadata?.description !== undefined ? { description: metadata.description } : {}),
+    });
+  }
+
+  async getDatabaseMetadata(id: MemoriesDatabaseId): Promise<MemoriesDatabaseMetadata> {
+    const response = await this.requestJson("POST", "/databases/metadata/get", { database: id });
+    const body = (await response.json()) as MemoriesDatabaseMetadata;
+    return { name: body.name ?? "", description: body.description ?? "" };
+  }
+
+  async upsertDatabaseMetadata(
+    id: MemoriesDatabaseId,
+    patch: { name?: string; description?: string },
+  ): Promise<MemoriesDatabaseMetadata> {
+    const response = await this.requestJson("POST", "/databases/metadata/upsert", {
+      database: id,
+      ...patch,
+    });
+    const body = (await response.json()) as MemoriesDatabaseMetadata;
+    return { name: body.name ?? "", description: body.description ?? "" };
   }
 
   async databaseExists(id: MemoriesDatabaseId): Promise<boolean> {
@@ -98,11 +133,7 @@ export class MemoriesServiceClient {
     return response;
   }
 
-  private async request(
-    method: string,
-    path: string,
-    body?: MemoriesDatabaseId,
-  ): Promise<Response> {
+  private async request(method: string, path: string, body?: unknown): Promise<Response> {
     const init = await this.auth.applyAuth({
       method,
       headers: body === undefined ? undefined : { "content-type": "application/json" },

@@ -19,6 +19,16 @@ export type MemoryOpContext = {
   intentSnapshotId?: string;
 };
 
+/**
+ * Namespace display metadata for UI (path key + optional display name + description).
+ * `displayName` null means callers should show {@link namespace}.
+ */
+export type NamespaceMetadataInfo = {
+  namespace: NamespacePath;
+  displayName: string | null;
+  description: string;
+};
+
 /** Graph edge summary (storage-agnostic shape). */
 export type GraphEdgeLink = {
   edgeId: string;
@@ -321,6 +331,20 @@ export interface MemoriesMutationCore {
 
   /** Distinct scope ids attached to this memory. */
   listScopesForMemory(memoryId: string): NamespacePath[];
+
+  /**
+   * Upsert display metadata for a namespace path (may exist before any memories).
+   * Omit `displayName` to leave unchanged on update; pass `null` to clear (use key in UI).
+   * Omit `description` to leave unchanged on update; default `""` on insert.
+   */
+  upsertNamespaceMetadata(
+    op: MemoryOpContext,
+    input: {
+      namespace: NamespacePath;
+      displayName?: string | null;
+      description?: string;
+    },
+  ): void;
 }
 
 /** Graph node/edge catalog writes (merge-time). Combined with {@link MemoriesGraphIndex} as {@link MemoriesGraph}. */
@@ -442,6 +466,15 @@ export interface MemoriesNeighborIndex {
 export interface MemoriesPersistenceReads {
   /** All distinct primary memory namespaces, sorted for stable UI. */
   listMemoryNamespaces(): NamespacePath[];
+
+  /**
+   * Union of namespaces that have memories and/or metadata rows, sorted by path.
+   * Memory-only keys appear with `displayName: null` and empty `description`.
+   */
+  listNamespacesWithMetadata(): NamespaceMetadataInfo[];
+
+  /** Metadata row for one namespace, or `undefined` if none. */
+  getNamespaceMetadata(namespace: NamespacePath): NamespaceMetadataInfo | undefined;
 
   /** Source map rows for a memory, newest first, capped at `limit`. */
   listSourceMapsForMemory(memoryId: string, limit: number): SourceMap[];

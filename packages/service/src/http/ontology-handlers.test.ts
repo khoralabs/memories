@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
+import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-node/sqlite";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 import { createNoneAuthStrategy } from "../auth/index";
 import {
@@ -14,6 +15,8 @@ import {
 import { createLocalSqliteServiceStack } from "../storage/sqlite/index";
 
 import { handleMemoriesServiceHttpRequest } from "./handlers";
+
+ensureCustomSqliteForExtensions();
 
 const tempDirs: string[] = [];
 
@@ -37,10 +40,18 @@ afterEach(() => {
 });
 
 function createTestStack() {
-  return createLocalSqliteServiceStack({
-    dataDir: makeTempDataDir(),
-    sqlCipherKey: TEST_SQLCIPHER_KEY,
-  });
+  const open = () =>
+    createLocalSqliteServiceStack({
+      dataDir: makeTempDataDir(),
+      sqlCipherKey: TEST_SQLCIPHER_KEY,
+    });
+  try {
+    return open();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/SQLite already loaded/i.test(msg)) throw e;
+    return open();
+  }
 }
 
 async function postJson(url: string, body: unknown, stack = createTestStack()) {

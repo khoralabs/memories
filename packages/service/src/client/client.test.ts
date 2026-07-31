@@ -31,12 +31,23 @@ describe("memories service client", () => {
       baseUrl: "http://localhost:8787",
       auth: createNoAuthProvider(),
       fetch: async () =>
-        new Response(JSON.stringify({ databases: [{ kind: "account", ownerKey: "owner-a" }] }), {
-          status: 200,
-        }),
+        new Response(
+          JSON.stringify({
+            databases: [
+              {
+                id: { kind: "account", ownerKey: "owner-a" },
+                name: "",
+                description: "",
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
     });
 
     const databases = await client.listDatabases();
-    expect(databases).toEqual([{ kind: "account", ownerKey: "owner-a" }]);
+    expect(databases).toEqual([
+      { id: { kind: "account", ownerKey: "owner-a" }, name: "", description: "" },
+    ]);
   });
 });

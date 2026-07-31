@@ -6,17 +6,19 @@ import type {
   LabelPropsSearchFormatter,
   MemoriesBackendCapabilities,
   MemoryOpContext,
+  NamespaceMetadataInfo,
   NeighborFilter,
   OntologyLabelInstance,
   SearchNamespaceScope,
 } from "../../../persistence/core";
+import { namespacePath } from "../../../persistence/core/models/namespace-path";
 import type {
   MemoriesPersistenceAsync,
   SourceMap,
   TextFeatureExportRow,
 } from "../../../persistence/core/persistence";
 import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
-import { createTursoClients, execSql, queryAll, type TursoCredentials } from "./client";
+import { createTursoClients, execSql, queryAll, queryOne, type TursoCredentials } from "./client";
 import { type DbCtx, readCtx, writeCtx } from "./context";
 import type { TursoDatabase } from "./db";
 import { ctxExec } from "./db";
@@ -155,6 +157,40 @@ export class MemoriesTursoServerlessPersistence {
 
   async upsertScope(op: MemoryOpContext, input: { scopeId: string }): Promise<void> {
     await upsertScopeRow(this.activeCtx(op), input);
+  }
+
+  async upsertNamespaceMetadata(
+    op: MemoryOpContext,
+    input: {
+      namespace: string;
+      displayName?: string | null;
+      description?: string;
+    },
+  ): Promise<void> {
+    const ns = namespacePath(input.namespace);
+    const existing = await queryOne<{ displayName: string | null; description: string }>(
+      this.db.read,
+      `SELECT display_name AS displayName, description FROM namespace_metadata WHERE _id = ?`,
+      [ns],
+    );
+    const displayName =
+      input.displayName !== undefined ? input.displayName : (existing?.displayName ?? null);
+    const description =
+      input.description !== undefined ? input.description : (existing?.description ?? "");
+    if (existing) {
+      await ctxExec(
+        this.activeCtx(op),
+        `UPDATE namespace_metadata SET display_name = ?, description = ?, _ts_updated = ? WHERE _id = ?`,
+        [displayName, description, op.now, ns],
+      );
+      return;
+    }
+    await ctxExec(
+      this.activeCtx(op),
+      `INSERT INTO namespace_metadata (_id, display_name, description, _ts_created, _ts_updated)
+       VALUES (?, ?, ?, ?, ?)`,
+      [ns, displayName, description, op.now, op.now],
+    );
   }
 
   async linkScopes(
@@ -462,6 +498,51 @@ export class MemoriesTursoServerlessPersistence {
       `SELECT DISTINCT namespace FROM memories ORDER BY namespace`,
     );
     return rows.map((row) => row.namespace);
+  }
+
+  async listNamespacesWithMetadata(): Promise<NamespaceMetadataInfo[]> {
+    const byKey = new Map<string, NamespaceMetadataInfo>();
+    for (const row of await queryAll<{ namespace: string }>(
+      this.db.read,
+      `SELECT DISTINCT namespace FROM memories`,
+    )) {
+      byKey.set(row.namespace, {
+        namespace: row.namespace,
+        displayName: null,
+        description: "",
+      });
+    }
+    for (const row of await queryAll<{
+      id: string;
+      displayName: string | null;
+      description: string;
+    }>(
+      this.db.read,
+      `SELECT _id AS id, display_name AS displayName, description FROM namespace_metadata`,
+    )) {
+      byKey.set(row.id, {
+        namespace: row.id,
+        displayName: row.displayName,
+        description: row.description,
+      });
+    }
+    return [...byKey.values()].sort((a, b) => a.namespace.localeCompare(b.namespace));
+  }
+
+  async getNamespaceMetadata(namespace: string): Promise<NamespaceMetadataInfo | undefined> {
+    const ns = namespacePath(namespace);
+    const row = await queryOne<{
+      id: string;
+      displayName: string | null;
+      description: string;
+    }>(
+      this.db.read,
+      `SELECT _id AS id, display_name AS displayName, description FROM namespace_metadata WHERE _id = ?`,
+      [ns],
+    );
+    return row
+      ? { namespace: row.id, displayName: row.displayName, description: row.description }
+      : undefined;
   }
 
   async listSourceMapsForMemory(memoryId: string, limit: number): Promise<SourceMap[]> {

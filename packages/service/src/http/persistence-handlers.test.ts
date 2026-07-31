@@ -59,7 +59,12 @@ async function postJson(url: string, body: unknown, stack = createTestStack()) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),
-    { service: stack.service, ontology: stack.ontology, auth: createNoneAuthStrategy() },
+    {
+      service: stack.service,
+      ontology: stack.ontology,
+      catalog: stack.catalog,
+      auth: createNoneAuthStrategy(),
+    },
   );
 }
 
@@ -167,8 +172,10 @@ describe("memories service persistence http handlers", () => {
       stack,
     );
     expect(namespacesRes.status).toBe(200);
-    const namespacesBody = (await namespacesRes.json()) as { namespaces: string[] };
-    expect(namespacesBody.namespaces).toContain("ns/a");
+    const namespacesBody = (await namespacesRes.json()) as {
+      namespaces: Array<{ namespace: string; displayName: string | null; description: string }>;
+    };
+    expect(namespacesBody.namespaces.some((n) => n.namespace === "ns/a")).toBe(true);
 
     const scopeChainRes = await postJson(
       "http://localhost/databases/ensure-scope-chain",

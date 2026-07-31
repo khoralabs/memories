@@ -113,7 +113,40 @@ export type DatabaseCapabilitiesResponse = {
 };
 
 export type DatabaseNamespacesRequest = DatabaseScopedBody<Record<string, never>>;
-export type DatabaseNamespacesResponse = { namespaces: string[] };
+export type DatabaseNamespaceMetadata = {
+  namespace: string;
+  displayName: string | null;
+  description: string;
+};
+export type DatabaseNamespacesResponse = { namespaces: DatabaseNamespaceMetadata[] };
+
+export type DatabaseNamespaceGetRequest = DatabaseScopedBody<{ namespace: string }>;
+export type DatabaseNamespaceGetResponse = {
+  namespace: DatabaseNamespaceMetadata | null;
+};
+
+export type DatabaseNamespaceUpsertRequest = DatabaseScopedBody<{
+  namespace: string;
+  displayName?: string | null;
+  description?: string;
+}>;
+export type DatabaseNamespaceUpsertResponse = { namespace: DatabaseNamespaceMetadata };
+
+export type DatabaseMetadataGetRequest = DatabaseScopedBody<Record<string, never>>;
+export type DatabaseMetadataGetResponse = { name: string; description: string };
+
+export type DatabaseMetadataUpsertRequest = DatabaseScopedBody<{
+  name?: string;
+  description?: string;
+}>;
+export type DatabaseMetadataUpsertResponse = { name: string; description: string };
+
+export type DatabaseListEntry = {
+  id: { kind: string; ownerKey: string };
+  name: string;
+  description: string;
+};
+export type DatabaseListResponse = { databases: DatabaseListEntry[] };
 
 export type DatabaseEdgePreviewRequest = DatabaseScopedBody<{
   namespace: string;

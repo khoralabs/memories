@@ -130,6 +130,16 @@ export const zNode = z.object({
 /** Registered scope node (id = scope path string). */
 export const zScopes = z.object({});
 
+/**
+ * Optional display metadata for a memory namespace path (`_id` = namespace key).
+ * `display_name` null means UI should use the path key.
+ */
+export const zNamespaceMetadata = z.object({
+  display_name: z.string().nullable(),
+  description: z.string(),
+  _ts_updated: z.number().nonnegative(),
+});
+
 /** Directed scope edge: parent scope strictly above child in the DAG. */
 export const zScopeEdges = z.object({
   parent_scope_id: zId("scopes"),
@@ -167,6 +177,7 @@ export const memoriesPersistenceDocumentSchema = defineSchema({
   text_features: zTextFeature,
   vector_features: zVectorFeature,
   scopes: zScopes,
+  namespace_metadata: zNamespaceMetadata,
   scope_edges: zScopeEdges,
   scope_closure: zScopeClosure,
   memory_scopes: zMemoryScopes,
@@ -200,6 +211,7 @@ export type VectorFeature = MemoriesPersistenceSchema["vector_features"];
 export type Node = MemoriesPersistenceSchema["nodes"];
 export type ScopeClosureRow = MemoriesPersistenceSchema["scope_closure"];
 export type MemoryScopeRow = MemoriesPersistenceSchema["memory_scopes"];
+export type NamespaceMetadataRow = MemoriesPersistenceSchema["namespace_metadata"];
 export type Edge = MemoriesPersistenceSchema["edges"];
 export type NodeLabel = MemoriesPersistenceSchema["node_labels"];
 export type EdgeLabel = MemoriesPersistenceSchema["edge_labels"];

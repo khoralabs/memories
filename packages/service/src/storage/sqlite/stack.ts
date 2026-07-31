@@ -9,12 +9,14 @@ import {
 } from "../../service/index";
 import type {
   MemoriesDatabaseBackendFactory,
+  MemoriesDatabaseCatalogStore,
   MemoriesDatabaseOntologyStore,
   MemoriesDatabasePlacementStore,
   SqliteBackendStrategy,
 } from "../../storage/core/index";
 import { createLocalLibsqlBackendFactory } from "../libsql/index";
 import { createTursoServerlessBackendFactory } from "../turso-serverless/index";
+import { createSqliteDatabaseCatalogStore } from "./database-catalog-registry";
 import { createLocalSqliteBackendFactory } from "./local-sqlite-backend";
 import { createSqliteOntologyStore } from "./ontology-registry";
 import { createSqlitePlacementStore } from "./placement-registry";
@@ -25,6 +27,7 @@ export type CreateLocalSqliteServiceStackOptions = {
   sqlCipherKey?: string;
   registryPath?: string;
   ontologyRegistryPath?: string;
+  databaseCatalogRegistryPath?: string;
   /** Override the node backend factory; defaults to the local SQLite node backend. */
   backendFactory?: MemoriesDatabaseBackendFactory;
   maxCached?: number;
@@ -36,6 +39,7 @@ export type LocalSqliteServiceStack = {
   service: MemoriesDatabaseService;
   placement: MemoriesDatabasePlacementStore;
   ontology: MemoriesDatabaseOntologyStore;
+  catalog: MemoriesDatabaseCatalogStore;
   defaultStrategy: SqliteBackendStrategy;
 };
 
@@ -55,6 +59,8 @@ export function createLocalSqliteServiceStack(
   const registryPath = opts.registryPath ?? path.join(opts.dataDir, "registry", "placements.db");
   const ontologyRegistryPath =
     opts.ontologyRegistryPath ?? path.join(opts.dataDir, "registry", "ontologies.db");
+  const databaseCatalogRegistryPath =
+    opts.databaseCatalogRegistryPath ?? path.join(opts.dataDir, "registry", "databases.db");
   const placement = createSqlitePlacementStore({
     registryPath,
     ...(sqlCipherKey !== undefined ? { sqlCipherKey } : {}),
@@ -62,6 +68,10 @@ export function createLocalSqliteServiceStack(
   });
   const ontology = createSqliteOntologyStore({
     registryPath: ontologyRegistryPath,
+    ...(sqlCipherKey !== undefined ? { sqlCipherKey } : {}),
+  });
+  const catalog = createSqliteDatabaseCatalogStore({
+    registryPath: databaseCatalogRegistryPath,
     ...(sqlCipherKey !== undefined ? { sqlCipherKey } : {}),
   });
   const factory =
@@ -77,5 +87,5 @@ export function createLocalSqliteServiceStack(
     maxCached: opts.maxCached,
     telemetry: opts.telemetry,
   });
-  return { service, placement, ontology, defaultStrategy };
+  return { service, placement, ontology, catalog, defaultStrategy };
 }

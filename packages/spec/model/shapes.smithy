@@ -12,6 +12,19 @@ list MemoryNamespaceList {
     member: MemoryNamespace
 }
 
+/// Display metadata for a namespace path. `displayName` omitted/null means UI should use `namespace`.
+structure NamespaceMetadata {
+    @required
+    namespace: MemoryNamespace
+    displayName: String
+    @required
+    description: String
+}
+
+list NamespaceMetadataList {
+    member: NamespaceMetadata
+}
+
 // --- Row / hit shapes (storage-agnostic, aligned with @khoralabs/memories-node) ---
 
 structure MemoryRow {

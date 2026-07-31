@@ -24,6 +24,8 @@ import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseMergeRequest,
+  type DatabaseNamespaceMetadata,
+  type DatabaseNamespacesResponse,
   type DatabaseProvenanceHeadResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
@@ -56,7 +58,10 @@ function createRemotePersistence(
     findMemoryIdByKey: async (namespace: string, key: string) =>
       reads.findMemoryIdByKey(namespace, key),
     loadMemoryNamespaceKey: async (memoryId: string) => reads.loadMemoryNamespaceKey(memoryId),
-    listMemoryNamespaces: async () => reads.listNamespaces(),
+    listMemoryNamespaces: async () => {
+      const namespaces = await reads.listNamespaces();
+      return namespaces.map((entry) => entry.namespace);
+    },
     getSourceMapTextPreview: async (sourceMapId: string, maxChars?: number) =>
       reads.getSourceMapTextPreview(sourceMapId, maxChars),
   } as unknown as MemoriesPersistenceAsync;
@@ -147,14 +152,39 @@ export class RemoteMemoriesReadClient {
     this.#database = opts.database;
   }
 
-  async listNamespaces(): Promise<string[]> {
-    const response = await this.#client.postJson<{ namespaces: string[] }>(
+  async listNamespaces(): Promise<DatabaseNamespaceMetadata[]> {
+    const response = await this.#client.postJson<DatabaseNamespacesResponse>(
       "/databases/namespaces",
       {
         database: this.#database,
       },
     );
     return response.namespaces;
+  }
+
+  async getNamespaceMetadata(namespace: string): Promise<DatabaseNamespaceMetadata | null> {
+    const response = await this.#client.postJson<{
+      namespace: DatabaseNamespaceMetadata | null;
+    }>("/databases/namespaces/get", {
+      database: this.#database,
+      namespace,
+    });
+    return response.namespace;
+  }
+
+  async upsertNamespaceMetadata(input: {
+    namespace: string;
+    displayName?: string | null;
+    description?: string;
+  }): Promise<DatabaseNamespaceMetadata> {
+    const response = await this.#client.postJson<{ namespace: DatabaseNamespaceMetadata }>(
+      "/databases/namespaces/upsert",
+      {
+        database: this.#database,
+        ...input,
+      },
+    );
+    return response.namespace;
   }
 
   async getEdgePreview(namespace: string, edgeId: string): Promise<Record<string, unknown>> {

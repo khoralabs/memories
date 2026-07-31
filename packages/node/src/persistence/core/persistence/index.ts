@@ -47,6 +47,7 @@ export type {
   MemoriesRetrieval,
   MemoriesRuntimeCtx,
   MemoryOpContext,
+  NamespaceMetadataInfo,
   SearchNamespaceScope,
   SearchVectorSourceMapIdsResult,
   VectorSearchMethod,

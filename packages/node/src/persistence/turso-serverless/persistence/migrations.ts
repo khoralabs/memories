@@ -1,6 +1,11 @@
 import { execMultiple, queryAll, queryOne } from "./client";
 import type { TursoDatabase } from "./db";
-import { CONTENT_OUTBOX_SQL, MEMORIES_INDEXES_SQL, MEMORIES_SCHEMA_SQL } from "./schema";
+import {
+  CONTENT_OUTBOX_SQL,
+  MEMORIES_INDEXES_SQL,
+  MEMORIES_SCHEMA_SQL,
+  NAMESPACE_METADATA_SQL,
+} from "./schema";
 import { batchWriteStatements } from "./transactions";
 import {
   SCHEMA_VERSION_TABLE_SQL,
@@ -8,7 +13,7 @@ import {
   TURSO_PRAGMAS_SQL,
 } from "./turso-schema";
 
-export const MEMORIES_SCHEMA_VERSION = "0.2.0";
+export const MEMORIES_SCHEMA_VERSION = "0.3.0";
 
 type Migration = {
   to: string;
@@ -32,6 +37,11 @@ const migrations: Migration[] = [
     to: "0.2.0",
     name: "001-add-content-outbox",
     statements: [CONTENT_OUTBOX_SQL],
+  },
+  {
+    to: "0.3.0",
+    name: "001-add-namespace-metadata",
+    statements: [NAMESPACE_METADATA_SQL],
   },
 ];
 

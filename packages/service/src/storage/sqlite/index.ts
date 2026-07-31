@@ -1,4 +1,9 @@
 export {
+  createSqliteDatabaseCatalogStore,
+  openDatabaseCatalogRegistryDb,
+  type SqliteDatabaseCatalogStoreOptions,
+} from "./database-catalog-registry";
+export {
   type CreateLocalSqliteBackendOptions,
   createLocalSqliteBackend,
   createLocalSqliteBackendFactory,

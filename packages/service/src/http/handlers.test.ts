@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-node/sqlite";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 import {
   createAppPolicyAuthStrategy,
@@ -11,6 +12,8 @@ import {
 import { createLocalSqliteServiceStack } from "../storage/sqlite/index";
 
 import { handleMemoriesServiceHttpRequest } from "./handlers";
+
+ensureCustomSqliteForExtensions();
 
 const tempDirs: string[] = [];
 
@@ -28,27 +31,170 @@ afterEach(() => {
 });
 
 function createTestStack() {
-  return createLocalSqliteServiceStack({
-    dataDir: makeTempDataDir(),
-    sqlCipherKey: TEST_SQLCIPHER_KEY,
-  });
+  const open = () =>
+    createLocalSqliteServiceStack({
+      dataDir: makeTempDataDir(),
+      sqlCipherKey: TEST_SQLCIPHER_KEY,
+    });
+  try {
+    return open();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/SQLite already loaded/i.test(msg)) throw e;
+    return open();
+  }
 }
 
 describe("memories service http handlers", () => {
   test("lists databases with none auth", async () => {
-    const { service } = createTestStack();
+    const { service, catalog } = createTestStack();
     await service.open({ kind: "account", ownerKey: "owner-a" });
+    await catalog.upsert(
+      { kind: "account", ownerKey: "owner-a" },
+      {
+        name: "Owner A",
+        description: "Test db",
+      },
+    );
 
     const response = await handleMemoriesServiceHttpRequest(
       new Request("http://localhost/databases"),
-      { service, auth: createNoneAuthStrategy() },
+      { service, catalog, auth: createNoneAuthStrategy() },
     );
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      databases: Array<{ kind: string; ownerKey: string }>;
+      databases: Array<{
+        id: { kind: string; ownerKey: string };
+        name: string;
+        description: string;
+      }>;
     };
-    expect(body.databases).toEqual([{ kind: "account", ownerKey: "owner-a" }]);
+    expect(body.databases).toEqual([
+      {
+        id: { kind: "account", ownerKey: "owner-a" },
+        name: "Owner A",
+        description: "Test db",
+      },
+    ]);
+  });
+
+  test("database metadata get/upsert and open with name", async () => {
+    const { service, catalog } = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-meta" };
+    const auth = createNoneAuthStrategy();
+
+    const openRes = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/open", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...database, name: "Meta DB", description: "From open" }),
+      }),
+      { service, catalog, auth },
+    );
+    expect(openRes.status).toBe(200);
+    expect(await catalog.get(database)).toEqual({
+      name: "Meta DB",
+      description: "From open",
+    });
+
+    const upsertRes = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/metadata/upsert", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, description: "Updated" }),
+      }),
+      { service, catalog, auth },
+    );
+    expect(upsertRes.status).toBe(200);
+
+    const getRes = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/metadata/get", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database }),
+      }),
+      { service, catalog, auth },
+    );
+    expect(getRes.status).toBe(200);
+    expect(await getRes.json()).toMatchObject({
+      name: "Meta DB",
+      description: "Updated",
+      database,
+    });
+
+    await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(database),
+      }),
+      { service, catalog, auth },
+    );
+    expect(await catalog.get(database)).toBeUndefined();
+  });
+
+  test("namespace metadata get/upsert and enriched list", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-ns-meta" };
+    await stack.service.open(database);
+    const auth = createNoneAuthStrategy();
+    const opts = {
+      service: stack.service,
+      catalog: stack.catalog,
+      ontology: stack.ontology,
+      auth,
+    };
+
+    const upsertRes = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/namespaces/upsert", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          namespace: "user/inbox",
+          displayName: "Inbox",
+          description: "Primary inbox",
+        }),
+      }),
+      opts,
+    );
+    expect(upsertRes.status).toBe(200);
+
+    const getRes = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/namespaces/get", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "user/inbox" }),
+      }),
+      opts,
+    );
+    expect(getRes.status).toBe(200);
+    expect(await getRes.json()).toMatchObject({
+      namespace: {
+        namespace: "user/inbox",
+        displayName: "Inbox",
+        description: "Primary inbox",
+      },
+    });
+
+    const listRes = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/namespaces", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database }),
+      }),
+      opts,
+    );
+    expect(listRes.status).toBe(200);
+    const listBody = (await listRes.json()) as {
+      namespaces: Array<{ namespace: string; displayName: string | null; description: string }>;
+    };
+    expect(listBody.namespaces).toContainEqual({
+      namespace: "user/inbox",
+      displayName: "Inbox",
+      description: "Primary inbox",
+    });
   });
 
   test("requires admin token for server-admin auth", async () => {

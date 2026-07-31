@@ -187,3 +187,13 @@ CREATE TABLE IF NOT EXISTS "memory_content_outbox" (
 CREATE INDEX IF NOT EXISTS "idx_memory_content_outbox_root_hex"
   ON "memory_content_outbox" ("root_hex");
 `;
+
+export const NAMESPACE_METADATA_SQL = `
+CREATE TABLE IF NOT EXISTS "namespace_metadata" (
+  "_id" TEXT PRIMARY KEY NOT NULL,
+  "display_name" TEXT,
+  "description" TEXT NOT NULL DEFAULT '',
+  "_ts_created" REAL NOT NULL,
+  "_ts_updated" REAL NOT NULL
+);
+`;

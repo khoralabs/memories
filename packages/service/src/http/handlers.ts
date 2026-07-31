@@ -13,6 +13,7 @@ import {
 } from "../auth/index";
 import type {
   DatabaseKind,
+  MemoriesDatabaseCatalogStore,
   MemoriesDatabaseHandle,
   MemoriesDatabaseId,
   MemoriesDatabaseOntologyStore,
@@ -35,7 +36,9 @@ import {
   handleDatabaseFindMemoryId,
   handleDatabaseLoadMemoryNamespaceKey,
   handleDatabaseMerge,
+  handleDatabaseNamespaceGet,
   handleDatabaseNamespaces,
+  handleDatabaseNamespaceUpsert,
   handleDatabaseProvenanceHead,
   handleDatabaseSearch,
   handleDatabaseSourceMapTextPreview,
@@ -80,6 +83,7 @@ export type MemoriesServiceHttpOptions = {
   service: MemoriesDatabaseService;
   auth: MemoriesDatabaseAccessStrategy;
   ontology?: MemoriesDatabaseOntologyStore;
+  catalog?: MemoriesDatabaseCatalogStore;
   projectionSource?: (input: {
     database: MemoriesDatabaseId;
     handle: MemoriesDatabaseHandle;
@@ -92,6 +96,13 @@ function requireOntology(opts: MemoriesServiceHttpOptions): MemoriesDatabaseOnto
     throw new HttpError("Ontology registry is not configured", 501);
   }
   return opts.ontology;
+}
+
+function requireCatalog(opts: MemoriesServiceHttpOptions): MemoriesDatabaseCatalogStore {
+  if (opts.catalog === undefined) {
+    throw new HttpError("Database catalog is not configured", 501);
+  }
+  return opts.catalog;
 }
 
 type ParsedJsonRequest = {
@@ -180,7 +191,17 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "GET" && url.pathname === "/databases") {
       await authorize(opts.auth, req, "manage");
       const kind = url.searchParams.get("kind") ?? undefined;
-      const databases = await opts.service.list(kind ? { kind } : undefined);
+      const ids = await opts.service.list(kind ? { kind } : undefined);
+      const databases = await Promise.all(
+        ids.map(async (id) => {
+          const meta = opts.catalog !== undefined ? await opts.catalog.get(id) : undefined;
+          return {
+            id,
+            name: meta?.name ?? "",
+            description: meta?.description ?? "",
+          };
+        }),
+      );
       return jsonResponse({ databases });
     }
 
@@ -189,7 +210,44 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "read", id);
       await opts.service.open(id);
+      const record = body as Record<string, unknown>;
+      const name = typeof record.name === "string" ? record.name : undefined;
+      const description = typeof record.description === "string" ? record.description : undefined;
+      if ((name !== undefined || description !== undefined) && opts.catalog !== undefined) {
+        await opts.catalog.upsert(id, {
+          ...(name !== undefined ? { name } : {}),
+          ...(description !== undefined ? { description } : {}),
+        });
+      }
       return jsonResponse({ ok: true, database: id });
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/metadata/get") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database ?? body);
+      await authorize(opts.auth, req, "read", id);
+      const catalog = requireCatalog(opts);
+      const meta = await catalog.get(id);
+      return jsonResponse({
+        name: meta?.name ?? "",
+        description: meta?.description ?? "",
+        database: id,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/metadata/upsert") {
+      const { body } = await readJsonBody(req);
+      const record = body as Record<string, unknown>;
+      const id = parseDatabaseIdBody(record.database ?? body);
+      await authorize(opts.auth, req, "manage", id);
+      const catalog = requireCatalog(opts);
+      const name = typeof record.name === "string" ? record.name : undefined;
+      const description = typeof record.description === "string" ? record.description : undefined;
+      const meta = await catalog.upsert(id, {
+        ...(name !== undefined ? { name } : {}),
+        ...(description !== undefined ? { description } : {}),
+      });
+      return jsonResponse({ ...meta, database: id });
     }
 
     if (req.method === "POST" && url.pathname === "/databases/exists") {
@@ -221,6 +279,9 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "manage", id);
       await opts.service.delete(id);
+      if (opts.catalog !== undefined) {
+        await opts.catalog.remove(id);
+      }
       return jsonResponse({ ok: true, database: id });
     }
 
@@ -272,6 +333,20 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
       return handleDatabaseNamespaces(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/namespaces/get") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      return handleDatabaseNamespaceGet(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/namespaces/upsert") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      return handleDatabaseNamespaceUpsert(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/edge-preview") {

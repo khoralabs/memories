@@ -355,8 +355,87 @@ export async function handleDatabaseNamespaces(
 ): Promise<Response> {
   const scoped = body as DatabaseNamespacesRequest;
   const { database, handle } = await getHandle(service, scoped);
-  const namespaces = await handle.persistence.listMemoryNamespaces();
+  const namespaces = await handle.persistence.listNamespacesWithMetadata();
   return Response.json({ namespaces, database });
+}
+
+export async function handleDatabaseNamespaceGet(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as { database?: unknown; namespace?: unknown };
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
+    throw new HttpError("namespace is required", 400);
+  }
+  const namespace = await handle.persistence.getNamespaceMetadata(scoped.namespace.trim());
+  return Response.json({ namespace: namespace ?? null, database });
+}
+
+export async function handleDatabaseNamespaceUpsert(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as {
+    database?: unknown;
+    namespace?: unknown;
+    displayName?: unknown;
+    description?: unknown;
+  };
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
+    throw new HttpError("namespace is required", 400);
+  }
+  const namespace = scoped.namespace.trim();
+  const displayName =
+    scoped.displayName === undefined
+      ? undefined
+      : scoped.displayName === null
+        ? null
+        : typeof scoped.displayName === "string"
+          ? scoped.displayName
+          : undefined;
+  if (scoped.displayName !== undefined && displayName === undefined) {
+    throw new HttpError("displayName must be a string or null", 400);
+  }
+  const description =
+    scoped.description === undefined
+      ? undefined
+      : typeof scoped.description === "string"
+        ? scoped.description
+        : undefined;
+  if (scoped.description !== undefined && description === undefined) {
+    throw new HttpError("description must be a string", 400);
+  }
+
+  const op = { now: Date.now() };
+  const input = {
+    namespace,
+    ...(displayName !== undefined ? { displayName } : {}),
+    ...(description !== undefined ? { description } : {}),
+  };
+
+  try {
+    if (handle.sync !== undefined) {
+      const persistence = handle.sync.syncPersistence;
+      persistence.withTransaction(() => {
+        persistence.upsertNamespaceMetadata(op, input);
+      });
+    } else {
+      await handle.persistence.withTransaction(async () => {
+        await handle.persistence.upsertNamespaceMetadata(op, input);
+      });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new HttpError(message, 400);
+  }
+
+  const meta = await handle.persistence.getNamespaceMetadata(namespace);
+  if (meta === undefined) {
+    throw new HttpError("namespace metadata missing after upsert", 500);
+  }
+  return Response.json({ namespace: meta, database });
 }
 
 export async function handleDatabaseEdgePreview(

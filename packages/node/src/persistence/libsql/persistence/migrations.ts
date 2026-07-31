@@ -5,10 +5,15 @@ import {
   SCHEMA_VERSION_TABLE_SQL,
   TEXT_FEATURES_FTS_SQL,
 } from "./libsql-schema";
-import { CONTENT_OUTBOX_SQL, MEMORIES_INDEXES_SQL, MEMORIES_SCHEMA_SQL } from "./schema";
+import {
+  CONTENT_OUTBOX_SQL,
+  MEMORIES_INDEXES_SQL,
+  MEMORIES_SCHEMA_SQL,
+  NAMESPACE_METADATA_SQL,
+} from "./schema";
 import { batchWriteStatements } from "./transactions";
 
-export const MEMORIES_SCHEMA_VERSION = "0.2.0";
+export const MEMORIES_SCHEMA_VERSION = "0.3.0";
 
 type Migration = {
   to: string;
@@ -32,6 +37,11 @@ const migrations: Migration[] = [
     to: "0.2.0",
     name: "001-add-content-outbox",
     statements: [CONTENT_OUTBOX_SQL],
+  },
+  {
+    to: "0.3.0",
+    name: "001-add-namespace-metadata",
+    statements: [NAMESPACE_METADATA_SQL],
   },
 ];
 

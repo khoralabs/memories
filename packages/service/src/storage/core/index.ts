@@ -18,6 +18,12 @@ export {
   resolveStrategyCapabilities,
   strategyCacheKey,
 } from "./backend";
+export {
+  createInMemoryDatabaseCatalogStore,
+  type MemoriesDatabaseCatalogEntry,
+  type MemoriesDatabaseCatalogStore,
+  type MemoriesDatabaseMetadata,
+} from "./database-catalog";
 export type { DatabaseKind, DatabaseListFilter, MemoriesDatabaseId } from "./database-id";
 export {
   databaseKey,

@@ -32,6 +32,8 @@ type MemoriesDatabaseId = {
 
 `ownerKey` is opaque. Hosts can pass DIDs, tenant ids, UUIDs, or external handles. The service validates ids but does not interpret owner-key semantics.
 
+Optional **catalog attributes** (`name`, `description`) are stored in the service control-plane `database_catalog` registry keyed by `{ kind, ownerKey }`. They are not part of `MemoriesDatabaseId`. Missing catalog rows resolve to empty strings when listing.
+
 ### File layout
 
 The default sqlite backend encodes the full database id reversibly and writes flat versioned paths:
@@ -187,7 +189,7 @@ Turnkey wiring for local SQLite (SQLCipher when `sqlCipherKey` is set):
 ```ts
 import { createLocalSqliteServiceStack } from "@khoralabs/memories-service/storage/sqlite";
 
-const { service, placement, ontology, defaultStrategy } = createLocalSqliteServiceStack({
+const { service, placement, ontology, catalog, defaultStrategy } = createLocalSqliteServiceStack({
   dataDir: "./data/memories",
   ...(process.env.MEMORIES_SQLCIPHER_KEY
     ? { sqlCipherKey: process.env.MEMORIES_SQLCIPHER_KEY }
@@ -201,9 +203,10 @@ This creates:
 - Default strategy `{ kind: "sqlite", dataDir, sqlCipherKey? }` (encrypted only when a key is provided)
 - Placement registry at `{dataDir}/registry/placements.db`
 - Ontology registry at `{dataDir}/registry/ontologies.db`
+- Database catalog at `{dataDir}/registry/databases.db`
 - Composite backend factory (`sqlite`, `libsql`, `turso-serverless`) + resolver + service
 
-Per-principal overrides: `placement.setStrategy(id, strategy)`. Per-database ontology: `ontology.registerOntology(schema)` then `ontology.linkDatabase(id, hash)`.
+Per-principal overrides: `placement.setStrategy(id, strategy)`. Per-database ontology: `ontology.registerOntology(schema)` then `ontology.linkDatabase(id, hash)`. Catalog: `catalog.upsert(id, { name, description })`.
 
 Custom wiring:
 
@@ -228,12 +231,14 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 
 | Method | Path | Action | Auth action |
 |--------|------|--------|-------------|
-| `GET` | `/databases` | List databases (`?kind=` optional) | `manage` |
-| `POST` | `/databases/open` | Open database (cache connection) | `read` |
+| `GET` | `/databases` | List databases with catalog `name`/`description` (`?kind=` optional) | `manage` |
+| `POST` | `/databases/open` | Open database (cache connection); optional `name`/`description` upsert catalog | `read` |
 | `POST` | `/databases/exists` | Check existence | `read` |
 | `POST` | `/databases/checkpoint` | WAL checkpoint | `write` |
 | `POST` | `/databases/close` | Close cached connection | `manage` |
-| `DELETE` | `/databases` | Delete database | `manage` |
+| `DELETE` | `/databases` | Delete database (and catalog row) | `manage` |
+| `POST` | `/databases/metadata/get` | Get catalog name/description | `read` |
+| `POST` | `/databases/metadata/upsert` | Upsert catalog name/description | `manage` |
 
 ### Persistence
 
@@ -249,7 +254,9 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 
 | Method | Path | Action | Auth action |
 |--------|------|--------|-------------|
-| `POST` | `/databases/namespaces` | List namespaces | `read` |
+| `POST` | `/databases/namespaces` | List namespaces with display metadata | `read` |
+| `POST` | `/databases/namespaces/get` | Get one namespace metadata row | `read` |
+| `POST` | `/databases/namespaces/upsert` | Upsert namespace display name/description | `write` |
 | `POST` | `/databases/edge-preview` | Edge preview | `read` |
 | `POST` | `/databases/source-map/text-preview` | Source map text preview | `read` |
 | `POST` | `/databases/vector-dimensions` | Vector index dimensions | `read` |
@@ -302,10 +309,14 @@ One scheme per service instance. Planned: [did-principal](./roadmap/decentralize
 
 `MemoriesServiceClient` wraps the management HTTP API. Auth providers: `createNoAuthProvider()`, `createBearerTokenAuthProvider(token)`.
 
+- `listDatabases()` → `{ id, name, description }[]`
+- `getDatabaseMetadata` / `upsertDatabaseMetadata`
+- `openDatabase(id, { name?, description? })` — optional catalog fields on open
+
 Runtime clients:
 
 - `createRemoteMemoriesClientAsync()` — `MemoriesClientAsync` over HTTP (search, merge, delete-memory, provenance head)
-- `createRemoteMemoriesReadClient()` — graph/index reads (namespaces, graph layout, edge preview, snippets, vector dimensions, scope chains)
+- `createRemoteMemoriesReadClient()` — graph/index reads (namespaces with metadata, graph layout, edge preview, snippets, vector dimensions, scope chains)
 - `MemoriesOntologyClient`, `ensureDatabaseOntologyLink()` — ontology register/link over HTTP
 
 Hosts consume these from service clients, backend routes, or workflow adapters.
@@ -322,7 +333,7 @@ Emits database lifecycle (`open` / `close` / `delete` / `evict`) and threads a d
 
 ## Non-goals
 
-- Namespace policy registry (namespaces stay client-defined at merge time)
+- Namespace policy registry (display metadata on namespaces is not ACL/policy; namespaces stay client-defined at merge time)
 - Host-specific team/session namespace builders
 - Grant storage or delegation in the core service
 - Assuming every database lives on the same filesystem

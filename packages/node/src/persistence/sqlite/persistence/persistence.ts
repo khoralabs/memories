@@ -6,6 +6,7 @@ import type {
   LabelPropsSearchFormatter,
   MemoriesBackendCapabilities,
   MemoryOpContext,
+  NamespaceMetadataInfo,
   NeighborFilter,
   SearchNamespaceScope,
 } from "../../../persistence/core";
@@ -54,6 +55,11 @@ import {
   upsertMemorySearchMetaVector,
 } from "./models/memory-search-meta";
 import { clearMemorySubtree } from "./models/memory-subtree";
+import {
+  getNamespaceMetadata as getNamespaceMetadataQuery,
+  listNamespacesWithMetadata as listNamespacesWithMetadataQuery,
+  upsertNamespaceMetadata as upsertNamespaceMetadataQuery,
+} from "./models/namespace-metadata";
 import { insertNodeLabelAssignment } from "./models/node-label-assignments";
 import { ensureNodeLabel } from "./models/node-labels";
 import { nodeExists, upsertNodeForMemoryKey } from "./models/nodes";
@@ -128,6 +134,17 @@ export class MemoriesPersistence implements IMemoriesPersistence {
 
   upsertScope(op: MemoryOpContext, input: { scopeId: string }): void {
     upsertScopeRow(this.ctx(op), input);
+  }
+
+  upsertNamespaceMetadata(
+    op: MemoryOpContext,
+    input: {
+      namespace: string;
+      displayName?: string | null;
+      description?: string;
+    },
+  ): void {
+    upsertNamespaceMetadataQuery(this.db, op, input);
   }
 
   linkScopes(op: MemoryOpContext, input: { parentScopeId: string; childScopeId: string }): void {
@@ -429,6 +446,14 @@ export class MemoriesPersistence implements IMemoriesPersistence {
 
   listMemoryNamespaces(): string[] {
     return listMemoryNamespacesQuery(this.db);
+  }
+
+  listNamespacesWithMetadata(): NamespaceMetadataInfo[] {
+    return listNamespacesWithMetadataQuery(this.db);
+  }
+
+  getNamespaceMetadata(namespace: string): NamespaceMetadataInfo | undefined {
+    return getNamespaceMetadataQuery(this.db, namespace);
   }
 
   listSourceMapsForMemory(memoryId: string, limit: number): SourceMap[] {

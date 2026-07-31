@@ -40,11 +40,16 @@ describe("memories sqlite migrations", () => {
     expect(rows).toEqual([
       { from_version: "0.0.0", to_version: "0.1.0", name: "001-initial" },
       { from_version: "0.1.0", to_version: "0.2.0", name: "001-add-content-outbox" },
+      { from_version: "0.2.0", to_version: "0.3.0", name: "001-add-namespace-metadata" },
     ]);
 
     const outbox = tableColumns(db, "memory_content_outbox");
     expect(outbox.has("root_hex")).toBe(true);
     expect(outbox.has("text")).toBe(true);
+
+    const namespaceMetadata = tableColumns(db, "namespace_metadata");
+    expect(namespaceMetadata.has("display_name")).toBe(true);
+    expect(namespaceMetadata.has("description")).toBe(true);
 
     const ftsSql = db
       .query<{ sql: string | null }, []>(

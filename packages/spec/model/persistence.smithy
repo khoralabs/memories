@@ -23,6 +23,7 @@ service MemoriesPersistenceCore {
         UnlinkScopeEdge
         ReplaceMemoryScopes
         ListScopesForMemory
+        UpsertNamespaceMetadata
         InsertSourceMap
         InsertLexicalFeature
         EnsureNodeLabel
@@ -87,6 +88,8 @@ service MemoriesPersistenceReads {
     version: "2026-07-21"
     operations: [
         ListMemoryNamespaces
+        ListNamespacesWithMetadata
+        GetNamespaceMetadata
         ListSourceMapsForMemory
         ListTextFeatureExportRowsForMemory
         GetSourceMapTextPreview
@@ -125,7 +128,7 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 
 **Async:** Mirror with Promise/async method signatures in language bindings.
 
-**Read helpers:** **ListMemoryNamespaces**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable.
+**Read helpers:** **ListMemoryNamespaces**, **ListNamespacesWithMetadata**, **GetNamespaceMetadata**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable.
 
 **Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY`). Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide).
 """)
@@ -143,6 +146,7 @@ service MemoriesPersistenceService {
         UnlinkScopeEdge
         ReplaceMemoryScopes
         ListScopesForMemory
+        UpsertNamespaceMetadata
         InsertSourceMap
         InsertLexicalFeature
         InsertVectorFeature
@@ -169,6 +173,8 @@ service MemoriesPersistenceService {
         ListNeighborsForMemory
         ListNeighborsForEdgeMemory
         ListMemoryNamespaces
+        ListNamespacesWithMetadata
+        GetNamespaceMetadata
         ListSourceMapsForMemory
         ListTextFeatureExportRowsForMemory
         GetSourceMapTextPreview
@@ -324,6 +330,21 @@ structure UpsertScopeInput {
 }
 
 structure UpsertScopeOutput {}
+
+operation UpsertNamespaceMetadata {
+    input: UpsertNamespaceMetadataInput
+    output: UpsertNamespaceMetadataOutput
+}
+
+structure UpsertNamespaceMetadataInput {
+    @required
+    namespace: MemoryNamespace
+    /// Pass null to clear (UI uses key). Omit on update to leave unchanged.
+    displayName: String
+    description: String
+}
+
+structure UpsertNamespaceMetadataOutput {}
 
 operation LinkScopes {
     input: LinkScopesInput
@@ -754,6 +775,30 @@ operation ListMemoryNamespaces {
 structure ListMemoryNamespacesOutput {
     /// Distinct primary memory namespaces, sorted for stable UI.
     namespaces: MemoryNamespaceList
+}
+
+operation ListNamespacesWithMetadata {
+    input: Unit
+    output: ListNamespacesWithMetadataOutput
+}
+
+structure ListNamespacesWithMetadataOutput {
+    /// Union of namespaces with memories and/or metadata rows, sorted by path.
+    namespaces: NamespaceMetadataList
+}
+
+operation GetNamespaceMetadata {
+    input: GetNamespaceMetadataInput
+    output: GetNamespaceMetadataOutput
+}
+
+structure GetNamespaceMetadataInput {
+    @required
+    namespace: MemoryNamespace
+}
+
+structure GetNamespaceMetadataOutput {
+    metadata: NamespaceMetadata
 }
 
 operation ListSourceMapsForMemory {
