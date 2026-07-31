@@ -1,6 +1,6 @@
 /**
  * Monotonic-ish millisecond timestamp for duration marks.
- * Uses `performance.now()` in browsers / Node 16+; falls back to `Date.now()` where `performance` is missing (e.g. Convex isolates).
+ * Uses `performance.now()` in browsers / Node 16+; falls back to `Date.now()` where `performance` is missing.
  */
 export function nowMs(): number {
   const p = globalThis.performance;

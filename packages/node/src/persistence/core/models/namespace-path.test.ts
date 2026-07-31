@@ -5,9 +5,7 @@ import {
   namespaceFromSegments,
   namespacePath,
   namespacePrefixFieldForDepth,
-  namespacePrefixFieldForDepthCamel,
   namespacePrefixFields,
-  namespacePrefixFieldsCamel,
   namespaceSegments,
   zNamespacePath,
 } from "./namespace-path";
@@ -80,21 +78,5 @@ describe("namespacePrefixFields / namespacePrefixFieldForDepth", () => {
   test("field name matches segment depth", () => {
     expect(namespacePrefixFieldForDepth(1)).toBe("ns_prefix_1");
     expect(namespacePrefixFieldForDepth(3)).toBe("ns_prefix_3");
-  });
-});
-
-describe("namespacePrefixFieldsCamel / namespacePrefixFieldForDepthCamel", () => {
-  test("cumulative prefixes for Convex subtree filters", () => {
-    const p = namespacePath("a/b/c");
-    expect(namespacePrefixFieldsCamel(p)).toEqual({
-      nsPrefix1: "a",
-      nsPrefix2: "a/b",
-      nsPrefix3: "a/b/c",
-    });
-  });
-
-  test("field name matches segment depth", () => {
-    expect(namespacePrefixFieldForDepthCamel(1)).toBe("nsPrefix1");
-    expect(namespacePrefixFieldForDepthCamel(3)).toBe("nsPrefix3");
   });
 });

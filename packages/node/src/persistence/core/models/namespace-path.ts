@@ -3,7 +3,7 @@ import z from "zod";
 /** Canonical segment separator for hierarchical memory namespaces. */
 export const NAMESPACE_SEPARATOR = "/" as const;
 
-/** Max path depth (segments); matches SQLite `ns_prefix_1`..`ns_prefix_6` and Convex `nsPrefix1`..`nsPrefix6`. */
+/** Max path depth (segments); matches SQLite `ns_prefix_1`..`ns_prefix_6` */
 export const NAMESPACE_MAX_DEPTH = 6;
 
 /** Allowed characters per segment (`[a-z0-9_-]+`). */
@@ -152,18 +152,6 @@ export const NS_PREFIX_KEYS = [
 
 export type NamespacePrefixKey = (typeof NS_PREFIX_KEYS)[number];
 
-/** Cumulative path prefixes for Convex subtree filters (`nsPrefix_k` = first k segments joined). */
-export const NS_PREFIX_KEYS_CAMEL = [
-  "nsPrefix1",
-  "nsPrefix2",
-  "nsPrefix3",
-  "nsPrefix4",
-  "nsPrefix5",
-  "nsPrefix6",
-] as const;
-
-export type NamespacePrefixKeyCamel = (typeof NS_PREFIX_KEYS_CAMEL)[number];
-
 /** `depth` is segment count (1..6); maps to `ns_prefix_depth`. */
 export function namespacePrefixFieldForDepth(depth: number): NamespacePrefixKey {
   if (depth < 1 || depth > NAMESPACE_MAX_DEPTH) {
@@ -174,17 +162,7 @@ export function namespacePrefixFieldForDepth(depth: number): NamespacePrefixKey 
   return key;
 }
 
-/** `depth` is segment count (1..6); maps to `nsPrefix{depth}` on Convex tables. */
-export function namespacePrefixFieldForDepthCamel(depth: number): NamespacePrefixKeyCamel {
-  if (depth < 1 || depth > NAMESPACE_MAX_DEPTH) {
-    throw new Error(`namespace prefix depth must be 1..${NAMESPACE_MAX_DEPTH}`);
-  }
-  const key = NS_PREFIX_KEYS_CAMEL[depth - 1];
-  if (key === undefined) throw new Error("namespacePrefixFieldForDepthCamel: invalid depth");
-  return key;
-}
-
-/** Spread into SQLite `memories` rows (only defined prefixes are set). */
+/** Spread into SQL `memories` rows (only defined prefixes are set). */
 export function namespacePrefixFields(
   p: NamespacePath,
   cap: number = NAMESPACE_MAX_DEPTH,
@@ -194,22 +172,6 @@ export function namespacePrefixFields(
   const out: Partial<Record<NamespacePrefixKey, string>> = {};
   for (let k = 1; k <= n; k++) {
     const key = NS_PREFIX_KEYS[k - 1];
-    const prefix = segs.slice(0, k).join(NAMESPACE_SEPARATOR);
-    if (key !== undefined) out[key] = prefix;
-  }
-  return out;
-}
-
-/** Spread into Convex `text_features` / vector tables (only defined prefixes are set). */
-export function namespacePrefixFieldsCamel(
-  p: NamespacePath,
-  cap: number = NAMESPACE_MAX_DEPTH,
-): Partial<Record<NamespacePrefixKeyCamel, string>> {
-  const segs = namespaceSegments(p);
-  const n = Math.min(segs.length, cap);
-  const out: Partial<Record<NamespacePrefixKeyCamel, string>> = {};
-  for (let k = 1; k <= n; k++) {
-    const key = NS_PREFIX_KEYS_CAMEL[k - 1];
     const prefix = segs.slice(0, k).join(NAMESPACE_SEPARATOR);
     if (key !== undefined) out[key] = prefix;
   }
