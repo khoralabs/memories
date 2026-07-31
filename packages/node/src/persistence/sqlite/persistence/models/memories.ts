@@ -1,4 +1,4 @@
-import { ids, namespacePath, namespacePrefixFields } from "../../../../persistence/core";
+import { ids } from "../../../../persistence/core";
 import type { MemoryKind } from "../../../../persistence/core/persistence";
 import { memoriesPersistenceDocumentSchema } from "../../../../persistence/core/persistence";
 import { documentValidator } from "../_lib";
@@ -69,7 +69,6 @@ export function upsertMemory(
   const kind: MemoryKind = input.kind ?? "node";
   const edgeId = kind === "edge" ? (input.edgeId ?? null) : null;
   const doc = documentValidator(memoriesPersistenceDocumentSchema, "memories");
-  const prefixes = namespacePrefixFields(namespacePath(input.namespace));
   doc.parse({
     _id: memoryId,
     _ts_created: now,
@@ -77,25 +76,11 @@ export function upsertMemory(
     key: input.key,
     kind,
     edge_id: edgeId ?? undefined,
-    ...prefixes,
   });
   const existingTs = db
     .query<{ _ts_created: number }, [string]>(`SELECT _ts_created FROM memories WHERE _id = ?`)
     .get(memoryId);
   const tsCreated = existingTs?._ts_created ?? now;
-  stmts.insertOrUpdateMemory.run(
-    memoryId,
-    tsCreated,
-    input.namespace,
-    input.key,
-    kind,
-    edgeId,
-    prefixes.ns_prefix_1 ?? null,
-    prefixes.ns_prefix_2 ?? null,
-    prefixes.ns_prefix_3 ?? null,
-    prefixes.ns_prefix_4 ?? null,
-    prefixes.ns_prefix_5 ?? null,
-    prefixes.ns_prefix_6 ?? null,
-  );
+  stmts.insertOrUpdateMemory.run(memoryId, tsCreated, input.namespace, input.key, kind, edgeId);
   return { memoryId, _ts_created: tsCreated };
 }

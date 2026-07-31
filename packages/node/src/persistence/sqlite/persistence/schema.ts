@@ -52,12 +52,6 @@ CREATE TABLE IF NOT EXISTS "memories" (
   "key" TEXT NOT NULL,
   "kind" TEXT NOT NULL,
   "edge_id" TEXT REFERENCES "edges" ("_id") ON DELETE CASCADE,
-  "ns_prefix_1" TEXT,
-  "ns_prefix_2" TEXT,
-  "ns_prefix_3" TEXT,
-  "ns_prefix_4" TEXT,
-  "ns_prefix_5" TEXT,
-  "ns_prefix_6" TEXT,
   "_id" TEXT PRIMARY KEY NOT NULL,
   "_ts_created" REAL NOT NULL
 );
@@ -132,6 +126,8 @@ CREATE INDEX IF NOT EXISTS "idx_edges_from_node_id" ON "edges" ("from_node_id");
 CREATE INDEX IF NOT EXISTS "idx_edges_to_node_id" ON "edges" ("to_node_id");
 
 CREATE INDEX IF NOT EXISTS "idx_memories_edge_id" ON "memories" ("edge_id");
+
+CREATE INDEX IF NOT EXISTS "idx_memories_namespace" ON "memories" ("namespace");
 
 CREATE INDEX IF NOT EXISTS "idx_memory_scopes_memory_id" ON "memory_scopes" ("memory_id");
 

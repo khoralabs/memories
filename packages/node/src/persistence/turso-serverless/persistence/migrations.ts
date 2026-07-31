@@ -1,4 +1,4 @@
-import { execMultiple, queryAll, queryOne } from "./client";
+import { execMultiple, execSql, queryAll, queryOne } from "./client";
 import type { TursoDatabase } from "./db";
 import {
   CONTENT_OUTBOX_SQL,
@@ -13,13 +13,38 @@ import {
   TURSO_PRAGMAS_SQL,
 } from "./turso-schema";
 
-export const MEMORIES_SCHEMA_VERSION = "0.3.0";
+export const MEMORIES_SCHEMA_VERSION = "0.4.0";
+
+const NS_PREFIX_COLUMNS = [
+  "ns_prefix_1",
+  "ns_prefix_2",
+  "ns_prefix_3",
+  "ns_prefix_4",
+  "ns_prefix_5",
+  "ns_prefix_6",
+] as const;
 
 type Migration = {
   to: string;
   name: string;
-  statements: string[];
+  statements?: string[];
+  up?: (db: TursoDatabase) => Promise<void>;
 };
+
+async function dropNsPrefixColumns(db: TursoDatabase): Promise<void> {
+  await execSql(db.write, `DROP INDEX IF EXISTS idx_memories_ns_prefixes`);
+  const cols = await queryAll<{ name: string }>(db.read, `PRAGMA table_info(memories)`);
+  const existing = new Set(cols.map((r) => r.name));
+  for (const col of NS_PREFIX_COLUMNS) {
+    if (existing.has(col)) {
+      await execSql(db.write, `ALTER TABLE memories DROP COLUMN ${col}`);
+    }
+  }
+  await execSql(
+    db.write,
+    `CREATE INDEX IF NOT EXISTS idx_memories_namespace ON memories (namespace)`,
+  );
+}
 
 const migrations: Migration[] = [
   {
@@ -43,6 +68,11 @@ const migrations: Migration[] = [
     name: "001-add-namespace-metadata",
     statements: [NAMESPACE_METADATA_SQL],
   },
+  {
+    to: "0.4.0",
+    name: "001-drop-ns-prefix-columns",
+    up: dropNsPrefixColumns,
+  },
 ];
 
 function splitStatements(sql: string): string[] {
@@ -53,7 +83,7 @@ function splitStatements(sql: string): string[] {
 }
 
 function flattenMigrationStatements(m: Migration): string[] {
-  return m.statements.flatMap(splitStatements);
+  return (m.statements ?? []).flatMap(splitStatements);
 }
 
 export async function listAppliedSchemaVersions(db: TursoDatabase): Promise<string[]> {
@@ -79,8 +109,12 @@ export async function migrateMemoriesTursoServerless(db: TursoDatabase): Promise
 
   for (const migration of migrations) {
     if (applied.has(migration.to)) continue;
-    const stmts = flattenMigrationStatements(migration);
-    await batchWriteStatements(db.batch, stmts);
+    if (migration.up) {
+      await migration.up(db);
+    } else {
+      const stmts = flattenMigrationStatements(migration);
+      await batchWriteStatements(db.batch, stmts);
+    }
     await execMultiple(
       db.write,
       `INSERT INTO _schema_version (version, applied_at) VALUES ('${migration.to.replace(/'/g, "''")}', ${now});`,

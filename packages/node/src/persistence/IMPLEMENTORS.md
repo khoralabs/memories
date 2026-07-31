@@ -98,7 +98,7 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 - **Tables:** `scopes`, `scope_edges`, `scope_closure`, `memory_scopes` (see Zod `memoriesPersistenceDocumentSchema`). Scope ids reuse **`MemoryNamespace`** path syntax.
 - **`linkScopes`:** inserts `parent → child`; **rejects cycles**. Reference impl rebuilds **`scope_closure`** (all `(ancestor, descendant)` pairs including self) after each link/unlink.
 - **`replaceMemoryScopes`:** merge replaces attachments for the focal memory; **primary namespace is always included** alongside optional `attachScopes`.
-- **Search:** `SearchNamespaceScope` adds **`scopeDag`** (roots expand through closure → attached memories) and **`exactScope`** (no descent). **`pathSubtree`** keeps prefix semantics on each row’s primary `memories.namespace`.
+- **Search:** `SearchNamespaceScope` adds **`scopeDag`** (roots expand through closure → attached memories) and **`exactScope`** (no descent). **`pathSubtree`** keeps prefix semantics on each row’s primary `memories.namespace` (strategy-private indexing; SQL backends use `namespace = ? OR namespace LIKE ? || '/%'`).
 
 ## Namespace metadata (display)
 
@@ -114,7 +114,7 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 - `searchVectorSourceMapIds` takes a resolved **`method: "knn" | "ann"`** and returns `{ sourceMapIds; vectorSearchMethod? }`. Unsupported methods are a **noop** (`sourceMapIds: []`, no method). There is **no separate score contract**: `fuseRrf` in `@khoralabs/memories-node` (search API) uses **rank position** and configured arm weights only.
 - Public `SearchParams.options.vectorSearchMethod` may be `"knn"`, `"ann"`, or omitted. Core resolves via [`resolveVectorSearchMethod`](./core/persistence/types.ts): explicit selection noops when the capability is off; omitted prefers **ANN then KNN**. `SearchOutput.vectorSearchMethod` reports the method that ran.
 - **Namespace scope:** Both methods take **`scope: SearchNamespaceScope`**:
-  - `{ kind: "pathSubtree"; namespaces }` — prefix match on primary **`memories.namespace`** (canonical overlapping roots).
+  - `{ kind: "pathSubtree"; namespaces }` — prefix match on primary **`memories.namespace`** (canonical overlapping roots; SQL: equality or `LIKE root || '/%'`).
   - `{ kind: "scopeDag"; roots }` — scope ids; match memories in **`memory_scopes`** whose scope is a **descendant** of some root in **`scope_closure`**.
   - `{ kind: "exactScope"; scopes }` — match attachments where **`scope_id`** is exactly one of the listed scope ids.
   - `{ kind: "unscoped" }` — entire DB (requires `unscopedSearch`).

@@ -52,12 +52,6 @@ CREATE TABLE IF NOT EXISTS "memories" (
   "key" TEXT NOT NULL,
   "kind" TEXT NOT NULL,
   "edge_id" TEXT REFERENCES "edges" ("_id") ON DELETE CASCADE,
-  "ns_prefix_1" TEXT,
-  "ns_prefix_2" TEXT,
-  "ns_prefix_3" TEXT,
-  "ns_prefix_4" TEXT,
-  "ns_prefix_5" TEXT,
-  "ns_prefix_6" TEXT,
   "_id" TEXT PRIMARY KEY NOT NULL,
   "_ts_created" REAL NOT NULL
 );
@@ -169,8 +163,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_provenance_root_hex
   ON memory_provenance (root_hex);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_edge_id_unique
   ON memories (edge_id) WHERE edge_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_memories_ns_prefixes
-  ON memories (ns_prefix_1, ns_prefix_2, ns_prefix_3, ns_prefix_4, ns_prefix_5, ns_prefix_6);
+CREATE INDEX IF NOT EXISTS idx_memories_namespace
+  ON memories (namespace);
 `;
 
 export const CONTENT_OUTBOX_SQL = `

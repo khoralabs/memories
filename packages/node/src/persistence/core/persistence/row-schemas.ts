@@ -20,13 +20,6 @@ export const zMemory = z.object({
   kind: zMemoryKind,
   /** Set when `kind` is `edge`; unique per non-null value. */
   edge_id: zId("edges").optional(),
-  /** Denormalized cumulative namespace prefixes for subtree filtering (1..6 segments). */
-  ns_prefix_1: z.string().optional(),
-  ns_prefix_2: z.string().optional(),
-  ns_prefix_3: z.string().optional(),
-  ns_prefix_4: z.string().optional(),
-  ns_prefix_5: z.string().optional(),
-  ns_prefix_6: z.string().optional(),
 });
 
 /**

@@ -1,4 +1,4 @@
-import { ids, namespacePath, namespacePrefixFields } from "../../../../persistence/core";
+import { ids } from "../../../../persistence/core";
 import type { MemoryKind } from "../../../../persistence/core/persistence";
 import { memoriesPersistenceDocumentSchema } from "../../../../persistence/core/persistence";
 import { documentValidator } from "../_lib";
@@ -67,7 +67,6 @@ export async function upsertMemory(
   const kind: MemoryKind = input.kind ?? "node";
   const edgeId = kind === "edge" ? (input.edgeId ?? null) : null;
   const doc = documentValidator(memoriesPersistenceDocumentSchema, "memories");
-  const prefixes = namespacePrefixFields(namespacePath(input.namespace));
   doc.parse({
     _id: memoryId,
     _ts_created: ctx.now,
@@ -75,7 +74,6 @@ export async function upsertMemory(
     key: input.key,
     kind,
     edge_id: edgeId ?? undefined,
-    ...prefixes,
   });
   const existingTs = await ctxQueryOne<{ _ts_created: number }>(
     ctx,
@@ -85,33 +83,14 @@ export async function upsertMemory(
   const tsCreated = existingTs?._ts_created ?? ctx.now;
   await ctxExec(
     ctx,
-    `INSERT INTO memories (_id, _ts_created, namespace, key, kind, edge_id, ns_prefix_1, ns_prefix_2, ns_prefix_3, ns_prefix_4, ns_prefix_5, ns_prefix_6)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO memories (_id, _ts_created, namespace, key, kind, edge_id)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(_id) DO UPDATE SET
        namespace = excluded.namespace,
        key = excluded.key,
        kind = excluded.kind,
-       edge_id = excluded.edge_id,
-       ns_prefix_1 = excluded.ns_prefix_1,
-       ns_prefix_2 = excluded.ns_prefix_2,
-       ns_prefix_3 = excluded.ns_prefix_3,
-       ns_prefix_4 = excluded.ns_prefix_4,
-       ns_prefix_5 = excluded.ns_prefix_5,
-       ns_prefix_6 = excluded.ns_prefix_6`,
-    [
-      memoryId,
-      tsCreated,
-      input.namespace,
-      input.key,
-      kind,
-      edgeId,
-      prefixes.ns_prefix_1 ?? null,
-      prefixes.ns_prefix_2 ?? null,
-      prefixes.ns_prefix_3 ?? null,
-      prefixes.ns_prefix_4 ?? null,
-      prefixes.ns_prefix_5 ?? null,
-      prefixes.ns_prefix_6 ?? null,
-    ],
+       edge_id = excluded.edge_id`,
+    [memoryId, tsCreated, input.namespace, input.key, kind, edgeId],
   );
   return { memoryId, _ts_created: tsCreated };
 }

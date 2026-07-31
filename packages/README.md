@@ -113,7 +113,7 @@ Reference backend: [`node/src/persistence/sqlite/`](node/src/persistence/sqlite/
 
 | Table | Purpose |
 |-------|---------|
-| `memories` | Root rows: `namespace`, `key`, `kind`, `edge_id`, denormalized `ns_prefix_1..6` |
+| `memories` | Root rows: `namespace`, `key`, `kind`, `edge_id` |
 | `source_maps` | Address per chunk: `memory_id`, `source_key`, optional `content_hash` |
 | `text_features` | Searchable text per source map |
 | `vector_features` | Embedding blob per source map |

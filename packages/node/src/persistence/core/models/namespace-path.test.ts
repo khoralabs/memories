@@ -4,8 +4,6 @@ import {
   isPrefixOf,
   namespaceFromSegments,
   namespacePath,
-  namespacePrefixFieldForDepth,
-  namespacePrefixFields,
   namespaceSegments,
   zNamespacePath,
 } from "./namespace-path";
@@ -62,21 +60,5 @@ describe("namespaceFromSegments", () => {
   test("roundtrip", () => {
     const p = namespaceFromSegments(["x", "y"]);
     expect(namespaceSegments(p)).toEqual(["x", "y"]);
-  });
-});
-
-describe("namespacePrefixFields / namespacePrefixFieldForDepth", () => {
-  test("cumulative prefixes for subtree filters", () => {
-    const p = namespacePath("a/b/c");
-    expect(namespacePrefixFields(p)).toEqual({
-      ns_prefix_1: "a",
-      ns_prefix_2: "a/b",
-      ns_prefix_3: "a/b/c",
-    });
-  });
-
-  test("field name matches segment depth", () => {
-    expect(namespacePrefixFieldForDepth(1)).toBe("ns_prefix_1");
-    expect(namespacePrefixFieldForDepth(3)).toBe("ns_prefix_3");
   });
 });

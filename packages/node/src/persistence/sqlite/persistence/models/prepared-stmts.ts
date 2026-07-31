@@ -114,19 +114,13 @@ export function prepareMemoriesSqliteStmts(db: Database): MemoriesSqliteStmts {
     ),
 
     insertOrUpdateMemory: db.prepare(
-      `INSERT INTO memories (_id, _ts_created, namespace, key, kind, edge_id, ns_prefix_1, ns_prefix_2, ns_prefix_3, ns_prefix_4, ns_prefix_5, ns_prefix_6)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO memories (_id, _ts_created, namespace, key, kind, edge_id)
+       VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(_id) DO UPDATE SET
          namespace = excluded.namespace,
          key = excluded.key,
          kind = excluded.kind,
-         edge_id = excluded.edge_id,
-         ns_prefix_1 = excluded.ns_prefix_1,
-         ns_prefix_2 = excluded.ns_prefix_2,
-         ns_prefix_3 = excluded.ns_prefix_3,
-         ns_prefix_4 = excluded.ns_prefix_4,
-         ns_prefix_5 = excluded.ns_prefix_5,
-         ns_prefix_6 = excluded.ns_prefix_6`,
+         edge_id = excluded.edge_id`,
     ),
 
     insertMemoryProvenance: db.prepare(

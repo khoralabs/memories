@@ -11,8 +11,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_provenance_root_hex
   ON memory_provenance (root_hex);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_edge_id_unique
   ON memories (edge_id) WHERE edge_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_memories_ns_prefixes
-  ON memories (ns_prefix_1, ns_prefix_2, ns_prefix_3, ns_prefix_4, ns_prefix_5, ns_prefix_6);
+CREATE INDEX IF NOT EXISTS idx_memories_namespace
+  ON memories (namespace);
 `;
 
 export default {

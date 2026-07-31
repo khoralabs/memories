@@ -8,9 +8,15 @@ import * as sqliteVec from "sqlite-vec";
 import m001Initial from "./migrations/0.0.0-0.1.0/001-initial";
 import m001AddContentOutbox from "./migrations/0.1.0-0.2.0/001-add-content-outbox";
 import m001AddNamespaceMetadata from "./migrations/0.2.0-0.3.0/001-add-namespace-metadata";
+import m001DropNsPrefixColumns from "./migrations/0.3.0-0.4.0/001-drop-ns-prefix-columns";
 import { backfillVectorFeaturesVecTables } from "./search-indexes";
 
-const memoriesMigrations = [m001Initial, m001AddContentOutbox, m001AddNamespaceMetadata];
+const memoriesMigrations = [
+  m001Initial,
+  m001AddContentOutbox,
+  m001AddNamespaceMetadata,
+  m001DropNsPrefixColumns,
+];
 
 export function loadSqliteVec(db: Database): void {
   try {

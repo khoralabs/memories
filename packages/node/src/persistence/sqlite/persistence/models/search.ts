@@ -7,8 +7,6 @@ import {
   type NeighborFilter,
   type NeighborNodesFilter,
   namespacePath,
-  namespacePrefixFieldForDepth,
-  namespaceSegments,
   type OntologyLabelInstance,
   type SearchNamespaceScope,
 } from "../../../../persistence/core";
@@ -121,12 +119,10 @@ function namespaceSubtreeOrClauses(
   }
   const parts: string[] = [];
   const bindings: SQLQueryBindings[] = [];
+  const col = tableAlias ? `${tableAlias}.namespace` : "namespace";
   for (const root of roots) {
-    const depth = namespaceSegments(root).length;
-    const key = namespacePrefixFieldForDepth(depth);
-    const col = tableAlias ? `${tableAlias}.${key}` : key;
-    parts.push(`(${col} = ?)`);
-    bindings.push(root);
+    parts.push(`(${col} = ? OR ${col} LIKE ? || '/%')`);
+    bindings.push(root, root);
   }
   return { sql: parts.join(" OR "), bindings };
 }
