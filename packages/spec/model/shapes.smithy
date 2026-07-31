@@ -12,11 +12,11 @@ list MemoryNamespaceList {
     member: MemoryNamespace
 }
 
-/// Display metadata for a namespace path. `displayName` omitted/null means UI should use `namespace`.
+/// Soft-rename / display label for a namespace path. `alias` omitted/null means UI should use `namespace`.
 structure NamespaceMetadata {
     @required
     namespace: MemoryNamespace
-    displayName: String
+    alias: String
     @required
     description: String
 }
@@ -449,6 +449,7 @@ structure MemoryOpContext {
 union MemoryProvenanceEvent {
     MERGE_MEMORY: MergeMemoryProvenanceEvent
     DELETE_MEMORY: DeleteMemoryProvenanceEvent
+    RENAME_NAMESPACE: RenameNamespaceProvenanceEvent
 }
 
 structure MergeMemoryProvenanceEvent {
@@ -470,6 +471,16 @@ structure DeleteMemoryProvenanceEvent {
     namespace: String
     memory_key: String
     memory_id: String
+    contributor: ContributorAttestation
+    intent_snapshot_id: String
+}
+
+structure RenameNamespaceProvenanceEvent {
+    /// Schema version; TS requires literal `1`.
+    v: Integer
+    from_namespace: String
+    to_namespace: String
+    recursive: Boolean
     contributor: ContributorAttestation
     intent_snapshot_id: String
 }

@@ -67,6 +67,7 @@ import { clearMemorySubtree } from "./models/memory-subtree";
 import { insertNodeLabelAssignment } from "./models/node-label-assignments";
 import { ensureNodeLabel } from "./models/node-labels";
 import { nodeExists, upsertNodeForMemoryKey } from "./models/nodes";
+import { renameNamespacePaths as renameNamespacePathsQuery } from "./models/rename-namespace";
 import {
   linkScopes as linkScopesRow,
   listScopesForMemory as listScopesForMemoryRow,
@@ -163,25 +164,31 @@ export class MemoriesTursoServerlessPersistence {
     op: MemoryOpContext,
     input: {
       namespace: string;
+      alias?: string | null;
       displayName?: string | null;
       description?: string;
     },
   ): Promise<void> {
     const ns = namespacePath(input.namespace);
-    const existing = await queryOne<{ displayName: string | null; description: string }>(
+    const existing = await queryOne<{ alias: string | null; description: string }>(
       this.db.read,
-      `SELECT display_name AS displayName, description FROM namespace_metadata WHERE _id = ?`,
+      `SELECT display_name AS alias, description FROM namespace_metadata WHERE _id = ?`,
       [ns],
     );
-    const displayName =
-      input.displayName !== undefined ? input.displayName : (existing?.displayName ?? null);
+    const aliasPatch =
+      input.alias !== undefined
+        ? input.alias
+        : input.displayName !== undefined
+          ? input.displayName
+          : undefined;
+    const alias = aliasPatch !== undefined ? aliasPatch : (existing?.alias ?? null);
     const description =
       input.description !== undefined ? input.description : (existing?.description ?? "");
     if (existing) {
       await ctxExec(
         this.activeCtx(op),
         `UPDATE namespace_metadata SET display_name = ?, description = ?, _ts_updated = ? WHERE _id = ?`,
-        [displayName, description, op.now, ns],
+        [alias, description, op.now, ns],
       );
       return;
     }
@@ -189,13 +196,20 @@ export class MemoriesTursoServerlessPersistence {
       this.activeCtx(op),
       `INSERT INTO namespace_metadata (_id, display_name, description, _ts_created, _ts_updated)
        VALUES (?, ?, ?, ?, ?)`,
-      [ns, displayName, description, op.now, op.now],
+      [ns, alias, description, op.now, op.now],
     );
   }
 
   async deleteNamespaceMetadata(op: MemoryOpContext, namespace: string): Promise<void> {
     const ns = namespacePath(namespace);
     await ctxExec(this.activeCtx(op), `DELETE FROM namespace_metadata WHERE _id = ?`, [ns]);
+  }
+
+  async renameNamespacePaths(
+    op: MemoryOpContext,
+    input: { nsMap: ReadonlyMap<string, string> },
+  ): Promise<{ renamedMemories: number }> {
+    return renameNamespacePathsQuery(this.activeCtx(op), input.nsMap);
   }
 
   async linkScopes(
@@ -513,21 +527,21 @@ export class MemoriesTursoServerlessPersistence {
     )) {
       byKey.set(row.namespace, {
         namespace: row.namespace,
-        displayName: null,
+        alias: null,
         description: "",
       });
     }
     for (const row of await queryAll<{
       id: string;
-      displayName: string | null;
+      alias: string | null;
       description: string;
     }>(
       this.db.read,
-      `SELECT _id AS id, display_name AS displayName, description FROM namespace_metadata`,
+      `SELECT _id AS id, display_name AS alias, description FROM namespace_metadata`,
     )) {
       byKey.set(row.id, {
         namespace: row.id,
-        displayName: row.displayName,
+        alias: row.alias,
         description: row.description,
       });
     }
@@ -538,16 +552,14 @@ export class MemoriesTursoServerlessPersistence {
     const ns = namespacePath(namespace);
     const row = await queryOne<{
       id: string;
-      displayName: string | null;
+      alias: string | null;
       description: string;
     }>(
       this.db.read,
-      `SELECT _id AS id, display_name AS displayName, description FROM namespace_metadata WHERE _id = ?`,
+      `SELECT _id AS id, display_name AS alias, description FROM namespace_metadata WHERE _id = ?`,
       [ns],
     );
-    return row
-      ? { namespace: row.id, displayName: row.displayName, description: row.description }
-      : undefined;
+    return row ? { namespace: row.id, alias: row.alias, description: row.description } : undefined;
   }
 
   async listMemoryKeysInNamespace(namespace: string): Promise<string[]> {

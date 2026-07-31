@@ -20,12 +20,12 @@ export type MemoryOpContext = {
 };
 
 /**
- * Namespace display metadata for UI (path key + optional display name + description).
- * `displayName` null means callers should show {@link namespace}.
+ * Namespace display metadata for UI (path key + optional alias + description).
+ * `alias` null means callers should show {@link namespace}.
  */
 export type NamespaceMetadataInfo = {
   namespace: NamespacePath;
-  displayName: string | null;
+  alias: string | null;
   description: string;
 };
 
@@ -334,13 +334,16 @@ export interface MemoriesMutationCore {
 
   /**
    * Upsert display metadata for a namespace path (may exist before any memories).
-   * Omit `displayName` to leave unchanged on update; pass `null` to clear (use key in UI).
+   * Prefer `alias`; `displayName` is accepted as a deprecated synonym.
+   * Omit `alias` to leave unchanged on update; pass `null` to clear (use key in UI).
    * Omit `description` to leave unchanged on update; default `""` on insert.
    */
   upsertNamespaceMetadata(
     op: MemoryOpContext,
     input: {
       namespace: NamespacePath;
+      alias?: string | null;
+      /** @deprecated Use {@link alias}. */
       displayName?: string | null;
       description?: string;
     },
@@ -348,6 +351,15 @@ export interface MemoriesMutationCore {
 
   /** Remove namespace metadata row; idempotent if missing. */
   deleteNamespaceMetadata(op: MemoryOpContext, namespace: NamespacePath): void;
+
+  /**
+   * Rematerialize memory/node/edge ids and metadata for a path rewrite (`oldNs → newNs` map).
+   * Must run inside {@link withTransaction}. Does not append provenance.
+   */
+  renameNamespacePaths(
+    op: MemoryOpContext,
+    input: { nsMap: ReadonlyMap<string, string> },
+  ): { renamedMemories: number };
 }
 
 /** Graph node/edge catalog writes (merge-time). Combined with {@link MemoriesGraphIndex} as {@link MemoriesGraph}. */
@@ -472,7 +484,7 @@ export interface MemoriesPersistenceReads {
 
   /**
    * Union of namespaces that have memories and/or metadata rows, sorted by path.
-   * Memory-only keys appear with `displayName: null` and empty `description`.
+   * Memory-only keys appear with `alias: null` and empty `description`.
    */
   listNamespacesWithMetadata(): NamespaceMetadataInfo[];
 

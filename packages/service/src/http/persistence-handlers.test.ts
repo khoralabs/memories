@@ -173,7 +173,7 @@ describe("memories service persistence http handlers", () => {
     );
     expect(namespacesRes.status).toBe(200);
     const namespacesBody = (await namespacesRes.json()) as {
-      namespaces: Array<{ namespace: string; displayName: string | null; description: string }>;
+      namespaces: Array<{ namespace: string; alias: string | null; description: string }>;
     };
     expect(namespacesBody.namespaces.some((n) => n.namespace === "ns/a")).toBe(true);
 

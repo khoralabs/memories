@@ -254,10 +254,11 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 
 | Method | Path | Action | Auth action |
 |--------|------|--------|-------------|
-| `POST` | `/databases/namespaces` | List namespaces with display metadata | `read` |
+| `POST` | `/databases/namespaces` | List namespaces with metadata (`alias`, description) | `read` |
 | `POST` | `/databases/namespaces/get` | Get one namespace metadata row | `read` |
-| `POST` | `/databases/namespaces/upsert` | Upsert namespace display name/description | `write` |
+| `POST` | `/databases/namespaces/upsert` | Upsert namespace alias/description (soft rename) | `write` |
 | `POST` | `/databases/namespaces/delete` | Delete namespace (default recursive subtree) | `write` |
+| `POST` | `/databases/namespaces/rename` | Literal path rename (bulk id rewrite) | `write` |
 | `POST` | `/databases/edge-preview` | Edge preview | `read` |
 | `POST` | `/databases/source-map/text-preview` | Source map text preview | `read` |
 | `POST` | `/databases/vector-dimensions` | Vector index dimensions | `read` |
@@ -332,11 +333,13 @@ createMemoriesDatabaseService({ resolver, telemetry: createMemoriesOtelTelemetry
 
 Emits database lifecycle (`open` / `close` / `delete` / `evict`) and threads a database-bound sink into HTTP merge/search/delete so node ops include `memories.database.*` attributes. Libraries do not start an OTel SDK. Networked ingest (`POST /telemetry/events`) is planned — see [roadmap](./roadmap/README.md#telemetry-event-ingest-phase-2) and [otel README](../otel/README.md).
 
-Optional HTTP/stack option **`maxNamespaces`**: cap on distinct paths (memories ∪ metadata). `undefined` = unlimited. Enforced when merge or namespace metadata upsert introduces a **new** path (`NamespaceConstraintError` → HTTP 400). Path depth remains fixed at 6 segments (grammar).
+Optional HTTP/stack option **`maxNamespaces`**: cap on distinct paths (memories ∪ metadata). `undefined` = unlimited. Enforced when merge, namespace metadata upsert, or literal rename introduces a **net-new** path (`NamespaceConstraintError` → HTTP 400). Path depth remains fixed at 6 segments (grammar).
+
+**Namespace alias vs literal rename:** upsert `alias` is soft rename (UI label; path key unchanged; DB column `display_name`). `POST /databases/namespaces/rename` rematerializes memory/node/edge ids under a new path (rare/destructive). Upsert still accepts deprecated `displayName` as synonym for `alias`.
 
 ## Non-goals
 
-- Namespace policy registry (display metadata on namespaces is not ACL/policy; namespaces stay client-defined at merge time; `maxNamespaces` is a host quota, not ACL)
+- Namespace policy registry (alias metadata on namespaces is not ACL/policy; namespaces stay client-defined at merge time; `maxNamespaces` is a host quota, not ACL)
 - Host-specific team/session namespace builders
 - Grant storage or delegation in the core service
 - Assuming every database lives on the same filesystem

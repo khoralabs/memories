@@ -42,6 +42,8 @@ export {
   type DatabaseNamespaceGetRequest,
   type DatabaseNamespaceGetResponse,
   type DatabaseNamespaceMetadata,
+  type DatabaseNamespaceRenameRequest,
+  type DatabaseNamespaceRenameResponse,
   type DatabaseNamespacesRequest,
   type DatabaseNamespacesResponse,
   type DatabaseNamespaceUpsertRequest,

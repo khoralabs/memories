@@ -153,7 +153,7 @@ describe("memories service http handlers", () => {
         body: JSON.stringify({
           database,
           namespace: "user/inbox",
-          displayName: "Inbox",
+          alias: "Inbox",
           description: "Primary inbox",
         }),
       }),
@@ -173,7 +173,7 @@ describe("memories service http handlers", () => {
     expect(await getRes.json()).toMatchObject({
       namespace: {
         namespace: "user/inbox",
-        displayName: "Inbox",
+        alias: "Inbox",
         description: "Primary inbox",
       },
     });
@@ -188,11 +188,11 @@ describe("memories service http handlers", () => {
     );
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as {
-      namespaces: Array<{ namespace: string; displayName: string | null; description: string }>;
+      namespaces: Array<{ namespace: string; alias: string | null; description: string }>;
     };
     expect(listBody.namespaces).toContainEqual({
       namespace: "user/inbox",
-      displayName: "Inbox",
+      alias: "Inbox",
       description: "Primary inbox",
     });
   });

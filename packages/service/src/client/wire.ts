@@ -115,7 +115,7 @@ export type DatabaseCapabilitiesResponse = {
 export type DatabaseNamespacesRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseNamespaceMetadata = {
   namespace: string;
-  displayName: string | null;
+  alias: string | null;
   description: string;
 };
 export type DatabaseNamespacesResponse = { namespaces: DatabaseNamespaceMetadata[] };
@@ -127,6 +127,8 @@ export type DatabaseNamespaceGetResponse = {
 
 export type DatabaseNamespaceUpsertRequest = DatabaseScopedBody<{
   namespace: string;
+  alias?: string | null;
+  /** @deprecated Use `alias`. */
   displayName?: string | null;
   description?: string;
 }>;
@@ -139,6 +141,16 @@ export type DatabaseNamespaceDeleteRequest = DatabaseScopedBody<{
 export type DatabaseNamespaceDeleteResponse = {
   namespaces: string[];
   deletedMemories: number;
+};
+
+export type DatabaseNamespaceRenameRequest = DatabaseScopedBody<{
+  from: string;
+  to: string;
+  recursive?: boolean;
+}>;
+export type DatabaseNamespaceRenameResponse = {
+  namespaces: Array<{ from: string; to: string }>;
+  renamedMemories: number;
 };
 
 export type DatabaseMetadataGetRequest = DatabaseScopedBody<Record<string, never>>;

@@ -193,7 +193,7 @@ describe("namespace constraints + delete http", () => {
         body: JSON.stringify({
           database,
           namespace: "team/meta-only",
-          displayName: "Meta",
+          alias: "Meta",
         }),
       }),
       opts,

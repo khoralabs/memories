@@ -100,16 +100,17 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 - **`replaceMemoryScopes`:** merge replaces attachments for the focal memory; **primary namespace is always included** alongside optional `attachScopes`.
 - **Search:** `SearchNamespaceScope` adds **`scopeDag`** (roots expand through closure → attached memories) and **`exactScope`** (no descent). **`pathSubtree`** keeps prefix semantics on each row’s primary `memories.namespace` (strategy-private indexing; SQL backends use `namespace = ? OR namespace LIKE ? || '/%'`).
 
-## Namespace metadata (display)
+## Namespace metadata (alias / soft rename)
 
-- **Table:** `namespace_metadata` (`_id` = namespace path, optional `display_name`, `description`, `_ts_created` / `_ts_updated`).
-- **`upsertNamespaceMetadata`:** may create metadata before any memories exist. `displayName: null` means UI should show the path key.
+- **Table:** `namespace_metadata` (`_id` = namespace path, optional `display_name`, `description`, `_ts_created` / `_ts_updated`). Wire/API field is **`alias`** (maps to `display_name`); path remains identity.
+- **`upsertNamespaceMetadata`:** may create metadata before any memories exist. Prefer `alias`; `displayName` accepted as deprecated synonym. `alias: null` means UI should show the path key.
 - **`deleteNamespaceMetadata`:** remove one metadata row (idempotent if missing).
 - **`listMemoryKeysInNamespace`:** keys for one primary namespace.
-- **`listNamespacesWithMetadata`:** union of distinct `memories.namespace` and metadata keys (memory-only → `displayName: null`, empty description).
+- **`listNamespacesWithMetadata`:** union of distinct `memories.namespace` and metadata keys (memory-only → `alias: null`, empty description).
 - **`getNamespaceMetadata`:** single row or missing.
 - Distinct from scope DAG metadata — keyed to primary memory namespaces, not `scopes` rows.
 - **Namespace delete (core API):** `deleteNamespace` / `deleteNamespaceAsync` removes memories under a path (default recursive via prefix), then metadata rows. Uses per-memory `deleteMemory` provenance. Orphaned scope DAG rows may remain (best-effort; not required for correctness).
+- **Literal path rename:** `renameNamespace` / `renameNamespacePaths` rematerializes memory/node/edge ids under a new path (destructive; separate from alias). One `RENAME_NAMESPACE` provenance event; history is not rewritten. Collisions on `(newNamespace, key)` fail. `maxNamespaces` applies only to net-new paths after the rewrite.
 
 ## Namespace path constraints
 

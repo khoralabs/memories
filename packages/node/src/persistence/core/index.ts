@@ -5,6 +5,7 @@ export * from "./models/namespace-constraints";
 export * from "./models/namespace-path";
 export * from "./models/neighbor-search-types";
 export * from "./models/ontology-label";
+export * from "./models/rename-namespace-plan";
 export * from "./persistence/index";
 export * from "./provenance/index";
 export * from "./search-meta-constants";

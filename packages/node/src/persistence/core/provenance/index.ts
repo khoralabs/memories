@@ -13,6 +13,7 @@ export {
   nextProvenanceRoot,
   provenanceChainLink,
   provenanceEventLeaf,
+  type RenameNamespaceProvenanceEvent,
 } from "./hash-chain";
 export {
   computeSourceMapContentHash,

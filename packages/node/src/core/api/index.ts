@@ -11,9 +11,13 @@ export type {
 export {
   assertNamespaceCountAllowsNew,
   assertNamespacePath,
+  assertRenameRespectsMaxNamespaces,
+  buildRenameNamespaceMap,
   canonicalizeNamespacePrefixes,
+  collectRenameSourceNamespaces,
   formatLabelPropsForSearch,
   isPrefixOf,
+  mapNamespaceUnderRename,
   NAMESPACE_MAX_DEPTH,
   NAMESPACE_SEGMENT_REGEX,
   NAMESPACE_SEPARATOR,
@@ -61,6 +65,12 @@ export type {
 } from "../models/delete-namespace";
 export { deleteNamespace } from "../models/delete-namespace";
 export { deleteNamespaceAsync } from "../models/delete-namespace-async";
+export type {
+  RenameNamespaceParams,
+  RenameNamespaceResult,
+} from "../models/rename-namespace";
+export { renameNamespace } from "../models/rename-namespace";
+export { renameNamespaceAsync } from "../models/rename-namespace-async";
 export * from "./client";
 export * from "./client-async";
 export type {

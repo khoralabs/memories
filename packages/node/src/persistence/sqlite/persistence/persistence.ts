@@ -66,6 +66,7 @@ import { insertNodeLabelAssignment } from "./models/node-label-assignments";
 import { ensureNodeLabel } from "./models/node-labels";
 import { nodeExists, upsertNodeForMemoryKey } from "./models/nodes";
 import { type MemoriesSqliteStmts, prepareMemoriesSqliteStmts } from "./models/prepared-stmts";
+import { renameNamespacePaths as renameNamespacePathsQuery } from "./models/rename-namespace";
 import {
   linkScopes as linkScopesRow,
   listScopesForMemory as listScopesForMemoryRow,
@@ -142,6 +143,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     op: MemoryOpContext,
     input: {
       namespace: string;
+      alias?: string | null;
       displayName?: string | null;
       description?: string;
     },
@@ -151,6 +153,13 @@ export class MemoriesPersistence implements IMemoriesPersistence {
 
   deleteNamespaceMetadata(op: MemoryOpContext, namespace: string): void {
     deleteNamespaceMetadataQuery(this.db, op, namespace);
+  }
+
+  renameNamespacePaths(
+    op: MemoryOpContext,
+    input: { nsMap: ReadonlyMap<string, string> },
+  ): { renamedMemories: number } {
+    return renameNamespacePathsQuery(this.ctx(op), input.nsMap);
   }
 
   linkScopes(op: MemoryOpContext, input: { parentScopeId: string; childScopeId: string }): void {

@@ -17,6 +17,11 @@ import {
   deleteNamespace as deleteNamespaceHandler,
 } from "../models/delete-namespace";
 import {
+  type RenameNamespaceParams,
+  type RenameNamespaceResult,
+  renameNamespace as renameNamespaceHandler,
+} from "../models/rename-namespace";
+import {
   type MergeMemoryParams,
   type MutationCtx,
   mergeMemory,
@@ -174,6 +179,11 @@ export class MemoriesClient<
   /** Deletes a namespace (default recursive) and cascaded memories/metadata. */
   deleteNamespace(params: DeleteNamespaceParams): DeleteNamespaceResult {
     return deleteNamespaceHandler(this.mutationCtx, params);
+  }
+
+  /** Literal path rename with bulk id rematerialization (default recursive). */
+  renameNamespace(params: RenameNamespaceParams): RenameNamespaceResult {
+    return renameNamespaceHandler(this.mutationCtx, params);
   }
 
   /** Runs the package `search` function against this store. */

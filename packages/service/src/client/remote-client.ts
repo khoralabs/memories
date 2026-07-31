@@ -174,6 +174,8 @@ export class RemoteMemoriesReadClient {
 
   async upsertNamespaceMetadata(input: {
     namespace: string;
+    alias?: string | null;
+    /** @deprecated Use `alias`. */
     displayName?: string | null;
     description?: string;
   }): Promise<DatabaseNamespaceMetadata> {
@@ -192,6 +194,16 @@ export class RemoteMemoriesReadClient {
     recursive?: boolean;
   }): Promise<{ namespaces: string[]; deletedMemories: number }> {
     return this.#client.postJson("/databases/namespaces/delete", {
+      database: this.#database,
+      ...input,
+    });
+  }
+
+  async renameNamespace(input: { from: string; to: string; recursive?: boolean }): Promise<{
+    namespaces: Array<{ from: string; to: string }>;
+    renamedMemories: number;
+  }> {
+    return this.#client.postJson("/databases/namespaces/rename", {
       database: this.#database,
       ...input,
     });

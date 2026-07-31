@@ -38,6 +38,7 @@ import {
   handleDatabaseMerge,
   handleDatabaseNamespaceDelete,
   handleDatabaseNamespaceGet,
+  handleDatabaseNamespaceRename,
   handleDatabaseNamespaces,
   handleDatabaseNamespaceUpsert,
   handleDatabaseProvenanceHead,
@@ -358,14 +359,21 @@ export async function handleMemoriesServiceHttpRequest(
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
-      return handleDatabaseNamespaceUpsert(opts.service, body, opts.maxNamespaces);
+      return await handleDatabaseNamespaceUpsert(opts.service, body, opts.maxNamespaces);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces/delete") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
-      return handleDatabaseNamespaceDelete(opts.service, body);
+      return await handleDatabaseNamespaceDelete(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/namespaces/rename") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      return await handleDatabaseNamespaceRename(opts.service, body, opts.maxNamespaces);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/edge-preview") {

@@ -25,6 +25,7 @@ service MemoriesPersistenceCore {
         ListScopesForMemory
         UpsertNamespaceMetadata
         DeleteNamespaceMetadata
+        RenameNamespacePaths
         InsertSourceMap
         InsertLexicalFeature
         EnsureNodeLabel
@@ -132,7 +133,7 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 
 **Read helpers:** **ListMemoryNamespaces**, **ListNamespacesWithMetadata**, **GetNamespaceMetadata**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable.
 
-**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY`). Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide).
+**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete + rename) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY` / `RENAME_NAMESPACE`). Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide).
 """)
 service MemoriesPersistenceService {
     version: "2026-07-21"
@@ -150,6 +151,7 @@ service MemoriesPersistenceService {
         ListScopesForMemory
         UpsertNamespaceMetadata
         DeleteNamespaceMetadata
+        RenameNamespacePaths
         InsertSourceMap
         InsertLexicalFeature
         InsertVectorFeature
@@ -343,8 +345,9 @@ operation UpsertNamespaceMetadata {
 structure UpsertNamespaceMetadataInput {
     @required
     namespace: MemoryNamespace
-    /// Pass null to clear (UI uses key). Omit on update to leave unchanged.
-    displayName: String
+    /// Soft-rename label. Pass null to clear (UI uses key). Omit on update to leave unchanged.
+    /// Wire field is `alias` (DB column remains `display_name`).
+    alias: String
     description: String
 }
 
@@ -361,6 +364,21 @@ structure DeleteNamespaceMetadataInput {
 }
 
 structure DeleteNamespaceMetadataOutput {}
+
+operation RenameNamespacePaths {
+    input: RenameNamespacePathsInput
+    output: RenameNamespacePathsOutput
+}
+
+structure RenameNamespacePathsInput {
+    op: MemoryOpContext
+    /// JSON object map of old namespace path → new namespace path.
+    nsMapJson: String
+}
+
+structure RenameNamespacePathsOutput {
+    renamedMemories: Integer
+}
 
 operation LinkScopes {
     input: LinkScopesInput
@@ -1091,6 +1109,9 @@ enum ProvenanceEventType {
 
     @enumValue("DELETE_MEMORY")
     DELETE_MEMORY
+
+    @enumValue("RENAME_NAMESPACE")
+    RENAME_NAMESPACE
 }
 
 structure ContentOutboxEntry {

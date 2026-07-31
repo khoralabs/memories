@@ -1,6 +1,9 @@
 import {
   assertNamespaceCountAllowsNew,
   assertNamespacePath,
+  assertRenameRespectsMaxNamespaces,
+  buildRenameNamespaceMap,
+  collectRenameSourceNamespaces,
   MemoriesClient,
   MemoriesClientAsync,
   type MergeMemoryParams,
@@ -410,6 +413,7 @@ export async function handleDatabaseNamespaceUpsert(
   const scoped = body as {
     database?: unknown;
     namespace?: unknown;
+    alias?: unknown;
     displayName?: unknown;
     description?: unknown;
   };
@@ -424,17 +428,16 @@ export async function handleDatabaseNamespaceUpsert(
   } catch (error) {
     mapNamespaceConstraint(error);
   }
-  const displayName =
-    scoped.displayName === undefined
-      ? undefined
-      : scoped.displayName === null
-        ? null
-        : typeof scoped.displayName === "string"
-          ? scoped.displayName
-          : undefined;
-  if (scoped.displayName !== undefined && displayName === undefined) {
-    throw new HttpError("displayName must be a string or null", 400);
-  }
+  const parseOptionalStringOrNull = (value: unknown, field: string): string | null | undefined => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value === "string") return value;
+    throw new HttpError(`${field} must be a string or null`, 400);
+  };
+  // Canonical wire field is `alias`; `displayName` accepted as deprecated synonym.
+  const aliasFromAlias = parseOptionalStringOrNull(scoped.alias, "alias");
+  const aliasFromDisplayName = parseOptionalStringOrNull(scoped.displayName, "displayName");
+  const alias = aliasFromAlias !== undefined ? aliasFromAlias : aliasFromDisplayName;
   const description =
     scoped.description === undefined
       ? undefined
@@ -448,7 +451,7 @@ export async function handleDatabaseNamespaceUpsert(
   const op = { now: Date.now() };
   const input = {
     namespace,
-    ...(displayName !== undefined ? { displayName } : {}),
+    ...(alias !== undefined ? { alias } : {}),
     ...(description !== undefined ? { description } : {}),
   };
 
@@ -521,6 +524,77 @@ export async function handleDatabaseNamespaceDelete(
   } catch (error) {
     if (error instanceof NamespaceConstraintError) {
       throw new HttpError(error.message, 400);
+    }
+    throw error;
+  }
+}
+
+export async function handleDatabaseNamespaceRename(
+  service: MemoriesDatabaseService,
+  body: unknown,
+  maxNamespaces?: number,
+): Promise<Response> {
+  const scoped = body as {
+    database?: unknown;
+    from?: unknown;
+    to?: unknown;
+    recursive?: unknown;
+  };
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.from !== "string" || scoped.from.trim().length === 0) {
+    throw new HttpError("from is required", 400);
+  }
+  if (typeof scoped.to !== "string" || scoped.to.trim().length === 0) {
+    throw new HttpError("to is required", 400);
+  }
+  let from: string;
+  let to: string;
+  try {
+    from = assertNamespacePath(scoped.from.trim());
+    to = assertNamespacePath(scoped.to.trim());
+  } catch (error) {
+    mapNamespaceConstraint(error);
+  }
+  const recursive = scoped.recursive !== false;
+
+  try {
+    const listed = (await handle.persistence.listNamespacesWithMetadata()).map((n) => n.namespace);
+    const sources = collectRenameSourceNamespaces(listed, from, recursive);
+    const nsMap = buildRenameNamespaceMap(sources, from, to);
+    assertRenameRespectsMaxNamespaces(listed, nsMap, maxNamespaces);
+  } catch (error) {
+    mapNamespaceConstraint(error);
+  }
+
+  const params = { from, to, recursive };
+  try {
+    let result: {
+      namespaces: Array<{ from: string; to: string }>;
+      renamedMemories: number;
+    };
+    if (handle.sync !== undefined) {
+      const client = new MemoriesClient(
+        handle.sync.syncPersistence,
+        { nodeLabels: {}, edgeLabels: {} },
+        { telemetry: handle.telemetry },
+      );
+      result = client.renameNamespace(params);
+    } else {
+      const client = new MemoriesClientAsync(
+        handle.persistence,
+        { nodeLabels: {}, edgeLabels: {} },
+        { telemetry: handle.telemetry },
+      );
+      result = await client.renameNamespace(params);
+    }
+    return Response.json({ ...result, database });
+  } catch (error) {
+    if (error instanceof NamespaceConstraintError) {
+      throw new HttpError(error.message, 400);
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    if (/collision|namespace rename/i.test(message)) {
+      throw new HttpError(message, 400);
     }
     throw error;
   }

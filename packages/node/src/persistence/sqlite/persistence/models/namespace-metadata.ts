@@ -7,16 +7,26 @@ import type {
 
 type NamespaceMetadataRow = {
   id: string;
-  displayName: string | null;
+  alias: string | null;
   description: string;
 };
 
 function rowToInfo(row: NamespaceMetadataRow): NamespaceMetadataInfo {
   return {
     namespace: row.id,
-    displayName: row.displayName,
+    alias: row.alias,
     description: row.description,
   };
+}
+
+/** Resolve canonical alias from upsert input (`alias` wins over deprecated `displayName`). */
+export function resolveAliasPatch(input: {
+  alias?: string | null;
+  displayName?: string | null;
+}): string | null | undefined {
+  if (input.alias !== undefined) return input.alias;
+  if (input.displayName !== undefined) return input.displayName;
+  return undefined;
 }
 
 /** Metadata row for one namespace, or `undefined` if none. */
@@ -27,7 +37,7 @@ export function getNamespaceMetadata(
   const ns = namespacePath(namespace);
   const row = db
     .query<NamespaceMetadataRow, [string]>(
-      `SELECT _id AS id, display_name AS displayName, description
+      `SELECT _id AS id, display_name AS alias, description
        FROM namespace_metadata WHERE _id = ?`,
     )
     .get(ns);
@@ -36,18 +46,18 @@ export function getNamespaceMetadata(
 
 /**
  * Union of namespaces with memories and/or metadata, sorted by path.
- * Memory-only keys get `displayName: null` and empty `description`.
+ * Memory-only keys get `alias: null` and empty `description`.
  */
 export function listNamespacesWithMetadata(db: Database): NamespaceMetadataInfo[] {
   const byKey = new Map<string, NamespaceMetadataInfo>();
   for (const { namespace } of db
     .query<{ namespace: string }, []>(`SELECT DISTINCT namespace FROM memories`)
     .all()) {
-    byKey.set(namespace, { namespace, displayName: null, description: "" });
+    byKey.set(namespace, { namespace, alias: null, description: "" });
   }
   for (const row of db
     .query<NamespaceMetadataRow, []>(
-      `SELECT _id AS id, display_name AS displayName, description FROM namespace_metadata`,
+      `SELECT _id AS id, display_name AS alias, description FROM namespace_metadata`,
     )
     .all()) {
     byKey.set(row.id, rowToInfo(row));
@@ -61,19 +71,20 @@ export function upsertNamespaceMetadata(
   op: MemoryOpContext,
   input: {
     namespace: string;
+    alias?: string | null;
     displayName?: string | null;
     description?: string;
   },
 ): void {
   const ns = namespacePath(input.namespace);
   const existing = db
-    .query<{ displayName: string | null; description: string }, [string]>(
-      `SELECT display_name AS displayName, description FROM namespace_metadata WHERE _id = ?`,
+    .query<{ alias: string | null; description: string }, [string]>(
+      `SELECT display_name AS alias, description FROM namespace_metadata WHERE _id = ?`,
     )
     .get(ns);
 
-  const displayName =
-    input.displayName !== undefined ? input.displayName : (existing?.displayName ?? null);
+  const aliasPatch = resolveAliasPatch(input);
+  const alias = aliasPatch !== undefined ? aliasPatch : (existing?.alias ?? null);
   const description =
     input.description !== undefined ? input.description : (existing?.description ?? "");
 
@@ -82,14 +93,14 @@ export function upsertNamespaceMetadata(
       `UPDATE namespace_metadata
        SET display_name = ?, description = ?, _ts_updated = ?
        WHERE _id = ?`,
-      [displayName, description, op.now, ns],
+      [alias, description, op.now, ns],
     );
     return;
   }
   db.run(
     `INSERT INTO namespace_metadata (_id, display_name, description, _ts_created, _ts_updated)
      VALUES (?, ?, ?, ?, ?)`,
-    [ns, displayName, description, op.now, op.now],
+    [ns, alias, description, op.now, op.now],
   );
 }
 
