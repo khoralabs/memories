@@ -9,6 +9,7 @@ import type {
   NamespaceMetadataInfo,
   NeighborFilter,
   OntologyLabelInstance,
+  SearchAsOf,
   SearchNamespaceScope,
 } from "../../../persistence/core";
 import { namespacePath } from "../../../persistence/core/models/namespace-path";
@@ -491,7 +492,7 @@ export class MemoriesTursoServerlessPersistence {
     text: string;
     limit: number;
     memoryIds?: string[];
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
   }): Promise<string[]> {
     return searchLexicalSourceMapIds(this.readDbCtx(), input);
   }
@@ -502,7 +503,7 @@ export class MemoriesTursoServerlessPersistence {
     limit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
     method: "knn" | "ann";
   }): Promise<{ sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" }> {
     if (input.method === "ann" && !this.capabilities.vectorAnnSearch) {

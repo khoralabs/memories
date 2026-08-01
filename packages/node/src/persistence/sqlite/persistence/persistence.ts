@@ -8,6 +8,7 @@ import type {
   MemoryOpContext,
   NamespaceMetadataInfo,
   NeighborFilter,
+  SearchAsOf,
   SearchNamespaceScope,
 } from "../../../persistence/core";
 import type { SourceMap, TextFeatureExportRow } from "../../../persistence/core/persistence";
@@ -434,7 +435,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     text: string;
     limit: number;
     memoryIds?: string[];
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
   }): string[] {
     return searchLexicalSourceMapIds(this.readCtx(), input);
   }
@@ -445,7 +446,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     limit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
     method: "knn" | "ann";
   }): { sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" } {
     if (input.method === "ann" && !this.capabilities.vectorAnnSearch) {

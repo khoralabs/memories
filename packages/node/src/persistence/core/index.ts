@@ -8,4 +8,5 @@ export * from "./models/ontology-label";
 export * from "./models/rename-namespace-plan";
 export * from "./persistence/index";
 export * from "./provenance/index";
+export * from "./search-asof";
 export * from "./search-meta-constants";

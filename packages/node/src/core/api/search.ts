@@ -3,11 +3,13 @@ import type {
   MemoryGraphAssociation,
   NeighborFilter,
   OntologyLabelInstance,
+  SearchAsOf,
 } from "../../persistence/core";
 import {
   canonicalizeNamespacePrefixes,
   type NamespacePath,
   namespacePath,
+  normalizeSearchAsOf,
 } from "../../persistence/core";
 import type {
   Edge,
@@ -25,6 +27,8 @@ import {
 import { runWithOpTelemetrySync } from "../../telemetry/index.js";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import type { MutationCtx } from "./merge-memory";
+
+export type { SearchAsOf };
 
 /** When `true`, expand with no neighbor edge filters (any label, any direction). `false` omits neighbors. */
 export type NeighborSearchOption<
@@ -89,7 +93,12 @@ export interface SearchParams<
     vectorSearchMethod?: VectorSearchMethod;
   };
   /**
-   * When set, only memories with `_ts_created <= asOfTimestampMs` participate in retrieval.
+   * Bounds on `memories._ts_created` (`gt` / `gte` / `lt` / `lte`).
+   * Requires persistence {@link MemoriesBackendCapabilities.asOfTimestampMsSearch}.
+   */
+  asOf?: SearchAsOf;
+  /**
+   * @deprecated Prefer `asOf: { lte }`. Alias for `{ lte: asOfTimestampMs }`.
    * Requires persistence {@link MemoriesBackendCapabilities.asOfTimestampMsSearch}.
    */
   asOfTimestampMs?: number;
@@ -217,13 +226,12 @@ function rankSourceMapIdsForContent(
     retrievalLimit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
     vectorSearchMethod?: VectorSearchMethod;
   },
 ): { fused: Array<{ id: string; score: number }>; vectorSearchMethod?: VectorSearchMethod } {
   const { scope } = input;
-  const asOf = input.asOfTimestampMs;
-  const asOfSpread = asOf !== undefined ? { asOfTimestampMs: asOf } : {};
+  const asOfSpread = input.asOf !== undefined ? { asOf: input.asOf } : {};
   const resolvedMethod = resolveVectorSearchMethod(input.vectorSearchMethod, caps);
   let usedMethod: VectorSearchMethod | undefined;
 
@@ -334,7 +342,7 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
     neighborFilters: NeighborFilter<EDGE_LABELS, NODE_LABELS> | undefined;
     maxNeighbors: number | undefined;
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
     vectorSearchMethod?: VectorSearchMethod;
   },
 ): SearchNeighborHit<NODE_LABELS, EDGE_LABELS>[] {
@@ -380,7 +388,7 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
     ...(input.maxVectorDistance !== undefined
       ? { maxVectorDistance: input.maxVectorDistance }
       : {}),
-    ...(input.asOfTimestampMs !== undefined ? { asOfTimestampMs: input.asOfTimestampMs } : {}),
+    ...(input.asOf !== undefined ? { asOf: input.asOf } : {}),
     ...(input.vectorSearchMethod !== undefined
       ? { vectorSearchMethod: input.vectorSearchMethod }
       : {}),
@@ -460,9 +468,13 @@ function searchInner<NODE_LABELS extends string = string, EDGE_LABELS extends st
 
   const { scope } = normalizeSearchScopeFromParams(params, caps);
 
-  if (params.asOfTimestampMs !== undefined && caps.asOfTimestampMsSearch !== true) {
+  const asOf = normalizeSearchAsOf({
+    ...(params.asOf !== undefined ? { asOf: params.asOf } : {}),
+    ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
+  });
+  if (asOf !== undefined && caps.asOfTimestampMsSearch !== true) {
     throw new Error(
-      "SearchParams.asOfTimestampMs requires a persistence backend that sets capabilities.asOfTimestampMsSearch",
+      "SearchParams.asOf / asOfTimestampMs requires a persistence backend that sets capabilities.asOfTimestampMsSearch",
     );
   }
 
@@ -480,7 +492,7 @@ function searchInner<NODE_LABELS extends string = string, EDGE_LABELS extends st
     vectorWeight,
     retrievalLimit,
     ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
-    ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
+    ...(asOf !== undefined ? { asOf } : {}),
     ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
   });
   if (fused.length === 0) {
@@ -529,7 +541,7 @@ function searchInner<NODE_LABELS extends string = string, EDGE_LABELS extends st
       neighborFilters,
       maxNeighbors,
       ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
-      ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
+      ...(asOf !== undefined ? { asOf } : {}),
       ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
     }),
   }));

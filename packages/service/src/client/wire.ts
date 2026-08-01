@@ -70,6 +70,13 @@ export type SearchParamsWire = {
     maxVectorDistance?: number;
     vectorSearchMethod?: "knn" | "ann";
   };
+  asOf?: {
+    gt?: number;
+    gte?: number;
+    lt?: number;
+    lte?: number;
+  };
+  /** @deprecated Prefer `asOf: { lte }`. */
   asOfTimestampMs?: number;
 };
 

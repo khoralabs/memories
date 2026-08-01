@@ -722,8 +722,8 @@ structure SearchLexicalSourceMapIdsInput {
     text: String
     limit: Integer
     memoryIds: StringList
-    /// Only memories with `_ts_created <= asOfTimestampMs` participate (backend-dependent).
-    asOfTimestampMs: Long
+    /// Bounds on `memories._ts_created` (backend-dependent).
+    asOf: SearchAsOf
 }
 
 structure SearchLexicalSourceMapIdsOutput {
@@ -743,8 +743,8 @@ structure SearchVectorSourceMapIdsInput {
     memoryIds: StringList
     /// Distance upper bound; omit = top-k without a distance cutoff.
     maxVectorDistance: Double
-    /// Only memories with `_ts_created <= asOfTimestampMs` participate (backend-dependent).
-    asOfTimestampMs: Long
+    /// Bounds on `memories._ts_created` (backend-dependent).
+    asOf: SearchAsOf
     /// Resolved method from core (`knn` or `ann`). Unsupported → empty ids.
     method: VectorSearchMethod
 }

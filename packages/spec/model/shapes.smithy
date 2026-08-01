@@ -154,7 +154,7 @@ When a flag is false, the logic layer:
 - **graphIndex:** graph topology reads on persistence return empty lists/maps.
 - **multiNamespaceSearch:** core runs separate per-namespace retrieval and merges with RRF (no `IN` list required).
 - **unscopedSearch:** rejects `searchEntireDatabase` on SearchParams; unscoped scope is not used.
-- **asOfTimestampMsSearch:** when true, `SearchParams.asOfTimestampMs` is applied; when omitted/false, as-of search is rejected.
+- **asOfTimestampMsSearch:** when true, `SearchParams.asOf` / deprecated `asOfTimestampMs` is applied; when omitted/false, as-of search is rejected.
 
 Thin single-namespace adapters should set **multiNamespaceSearch** false; core still works via fallback.
 """)
@@ -175,7 +175,7 @@ structure MemoriesBackendCapabilities {
     multiNamespaceSearch: Boolean
     /// When false, `searchEntireDatabase` on SearchParams is rejected.
     unscopedSearch: Boolean
-    /// When true, hybrid search honors `asOfTimestampMs` (memory `_ts_created` cutoff).
+    /// When true, hybrid search honors `asOf` / deprecated `asOfTimestampMs` (memory `_ts_created` bounds).
     asOfTimestampMsSearch: Boolean
 }
 
@@ -407,6 +407,17 @@ enum SearchScopeMode {
     EXACT_SCOPE
 }
 
+structure SearchAsOf {
+    /// `_ts_created > gt`
+    gt: Long
+    /// `_ts_created >= gte`
+    gte: Long
+    /// `_ts_created < lt`
+    lt: Long
+    /// `_ts_created <= lte`
+    lte: Long
+}
+
 structure SearchParams {
     namespace: MemoryNamespace
     additionalNamespaces: MemoryNamespaceList
@@ -415,7 +426,9 @@ structure SearchParams {
     searchScopeMode: SearchScopeMode
     content: SearchContent
     options: SearchOptions
-    /// Only memories with `_ts_created <= asOfTimestampMs` participate. Requires `asOfTimestampMsSearch`.
+    /// Bounds on `memories._ts_created` (`gt` / `gte` / `lt` / `lte`). Requires `asOfTimestampMsSearch`.
+    asOf: SearchAsOf
+    /// Deprecated alias for `asOf.lte`. Requires `asOfTimestampMsSearch`.
     asOfTimestampMs: Long
 }
 

@@ -1,6 +1,8 @@
 import {
+  asOfSqlClause,
   canonicalizeNamespacePrefixes,
   namespacePath,
+  type SearchAsOf,
   type SearchNamespaceScope,
 } from "../../../persistence/core";
 
@@ -107,13 +109,12 @@ function memoryDiscoveryVisibleSql(tableAlias?: string): string {
 export function memoriesWhereClauseFromScope(
   scope: SearchNamespaceScope,
   memoryIds: string[] | undefined,
-  asOfTimestampMs?: number,
+  asOf?: SearchAsOf,
   tableAlias?: string,
 ): { sql: string; bindings: unknown[] } {
   const col = (name: string) => (tableAlias ? `${tableAlias}.${name}` : name);
   const visible = ` AND ${memoryDiscoveryVisibleSql(tableAlias)}`;
-  const asOfClause = asOfTimestampMs !== undefined ? ` AND ${col("_ts_created")} <= ?` : "";
-  const asOfBind: unknown[] = asOfTimestampMs !== undefined ? [asOfTimestampMs] : [];
+  const { sql: asOfClause, bindings: asOfBind } = asOfSqlClause(asOf, col("_ts_created"));
 
   const idClause =
     memoryIds === undefined ? "" : ` AND ${col("_id")} IN (${placeholders(memoryIds.length)})`;
@@ -170,13 +171,13 @@ export function memoriesWhereClauseFromScope(
 export function memoryIdSubqueryFromScope(
   scope: SearchNamespaceScope,
   memoryIds: string[] | undefined,
-  asOfTimestampMs?: number,
+  asOf?: SearchAsOf,
   featureAlias?: string,
 ): { sql: string; bindings: unknown[] } {
   const { sql: innerSql, bindings } = memoriesWhereClauseFromScope(
     scope,
     memoryIds,
-    asOfTimestampMs,
+    asOf,
     "memories",
   );
   const memoryCol = featureAlias ? `${featureAlias}.memory_id` : "memory_id";

@@ -6,6 +6,7 @@ import {
   type NeighborNodesFilter,
   namespacePath,
   type OntologyLabelInstance,
+  type SearchAsOf,
   type SearchNamespaceScope,
 } from "../../../../persistence/core";
 import type { Edge, Memory } from "../../../../persistence/core/persistence";
@@ -84,7 +85,7 @@ export async function searchLexicalSourceMapIds(
     text: string;
     limit: number;
     memoryIds?: string[];
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
   },
 ): Promise<string[]> {
   if (input.text.length === 0) return [];
@@ -96,7 +97,7 @@ export async function searchLexicalSourceMapIds(
   const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
     input.scope,
     input.memoryIds,
-    input.asOfTimestampMs,
+    input.asOf,
   );
 
   const params: unknown[] = [matchExpr, ...memBindings, input.limit];
@@ -122,7 +123,7 @@ export async function searchVectorSourceMapIds(
     limit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
     method: "knn" | "ann";
   },
 ): Promise<{ sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" }> {
@@ -151,7 +152,7 @@ async function searchVectorScoped(
     limit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
   },
 ): Promise<string[]> {
   const vectorJson = vector32Json(input.vector);
@@ -160,7 +161,7 @@ async function searchVectorScoped(
   const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
     input.scope,
     input.memoryIds,
-    input.asOfTimestampMs,
+    input.asOf,
     "vf",
   );
 
@@ -197,13 +198,13 @@ async function searchVectorAnn(
     limit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
   },
 ): Promise<string[]> {
   const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
     input.scope,
     input.memoryIds,
-    input.asOfTimestampMs,
+    input.asOf,
     "vf",
   );
   const maxD = input.maxVectorDistance;

@@ -507,6 +507,137 @@ export function runMemoriesPersistenceContractTests(
       });
     });
 
+    describe("asOf search", () => {
+      test("asOfTimestampMs=0 excludes all memories", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.vectorSearch || caps.asOfTimestampMsSearch !== true) return;
+
+        const namespace = uniqueNs("contract/vec/asof");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "mem",
+            namespace: namespacePath(namespace),
+            content: [{ key: "body", vector: makeVec(1.0) }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const { hits } = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { vector: makeVec(1.0) },
+            options: { topK: 10, arms: { vector: 1, lexical: 0 } },
+            asOfTimestampMs: 0,
+          },
+        );
+        expect(hits).toHaveLength(0);
+      });
+
+      test("asOf.lte / asOfTimestampMs alias and gt/range filter by _ts_created", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.lexicalSearch || caps.asOfTimestampMsSearch !== true) return;
+
+        const namespace = uniqueNs("contract/lex/asof-ops");
+        const marker = `asof_ops_${Math.random().toString(36).slice(2, 10)}`;
+
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "early",
+            namespace: namespacePath(namespace),
+            content: [{ key: "body", text: marker }],
+            labels: [],
+            edges: [],
+          },
+        );
+        const earlyCutoff = Date.now();
+        await Bun.sleep(25);
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "late",
+            namespace: namespacePath(namespace),
+            content: [{ key: "body", text: `${marker} late` }],
+            labels: [],
+            edges: [],
+          },
+        );
+        const lateCutoff = Date.now();
+
+        const lex = { arms: { lexical: 1, vector: 0 } as const, topK: 10 };
+
+        const { hits: full } = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { text: marker },
+            options: lex,
+          },
+        );
+        expect(full.map((h) => h.memory.key).sort()).toEqual(["early", "late"]);
+
+        const { hits: aliasHits } = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { text: marker },
+            options: lex,
+            asOfTimestampMs: earlyCutoff,
+          },
+        );
+        expect(aliasHits.map((h) => h.memory.key)).toEqual(["early"]);
+
+        const { hits: lteHits } = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { text: marker },
+            options: lex,
+            asOf: { lte: earlyCutoff },
+          },
+        );
+        expect(lteHits.map((h) => h.memory.key)).toEqual(["early"]);
+
+        const { hits: gtHits } = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { text: marker },
+            options: lex,
+            asOf: { gt: earlyCutoff },
+          },
+        );
+        expect(gtHits.map((h) => h.memory.key)).toEqual(["late"]);
+
+        const { hits: rangeBoth } = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { text: marker },
+            options: lex,
+            asOf: { gte: 0, lte: lateCutoff },
+          },
+        );
+        expect(rangeBoth.map((h) => h.memory.key).sort()).toEqual(["early", "late"]);
+
+        const { hits: rangeEarly } = await searchAsync(
+          { persistence },
+          {
+            namespace: namespacePath(namespace),
+            content: { text: marker },
+            options: lex,
+            asOf: { gte: 0, lt: earlyCutoff + 1 },
+          },
+        );
+        expect(rangeEarly.map((h) => h.memory.key)).toEqual(["early"]);
+      });
+    });
+
     describe("vector search", () => {
       test("pathSubtree returns only in-namespace vectors", async () => {
         const persistence = await create();
@@ -633,35 +764,6 @@ export function runMemoriesPersistenceContractTests(
         const keys = new Set(hits.map((h) => h.memory.key));
         expect(keys.has("mem-a")).toBe(true);
         expect(keys.has("mem-b")).toBe(true);
-      });
-
-      test("asOfTimestampMs=0 excludes all memories", async () => {
-        const persistence = await create();
-        const caps = resolveMemoriesBackendCapabilities(persistence);
-        if (!caps.vectorSearch || caps.asOfTimestampMsSearch !== true) return;
-
-        const namespace = uniqueNs("contract/vec/asof");
-        await mergeMemoryAsync(
-          { persistence },
-          {
-            key: "mem",
-            namespace: namespacePath(namespace),
-            content: [{ key: "body", vector: makeVec(1.0) }],
-            labels: [],
-            edges: [],
-          },
-        );
-
-        const { hits } = await searchAsync(
-          { persistence },
-          {
-            namespace: namespacePath(namespace),
-            content: { vector: makeVec(1.0) },
-            options: { topK: 10, arms: { vector: 1, lexical: 0 } },
-            asOfTimestampMs: 0,
-          },
-        );
-        expect(hits).toHaveLength(0);
       });
 
       test("topK limits vector hits", async () => {

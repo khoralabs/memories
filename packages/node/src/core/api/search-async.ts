@@ -3,7 +3,9 @@ import type {
   NamespacePath,
   NeighborFilter,
   OntologyLabelInstance,
+  SearchAsOf,
 } from "../../persistence/core";
+import { normalizeSearchAsOf } from "../../persistence/core";
 import type {
   MemoriesBackendCapabilities,
   MemoriesPersistenceAsync,
@@ -27,6 +29,7 @@ import {
 
 export type {
   NeighborSearchOption,
+  SearchAsOf,
   SearchContent,
   SearchHit,
   SearchNeighborHit,
@@ -69,7 +72,7 @@ async function rankSourceMapIdsForContentAsync(
     retrievalLimit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
     vectorSearchMethod?: VectorSearchMethod;
   },
 ): Promise<{
@@ -77,8 +80,7 @@ async function rankSourceMapIdsForContentAsync(
   vectorSearchMethod?: VectorSearchMethod;
 }> {
   const { scope } = input;
-  const asOf = input.asOfTimestampMs;
-  const asOfSpread = asOf !== undefined ? { asOfTimestampMs: asOf } : {};
+  const asOfSpread = input.asOf !== undefined ? { asOf: input.asOf } : {};
   const resolvedMethod = resolveVectorSearchMethod(input.vectorSearchMethod, caps);
   let usedMethod: VectorSearchMethod | undefined;
 
@@ -191,7 +193,7 @@ async function expandNeighborsWithSubSearchAsync<
     neighborFilters: NeighborFilter<EDGE_LABELS, NODE_LABELS> | undefined;
     maxNeighbors: number | undefined;
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
     vectorSearchMethod?: VectorSearchMethod;
   },
 ): Promise<SearchNeighborHit<NODE_LABELS, EDGE_LABELS>[]> {
@@ -230,7 +232,7 @@ async function expandNeighborsWithSubSearchAsync<
     ...(input.maxVectorDistance !== undefined
       ? { maxVectorDistance: input.maxVectorDistance }
       : {}),
-    ...(input.asOfTimestampMs !== undefined ? { asOfTimestampMs: input.asOfTimestampMs } : {}),
+    ...(input.asOf !== undefined ? { asOf: input.asOf } : {}),
     ...(input.vectorSearchMethod !== undefined
       ? { vectorSearchMethod: input.vectorSearchMethod }
       : {}),
@@ -316,9 +318,13 @@ async function searchAsyncInner<
 
   const { scope } = normalizeSearchScopeFromParams(params, caps);
 
-  if (params.asOfTimestampMs !== undefined && caps.asOfTimestampMsSearch !== true) {
+  const asOf = normalizeSearchAsOf({
+    ...(params.asOf !== undefined ? { asOf: params.asOf } : {}),
+    ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
+  });
+  if (asOf !== undefined && caps.asOfTimestampMsSearch !== true) {
     throw new Error(
-      "SearchParams.asOfTimestampMs requires a persistence backend that sets capabilities.asOfTimestampMsSearch",
+      "SearchParams.asOf / asOfTimestampMs requires a persistence backend that sets capabilities.asOfTimestampMsSearch",
     );
   }
 
@@ -339,7 +345,7 @@ async function searchAsyncInner<
       vectorWeight,
       retrievalLimit,
       ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
-      ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
+      ...(asOf !== undefined ? { asOf } : {}),
       ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
     },
   );
@@ -392,9 +398,7 @@ async function searchAsyncInner<
           neighborFilters,
           maxNeighbors,
           ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
-          ...(params.asOfTimestampMs !== undefined
-            ? { asOfTimestampMs: params.asOfTimestampMs }
-            : {}),
+          ...(asOf !== undefined ? { asOf } : {}),
           ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
         },
       ),

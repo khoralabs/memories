@@ -107,6 +107,7 @@ export * from "./merge-memory-async";
 export * from "./resolve-sourcemap";
 export type {
   NeighborSearchOption,
+  SearchAsOf,
   SearchContent,
   SearchHit,
   SearchNeighborHit,

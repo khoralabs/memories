@@ -10,6 +10,7 @@ import type {
   MemoryProvenanceEvent,
   SourceMapBodyParts,
 } from "../provenance/index";
+import type { SearchAsOf } from "../search-asof";
 import type { MemoryKind, SourceMap, TextFeatureExportRow } from "./row-schemas";
 
 /** Timestamp context for writes and validators that use `_ts_created`. */
@@ -115,8 +116,8 @@ export type MemoriesBackendCapabilities = {
   /** When `true`, retrieval can run without a namespace predicate (entire DB). Required for `searchEntireDatabase` on `SearchParams`. */
   unscopedSearch: boolean;
   /**
-   * When `true`, {@link SearchParams.asOfTimestampMs} is applied to hybrid search (memory `_ts_created` cutoff).
-   * Backends that omit this key are treated as unsupported for as-of search.
+   * When `true`, hybrid search honors `SearchParams.asOf` / deprecated `asOfTimestampMs`
+   * (memory `_ts_created` bounds). Backends that omit this key are treated as unsupported.
    */
   asOfTimestampMsSearch?: boolean;
 };
@@ -474,8 +475,8 @@ export interface MemoriesRetrieval {
     text: string;
     limit: number;
     memoryIds?: string[];
-    /** Only memories with `_ts_created <= asOfTimestampMs` participate (backend-dependent). */
-    asOfTimestampMs?: number;
+    /** Bounds on `memories._ts_created` (backend-dependent). */
+    asOf?: SearchAsOf;
   }): string[];
 
   searchVectorSourceMapIds(input: {
@@ -485,8 +486,8 @@ export interface MemoriesRetrieval {
     memoryIds?: string[];
     /** Distance upper bound; omit = return top‑k without a distance cutoff. */
     maxVectorDistance?: number;
-    /** Only memories with `_ts_created <= asOfTimestampMs` participate (backend-dependent). */
-    asOfTimestampMs?: number;
+    /** Bounds on `memories._ts_created` (backend-dependent). */
+    asOf?: SearchAsOf;
     /** Resolved method from core; unsupported → empty `sourceMapIds`. */
     method: VectorSearchMethod;
   }): SearchVectorSourceMapIdsResult;

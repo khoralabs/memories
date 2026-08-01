@@ -1,6 +1,11 @@
 import type { SQLQueryBindings } from "bun:sqlite";
-import type { HydratedNeighbor, HydratedSourceMapHit } from "../../../../persistence/core";
+import type {
+  HydratedNeighbor,
+  HydratedSourceMapHit,
+  SearchAsOf,
+} from "../../../../persistence/core";
 import {
+  asOfSqlClause,
   canonicalizeNamespacePrefixes,
   ids,
   type NeighborConstraint,
@@ -163,11 +168,10 @@ function memoryDiscoveryVisibleSql(): string {
 function memoriesWhereClauseFromScope(
   scope: SearchNamespaceScope,
   memoryIds: string[] | undefined,
-  asOfTimestampMs?: number,
+  asOf?: SearchAsOf,
 ): { sql: string; bindings: SQLQueryBindings[] } {
   const visible = ` AND ${memoryDiscoveryVisibleSql()}`;
-  const asOfClause = asOfTimestampMs !== undefined ? " AND _ts_created <= ?" : "";
-  const asOfBind: SQLQueryBindings[] = asOfTimestampMs !== undefined ? [asOfTimestampMs] : [];
+  const { sql: asOfClause, bindings: asOfBind } = asOfSqlClause(asOf, "_ts_created");
 
   const idClause = memoryIds === undefined ? "" : ` AND _id IN (${placeholders(memoryIds.length)})`;
   const idBindings: SQLQueryBindings[] = memoryIds === undefined ? [] : [...memoryIds];
@@ -224,13 +228,9 @@ function memoriesWhereClauseFromScope(
 function memoryIdSubqueryFromScope(
   scope: SearchNamespaceScope,
   memoryIds: string[] | undefined,
-  asOfTimestampMs?: number,
+  asOf?: SearchAsOf,
 ): { sql: string; bindings: SQLQueryBindings[] } {
-  const { sql: innerSql, bindings } = memoriesWhereClauseFromScope(
-    scope,
-    memoryIds,
-    asOfTimestampMs,
-  );
+  const { sql: innerSql, bindings } = memoriesWhereClauseFromScope(scope, memoryIds, asOf);
   return {
     sql: `memory_id IN (SELECT memories._id FROM memories WHERE ${innerSql})`,
     bindings,
@@ -244,7 +244,7 @@ export function searchLexicalSourceMapIds(
     text: string;
     limit: number;
     memoryIds?: string[];
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
   },
 ): string[] {
   if (input.text.length === 0) return [];
@@ -256,7 +256,7 @@ export function searchLexicalSourceMapIds(
   const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
     input.scope,
     input.memoryIds,
-    input.asOfTimestampMs,
+    input.asOf,
   );
 
   const params: SQLQueryBindings[] = [matchExpr, ...memBindings, input.limit];
@@ -283,7 +283,7 @@ export function searchVectorSourceMapIds(
     memoryIds?: string[];
     /** sqlite‑vec KNN distance; rows with larger distance are excluded. */
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
     method: "knn" | "ann";
   },
 ): { sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" } {
@@ -311,7 +311,7 @@ function searchVectorAnn(
     limit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
   },
 ): string[] {
   const tableName = vectorVecTableName(input.vector.length);
@@ -328,7 +328,7 @@ function searchVectorAnn(
   const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
     input.scope,
     input.memoryIds,
-    input.asOfTimestampMs,
+    input.asOf,
   );
 
   const params: SQLQueryBindings[] = [JSON.stringify(input.vector), input.limit];
@@ -376,7 +376,7 @@ function searchVectorKnn(
     limit: number;
     memoryIds?: string[];
     maxVectorDistance?: number;
-    asOfTimestampMs?: number;
+    asOf?: SearchAsOf;
   },
 ): string[] {
   const queryVec = vectorToBlob(new Float32Array(input.vector));
@@ -385,7 +385,7 @@ function searchVectorKnn(
   const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
     input.scope,
     input.memoryIds,
-    input.asOfTimestampMs,
+    input.asOf,
   );
 
   const maxD = input.maxVectorDistance;
