@@ -28,11 +28,16 @@ export type NamespaceUmapInput = {
   labelsByKey: Array<[string, OntologyLabelInstance[]]>;
   propertiesByKey: Array<[string, Record<string, unknown> | null]>;
   provenanceHeadRootHex?: string;
+  /** Echoes collect option when suppressed entities were requested. */
+  includeSuppressed?: boolean;
+  /** Node memory keys that are suppressed (qualified in subtree mode). */
+  suppressedKeys?: string[];
 };
 
 export type CollectUmapInputOptions = {
   scope?: UmapInputScope;
   provenanceHeadRootHex?: string;
+  includeSuppressed?: boolean;
 };
 
 export type EncodeUmapInputOptions = {
@@ -88,6 +93,7 @@ function validateLabels(value: unknown, label: string): OntologyLabelInstance[] 
 
 function validateGraphEdge(value: unknown, label: string): GraphLayoutEdge {
   const record = assertRecord(value, label);
+  const suppressed = assertOptionalBoolean(record.suppressed, `${label}.suppressed`);
   return {
     edgeId: assertString(record.edgeId, `${label}.edgeId`),
     fromKey: assertString(record.fromKey, `${label}.fromKey`),
@@ -96,6 +102,7 @@ function validateGraphEdge(value: unknown, label: string): GraphLayoutEdge {
     ...(record.directed !== undefined
       ? { directed: assertOptionalBoolean(record.directed, `${label}.directed`) }
       : {}),
+    ...(suppressed === true ? { suppressed: true } : {}),
   };
 }
 
@@ -103,10 +110,12 @@ function validateEmbedding(value: unknown, label: string): GraphMemoryEmbedding 
   const record = assertRecord(value, label);
   const embedding = record.embedding;
   if (!Array.isArray(embedding)) throw new Error(`${label}.embedding must be an array`);
+  const suppressed = assertOptionalBoolean(record.suppressed, `${label}.suppressed`);
   return {
     memoryKey: assertString(record.memoryKey, `${label}.memoryKey`),
     memoryId: assertString(record.memoryId, `${label}.memoryId`),
     embedding: embedding.map((item, i) => assertNumber(item, `${label}.embedding[${i}]`)),
+    ...(suppressed === true ? { suppressed: true } : {}),
   };
 }
 
@@ -169,6 +178,21 @@ export function validateUmapInput(value: unknown): NamespaceUmapInput {
       "NamespaceUmapInput.provenanceHeadRootHex",
     );
   }
+  const includeSuppressed = assertOptionalBoolean(
+    record.includeSuppressed,
+    "NamespaceUmapInput.includeSuppressed",
+  );
+  if (includeSuppressed === true) {
+    input.includeSuppressed = true;
+  }
+  if (record.suppressedKeys !== undefined) {
+    if (!Array.isArray(record.suppressedKeys)) {
+      throw new Error("NamespaceUmapInput.suppressedKeys must be an array");
+    }
+    input.suppressedKeys = record.suppressedKeys.map((key, i) =>
+      assertString(key, `NamespaceUmapInput.suppressedKeys[${i}]`),
+    );
+  }
   return input;
 }
 
@@ -179,6 +203,7 @@ function toLayoutEdge(edge: GraphEdgeLink): GraphLayoutEdge {
     toKey: edge.toKey,
     labels: edge.labels,
     directed: edge.directed,
+    ...(edge.suppressed === true ? { suppressed: true } : {}),
   };
 }
 
@@ -193,6 +218,7 @@ function qualifyEdges(namespace: string, edges: GraphEdgeLink[]): GraphLayoutEdg
     toKey: qualifyMemoryKey(namespace, edge.toKey),
     labels: edge.labels,
     directed: edge.directed,
+    ...(edge.suppressed === true ? { suppressed: true as const } : {}),
   }));
 }
 
@@ -221,30 +247,40 @@ export async function collectNamespaceUmapInput(
   options: CollectUmapInputOptions = {},
 ): Promise<NamespaceUmapInput> {
   const scope = options.scope ?? "exact";
+  const includeOpts =
+    options.includeSuppressed === true ? { includeSuppressed: true as const } : undefined;
   if (scope === "subtree") {
     const namespaces = await source.listNamespacesUnderPrefix(namespace);
     const chunks = await Promise.all(
-      namespaces.map(async (namespace) => {
-        const [edges, embeddings, labelsByKey, propertiesByKey] = await Promise.all([
-          graphReads.loadGraphEdgesForNamespace(namespace),
-          source.loadMeanEmbeddingsForNamespace(namespace),
-          graphReads.loadNodeLabelsForNamespace(namespace),
-          graphReads.loadNodePropertiesForNamespace(namespace),
-        ]);
+      namespaces.map(async (ns) => {
+        const [edges, embeddings, labelsByKey, propertiesByKey, suppressedKeys] = await Promise.all(
+          [
+            graphReads.loadGraphEdgesForNamespace(ns, includeOpts),
+            source.loadMeanEmbeddingsForNamespace(ns, includeOpts),
+            graphReads.loadNodeLabelsForNamespace(ns, includeOpts),
+            graphReads.loadNodePropertiesForNamespace(ns, includeOpts),
+            includeOpts
+              ? graphReads.listSuppressedNodeKeysForNamespace(ns)
+              : Promise.resolve([] as string[]),
+          ],
+        );
         return {
-          edges: qualifyEdges(namespace, edges),
-          embeddings: qualifyEmbeddings(namespace, embeddings),
-          labelsByKey: qualifyMap(namespace, labelsByKey),
-          propertiesByKey: qualifyMap(namespace, propertiesByKey),
+          edges: qualifyEdges(ns, edges),
+          embeddings: qualifyEmbeddings(ns, embeddings),
+          labelsByKey: qualifyMap(ns, labelsByKey),
+          propertiesByKey: qualifyMap(ns, propertiesByKey),
+          suppressedKeys: suppressedKeys.map((key) => qualifyMemoryKey(ns, key)),
         };
       }),
     );
 
     const labelsByKey = new Map<string, OntologyLabelInstance[]>();
     const propertiesByKey = new Map<string, Record<string, unknown> | null>();
+    const suppressedKeys: string[] = [];
     for (const chunk of chunks) {
       for (const [key, labels] of chunk.labelsByKey) labelsByKey.set(key, labels);
       for (const [key, props] of chunk.propertiesByKey) propertiesByKey.set(key, props);
+      suppressedKeys.push(...chunk.suppressedKeys);
     }
 
     return {
@@ -258,14 +294,20 @@ export async function collectNamespaceUmapInput(
       ...(options.provenanceHeadRootHex !== undefined
         ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
         : {}),
+      ...(includeOpts
+        ? { includeSuppressed: true, suppressedKeys: [...new Set(suppressedKeys)].sort() }
+        : {}),
     };
   }
 
-  const [edges, embeddings, labelsByKey, propertiesByKey] = await Promise.all([
-    graphReads.loadGraphEdgesForNamespace(namespace),
-    source.loadMeanEmbeddingsForNamespace(namespace),
-    graphReads.loadNodeLabelsForNamespace(namespace),
-    graphReads.loadNodePropertiesForNamespace(namespace),
+  const [edges, embeddings, labelsByKey, propertiesByKey, suppressedKeys] = await Promise.all([
+    graphReads.loadGraphEdgesForNamespace(namespace, includeOpts),
+    source.loadMeanEmbeddingsForNamespace(namespace, includeOpts),
+    graphReads.loadNodeLabelsForNamespace(namespace, includeOpts),
+    graphReads.loadNodePropertiesForNamespace(namespace, includeOpts),
+    includeOpts
+      ? graphReads.listSuppressedNodeKeysForNamespace(namespace)
+      : Promise.resolve([] as string[]),
   ]);
   return {
     version: UMAP_INPUT_VERSION,
@@ -278,6 +320,7 @@ export async function collectNamespaceUmapInput(
     ...(options.provenanceHeadRootHex !== undefined
       ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
       : {}),
+    ...(includeOpts ? { includeSuppressed: true, suppressedKeys: [...suppressedKeys].sort() } : {}),
   };
 }
 

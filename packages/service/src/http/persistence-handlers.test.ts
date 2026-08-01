@@ -73,8 +73,21 @@ function createFakeProjectionSource() {
     async listNamespacesUnderPrefix(prefix: string) {
       return [prefix];
     },
-    async loadMeanEmbeddingsForNamespace() {
-      return [{ memoryId: "m1", memoryKey: "n1", embedding: [1, 0, 0] }];
+    async loadMeanEmbeddingsForNamespace(
+      _namespace: string,
+      opts?: { includeSuppressed?: boolean },
+    ) {
+      const rows = [
+        { memoryId: "m1", memoryKey: "n1", embedding: [1, 0, 0] },
+        {
+          memoryId: "m-hub",
+          memoryKey: "hub",
+          embedding: [0, 1, 0],
+          ...(opts?.includeSuppressed === true ? { suppressed: true as const } : {}),
+        },
+      ];
+      if (opts?.includeSuppressed === true) return rows;
+      return rows.filter((r) => r.memoryKey !== "hub");
     },
     async loadMemoryTextPreview() {
       return null;
@@ -551,6 +564,76 @@ describe("memories service persistence http handlers", () => {
     expect(input.embeddings[0]?.memoryKey).toBe("n1");
     expect(input.provenanceHeadRootHex).toBeDefined();
   });
+
+  test("umap input includeSuppressed round-trip", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-include-suppressed" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const client = new MemoriesClient(sync.syncPersistence, testOntology);
+    client.mergeMemory({
+      kind: "node",
+      key: "peer",
+      namespace: "ns/sup",
+      content: [{ key: "text", text: "peer" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "hub",
+      namespace: "ns/sup",
+      content: [{ key: "text", text: "hub" }],
+      labels: [],
+    });
+    client.suppressMemory({ namespace: "ns/sup", key: "hub" });
+
+    const httpOpts = {
+      service: stack.service,
+      ontology: stack.ontology,
+      auth: createNoneAuthStrategy(),
+      projectionSource: createFakeProjectionSource,
+    };
+
+    const excludedRes = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/projections/umap-input", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "ns/sup", compression: "none" }),
+      }),
+      httpOpts,
+    );
+    expect(excludedRes.status).toBe(200);
+    const excluded = await decodeUmapInput(await excludedRes.arrayBuffer(), {
+      compression: "none",
+    });
+    expect(excluded.includeSuppressed).toBeUndefined();
+    expect(excluded.suppressedKeys).toBeUndefined();
+    expect(excluded.embeddings.some((e) => e.memoryKey === "hub")).toBe(false);
+
+    const includedRes = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/projections/umap-input", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          namespace: "ns/sup",
+          compression: "none",
+          includeSuppressed: true,
+        }),
+      }),
+      httpOpts,
+    );
+    expect(includedRes.status).toBe(200);
+    const included = await decodeUmapInput(await includedRes.arrayBuffer(), {
+      compression: "none",
+    });
+    expect(included.includeSuppressed).toBe(true);
+    expect(included.suppressedKeys).toEqual(["hub"]);
+    expect(included.embeddings.some((e) => e.memoryKey === "hub" && e.suppressed === true)).toBe(
+      true,
+    );
+  }, 20_000);
 });
 
 describe("remote memories client over http", () => {

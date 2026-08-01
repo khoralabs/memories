@@ -29,6 +29,12 @@ export type NamespaceMetadataInfo = {
   description: string;
 };
 
+/** Options for graph / projection loaders that can surface suppressed memories. */
+export type IncludeSuppressedOpts = {
+  /** When true, include suppressed memories and mark them; default excludes them. */
+  includeSuppressed?: boolean;
+};
+
 /** Graph edge summary (storage-agnostic shape). */
 export type GraphEdgeLink = {
   edgeId: string;
@@ -45,6 +51,11 @@ export type GraphEdgeLink = {
    * Set when the stored edge is directed (e.g. merge-created links).
    */
   directed?: boolean;
+  /**
+   * When true, the edge memory and/or an endpoint node memory is suppressed.
+   * Only set when loaders were called with `includeSuppressed: true`.
+   */
+  suppressed?: boolean;
 };
 
 /** Primary graph node for a memory (1:1 with `memories.key` in the reference store). */
@@ -56,6 +67,8 @@ export type GraphNode = {
   labels: OntologyLabelInstance[];
   /** Parsed `nodes.properties`; `null` when absent or empty. */
   properties: Record<string, unknown> | null;
+  /** When true, the memory is suppressed. Set when loaded with `includeSuppressed: true`. */
+  suppressed?: boolean;
 };
 
 /** Mean-pooled embedding per memory for layout (storage-agnostic shape). */
@@ -63,6 +76,8 @@ export type GraphMemoryEmbedding = {
   memoryKey: string;
   memoryId: string;
   embedding: number[];
+  /** When true, the memory is suppressed. Set when loaded with `includeSuppressed: true`. */
+  suppressed?: boolean;
 };
 
 export type EdgePreviewPayload = {
@@ -527,17 +542,28 @@ export interface MemoriesPersistenceReads {
  */
 export interface MemoriesGraphIndex {
   /** All edges whose endpoints are memories in `namespace` (see storage docs for direction semantics). */
-  loadGraphEdgesForNamespace(namespace: NamespacePath): GraphEdgeLink[];
+  loadGraphEdgesForNamespace(
+    namespace: NamespacePath,
+    opts?: IncludeSuppressedOpts,
+  ): GraphEdgeLink[];
 
-  loadNodeLabelsForNamespace(namespace: NamespacePath): Map<string, OntologyLabelInstance[]>;
+  loadNodeLabelsForNamespace(
+    namespace: NamespacePath,
+    opts?: IncludeSuppressedOpts,
+  ): Map<string, OntologyLabelInstance[]>;
 
   /** Node JSON properties from stored graph nodes (null when absent or empty). */
   loadNodePropertiesForNamespace(
     namespace: NamespacePath,
+    opts?: IncludeSuppressedOpts,
   ): Map<string, Record<string, unknown> | null>;
 
   /** Edges incident to the memory key (either endpoint matches). */
-  listIncidentGraphEdges(namespace: NamespacePath, memoryKey: string): GraphEdgeLink[];
+  listIncidentGraphEdges(
+    namespace: NamespacePath,
+    memoryKey: string,
+    opts?: IncludeSuppressedOpts,
+  ): GraphEdgeLink[];
 
   /** Ontology labels for one memory’s node; `[]` if none or unknown key. */
   loadNodeLabelsForMemory(namespace: NamespacePath, memoryKey: string): OntologyLabelInstance[];
@@ -549,14 +575,25 @@ export interface MemoriesGraphIndex {
   ): Record<string, unknown> | null;
 
   /** One edge by id; `null` if missing or endpoints are not both in `namespace`. */
-  loadGraphEdge(namespace: NamespacePath, edgeId: string): GraphEdgeLink | null;
+  loadGraphEdge(
+    namespace: NamespacePath,
+    edgeId: string,
+    opts?: IncludeSuppressedOpts,
+  ): GraphEdgeLink | null;
 
   /**
    * Full graph node for one memory (labels + properties + ids). Preferred over separate
    * `loadNodeLabelsForMemory` / `loadNodePropertiesForMemory` when you need the whole node.
    * `null` if no memory row exists for `memoryKey` in `namespace`.
    */
-  loadGraphNode(namespace: NamespacePath, memoryKey: string): GraphNode | null;
+  loadGraphNode(
+    namespace: NamespacePath,
+    memoryKey: string,
+    opts?: IncludeSuppressedOpts,
+  ): GraphNode | null;
+
+  /** Node memory keys in `namespace` that are currently suppressed. */
+  listSuppressedNodeKeysForNamespace(namespace: NamespacePath): string[];
 }
 
 /** Graph topology reads + graph writes ({@link MemoriesGraphIndex} & {@link MemoriesGraphMutation}). */

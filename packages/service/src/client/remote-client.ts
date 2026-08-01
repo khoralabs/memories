@@ -271,6 +271,7 @@ export class RemoteMemoriesReadClient {
     scope?: "exact" | "subtree";
     compression?: UmapInputCompression;
     includeProvenanceHead?: boolean;
+    includeSuppressed?: boolean;
     dangerousSkipValidation?: boolean;
   }): Promise<NamespaceUmapInput> {
     const compression = input.compression ?? "gzip";
@@ -282,6 +283,7 @@ export class RemoteMemoriesReadClient {
       ...(input.includeProvenanceHead !== undefined
         ? { includeProvenanceHead: input.includeProvenanceHead }
         : {}),
+      ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
     };
     const response = await this.#client.postBinaryResponse(
       "/databases/projections/umap-input",

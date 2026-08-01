@@ -1,24 +1,33 @@
 import type { Database } from "bun:sqlite";
-import type { GraphMemoryEmbedding } from "../../../persistence/core";
+import type { GraphMemoryEmbedding, IncludeSuppressedOpts } from "../../../persistence/core";
 import type { GraphProjectionSource } from "../../../projections/index";
 import { blobToVector, listNamespacesUnderPrefix } from "../persistence/index";
 
 export function loadMeanEmbeddingsForNamespace(
   db: Database,
   namespace: string,
+  opts?: IncludeSuppressedOpts,
 ): GraphMemoryEmbedding[] {
+  const include = opts?.includeSuppressed === true;
   const rows = db
-    .query<{ memory_id: string; key: string; vector: Buffer | Uint8Array }, [string]>(
-      `SELECT vf.memory_id AS memory_id, m.key AS key, vf.vector AS vector
+    .query<
+      { memory_id: string; key: string; vector: Buffer | Uint8Array; suppressed: number },
+      [string]
+    >(
+      `SELECT vf.memory_id AS memory_id, m.key AS key, vf.vector AS vector, m.suppressed AS suppressed
        FROM vector_features vf
        JOIN source_maps sm ON sm._id = vf.source_map_id
        JOIN memories m ON m._id = vf.memory_id
        WHERE m.namespace = ?
-         AND sm.source_key NOT GLOB '__*'`,
+         AND sm.source_key NOT GLOB '__*'
+         ${include ? "" : "AND m.suppressed = 0"}`,
     )
     .all(namespace);
 
-  const byMemory = new Map<string, { key: string; sums: number[]; count: number; dim: number }>();
+  const byMemory = new Map<
+    string,
+    { key: string; sums: number[]; count: number; dim: number; suppressed: boolean }
+  >();
 
   for (const r of rows) {
     const floats = blobToVector(r.vector instanceof Buffer ? new Uint8Array(r.vector) : r.vector);
@@ -26,7 +35,13 @@ export function loadMeanEmbeddingsForNamespace(
     const dim = arr.length;
     let agg = byMemory.get(r.memory_id);
     if (!agg) {
-      agg = { key: r.key, sums: new Array(dim).fill(0), count: 0, dim };
+      agg = {
+        key: r.key,
+        sums: new Array(dim).fill(0),
+        count: 0,
+        dim,
+        suppressed: r.suppressed !== 0,
+      };
       byMemory.set(r.memory_id, agg);
     }
     if (agg.dim !== dim) continue;
@@ -46,6 +61,7 @@ export function loadMeanEmbeddingsForNamespace(
       memoryKey: agg.key,
       memoryId,
       embedding,
+      ...(include && agg.suppressed ? { suppressed: true } : {}),
     });
   }
   return out;
@@ -97,8 +113,8 @@ export function createSqliteGraphProjectionSource(db: Database): GraphProjection
     async listNamespacesUnderPrefix(prefix) {
       return listNamespacesUnderPrefix(db, prefix);
     },
-    async loadMeanEmbeddingsForNamespace(namespace) {
-      return loadMeanEmbeddingsForNamespace(db, namespace);
+    async loadMeanEmbeddingsForNamespace(namespace, opts) {
+      return loadMeanEmbeddingsForNamespace(db, namespace, opts);
     },
     async loadMemoryTextPreview(namespace, key, maxChars) {
       return loadMemoryTextPreview(db, namespace, key, maxChars);

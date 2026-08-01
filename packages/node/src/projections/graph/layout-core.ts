@@ -22,6 +22,13 @@ export type NamespaceGraphLayoutInput = {
   labelsByKey: Map<string, OntologyLabelInstance[]>;
   propertiesByKey: Map<string, Record<string, unknown> | null>;
   umapOptions?: Umap3DLayoutOptions;
+  /**
+   * When false (default), omit suppressed edges/keys from layout membership.
+   * When true, layout all and mark `suppressed` on output nodes/edges.
+   */
+  includeSuppressed?: boolean;
+  /** Node keys known suppressed (from umap input). Used with embedding.suppressed flags. */
+  suppressedKeys?: readonly string[];
 };
 
 /** Undirected degree per key; self-loops count once. */
@@ -43,12 +50,31 @@ export function undirectedDegreeByKey(edges: readonly GraphLayoutEdge[]): Map<st
 
 export function buildNamespaceGraphLayoutFromRows({
   namespace,
-  edges,
-  embeddings,
+  edges: inputEdges,
+  embeddings: inputEmbeddings,
   labelsByKey,
   propertiesByKey,
   umapOptions,
+  includeSuppressed = false,
+  suppressedKeys = [],
 }: NamespaceGraphLayoutInput): NamespaceGraphLayout {
+  const suppressedKeySet = new Set(suppressedKeys);
+  for (const emb of inputEmbeddings) {
+    if (emb.suppressed === true) suppressedKeySet.add(emb.memoryKey);
+  }
+
+  const edges = includeSuppressed
+    ? inputEdges
+    : inputEdges.filter(
+        (e) =>
+          e.suppressed !== true &&
+          !suppressedKeySet.has(e.fromKey) &&
+          !suppressedKeySet.has(e.toKey),
+      );
+  const embeddings = includeSuppressed
+    ? inputEmbeddings
+    : inputEmbeddings.filter((e) => e.suppressed !== true && !suppressedKeySet.has(e.memoryKey));
+
   // Membership: edge endpoints ∪ embeddings ∪ keys with non-empty labels/properties.
   // Label/property loaders pre-seed every memory with [] / null — ignore those empties.
   const keySet = new Set<string>();
@@ -60,10 +86,16 @@ export function buildNamespaceGraphLayoutFromRows({
     keySet.add(n.memoryKey);
   }
   for (const [key, labels] of labelsByKey) {
-    if (labels.length > 0) keySet.add(key);
+    if (labels.length > 0) {
+      if (!includeSuppressed && suppressedKeySet.has(key)) continue;
+      keySet.add(key);
+    }
   }
   for (const [key, props] of propertiesByKey) {
-    if (props != null && Object.keys(props).length > 0) keySet.add(key);
+    if (props != null && Object.keys(props).length > 0) {
+      if (!includeSuppressed && suppressedKeySet.has(key)) continue;
+      keySet.add(key);
+    }
   }
 
   const orderedKeys = [...keySet].sort();
@@ -76,11 +108,19 @@ export function buildNamespaceGraphLayoutFromRows({
 
   const rawPositions: Point3[] = [];
 
+  const layoutEdges: GraphLayoutEdge[] = includeSuppressed
+    ? edges.map((e) =>
+        e.suppressed === true || suppressedKeySet.has(e.fromKey) || suppressedKeySet.has(e.toKey)
+          ? { ...e, suppressed: true }
+          : e,
+      )
+    : edges;
+
   if (orderedKeys.length === 0) {
     return {
       namespace,
       nodes: [],
-      edges,
+      edges: layoutEdges,
     };
   }
 
@@ -133,13 +173,17 @@ export function buildNamespaceGraphLayoutFromRows({
       count,
       centrality: maxDegree === 0 ? 0 : count / maxDegree,
     };
-    if (!p) return { key, x: 0, y: 0, z: 0, labels, degree };
-    return { key, x: p.x, y: p.y, z: p.z, labels, degree };
+    const suppressed =
+      includeSuppressed && suppressedKeySet.has(key)
+        ? ({ suppressed: true as const } as const)
+        : {};
+    if (!p) return { key, x: 0, y: 0, z: 0, labels, degree, ...suppressed };
+    return { key, x: p.x, y: p.y, z: p.z, labels, degree, ...suppressed };
   });
 
   return {
     namespace,
     nodes,
-    edges,
+    edges: layoutEdges,
   };
 }

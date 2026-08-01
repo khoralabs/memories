@@ -757,6 +757,7 @@ export async function handleDatabaseUmapInput(
     {
       provenanceHeadRootHex,
       scope,
+      ...(scoped.includeSuppressed === true ? { includeSuppressed: true } : {}),
     },
   );
   const payload = await encodeUmapInput(input, { compression });

@@ -1,4 +1,4 @@
-import type { GraphMemoryEmbedding } from "../../../persistence/core";
+import type { GraphMemoryEmbedding, IncludeSuppressedOpts } from "../../../persistence/core";
 import type { GraphProjectionSource } from "../../../projections/index";
 
 export type LibsqlProjectionRow = Record<string, unknown>;
@@ -69,19 +69,26 @@ export async function listNamespacesUnderPrefix(
 export async function loadMeanEmbeddingsForNamespace(
   queryClient: LibsqlProjectionQueryClient,
   namespace: string,
+  opts?: IncludeSuppressedOpts,
 ): Promise<GraphMemoryEmbedding[]> {
+  const include = opts?.includeSuppressed === true;
   const result = await executeQuery(
     queryClient,
-    `SELECT vf.memory_id AS memory_id, m.key AS key, vector_extract(vf.vector) AS vector_json
+    `SELECT vf.memory_id AS memory_id, m.key AS key, vector_extract(vf.vector) AS vector_json,
+            m.suppressed AS suppressed
      FROM vector_features vf
      JOIN source_maps sm ON sm._id = vf.source_map_id
      JOIN memories m ON m._id = vf.memory_id
      WHERE m.namespace = ?
-       AND sm.source_key NOT GLOB '__*'`,
+       AND sm.source_key NOT GLOB '__*'
+       ${include ? "" : "AND m.suppressed = 0"}`,
     [namespace],
   );
 
-  const byMemory = new Map<string, { key: string; sums: number[]; count: number; dim: number }>();
+  const byMemory = new Map<
+    string,
+    { key: string; sums: number[]; count: number; dim: number; suppressed: boolean }
+  >();
 
   for (const row of result.rows) {
     const memoryId = stringValue(row, "memory_id");
@@ -90,9 +97,10 @@ export async function loadMeanEmbeddingsForNamespace(
     const vector = parseVectorJson(row.vector_json);
     if (!vector) continue;
     const dim = vector.length;
+    const suppressed = Number(row.suppressed ?? 0) !== 0;
     let agg = byMemory.get(memoryId);
     if (!agg) {
-      agg = { key, sums: new Array(dim).fill(0), count: 0, dim };
+      agg = { key, sums: new Array(dim).fill(0), count: 0, dim, suppressed };
       byMemory.set(memoryId, agg);
     }
     if (agg.dim !== dim) continue;
@@ -109,6 +117,7 @@ export async function loadMeanEmbeddingsForNamespace(
       memoryKey: agg.key,
       memoryId,
       embedding: agg.sums.map((sum) => sum / agg.count),
+      ...(include && agg.suppressed ? { suppressed: true } : {}),
     });
   }
   return out;
@@ -169,8 +178,8 @@ export function createLibsqlGraphProjectionSource(
     listNamespacesUnderPrefix(prefix) {
       return listNamespacesUnderPrefix(queryClient, prefix);
     },
-    loadMeanEmbeddingsForNamespace(namespace) {
-      return loadMeanEmbeddingsForNamespace(queryClient, namespace);
+    loadMeanEmbeddingsForNamespace(namespace, opts) {
+      return loadMeanEmbeddingsForNamespace(queryClient, namespace, opts);
     },
     loadMemoryTextPreview(namespace, key, maxChars) {
       return loadMemoryTextPreview(queryClient, namespace, key, maxChars);

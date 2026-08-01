@@ -25,6 +25,7 @@ import { ensureEdgeLabel } from "./models/edge-labels";
 import { insertEdge } from "./models/edges";
 import {
   listIncidentGraphEdgesForMemory as listIncidentGraphEdgesQuery,
+  listSuppressedNodeKeysForNamespace as listSuppressedNodeKeysForNamespaceQuery,
   loadGraphEdge as loadGraphEdgeQuery,
   loadGraphEdgesForNamespace as loadGraphEdgesQuery,
   loadGraphNode as loadGraphNodeQuery,
@@ -512,24 +513,34 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return listVectorEmbeddingIndexDimensionsQuery(this.db);
   }
 
-  loadGraphEdgesForNamespace(namespace: string): GraphEdgeLink[] {
+  loadGraphEdgesForNamespace(
+    namespace: string,
+    opts?: { includeSuppressed?: boolean },
+  ): GraphEdgeLink[] {
     if (!this.capabilities.graphIndex) return [];
-    return loadGraphEdgesQuery(this.db, namespace);
+    return loadGraphEdgesQuery(this.db, namespace, opts);
   }
 
-  loadNodeLabelsForNamespace(namespace: string) {
+  loadNodeLabelsForNamespace(namespace: string, opts?: { includeSuppressed?: boolean }) {
     if (!this.capabilities.graphIndex) return new Map();
-    return loadNodeLabelsQuery(this.db, namespace);
+    return loadNodeLabelsQuery(this.db, namespace, opts);
   }
 
-  loadNodePropertiesForNamespace(namespace: string): Map<string, Record<string, unknown> | null> {
+  loadNodePropertiesForNamespace(
+    namespace: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Map<string, Record<string, unknown> | null> {
     if (!this.capabilities.graphIndex) return new Map();
-    return loadNodePropertiesQuery(this.db, namespace);
+    return loadNodePropertiesQuery(this.db, namespace, opts);
   }
 
-  listIncidentGraphEdges(namespace: string, memoryKey: string): GraphEdgeLink[] {
+  listIncidentGraphEdges(
+    namespace: string,
+    memoryKey: string,
+    opts?: { includeSuppressed?: boolean },
+  ): GraphEdgeLink[] {
     if (!this.capabilities.graphIndex) return [];
-    return listIncidentGraphEdgesQuery(this.db, namespace, memoryKey);
+    return listIncidentGraphEdgesQuery(this.db, namespace, memoryKey, opts);
   }
 
   loadNodeLabelsForMemory(namespace: string, memoryKey: string) {
@@ -545,14 +556,27 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return loadNodePropertiesForMemoryQuery(this.db, namespace, memoryKey);
   }
 
-  loadGraphEdge(namespace: string, edgeId: string): GraphEdgeLink | null {
+  loadGraphEdge(
+    namespace: string,
+    edgeId: string,
+    opts?: { includeSuppressed?: boolean },
+  ): GraphEdgeLink | null {
     if (!this.capabilities.graphIndex) return null;
-    return loadGraphEdgeQuery(this.db, namespace, edgeId);
+    return loadGraphEdgeQuery(this.db, namespace, edgeId, opts);
   }
 
-  loadGraphNode(namespace: string, memoryKey: string): GraphNode | null {
+  loadGraphNode(
+    namespace: string,
+    memoryKey: string,
+    opts?: { includeSuppressed?: boolean },
+  ): GraphNode | null {
     if (!this.capabilities.graphIndex) return null;
-    return loadGraphNodeQuery(this.db, namespace, memoryKey);
+    return loadGraphNodeQuery(this.db, namespace, memoryKey, opts);
+  }
+
+  listSuppressedNodeKeysForNamespace(namespace: string): string[] {
+    if (!this.capabilities.graphIndex) return [];
+    return listSuppressedNodeKeysForNamespaceQuery(this.db, namespace);
   }
 
   /** Underlying Bun SQLite handle (host-owned; do not close from callers). */

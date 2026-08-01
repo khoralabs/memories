@@ -14,6 +14,8 @@ export type GraphLayoutNode = {
   z: number;
   labels: OntologyLabelInstance[];
   degree: GraphLayoutNodeDegree;
+  /** Present when layout was built with `includeSuppressed: true`. */
+  suppressed?: boolean;
 };
 
 export type GraphLayoutEdge = {
@@ -22,6 +24,8 @@ export type GraphLayoutEdge = {
   toKey: string;
   labels: OntologyLabelInstance[];
   directed?: boolean;
+  /** Present when collected/laid out with `includeSuppressed: true`. */
+  suppressed?: boolean;
 };
 
 export type NamespaceGraphLayout = {

@@ -35,6 +35,7 @@ import { ensureEdgeLabel } from "./models/edge-labels";
 import { insertEdge } from "./models/edges";
 import {
   listIncidentGraphEdgesForMemory as listIncidentGraphEdgesQuery,
+  listSuppressedNodeKeysForNamespace as listSuppressedNodeKeysForNamespaceQuery,
   loadGraphEdge as loadGraphEdgeQuery,
   loadGraphEdgesForNamespace as loadGraphEdgesQuery,
   loadGraphNode as loadGraphNodeQuery,
@@ -612,28 +613,37 @@ export class MemoriesTursoServerlessPersistence {
     return listVectorEmbeddingIndexDimensionsQuery(this.db);
   }
 
-  async loadGraphEdgesForNamespace(namespace: string): Promise<GraphEdgeLink[]> {
+  async loadGraphEdgesForNamespace(
+    namespace: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<GraphEdgeLink[]> {
     if (!this.capabilities.graphIndex) return [];
-    return loadGraphEdgesQuery(this.db, namespace);
+    return loadGraphEdgesQuery(this.db, namespace, opts);
   }
 
   async loadNodeLabelsForNamespace(
     namespace: string,
+    opts?: { includeSuppressed?: boolean },
   ): Promise<Map<string, OntologyLabelInstance[]>> {
     if (!this.capabilities.graphIndex) return new Map();
-    return loadNodeLabelsQuery(this.db, namespace);
+    return loadNodeLabelsQuery(this.db, namespace, opts);
   }
 
   async loadNodePropertiesForNamespace(
     namespace: string,
+    opts?: { includeSuppressed?: boolean },
   ): Promise<Map<string, Record<string, unknown> | null>> {
     if (!this.capabilities.graphIndex) return new Map();
-    return loadNodePropertiesQuery(this.db, namespace);
+    return loadNodePropertiesQuery(this.db, namespace, opts);
   }
 
-  async listIncidentGraphEdges(namespace: string, memoryKey: string): Promise<GraphEdgeLink[]> {
+  async listIncidentGraphEdges(
+    namespace: string,
+    memoryKey: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<GraphEdgeLink[]> {
     if (!this.capabilities.graphIndex) return [];
-    return listIncidentGraphEdgesQuery(this.db, namespace, memoryKey);
+    return listIncidentGraphEdgesQuery(this.db, namespace, memoryKey, opts);
   }
 
   async loadNodeLabelsForMemory(namespace: string, memoryKey: string) {
@@ -649,14 +659,27 @@ export class MemoriesTursoServerlessPersistence {
     return loadNodePropertiesForMemoryQuery(this.db, namespace, memoryKey);
   }
 
-  async loadGraphEdge(namespace: string, edgeId: string): Promise<GraphEdgeLink | null> {
+  async loadGraphEdge(
+    namespace: string,
+    edgeId: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<GraphEdgeLink | null> {
     if (!this.capabilities.graphIndex) return null;
-    return loadGraphEdgeQuery(this.db, namespace, edgeId);
+    return loadGraphEdgeQuery(this.db, namespace, edgeId, opts);
   }
 
-  async loadGraphNode(namespace: string, memoryKey: string): Promise<GraphNode | null> {
+  async loadGraphNode(
+    namespace: string,
+    memoryKey: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<GraphNode | null> {
     if (!this.capabilities.graphIndex) return null;
-    return loadGraphNodeQuery(this.db, namespace, memoryKey);
+    return loadGraphNodeQuery(this.db, namespace, memoryKey, opts);
+  }
+
+  async listSuppressedNodeKeysForNamespace(namespace: string): Promise<string[]> {
+    if (!this.capabilities.graphIndex) return [];
+    return listSuppressedNodeKeysForNamespaceQuery(this.db, namespace);
   }
 }
 

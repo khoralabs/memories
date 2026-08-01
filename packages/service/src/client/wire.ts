@@ -204,6 +204,7 @@ export type DatabaseUmapInputRequest = DatabaseScopedBody<{
   scope?: "exact" | "subtree";
   compression?: "gzip" | "none";
   includeProvenanceHead?: boolean;
+  includeSuppressed?: boolean;
 }>;
 
 export type DatabaseEnsureScopeChainRequest = DatabaseScopedBody<{ scopePaths: string[] }>;

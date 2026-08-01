@@ -213,8 +213,11 @@ export class MemoriesVisualization {
     private readonly persistence: Pick<MemoriesPersistence, "loadGraphEdge">,
   ) {}
 
-  loadMeanEmbeddingsForNamespace(namespace: string): GraphMemoryEmbedding[] {
-    return loadMeanEmbeddingsForNamespace(this.db, namespace);
+  loadMeanEmbeddingsForNamespace(
+    namespace: string,
+    opts?: { includeSuppressed?: boolean },
+  ): GraphMemoryEmbedding[] {
+    return loadMeanEmbeddingsForNamespace(this.db, namespace, opts);
   }
 
   loadMemoryTextPreview(namespace: string, key: string, maxChars?: number): string | null {

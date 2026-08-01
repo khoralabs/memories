@@ -120,6 +120,9 @@ describe("buildNamespaceGraphLayoutFromSource", () => {
         loadNodePropertiesForNamespace() {
           return new Map([["a", { color: "blue" }]]);
         },
+        listSuppressedNodeKeysForNamespace() {
+          return [];
+        },
       },
       "ns",
     );

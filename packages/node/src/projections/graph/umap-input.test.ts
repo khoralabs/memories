@@ -55,6 +55,9 @@ const graphReads: GraphProjectionGraphReads = {
       ["m2", null],
     ]);
   },
+  async listSuppressedNodeKeysForNamespace() {
+    return [];
+  },
 };
 
 describe("NamespaceUmapInput", () => {

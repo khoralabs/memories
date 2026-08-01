@@ -1,5 +1,10 @@
 import type { Database } from "bun:sqlite";
-import type { GraphEdgeLink, GraphNode, OntologyLabelInstance } from "../../../../persistence/core";
+import type {
+  GraphEdgeLink,
+  GraphNode,
+  IncludeSuppressedOpts,
+  OntologyLabelInstance,
+} from "../../../../persistence/core";
 import { ids } from "../../../../persistence/core";
 
 function parsePropsColumn(raw: unknown): Record<string, unknown> {
@@ -50,12 +55,20 @@ const GRAPH_EDGE_NOT_SUPPRESSED = `
     SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
   )`;
 
+const GRAPH_EDGE_SUPPRESSION_COLS = `,
+              mf.suppressed AS fromSuppressed,
+              mt.suppressed AS toSuppressed,
+              EXISTS (
+                SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
+              ) AS edgeMemSuppressed`;
+
 function finishGraphEdgeLink(
   edgeId: string,
   fromKey: string,
   toKey: string,
   labels: OntologyLabelInstance[],
   propertiesJson: string | null,
+  suppressed?: boolean,
 ): GraphEdgeLink {
   const link: GraphEdgeLink = {
     edgeId,
@@ -66,6 +79,7 @@ function finishGraphEdgeLink(
   const props = parseEdgeRowProperties(propertiesJson);
   if (props !== null) link.properties = props;
   if (directedFromEdgePropertiesJson(propertiesJson)) link.directed = true;
+  if (suppressed === true) link.suppressed = true;
   return link;
 }
 
@@ -76,9 +90,15 @@ type GraphEdgeQueryRow = {
   propertiesJson: string | null;
   kind: string | null;
   propsJson: string | null;
+  fromSuppressed?: number;
+  toSuppressed?: number;
+  edgeMemSuppressed?: number;
 };
 
-function graphEdgeLinksFromRows(rows: GraphEdgeQueryRow[]): GraphEdgeLink[] {
+function graphEdgeLinksFromRows(
+  rows: GraphEdgeQueryRow[],
+  markSuppressed: boolean,
+): GraphEdgeLink[] {
   const byEdge = new Map<
     string,
     {
@@ -86,6 +106,7 @@ function graphEdgeLinksFromRows(rows: GraphEdgeQueryRow[]): GraphEdgeLink[] {
       toKey: string;
       propertiesJson: string | null;
       labels: OntologyLabelInstance[];
+      suppressed: boolean;
     }
   >();
 
@@ -95,8 +116,14 @@ function graphEdgeLinksFromRows(rows: GraphEdgeQueryRow[]): GraphEdgeLink[] {
       r.kind != null
         ? ({ kind: r.kind, props: parsePropsColumn(r.propsJson) } satisfies OntologyLabelInstance)
         : null;
+    const rowSuppressed =
+      markSuppressed &&
+      ((r.fromSuppressed ?? 0) !== 0 ||
+        (r.toSuppressed ?? 0) !== 0 ||
+        (r.edgeMemSuppressed ?? 0) !== 0);
     if (existing) {
       if (label) existing.labels.push(label);
+      if (rowSuppressed) existing.suppressed = true;
       continue;
     }
     byEdge.set(r.edgeId, {
@@ -104,36 +131,56 @@ function graphEdgeLinksFromRows(rows: GraphEdgeQueryRow[]): GraphEdgeLink[] {
       toKey: r.toKey,
       propertiesJson: r.propertiesJson,
       labels: label ? [label] : [],
+      suppressed: rowSuppressed,
     });
   }
 
   const out: GraphEdgeLink[] = [];
   for (const [edgeId, v] of byEdge) {
-    out.push(finishGraphEdgeLink(edgeId, v.fromKey, v.toKey, v.labels, v.propertiesJson));
+    out.push(
+      finishGraphEdgeLink(
+        edgeId,
+        v.fromKey,
+        v.toKey,
+        v.labels,
+        v.propertiesJson,
+        markSuppressed ? v.suppressed : undefined,
+      ),
+    );
   }
   return out;
 }
 
-export function loadGraphEdgesForNamespace(db: Database, namespace: string): GraphEdgeLink[] {
-  const rows = db
-    .query<GraphEdgeQueryRow, [string, string]>(
-      `SELECT e._id AS edgeId, nf.value AS fromKey, nt.value AS toKey,
+function edgeSelectSql(includeSuppressed: boolean): string {
+  return `SELECT e._id AS edgeId, nf.value AS fromKey, nt.value AS toKey,
               e.properties AS propertiesJson,
               el.kind AS kind,
-              ela.props AS propsJson
+              ela.props AS propsJson${includeSuppressed ? GRAPH_EDGE_SUPPRESSION_COLS : ""}
        FROM edges e
        JOIN nodes nf ON nf._id = e.from_node_id
        JOIN nodes nt ON nt._id = e.to_node_id
        JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
        JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
        LEFT JOIN edge_label_assignments ela ON ela.edge_id = e._id
-       LEFT JOIN edge_labels el ON el._id = ela.label_id
-       WHERE 1 = 1${GRAPH_EDGE_NOT_SUPPRESSED}
+       LEFT JOIN edge_labels el ON el._id = ela.label_id`;
+}
+
+export function loadGraphEdgesForNamespace(
+  db: Database,
+  namespace: string,
+  opts?: IncludeSuppressedOpts,
+): GraphEdgeLink[] {
+  const include = opts?.includeSuppressed === true;
+  const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
+  const rows = db
+    .query<GraphEdgeQueryRow, [string, string]>(
+      `${edgeSelectSql(include)}
+       WHERE 1 = 1${filter}
        ORDER BY e._id ASC, el.kind ASC`,
     )
     .all(namespace, namespace);
 
-  return graphEdgeLinksFromRows(rows);
+  return graphEdgeLinksFromRows(rows, include);
 }
 
 /** Incident edges only (both endpoints in `namespace`, one endpoint matches `memoryKey`). */
@@ -141,26 +188,19 @@ export function listIncidentGraphEdgesForMemory(
   db: Database,
   namespace: string,
   memoryKey: string,
+  opts?: IncludeSuppressedOpts,
 ): GraphEdgeLink[] {
+  const include = opts?.includeSuppressed === true;
+  const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = db
     .query<GraphEdgeQueryRow, [string, string, string, string]>(
-      `SELECT e._id AS edgeId, nf.value AS fromKey, nt.value AS toKey,
-              e.properties AS propertiesJson,
-              el.kind AS kind,
-              ela.props AS propsJson
-       FROM edges e
-       JOIN nodes nf ON nf._id = e.from_node_id
-       JOIN nodes nt ON nt._id = e.to_node_id
-       JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
-       JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
-       LEFT JOIN edge_label_assignments ela ON ela.edge_id = e._id
-       LEFT JOIN edge_labels el ON el._id = ela.label_id
-       WHERE (nf.value = ? OR nt.value = ?)${GRAPH_EDGE_NOT_SUPPRESSED}
+      `${edgeSelectSql(include)}
+       WHERE (nf.value = ? OR nt.value = ?)${filter}
        ORDER BY e._id ASC, el.kind ASC`,
     )
     .all(namespace, namespace, memoryKey, memoryKey);
 
-  return graphEdgeLinksFromRows(rows);
+  return graphEdgeLinksFromRows(rows, include);
 }
 
 export function loadNodeLabelsForMemory(
@@ -212,55 +252,78 @@ export function loadGraphNode(
   db: Database,
   namespace: string,
   memoryKey: string,
+  opts?: IncludeSuppressedOpts,
 ): GraphNode | null {
   const mem = db
-    .query<{ one: number }, [string, string]>(
-      `SELECT 1 AS one FROM memories WHERE namespace = ? AND key = ? LIMIT 1`,
+    .query<{ suppressed: number }, [string, string]>(
+      `SELECT suppressed FROM memories WHERE namespace = ? AND key = ? LIMIT 1`,
     )
     .get(namespace, memoryKey);
   if (!mem) return null;
   const nodeId = ids.node(namespace, memoryKey);
   const labels = loadNodeLabelsForMemory(db, namespace, memoryKey);
   const properties = loadNodePropertiesForMemory(db, namespace, memoryKey);
-  return { namespace, memoryKey, nodeId, labels, properties };
+  const node: GraphNode = { namespace, memoryKey, nodeId, labels, properties };
+  if (opts?.includeSuppressed === true && mem.suppressed !== 0) {
+    node.suppressed = true;
+  }
+  return node;
 }
 
 export function loadGraphEdge(
   db: Database,
   namespace: string,
   edgeId: string,
+  opts?: IncludeSuppressedOpts,
 ): GraphEdgeLink | null {
+  const include = opts?.includeSuppressed === true;
+  const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = db
     .query<GraphEdgeQueryRow, [string, string, string]>(
-      `SELECT e._id AS edgeId, nf.value AS fromKey, nt.value AS toKey,
-              e.properties AS propertiesJson,
-              el.kind AS kind,
-              ela.props AS propsJson
-       FROM edges e
-       JOIN nodes nf ON nf._id = e.from_node_id
-       JOIN nodes nt ON nt._id = e.to_node_id
-       JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
-       JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
-       LEFT JOIN edge_label_assignments ela ON ela.edge_id = e._id
-       LEFT JOIN edge_labels el ON el._id = ela.label_id
-       WHERE e._id = ?${GRAPH_EDGE_NOT_SUPPRESSED}
+      `${edgeSelectSql(include)}
+       WHERE e._id = ?${filter}
        ORDER BY el.kind ASC`,
     )
     .all(namespace, namespace, edgeId);
 
-  const links = graphEdgeLinksFromRows(rows);
+  const links = graphEdgeLinksFromRows(rows, include);
   return links[0] ?? null;
+}
+
+function nodeKeysSql(includeSuppressed: boolean): string {
+  return includeSuppressed
+    ? `SELECT key FROM memories WHERE namespace = ? AND kind = 'node'`
+    : `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`;
+}
+
+function nodeRowsSql(includeSuppressed: boolean): string {
+  return includeSuppressed
+    ? `SELECT m.key AS memoryKey, n.properties AS propertiesJson
+       FROM memories m
+       LEFT JOIN nodes n ON n.value = m.key
+       WHERE m.namespace = ? AND m.kind = 'node'`
+    : `SELECT m.key AS memoryKey, n.properties AS propertiesJson
+       FROM memories m
+       LEFT JOIN nodes n ON n.value = m.key
+       WHERE m.namespace = ? AND m.kind = 'node' AND m.suppressed = 0`;
+}
+
+export function listSuppressedNodeKeysForNamespace(db: Database, namespace: string): string[] {
+  return db
+    .query<{ key: string }, [string]>(
+      `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed != 0`,
+    )
+    .all(namespace)
+    .map((r) => r.key);
 }
 
 export function loadNodePropertiesForNamespace(
   db: Database,
   namespace: string,
+  opts?: IncludeSuppressedOpts,
 ): Map<string, Record<string, unknown> | null> {
-  const keys = db
-    .query<{ key: string }, [string]>(
-      `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`,
-    )
-    .all(namespace);
+  const include = opts?.includeSuppressed === true;
+  const keys = db.query<{ key: string }, [string]>(nodeKeysSql(include)).all(namespace);
   const map = new Map<string, Record<string, unknown> | null>();
   for (const { key } of keys) {
     map.set(key, null);
@@ -268,12 +331,7 @@ export function loadNodePropertiesForNamespace(
   if (keys.length === 0) return map;
 
   const rows = db
-    .query<{ memoryKey: string; propertiesJson: string | null }, [string]>(
-      `SELECT m.key AS memoryKey, n.properties AS propertiesJson
-       FROM memories m
-       LEFT JOIN nodes n ON n.value = m.key
-       WHERE m.namespace = ? AND m.kind = 'node' AND m.suppressed = 0`,
-    )
+    .query<{ memoryKey: string; propertiesJson: string | null }, [string]>(nodeRowsSql(include))
     .all(namespace);
 
   for (const r of rows) {
@@ -299,12 +357,10 @@ export function loadNodePropertiesForNamespace(
 export function loadNodeLabelsForNamespace(
   db: Database,
   namespace: string,
+  opts?: IncludeSuppressedOpts,
 ): Map<string, OntologyLabelInstance[]> {
-  const keys = db
-    .query<{ key: string }, [string]>(
-      `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`,
-    )
-    .all(namespace);
+  const include = opts?.includeSuppressed === true;
+  const keys = db.query<{ key: string }, [string]>(nodeKeysSql(include)).all(namespace);
   if (keys.length === 0) return new Map();
   const nodeIds = keys.map((k) => ids.node(namespace, k.key));
   const ph = nodeIds.map(() => "?").join(",");
