@@ -5,9 +5,9 @@ import path from "node:path";
 import { MemoriesClient } from "@khoralabs/memories-node";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import {
-  decodeUmapInput,
-  UMAP_INPUT_ENCODING_HEADER,
-} from "@khoralabs/memories-node/projections/umap-input";
+  decodeProjectionInput,
+  PROJECTION_INPUT_ENCODING_HEADER,
+} from "@khoralabs/memories-node/projections/projection-input";
 import { getMemoriesSqliteDatabase } from "@khoralabs/memories-node/sqlite";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 import { createNoneAuthStrategy } from "../auth/index";
@@ -512,20 +512,52 @@ describe("memories service persistence http handlers", () => {
     expect(row?.intent_snapshot_id).toBe("run-42");
   });
 
-  test("umap input endpoint requires projection source", async () => {
+  test("projection input endpoint requires projection source", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-no-projection" };
 
     const res = await postJson(
-      "http://localhost/databases/projections/umap-input",
+      "http://localhost/databases/projections/projection-input",
       { database, namespace: "ns/a" },
       stack,
     );
 
     expect(res.status).toBe(501);
-  });
+  }, 20_000);
 
-  test("umap input endpoint returns compressed projection input", async () => {
+  test("deprecated umap-input path aliases projection-input", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-umap-alias" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sync.syncPersistence, testOntology).mergeMemory({
+      kind: "node",
+      key: "n1",
+      namespace: "ns/a",
+      content: [{ key: "text", text: "alias node" }],
+      labels: [],
+    });
+
+    const res = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/projections/umap-input", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "ns/a", compression: "none" }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+        projectionSource: createFakeProjectionSource,
+      },
+    );
+    expect(res.status).toBe(200);
+    const input = await decodeProjectionInput(await res.arrayBuffer(), { compression: "none" });
+    expect(input.embeddings[0]?.memoryKey).toBe("n1");
+  }, 20_000);
+
+  test("projection input endpoint returns compressed projection input", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-projection" };
     const handle = await stack.service.getHandle(database);
@@ -540,7 +572,7 @@ describe("memories service persistence http handlers", () => {
     });
 
     const res = await handleMemoriesServiceHttpRequest(
-      new Request("http://localhost/databases/projections/umap-input", {
+      new Request("http://localhost/databases/projections/projection-input", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -558,14 +590,14 @@ describe("memories service persistence http handlers", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(res.headers.get(UMAP_INPUT_ENCODING_HEADER)).toBe("gzip");
-    const input = await decodeUmapInput(await res.arrayBuffer(), { compression: "gzip" });
+    expect(res.headers.get(PROJECTION_INPUT_ENCODING_HEADER)).toBe("gzip");
+    const input = await decodeProjectionInput(await res.arrayBuffer(), { compression: "gzip" });
     expect(input.namespace).toBe("ns/a");
     expect(input.embeddings[0]?.memoryKey).toBe("n1");
     expect(input.provenanceHeadRootHex).toBeDefined();
   });
 
-  test("umap input includeSuppressed round-trip", async () => {
+  test("projection input includeSuppressed round-trip", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-include-suppressed" };
     const handle = await stack.service.getHandle(database);
@@ -596,7 +628,7 @@ describe("memories service persistence http handlers", () => {
     };
 
     const excludedRes = await handleMemoriesServiceHttpRequest(
-      new Request("http://localhost/databases/projections/umap-input", {
+      new Request("http://localhost/databases/projections/projection-input", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ database, namespace: "ns/sup", compression: "none" }),
@@ -604,7 +636,7 @@ describe("memories service persistence http handlers", () => {
       httpOpts,
     );
     expect(excludedRes.status).toBe(200);
-    const excluded = await decodeUmapInput(await excludedRes.arrayBuffer(), {
+    const excluded = await decodeProjectionInput(await excludedRes.arrayBuffer(), {
       compression: "none",
     });
     expect(excluded.includeSuppressed).toBeUndefined();
@@ -612,7 +644,7 @@ describe("memories service persistence http handlers", () => {
     expect(excluded.embeddings.some((e) => e.memoryKey === "hub")).toBe(false);
 
     const includedRes = await handleMemoriesServiceHttpRequest(
-      new Request("http://localhost/databases/projections/umap-input", {
+      new Request("http://localhost/databases/projections/projection-input", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -625,7 +657,7 @@ describe("memories service persistence http handlers", () => {
       httpOpts,
     );
     expect(includedRes.status).toBe(200);
-    const included = await decodeUmapInput(await includedRes.arrayBuffer(), {
+    const included = await decodeProjectionInput(await includedRes.arrayBuffer(), {
       compression: "none",
     });
     expect(included.includeSuppressed).toBe(true);
@@ -790,7 +822,7 @@ describe("remote memories client over http", () => {
     expect(valid.status).toBe(200);
   });
 
-  test("read client fetches and decodes umap input", async () => {
+  test("read client fetches and decodes projection input", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "remote-projection" };
     const handle = await stack.service.getHandle(database);
@@ -822,7 +854,7 @@ describe("remote memories client over http", () => {
         database,
         ontology: testOntology,
       });
-      const input = await reads.fetchUmapInput({ namespace: "ns/a" });
+      const input = await reads.fetchProjectionInput({ namespace: "ns/a" });
       expect(input.embeddings[0]?.memoryKey).toBe("n1");
     } finally {
       server.stop(true);

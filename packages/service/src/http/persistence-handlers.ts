@@ -13,14 +13,14 @@ import {
 } from "@khoralabs/memories-node";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import {
-  collectNamespaceUmapInput,
-  encodeUmapInput,
-  type NamespaceUmapInput,
-  UMAP_INPUT_CONTENT_TYPE,
-  UMAP_INPUT_ENCODING_HEADER,
-  type UmapInputCompression,
-  type UmapInputScope,
-} from "@khoralabs/memories-node/projections/umap-input";
+  collectNamespaceProjectionInput,
+  encodeProjectionInput,
+  type NamespaceProjectionInput,
+  PROJECTION_INPUT_CONTENT_TYPE,
+  PROJECTION_INPUT_ENCODING_HEADER,
+  type ProjectionInputCompression,
+  type ProjectionInputScope,
+} from "@khoralabs/memories-node/projections/projection-input";
 import type { MemoryMutationAttribution } from "@khoralabs/memories-node/provenance";
 import {
   type DatabaseCapabilitiesResponse,
@@ -28,10 +28,10 @@ import {
   type DatabaseEdgePreviewRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespacesRequest,
+  type DatabaseProjectionInputRequest,
   type DatabaseSearchRequest,
   type DatabaseSourceMapTextPreviewRequest,
   type DatabaseSuppressMemoryRequest,
-  type DatabaseUmapInputRequest,
   type DatabaseUnsuppressMemoryRequest,
   type DatabaseVectorDimensionsRequest,
   serializeSearchHit,
@@ -202,26 +202,26 @@ async function getHandle(
   return { database: scoped.database, handle };
 }
 
-function parseUmapInputScope(value: unknown): UmapInputScope {
+function parseProjectionInputScope(value: unknown): ProjectionInputScope {
   if (value === undefined) return "exact";
   if (value === "exact" || value === "subtree") return value;
   throw new HttpError('scope must be "exact" or "subtree"', 400);
 }
 
-function parseUmapInputCompression(value: unknown): UmapInputCompression {
+function parseProjectionInputCompression(value: unknown): ProjectionInputCompression {
   if (value === undefined) return "gzip";
   if (value === "gzip" || value === "none") return value;
   throw new HttpError('compression must be "gzip" or "none"', 400);
 }
 
-function responseFromEncodedUmapInput(
+function responseFromEncodedProjectionInput(
   payload: Uint8Array,
-  compression: UmapInputCompression,
+  compression: ProjectionInputCompression,
 ): Response {
   return new Response(payload, {
     headers: {
-      "content-type": UMAP_INPUT_CONTENT_TYPE,
-      [UMAP_INPUT_ENCODING_HEADER]: compression,
+      "content-type": PROJECTION_INPUT_CONTENT_TYPE,
+      [PROJECTION_INPUT_ENCODING_HEADER]: compression,
     },
   });
 }
@@ -724,7 +724,7 @@ export async function handleDatabaseVectorDimensions(
   return Response.json({ dimensions, database });
 }
 
-export async function handleDatabaseUmapInput(
+export async function handleDatabaseProjectionInput(
   service: MemoriesDatabaseService,
   projectionSource: MemoriesServiceHttpOptions["projectionSource"],
   body: unknown,
@@ -732,7 +732,7 @@ export async function handleDatabaseUmapInput(
   if (projectionSource === undefined) {
     throw new HttpError("Projection source is not configured", 501);
   }
-  const scoped = body as DatabaseUmapInputRequest;
+  const scoped = body as DatabaseProjectionInputRequest;
   const { database, handle } = await getHandle(service, scoped);
   if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
     throw new HttpError("namespace is required", 400);
@@ -743,14 +743,14 @@ export async function handleDatabaseUmapInput(
   }
 
   const namespace = scoped.namespace.trim();
-  const scope = parseUmapInputScope(scoped.scope);
-  const compression = parseUmapInputCompression(scoped.compression);
+  const scope = parseProjectionInputScope(scoped.scope);
+  const compression = parseProjectionInputCompression(scoped.compression);
   const provenanceHeadRootHex =
     scoped.includeProvenanceHead === true
       ? ((await handle.persistence.getProvenanceHeadRootHex()) ?? undefined)
       : undefined;
 
-  const input: NamespaceUmapInput = await collectNamespaceUmapInput(
+  const input: NamespaceProjectionInput = await collectNamespaceProjectionInput(
     source,
     handle.persistence,
     namespace,
@@ -760,9 +760,12 @@ export async function handleDatabaseUmapInput(
       ...(scoped.includeSuppressed === true ? { includeSuppressed: true } : {}),
     },
   );
-  const payload = await encodeUmapInput(input, { compression });
-  return responseFromEncodedUmapInput(payload, compression);
+  const payload = await encodeProjectionInput(input, { compression });
+  return responseFromEncodedProjectionInput(payload, compression);
 }
+
+/** @deprecated Use handleDatabaseProjectionInput */
+export const handleDatabaseUmapInput = handleDatabaseProjectionInput;
 
 export async function handleDatabaseEnsureScopeChain(
   service: MemoriesDatabaseService,

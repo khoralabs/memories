@@ -1,9 +1,8 @@
-import type { MemoriesPersistenceAsync } from "../persistence/core";
 import { buildNamespaceGraphLayoutFromSource } from "./graph/build-namespace-graph-layout";
 import { buildNamespaceSubtreeGraphLayoutFromSource } from "./graph/build-namespace-subtree-graph-layout";
 import type { NamespaceGraphLayout } from "./graph/layout-types";
 import type { Umap3DLayoutOptions } from "./graph/umap-layout";
-import type { GraphProjectionSource } from "./source";
+import type { GraphProjectionPersistenceReads, GraphProjectionSource } from "./source";
 import { loadEdgePreviewFromPersistence } from "./source";
 
 export type MemoriesVisualizationFromSource = {
@@ -25,13 +24,7 @@ export type MemoriesVisualizationFromSource = {
 
 export function createMemoriesVisualizationFromSource(
   source: GraphProjectionSource,
-  persistence: Pick<
-    MemoriesPersistenceAsync,
-    | "loadGraphEdgesForNamespace"
-    | "loadNodeLabelsForNamespace"
-    | "loadNodePropertiesForNamespace"
-    | "loadGraphEdge"
-  >,
+  persistence: GraphProjectionPersistenceReads,
 ): MemoriesVisualizationFromSource {
   return {
     buildNamespaceGraphLayout(namespace, options) {

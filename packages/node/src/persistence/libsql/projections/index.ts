@@ -1,23 +1,28 @@
-import type { MemoriesPersistenceAsync } from "../../../persistence/core";
 import {
   buildNamespaceGraphLayoutFromSource,
   buildNamespaceSubtreeGraphLayoutFromSource,
-  collectNamespaceUmapInput,
+  collectNamespaceProjectionInput,
   createMemoriesVisualizationFromSource,
-  type NamespaceUmapInput,
+  type GraphProjectionGraphReads,
+  type GraphProjectionPersistenceReads,
+  type NamespaceProjectionInput,
   type Umap3DLayoutOptions,
 } from "../../../projections/index";
 import { createLibsqlGraphProjectionSource, type LibsqlProjectionQueryClient } from "./source";
 
 export {
+  buildNamespaceGraphLayoutFromProjectionInput,
   buildNamespaceGraphLayoutFromSource,
   buildNamespaceGraphLayoutFromUmapInput,
   buildNamespaceSubtreeGraphLayoutFromSource,
+  collectNamespaceProjectionInput,
   collectNamespaceUmapInput,
   createMemoriesVisualizationFromSource,
   createSeededRandom,
   DEFAULT_UMAP_LAYOUT_SEED,
+  decodeProjectionInput,
   decodeUmapInput,
+  encodeProjectionInput,
   encodeUmapInput,
   fibonacciSphereLayout3D,
   type GraphLayoutEdge,
@@ -27,8 +32,12 @@ export {
   labelPropertySyntheticEmbedding,
   minMaxNormalize3D,
   type NamespaceGraphLayout,
+  type NamespaceProjectionInput,
   type NamespaceUmapInput,
   type Point3,
+  PROJECTION_INPUT_CONTENT_TYPE,
+  PROJECTION_INPUT_ENCODING_HEADER,
+  PROJECTION_INPUT_VERSION,
   QUALIFIED_MEMORY_KEY_SEP,
   qualifyMemoryKey,
   UMAP_INPUT_CONTENT_TYPE,
@@ -36,6 +45,7 @@ export {
   UMAP_INPUT_VERSION,
   type Umap3DLayoutOptions,
   umap3DLayout,
+  validateProjectionInput,
   validateUmapInput,
 } from "../../../projections/index";
 export {
@@ -51,10 +61,7 @@ export {
 
 export function buildNamespaceGraphLayout(
   queryClient: LibsqlProjectionQueryClient,
-  persistence: Pick<
-    MemoriesPersistenceAsync,
-    "loadGraphEdgesForNamespace" | "loadNodeLabelsForNamespace" | "loadNodePropertiesForNamespace"
-  >,
+  persistence: GraphProjectionGraphReads,
   namespace: string,
   options?: Umap3DLayoutOptions,
 ) {
@@ -68,10 +75,7 @@ export function buildNamespaceGraphLayout(
 
 export function buildNamespaceSubtreeGraphLayout(
   queryClient: LibsqlProjectionQueryClient,
-  persistence: Pick<
-    MemoriesPersistenceAsync,
-    "loadGraphEdgesForNamespace" | "loadNodeLabelsForNamespace" | "loadNodePropertiesForNamespace"
-  >,
+  persistence: GraphProjectionGraphReads,
   prefix: string,
   options?: Umap3DLayoutOptions,
 ) {
@@ -83,36 +87,33 @@ export function buildNamespaceSubtreeGraphLayout(
   );
 }
 
-export type CollectLibsqlUmapInputOptions = {
+export type CollectLibsqlProjectionInputOptions = {
   namespace: string;
   scope?: "exact" | "subtree";
   provenanceHeadRootHex?: string;
 };
 
-export function collectLibsqlUmapInput(
+/** @deprecated Use CollectLibsqlProjectionInputOptions */
+export type CollectLibsqlUmapInputOptions = CollectLibsqlProjectionInputOptions;
+
+export function collectLibsqlProjectionInput(
   queryClient: LibsqlProjectionQueryClient,
-  persistence: Pick<
-    MemoriesPersistenceAsync,
-    "loadGraphEdgesForNamespace" | "loadNodeLabelsForNamespace" | "loadNodePropertiesForNamespace"
-  >,
-  input: CollectLibsqlUmapInputOptions,
-): Promise<NamespaceUmapInput> {
+  persistence: GraphProjectionGraphReads,
+  input: CollectLibsqlProjectionInputOptions,
+): Promise<NamespaceProjectionInput> {
   const source = createLibsqlGraphProjectionSource(queryClient);
-  return collectNamespaceUmapInput(source, persistence, input.namespace, {
+  return collectNamespaceProjectionInput(source, persistence, input.namespace, {
     provenanceHeadRootHex: input.provenanceHeadRootHex,
     scope: input.scope,
   });
 }
 
+/** @deprecated Use collectLibsqlProjectionInput */
+export const collectLibsqlUmapInput = collectLibsqlProjectionInput;
+
 export function createLibsqlMemoriesVisualization(
   queryClient: LibsqlProjectionQueryClient,
-  persistence: Pick<
-    MemoriesPersistenceAsync,
-    | "loadGraphEdgesForNamespace"
-    | "loadNodeLabelsForNamespace"
-    | "loadNodePropertiesForNamespace"
-    | "loadGraphEdge"
-  >,
+  persistence: GraphProjectionPersistenceReads,
 ) {
   return createMemoriesVisualizationFromSource(
     createLibsqlGraphProjectionSource(queryClient),

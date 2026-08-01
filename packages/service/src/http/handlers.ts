@@ -49,11 +49,11 @@ import {
   handleDatabaseNamespaceRename,
   handleDatabaseNamespaces,
   handleDatabaseNamespaceUpsert,
+  handleDatabaseProjectionInput,
   handleDatabaseProvenanceHead,
   handleDatabaseSearch,
   handleDatabaseSourceMapTextPreview,
   handleDatabaseSuppressMemory,
-  handleDatabaseUmapInput,
   handleDatabaseUnsuppressMemory,
   handleDatabaseVectorDimensions,
 } from "./persistence-handlers";
@@ -418,11 +418,15 @@ export async function handleMemoriesServiceHttpRequest(
       return handleDatabaseVectorDimensions(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/projections/umap-input") {
+    if (
+      req.method === "POST" &&
+      (url.pathname === "/databases/projections/projection-input" ||
+        url.pathname === "/databases/projections/umap-input")
+    ) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
-      return await handleDatabaseUmapInput(opts.service, opts.projectionSource, body);
+      return await handleDatabaseProjectionInput(opts.service, opts.projectionSource, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ensure-scope-chain") {

@@ -13,11 +13,11 @@ import type {
   MemoriesPersistenceAsync,
 } from "@khoralabs/memories-node/persistence";
 import {
-  decodeUmapInput,
-  type NamespaceUmapInput,
-  UMAP_INPUT_ENCODING_HEADER,
-  type UmapInputCompression,
-} from "@khoralabs/memories-node/projections/umap-input";
+  decodeProjectionInput,
+  type NamespaceProjectionInput,
+  PROJECTION_INPUT_ENCODING_HEADER,
+  type ProjectionInputCompression,
+} from "@khoralabs/memories-node/projections/projection-input";
 import type { MemoriesDatabaseId } from "../storage/core/index";
 
 import { MemoriesServiceClient, type MemoriesServiceClientOptions } from "./client";
@@ -27,11 +27,11 @@ import {
   type DatabaseMergeRequest,
   type DatabaseNamespaceMetadata,
   type DatabaseNamespacesResponse,
+  type DatabaseProjectionInputRequest,
   type DatabaseProvenanceHeadResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
   type DatabaseSuppressMemoryRequest,
-  type DatabaseUmapInputRequest,
   type DatabaseUnsuppressMemoryRequest,
   deserializeSearchHits,
   type SearchHitWire,
@@ -266,16 +266,16 @@ export class RemoteMemoriesReadClient {
     return response.dimensions;
   }
 
-  async fetchUmapInput(input: {
+  async fetchProjectionInput(input: {
     namespace: string;
     scope?: "exact" | "subtree";
-    compression?: UmapInputCompression;
+    compression?: ProjectionInputCompression;
     includeProvenanceHead?: boolean;
     includeSuppressed?: boolean;
     dangerousSkipValidation?: boolean;
-  }): Promise<NamespaceUmapInput> {
+  }): Promise<NamespaceProjectionInput> {
     const compression = input.compression ?? "gzip";
-    const body: DatabaseUmapInputRequest = {
+    const body: DatabaseProjectionInputRequest = {
       database: this.#database,
       namespace: input.namespace,
       ...(input.scope !== undefined ? { scope: input.scope } : {}),
@@ -286,16 +286,24 @@ export class RemoteMemoriesReadClient {
       ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
     };
     const response = await this.#client.postBinaryResponse(
-      "/databases/projections/umap-input",
+      "/databases/projections/projection-input",
       body,
     );
     const responseCompression =
-      (response.headers.get(UMAP_INPUT_ENCODING_HEADER) as UmapInputCompression | null) ??
-      compression;
-    return decodeUmapInput(await response.arrayBuffer(), {
+      (response.headers.get(
+        PROJECTION_INPUT_ENCODING_HEADER,
+      ) as ProjectionInputCompression | null) ?? compression;
+    return decodeProjectionInput(await response.arrayBuffer(), {
       compression: responseCompression,
       dangerousSkipValidation: input.dangerousSkipValidation,
     });
+  }
+
+  /** @deprecated Use fetchProjectionInput */
+  fetchUmapInput(
+    input: Parameters<RemoteMemoriesReadClient["fetchProjectionInput"]>[0],
+  ): Promise<NamespaceProjectionInput> {
+    return this.fetchProjectionInput(input);
   }
 
   async ensureScopeChain(scopePaths: readonly string[]): Promise<void> {

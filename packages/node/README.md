@@ -21,7 +21,8 @@ This is the embeddable core. For multi-tenant HTTP, see [`@khoralabs/memories-se
 | `./libsql` | LibSQL persistence + projections; Node-safe |
 | `./turso-serverless` | Turso Cloud persistence; Node-safe (no projection helpers yet) |
 | `./projections` | UMAP / namespace graph layout math (**requires `umap-js`**) |
-| `./projections/umap-input` | Wire codec only (no `umap-js`) |
+| `./projections/projection-input` | Wire codec only (no `umap-js`) |
+| `./projections/umap-input` | Deprecated alias of `./projections/projection-input` |
 | `./attestation` | Contributor attestation envelope + formats |
 | `./attestation/formats/direct-principal-v1` | Caller-signed principal attestation |
 | `./attestation/formats/http-request-v1` | Server-signed HTTP request attestation |
@@ -31,7 +32,7 @@ This is the embeddable core. For multi-tenant HTTP, see [`@khoralabs/memories-se
 
 Backend drivers are optional peer dependencies — see the [root README](../../README.md) install matrix.
 
-**Runtime:** `./sqlite` requires [Bun](https://bun.sh). Use `./libsql` or `./turso-serverless` on Node. Hosts that only ship UMAP input payloads should import `./projections/umap-input`, not the full `./projections` barrel.
+**Runtime:** `./sqlite` requires [Bun](https://bun.sh). Use `./libsql` or `./turso-serverless` on Node. Hosts that only ship projection input payloads should import `./projections/projection-input`, not the full `./projections` barrel.
 
 ## Ontology
 

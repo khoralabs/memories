@@ -48,7 +48,7 @@ Heavy drivers are **optional peerDependencies** of `@khoralabs/memories-node`. I
 | `@khoralabs/memories-node/libsql` | Node / Bun | `@libsql/client`, `ajv` |
 | `@khoralabs/memories-node/turso-serverless` | Node / Bun | `@tursodatabase/serverless`, `ajv` |
 | `@khoralabs/memories-node/projections` | Node / Bun | `umap-js` |
-| `@khoralabs/memories-node/projections/umap-input` | Node / Bun | _(none — wire codec only)_ |
+| `@khoralabs/memories-node/projections/projection-input` | Node / Bun | _(none — wire codec only)_ |
 | `@khoralabs/memories-node/autolink` | Node / Bun | `workflow` (for `./autolink/workflows`) |
 
 External runtime dependencies:

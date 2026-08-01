@@ -3,16 +3,18 @@ import type {
   EdgePreviewPayload,
   GraphEdgeLink,
   GraphMemoryEmbedding,
-  MemoriesPersistence,
   OntologyLabelInstance,
 } from "../../../persistence/core";
 import {
   buildNamespaceGraphLayoutFromRows,
-  collectNamespaceUmapInput,
+  collectNamespaceProjectionInput,
   type GraphLayoutEdge,
+  type GraphProjectionGraphReads,
   type NamespaceGraphLayout,
-  type NamespaceUmapInput,
+  type NamespaceProjectionInput,
   qualifyMemoryKey,
+  type SyncEdgePreviewReads,
+  type SyncGraphProjectionGraphReads,
   type Umap3DLayoutOptions,
 } from "../../../projections/index";
 import { listNamespacesUnderPrefix } from "../persistence/index";
@@ -24,14 +26,18 @@ import {
 } from "./source";
 
 export {
+  buildNamespaceGraphLayoutFromProjectionInput,
   buildNamespaceGraphLayoutFromSource,
   buildNamespaceGraphLayoutFromUmapInput,
   buildNamespaceSubtreeGraphLayoutFromSource,
+  collectNamespaceProjectionInput,
   collectNamespaceUmapInput,
   createMemoriesVisualizationFromSource,
   createSeededRandom,
   DEFAULT_UMAP_LAYOUT_SEED,
+  decodeProjectionInput,
   decodeUmapInput,
+  encodeProjectionInput,
   encodeUmapInput,
   fibonacciSphereLayout3D,
   type GraphLayoutEdge,
@@ -41,8 +47,12 @@ export {
   labelPropertySyntheticEmbedding,
   minMaxNormalize3D,
   type NamespaceGraphLayout,
+  type NamespaceProjectionInput,
   type NamespaceUmapInput,
   type Point3,
+  PROJECTION_INPUT_CONTENT_TYPE,
+  PROJECTION_INPUT_ENCODING_HEADER,
+  PROJECTION_INPUT_VERSION,
   QUALIFIED_MEMORY_KEY_SEP,
   qualifyMemoryKey,
   UMAP_INPUT_CONTENT_TYPE,
@@ -50,6 +60,7 @@ export {
   UMAP_INPUT_VERSION,
   type Umap3DLayoutOptions,
   umap3DLayout,
+  validateProjectionInput,
   validateUmapInput,
 } from "../../../projections/index";
 export {
@@ -71,10 +82,7 @@ function toLayoutEdge(edge: GraphEdgeLink): GraphLayoutEdge {
 
 export function buildNamespaceGraphLayout(
   db: Database,
-  persistence: Pick<
-    MemoriesPersistence,
-    "loadGraphEdgesForNamespace" | "loadNodeLabelsForNamespace" | "loadNodePropertiesForNamespace"
-  >,
+  persistence: SyncGraphProjectionGraphReads,
   namespace: string,
   umapOptions?: Umap3DLayoutOptions,
 ): NamespaceGraphLayout {
@@ -122,10 +130,7 @@ function qualifyPropertyMap(
 
 export function buildNamespaceSubtreeGraphLayout(
   db: Database,
-  persistence: Pick<
-    MemoriesPersistence,
-    "loadGraphEdgesForNamespace" | "loadNodeLabelsForNamespace" | "loadNodePropertiesForNamespace"
-  >,
+  persistence: SyncGraphProjectionGraphReads,
   prefix: string,
   umapOptions?: Umap3DLayoutOptions,
 ): NamespaceGraphLayout {
@@ -170,29 +175,32 @@ export function buildNamespaceSubtreeGraphLayout(
   });
 }
 
-export type CollectSqliteUmapInputOptions = {
+export type CollectSqliteProjectionInputOptions = {
   namespace: string;
   scope?: "exact" | "subtree";
   provenanceHeadRootHex?: string;
 };
 
-export function collectSqliteUmapInput(
+/** @deprecated Use CollectSqliteProjectionInputOptions */
+export type CollectSqliteUmapInputOptions = CollectSqliteProjectionInputOptions;
+
+export function collectSqliteProjectionInput(
   db: Database,
-  persistence: Pick<
-    MemoriesPersistence,
-    "loadGraphEdgesForNamespace" | "loadNodeLabelsForNamespace" | "loadNodePropertiesForNamespace"
-  >,
-  input: CollectSqliteUmapInputOptions,
-): Promise<NamespaceUmapInput> {
+  persistence: GraphProjectionGraphReads,
+  input: CollectSqliteProjectionInputOptions,
+): Promise<NamespaceProjectionInput> {
   const source = createSqliteGraphProjectionSource(db);
-  return collectNamespaceUmapInput(source, persistence, input.namespace, {
+  return collectNamespaceProjectionInput(source, persistence, input.namespace, {
     provenanceHeadRootHex: input.provenanceHeadRootHex,
     scope: input.scope,
   });
 }
 
+/** @deprecated Use collectSqliteProjectionInput */
+export const collectSqliteUmapInput = collectSqliteProjectionInput;
+
 export function loadEdgePreview(
-  persistence: Pick<MemoriesPersistence, "loadGraphEdge">,
+  persistence: SyncEdgePreviewReads,
   namespace: string,
   edgeId: string,
 ): EdgePreviewPayload | null {
@@ -210,7 +218,7 @@ export function loadEdgePreview(
 export class MemoriesVisualization {
   constructor(
     private readonly db: Database,
-    private readonly persistence: Pick<MemoriesPersistence, "loadGraphEdge">,
+    private readonly persistence: SyncEdgePreviewReads,
   ) {}
 
   loadMeanEmbeddingsForNamespace(
@@ -235,7 +243,7 @@ export class MemoriesVisualization {
 
 export function createMemoriesVisualization(
   db: Database,
-  persistence: Pick<MemoriesPersistence, "loadGraphEdge">,
+  persistence: SyncEdgePreviewReads,
 ): MemoriesVisualization {
   return new MemoriesVisualization(db, persistence);
 }

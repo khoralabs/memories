@@ -48,6 +48,7 @@ export {
   type DatabaseNamespacesResponse,
   type DatabaseNamespaceUpsertRequest,
   type DatabaseNamespaceUpsertResponse,
+  type DatabaseProjectionInputRequest,
   type DatabaseProvenanceHeadResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,

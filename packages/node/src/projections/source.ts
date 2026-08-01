@@ -3,6 +3,7 @@ import type {
   GraphEdgeLink,
   GraphMemoryEmbedding,
   IncludeSuppressedOpts,
+  MemoriesPersistenceAsync,
   OntologyLabelInstance,
 } from "../persistence/core";
 
@@ -37,6 +38,32 @@ export type GraphProjectionGraphReads = {
 export type EdgePreviewReads = {
   loadGraphEdge(namespace: string, edgeId: string): MaybePromise<GraphEdgeLink | null>;
 };
+
+/** Topology + edge preview reads used by visualization helpers. */
+export type GraphProjectionPersistenceReads = GraphProjectionGraphReads & EdgePreviewReads;
+
+/** Strip `Promise` from port method return types for sync (bun:sqlite) helpers. */
+type SyncifyMethods<T> = {
+  [K in keyof T]: T[K] extends (...args: infer A) => MaybePromise<infer R>
+    ? (...args: A) => R
+    : T[K];
+};
+
+/** Sync {@link GraphProjectionGraphReads} for bun:sqlite layout helpers. */
+export type SyncGraphProjectionGraphReads = SyncifyMethods<GraphProjectionGraphReads>;
+
+/** Sync {@link EdgePreviewReads} for bun:sqlite edge-preview helpers. */
+export type SyncEdgePreviewReads = SyncifyMethods<EdgePreviewReads>;
+
+/**
+ * Compile-time guard: resolves to `true` only while {@link MemoriesPersistenceAsync}
+ * remains assignable to {@link GraphProjectionPersistenceReads}.
+ */
+export type AssertMemoriesPersistenceAsyncImplementsProjectionReads =
+  MemoriesPersistenceAsync extends GraphProjectionPersistenceReads ? true : never;
+
+const _assertMemoriesPersistenceAsyncImplementsProjectionReads: AssertMemoriesPersistenceAsyncImplementsProjectionReads = true;
+void _assertMemoriesPersistenceAsyncImplementsProjectionReads;
 
 export async function loadEdgePreviewFromPersistence(
   persistence: EdgePreviewReads,

@@ -1,0 +1,362 @@
+import { promisify } from "node:util";
+import { gunzip, gzip } from "node:zlib";
+import type {
+  GraphEdgeLink,
+  GraphMemoryEmbedding,
+  OntologyLabelInstance,
+} from "../../persistence/core";
+import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source";
+import type { GraphLayoutEdge } from "./layout-types";
+import { qualifyMemoryKey } from "./qualified-memory-key";
+
+const gzipAsync = promisify(gzip);
+const gunzipAsync = promisify(gunzip);
+
+export const PROJECTION_INPUT_VERSION = 1;
+export const PROJECTION_INPUT_CONTENT_TYPE =
+  "application/vnd.khoralabs.memories.projection-input+json";
+export const PROJECTION_INPUT_ENCODING_HEADER = "x-memories-payload-encoding";
+
+export type ProjectionInputCompression = "gzip" | "none";
+export type ProjectionInputScope = "exact" | "subtree";
+
+export type NamespaceProjectionInput = {
+  version: typeof PROJECTION_INPUT_VERSION;
+  namespace: string;
+  scope: ProjectionInputScope;
+  edges: GraphLayoutEdge[];
+  embeddings: GraphMemoryEmbedding[];
+  labelsByKey: Array<[string, OntologyLabelInstance[]]>;
+  propertiesByKey: Array<[string, Record<string, unknown> | null]>;
+  provenanceHeadRootHex?: string;
+  /** Echoes collect option when suppressed entities were requested. */
+  includeSuppressed?: boolean;
+  /** Node memory keys that are suppressed (qualified in subtree mode). */
+  suppressedKeys?: string[];
+};
+
+export type CollectProjectionInputOptions = {
+  scope?: ProjectionInputScope;
+  provenanceHeadRootHex?: string;
+  includeSuppressed?: boolean;
+};
+
+export type EncodeProjectionInputOptions = {
+  compression?: ProjectionInputCompression;
+};
+
+export type DecodeProjectionInputOptions = {
+  compression?: ProjectionInputCompression;
+  dangerousSkipValidation?: boolean;
+};
+
+function assertRecord(value: unknown, label: string): Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function assertString(value: unknown, label: string): string {
+  if (typeof value !== "string") throw new Error(`${label} must be a string`);
+  return value;
+}
+
+function assertNumber(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number`);
+  }
+  return value;
+}
+
+function assertOptionalBoolean(value: unknown, label: string): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") throw new Error(`${label} must be a boolean`);
+  return value;
+}
+
+function assertPlainObjectOrNull(value: unknown, label: string): Record<string, unknown> | null {
+  if (value === null) return null;
+  return assertRecord(value, label);
+}
+
+function validateLabel(value: unknown, label: string): OntologyLabelInstance {
+  const record = assertRecord(value, label);
+  const kind = assertString(record.kind, `${label}.kind`);
+  const props = record.props === undefined ? {} : assertRecord(record.props, `${label}.props`);
+  return { kind, props };
+}
+
+function validateLabels(value: unknown, label: string): OntologyLabelInstance[] {
+  if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
+  return value.map((item, i) => validateLabel(item, `${label}[${i}]`));
+}
+
+function validateGraphEdge(value: unknown, label: string): GraphLayoutEdge {
+  const record = assertRecord(value, label);
+  const suppressed = assertOptionalBoolean(record.suppressed, `${label}.suppressed`);
+  return {
+    edgeId: assertString(record.edgeId, `${label}.edgeId`),
+    fromKey: assertString(record.fromKey, `${label}.fromKey`),
+    toKey: assertString(record.toKey, `${label}.toKey`),
+    labels: validateLabels(record.labels, `${label}.labels`),
+    ...(record.directed !== undefined
+      ? { directed: assertOptionalBoolean(record.directed, `${label}.directed`) }
+      : {}),
+    ...(suppressed === true ? { suppressed: true } : {}),
+  };
+}
+
+function validateEmbedding(value: unknown, label: string): GraphMemoryEmbedding {
+  const record = assertRecord(value, label);
+  const embedding = record.embedding;
+  if (!Array.isArray(embedding)) throw new Error(`${label}.embedding must be an array`);
+  const suppressed = assertOptionalBoolean(record.suppressed, `${label}.suppressed`);
+  return {
+    memoryKey: assertString(record.memoryKey, `${label}.memoryKey`),
+    memoryId: assertString(record.memoryId, `${label}.memoryId`),
+    embedding: embedding.map((item, i) => assertNumber(item, `${label}.embedding[${i}]`)),
+    ...(suppressed === true ? { suppressed: true } : {}),
+  };
+}
+
+function validateTupleArray<T>(
+  value: unknown,
+  label: string,
+  validateValue: (item: unknown, itemLabel: string) => T,
+): Array<[string, T]> {
+  if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
+  return value.map((entry, i) => {
+    if (!Array.isArray(entry) || entry.length !== 2) {
+      throw new Error(`${label}[${i}] must be a [key, value] tuple`);
+    }
+    return [
+      assertString(entry[0], `${label}[${i}][0]`),
+      validateValue(entry[1], `${label}[${i}][1]`),
+    ];
+  });
+}
+
+export function validateProjectionInput(value: unknown): NamespaceProjectionInput {
+  const record = assertRecord(value, "NamespaceProjectionInput");
+  if (record.version !== PROJECTION_INPUT_VERSION) {
+    throw new Error(`NamespaceProjectionInput.version must be ${PROJECTION_INPUT_VERSION}`);
+  }
+  const scope = record.scope;
+  if (scope !== "exact" && scope !== "subtree") {
+    throw new Error('NamespaceProjectionInput.scope must be "exact" or "subtree"');
+  }
+  const input: NamespaceProjectionInput = {
+    version: PROJECTION_INPUT_VERSION,
+    namespace: assertString(record.namespace, "NamespaceProjectionInput.namespace"),
+    scope,
+    edges: Array.isArray(record.edges)
+      ? record.edges.map((edge, i) =>
+          validateGraphEdge(edge, `NamespaceProjectionInput.edges[${i}]`),
+        )
+      : (() => {
+          throw new Error("NamespaceProjectionInput.edges must be an array");
+        })(),
+    embeddings: Array.isArray(record.embeddings)
+      ? record.embeddings.map((embedding, i) =>
+          validateEmbedding(embedding, `NamespaceProjectionInput.embeddings[${i}]`),
+        )
+      : (() => {
+          throw new Error("NamespaceProjectionInput.embeddings must be an array");
+        })(),
+    labelsByKey: validateTupleArray(
+      record.labelsByKey,
+      "NamespaceProjectionInput.labelsByKey",
+      validateLabels,
+    ),
+    propertiesByKey: validateTupleArray(
+      record.propertiesByKey,
+      "NamespaceProjectionInput.propertiesByKey",
+      assertPlainObjectOrNull,
+    ),
+  };
+  if (record.provenanceHeadRootHex !== undefined) {
+    input.provenanceHeadRootHex = assertString(
+      record.provenanceHeadRootHex,
+      "NamespaceProjectionInput.provenanceHeadRootHex",
+    );
+  }
+  const includeSuppressed = assertOptionalBoolean(
+    record.includeSuppressed,
+    "NamespaceProjectionInput.includeSuppressed",
+  );
+  if (includeSuppressed === true) {
+    input.includeSuppressed = true;
+  }
+  if (record.suppressedKeys !== undefined) {
+    if (!Array.isArray(record.suppressedKeys)) {
+      throw new Error("NamespaceProjectionInput.suppressedKeys must be an array");
+    }
+    input.suppressedKeys = record.suppressedKeys.map((key, i) =>
+      assertString(key, `NamespaceProjectionInput.suppressedKeys[${i}]`),
+    );
+  }
+  return input;
+}
+
+function toLayoutEdge(edge: GraphEdgeLink): GraphLayoutEdge {
+  return {
+    edgeId: edge.edgeId,
+    fromKey: edge.fromKey,
+    toKey: edge.toKey,
+    labels: edge.labels,
+    directed: edge.directed,
+    ...(edge.suppressed === true ? { suppressed: true } : {}),
+  };
+}
+
+function serializeMap<T>(map: Map<string, T>): Array<[string, T]> {
+  return [...map.entries()];
+}
+
+function qualifyEdges(namespace: string, edges: GraphEdgeLink[]): GraphLayoutEdge[] {
+  return edges.map((edge) => ({
+    edgeId: qualifyMemoryKey(namespace, edge.edgeId),
+    fromKey: qualifyMemoryKey(namespace, edge.fromKey),
+    toKey: qualifyMemoryKey(namespace, edge.toKey),
+    labels: edge.labels,
+    directed: edge.directed,
+    ...(edge.suppressed === true ? { suppressed: true as const } : {}),
+  }));
+}
+
+function qualifyEmbeddings(
+  namespace: string,
+  rows: GraphMemoryEmbedding[],
+): GraphMemoryEmbedding[] {
+  return rows.map((row) => ({
+    ...row,
+    memoryKey: qualifyMemoryKey(namespace, row.memoryKey),
+  }));
+}
+
+function qualifyMap<T>(namespace: string, rows: Map<string, T>): Map<string, T> {
+  const out = new Map<string, T>();
+  for (const [key, value] of rows) {
+    out.set(qualifyMemoryKey(namespace, key), value);
+  }
+  return out;
+}
+
+export async function collectNamespaceProjectionInput(
+  source: GraphProjectionSource,
+  graphReads: GraphProjectionGraphReads,
+  namespace: string,
+  options: CollectProjectionInputOptions = {},
+): Promise<NamespaceProjectionInput> {
+  const scope = options.scope ?? "exact";
+  const includeOpts =
+    options.includeSuppressed === true ? { includeSuppressed: true as const } : undefined;
+  if (scope === "subtree") {
+    const namespaces = await source.listNamespacesUnderPrefix(namespace);
+    const chunks = await Promise.all(
+      namespaces.map(async (ns) => {
+        const [edges, embeddings, labelsByKey, propertiesByKey, suppressedKeys] = await Promise.all(
+          [
+            graphReads.loadGraphEdgesForNamespace(ns, includeOpts),
+            source.loadMeanEmbeddingsForNamespace(ns, includeOpts),
+            graphReads.loadNodeLabelsForNamespace(ns, includeOpts),
+            graphReads.loadNodePropertiesForNamespace(ns, includeOpts),
+            includeOpts
+              ? graphReads.listSuppressedNodeKeysForNamespace(ns)
+              : Promise.resolve([] as string[]),
+          ],
+        );
+        return {
+          edges: qualifyEdges(ns, edges),
+          embeddings: qualifyEmbeddings(ns, embeddings),
+          labelsByKey: qualifyMap(ns, labelsByKey),
+          propertiesByKey: qualifyMap(ns, propertiesByKey),
+          suppressedKeys: suppressedKeys.map((key) => qualifyMemoryKey(ns, key)),
+        };
+      }),
+    );
+
+    const labelsByKey = new Map<string, OntologyLabelInstance[]>();
+    const propertiesByKey = new Map<string, Record<string, unknown> | null>();
+    const suppressedKeys: string[] = [];
+    for (const chunk of chunks) {
+      for (const [key, labels] of chunk.labelsByKey) labelsByKey.set(key, labels);
+      for (const [key, props] of chunk.propertiesByKey) propertiesByKey.set(key, props);
+      suppressedKeys.push(...chunk.suppressedKeys);
+    }
+
+    return {
+      version: PROJECTION_INPUT_VERSION,
+      namespace,
+      scope,
+      edges: chunks.flatMap((chunk) => chunk.edges),
+      embeddings: chunks.flatMap((chunk) => chunk.embeddings),
+      labelsByKey: serializeMap(labelsByKey),
+      propertiesByKey: serializeMap(propertiesByKey),
+      ...(options.provenanceHeadRootHex !== undefined
+        ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
+        : {}),
+      ...(includeOpts
+        ? { includeSuppressed: true, suppressedKeys: [...new Set(suppressedKeys)].sort() }
+        : {}),
+    };
+  }
+
+  const [edges, embeddings, labelsByKey, propertiesByKey, suppressedKeys] = await Promise.all([
+    graphReads.loadGraphEdgesForNamespace(namespace, includeOpts),
+    source.loadMeanEmbeddingsForNamespace(namespace, includeOpts),
+    graphReads.loadNodeLabelsForNamespace(namespace, includeOpts),
+    graphReads.loadNodePropertiesForNamespace(namespace, includeOpts),
+    includeOpts
+      ? graphReads.listSuppressedNodeKeysForNamespace(namespace)
+      : Promise.resolve([] as string[]),
+  ]);
+  return {
+    version: PROJECTION_INPUT_VERSION,
+    namespace,
+    scope: "exact",
+    edges: edges.map(toLayoutEdge),
+    embeddings,
+    labelsByKey: serializeMap(labelsByKey),
+    propertiesByKey: serializeMap(propertiesByKey),
+    ...(options.provenanceHeadRootHex !== undefined
+      ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
+      : {}),
+    ...(includeOpts ? { includeSuppressed: true, suppressedKeys: [...suppressedKeys].sort() } : {}),
+  };
+}
+
+export async function encodeProjectionInput(
+  input: NamespaceProjectionInput,
+  options: EncodeProjectionInputOptions = {},
+): Promise<Uint8Array> {
+  const compression = options.compression ?? "gzip";
+  const json = JSON.stringify(input);
+  const bytes = new TextEncoder().encode(json);
+  if (compression === "none") return bytes;
+  if (compression !== "gzip") {
+    throw new Error(`Unsupported projection input compression: ${compression}`);
+  }
+  return new Uint8Array(await gzipAsync(bytes));
+}
+
+export async function decodeProjectionInput(
+  bytes: Uint8Array | ArrayBuffer,
+  options: DecodeProjectionInputOptions = {},
+): Promise<NamespaceProjectionInput> {
+  const compression = options.compression ?? "gzip";
+  const inputBytes = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
+  const jsonBytes =
+    compression === "none"
+      ? inputBytes
+      : compression === "gzip"
+        ? new Uint8Array(await gunzipAsync(inputBytes))
+        : (() => {
+            throw new Error(`Unsupported projection input compression: ${compression}`);
+          })();
+  const parsed = JSON.parse(new TextDecoder().decode(jsonBytes)) as unknown;
+  return options.dangerousSkipValidation
+    ? (parsed as NamespaceProjectionInput)
+    : validateProjectionInput(parsed);
+}

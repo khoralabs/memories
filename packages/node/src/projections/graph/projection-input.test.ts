@@ -2,12 +2,12 @@ import { describe, expect, test } from "bun:test";
 import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source";
 import { buildNamespaceGraphLayoutFromSource } from "./build-namespace-graph-layout";
 import {
-  collectNamespaceUmapInput,
-  decodeUmapInput,
-  encodeUmapInput,
-  validateUmapInput,
-} from "./umap-input";
-import { buildNamespaceGraphLayoutFromUmapInput } from "./umap-input-layout";
+  collectNamespaceProjectionInput,
+  decodeProjectionInput,
+  encodeProjectionInput,
+  validateProjectionInput,
+} from "./projection-input";
+import { buildNamespaceGraphLayoutFromProjectionInput } from "./projection-input-layout";
 
 const source: GraphProjectionSource = {
   async listNamespacesUnderPrefix(prefix) {
@@ -60,9 +60,9 @@ const graphReads: GraphProjectionGraphReads = {
   },
 };
 
-describe("NamespaceUmapInput", () => {
+describe("NamespaceProjectionInput", () => {
   test("collects exact namespace input", async () => {
-    const input = await collectNamespaceUmapInput(source, graphReads, "ns/a", {
+    const input = await collectNamespaceProjectionInput(source, graphReads, "ns/a", {
       provenanceHeadRootHex: "abc123",
     });
 
@@ -76,7 +76,9 @@ describe("NamespaceUmapInput", () => {
   });
 
   test("collects subtree input with qualified keys", async () => {
-    const input = await collectNamespaceUmapInput(source, graphReads, "root", { scope: "subtree" });
+    const input = await collectNamespaceProjectionInput(source, graphReads, "root", {
+      scope: "subtree",
+    });
 
     expect(input.scope).toBe("subtree");
     expect(input.edges.map((edge) => edge.fromKey)).toEqual(["root/a::m1", "root/b::m1"]);
@@ -88,19 +90,19 @@ describe("NamespaceUmapInput", () => {
   });
 
   test("encodes and decodes gzip input", async () => {
-    const input = await collectNamespaceUmapInput(source, graphReads, "ns/a");
-    const encoded = await encodeUmapInput(input, { compression: "gzip" });
-    const decoded = await decodeUmapInput(encoded, { compression: "gzip" });
+    const input = await collectNamespaceProjectionInput(source, graphReads, "ns/a");
+    const encoded = await encodeProjectionInput(input, { compression: "gzip" });
+    const decoded = await decodeProjectionInput(encoded, { compression: "gzip" });
 
     expect(decoded).toEqual(input);
   });
 
   test("validates payloads unless dangerousSkipValidation is set", async () => {
-    expect(() => validateUmapInput({ version: 1 })).toThrow();
+    expect(() => validateProjectionInput({ version: 1 })).toThrow();
 
-    const encoded = await encodeUmapInput({ version: 1 } as never, { compression: "none" });
-    await expect(decodeUmapInput(encoded, { compression: "none" })).rejects.toThrow();
-    const skipped = await decodeUmapInput(encoded, {
+    const encoded = await encodeProjectionInput({ version: 1 } as never, { compression: "none" });
+    await expect(decodeProjectionInput(encoded, { compression: "none" })).rejects.toThrow();
+    const skipped = await decodeProjectionInput(encoded, {
       compression: "none",
       dangerousSkipValidation: true,
     });
@@ -108,8 +110,8 @@ describe("NamespaceUmapInput", () => {
   });
 
   test("builds the same layout from collected input as source convenience API", async () => {
-    const input = await collectNamespaceUmapInput(source, graphReads, "ns/a");
-    const fromInput = buildNamespaceGraphLayoutFromUmapInput(input);
+    const input = await collectNamespaceProjectionInput(source, graphReads, "ns/a");
+    const fromInput = buildNamespaceGraphLayoutFromProjectionInput(input);
     const fromSource = await buildNamespaceGraphLayoutFromSource(source, graphReads, "ns/a");
 
     expect(fromInput).toEqual(fromSource);

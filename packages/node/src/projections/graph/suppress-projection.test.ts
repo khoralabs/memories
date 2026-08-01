@@ -7,8 +7,8 @@ import {
   openTestMemoriesDatabase,
 } from "../../persistence/sqlite/persistence/index";
 import { createSqliteGraphProjectionSource } from "../../persistence/sqlite/projections/source";
-import { collectNamespaceUmapInput } from "./umap-input";
-import { buildNamespaceGraphLayoutFromUmapInput } from "./umap-input-layout";
+import { collectNamespaceProjectionInput } from "./projection-input";
+import { buildNamespaceGraphLayoutFromProjectionInput } from "./projection-input-layout";
 
 function unitVec(dim: number, hot: number): number[] {
   return Array.from({ length: dim }, (_, i) => (i === hot ? 1 : 0));
@@ -50,14 +50,14 @@ describe("projection includeSuppressed", () => {
     suppressMemory(ctx, { namespace, key: "hub" });
 
     const source = createSqliteGraphProjectionSource(db);
-    const excluded = await collectNamespaceUmapInput(source, persistence, namespace);
+    const excluded = await collectNamespaceProjectionInput(source, persistence, namespace);
     expect(excluded.includeSuppressed).toBeUndefined();
     expect(excluded.suppressedKeys).toBeUndefined();
     expect(excluded.embeddings.some((e) => e.memoryKey === "hub")).toBe(false);
     expect(excluded.edges.some((e) => e.fromKey === "hub" || e.toKey === "hub")).toBe(false);
     expect(excluded.labelsByKey.some(([key]) => key === "hub")).toBe(false);
 
-    const included = await collectNamespaceUmapInput(source, persistence, namespace, {
+    const included = await collectNamespaceProjectionInput(source, persistence, namespace, {
       includeSuppressed: true,
     });
     expect(included.includeSuppressed).toBe(true);
@@ -72,11 +72,11 @@ describe("projection includeSuppressed", () => {
     ).toBe(true);
     expect(included.labelsByKey.some(([key]) => key === "hub")).toBe(true);
 
-    const layoutHidden = buildNamespaceGraphLayoutFromUmapInput(included);
+    const layoutHidden = buildNamespaceGraphLayoutFromProjectionInput(included);
     expect(layoutHidden.nodes.some((n) => n.key === "hub")).toBe(false);
     expect(layoutHidden.edges.some((e) => e.fromKey === "hub" || e.toKey === "hub")).toBe(false);
 
-    const layoutShown = buildNamespaceGraphLayoutFromUmapInput(included, {
+    const layoutShown = buildNamespaceGraphLayoutFromProjectionInput(included, {
       includeSuppressed: true,
       umapOptions: { nEpochs: 2, seed: 1 },
     });

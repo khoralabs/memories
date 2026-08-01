@@ -1,7 +1,7 @@
 import type { GraphProjectionGraphReads, GraphProjectionSource } from "../source";
 import type { NamespaceGraphLayout } from "./layout-types";
-import { collectNamespaceUmapInput } from "./umap-input";
-import { buildNamespaceGraphLayoutFromUmapInput } from "./umap-input-layout";
+import { collectNamespaceProjectionInput } from "./projection-input";
+import { buildNamespaceGraphLayoutFromProjectionInput } from "./projection-input-layout";
 import type { Umap3DLayoutOptions } from "./umap-layout";
 
 /**
@@ -13,6 +13,6 @@ export async function buildNamespaceGraphLayoutFromSource(
   namespace: string,
   umapOptions?: Umap3DLayoutOptions,
 ): Promise<NamespaceGraphLayout> {
-  const input = await collectNamespaceUmapInput(source, persistence, namespace);
-  return buildNamespaceGraphLayoutFromUmapInput(input, umapOptions);
+  const input = await collectNamespaceProjectionInput(source, persistence, namespace);
+  return buildNamespaceGraphLayoutFromProjectionInput(input, umapOptions);
 }

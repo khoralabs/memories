@@ -262,7 +262,8 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 | `POST` | `/databases/edge-preview` | Edge preview | `read` |
 | `POST` | `/databases/source-map/text-preview` | Source map text preview | `read` |
 | `POST` | `/databases/vector-dimensions` | Vector index dimensions | `read` |
-| `POST` | `/databases/projections/umap-input` | Compressed UMAP input rows for external projection workers | `read` |
+| `POST` | `/databases/projections/projection-input` | Compressed projection input rows for external layout workers | `read` |
+| `POST` | `/databases/projections/umap-input` | Deprecated alias of `projection-input` | `read` |
 | `POST` | `/databases/ensure-scope-chain` | Ensure scope chain paths | `write` |
 | `POST` | `/databases/find-memory-id` | Resolve memory id by key | `read` |
 | `POST` | `/databases/load-memory-namespace-key` | Load namespace/key by memory id | `read` |
