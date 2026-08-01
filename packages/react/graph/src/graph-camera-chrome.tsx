@@ -1,5 +1,6 @@
 import { Focus } from "lucide-react";
 import {
+  type ComponentProps,
   createContext,
   type PropsWithChildren,
   type RefObject,
@@ -8,6 +9,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button.js";
+import { cn } from "@/lib/utils";
 
 type GraphCameraChromeValue = {
   cameraViewDeviated: boolean;
@@ -38,23 +40,43 @@ export function useGraphCameraChrome(): GraphCameraChromeValue {
   return ctx;
 }
 
+export type GraphCameraReframeHintProps = ComponentProps<typeof Button>;
+
 /** Reframe-to-fit control when the camera has panned/zoomed; reads {@link useGraphCameraChrome}. */
-export function GraphCameraReframeHint() {
+export function GraphCameraReframeHint({
+  className,
+  children,
+  onClick,
+  type = "button",
+  variant = "ghost",
+  size = "icon-sm",
+  title = "Reframe graph",
+  "aria-label": ariaLabel = "Reframe graph to fit",
+  ...props
+}: GraphCameraReframeHintProps = {}) {
   const { cameraViewDeviated, reframeRef } = useGraphCameraChrome();
 
   if (!cameraViewDeviated) return null;
 
   return (
     <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      className="shrink-0 text-muted-foreground"
-      title="Reframe graph"
-      aria-label="Reframe graph to fit"
-      onClick={() => reframeRef.current?.()}
+      type={type}
+      variant={variant}
+      size={size}
+      title={title}
+      aria-label={ariaLabel}
+      {...props}
+      className={cn("shrink-0 text-muted-foreground", className)}
+      onClick={(e) => {
+        onClick?.(e);
+        reframeRef.current?.();
+      }}
     >
-      <Focus className="size-4" />
+      {children ?? <Focus className="size-4" />}
     </Button>
   );
 }
+
+export const GraphCameraChrome = Object.assign(GraphCameraChromeProvider, {
+  ReframeHint: GraphCameraReframeHint,
+});

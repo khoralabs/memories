@@ -1,5 +1,6 @@
 import { BrainIcon, ScanSearchIcon, SendIcon } from "lucide-react";
 import type * as React from "react";
+import type { ComponentProps } from "react";
 import { useEffect } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import {
@@ -39,6 +40,9 @@ type GraphSearchRegularProps = {
   /** When false, the deep-search toggle is not shown. */
   deepSearch: boolean;
   onToggleDeep: () => void;
+  className?: string;
+  inputProps?: ComponentProps<typeof InputGroupInput>;
+  deepToggleButtonProps?: ComponentProps<typeof InputGroupButton>;
 };
 
 function GraphSearchRegular({
@@ -48,14 +52,36 @@ function GraphSearchRegular({
   searchLoading,
   deepSearch,
   onToggleDeep,
+  className,
+  inputProps,
+  deepToggleButtonProps,
 }: GraphSearchRegularProps) {
+  const {
+    className: inputClassName,
+    onChange: inputOnChange,
+    value: _inputValue,
+    ...restInputProps
+  } = inputProps ?? {};
+  const {
+    className: deepToggleClassName,
+    onClick: deepToggleOnClick,
+    children: deepToggleChildren,
+    size: deepToggleSize = "icon-xs",
+    ...restDeepToggleProps
+  } = deepToggleButtonProps ?? {};
+
   return (
-    <InputGroup className="w-full">
+    <InputGroup className={cn("w-full", className)}>
       <InputGroupInput
         placeholder="Search…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
         aria-label="Search memories"
+        {...restInputProps}
+        value={query}
+        onChange={(e) => {
+          inputOnChange?.(e);
+          setQuery(e.target.value);
+        }}
+        className={inputClassName}
       />
       <InputGroupAddon>
         <ScanSearchIcon className="text-muted-foreground" aria-hidden />
@@ -77,12 +103,17 @@ function GraphSearchRegular({
             <Tooltip>
               <TooltipTrigger asChild>
                 <InputGroupButton
-                  size="icon-xs"
-                  onClick={onToggleDeep}
+                  size={deepToggleSize}
                   aria-pressed={false}
                   aria-label="Enable deep search"
+                  {...restDeepToggleProps}
+                  className={deepToggleClassName}
+                  onClick={(e) => {
+                    deepToggleOnClick?.(e);
+                    onToggleDeep();
+                  }}
                 >
-                  <BrainIcon aria-hidden />
+                  {deepToggleChildren ?? <BrainIcon aria-hidden />}
                 </InputGroupButton>
               </TooltipTrigger>
               <TooltipContent side="right">Enable deep search</TooltipContent>
@@ -101,6 +132,9 @@ type GraphSearchDeepProps = {
   investigating: boolean;
   onSubmit: () => void;
   onLeaveDeep: () => void;
+  className?: string;
+  submitButtonProps?: ComponentProps<typeof InputGroupButton>;
+  leaveDeepButtonProps?: ComponentProps<typeof InputGroupButton>;
 };
 
 function GraphSearchDeep({
@@ -110,9 +144,30 @@ function GraphSearchDeep({
   investigating,
   onSubmit,
   onLeaveDeep,
+  className,
+  submitButtonProps,
+  leaveDeepButtonProps,
 }: GraphSearchDeepProps) {
+  const {
+    className: leaveClassName,
+    onClick: leaveOnClick,
+    children: leaveChildren,
+    size: leaveSize = "icon-sm",
+    variant: leaveVariant = "ghost",
+    ...restLeaveProps
+  } = leaveDeepButtonProps ?? {};
+  const {
+    className: submitClassName,
+    onClick: submitOnClick,
+    children: submitChildren,
+    size: submitSize = "icon-sm",
+    variant: submitVariant = "outline",
+    disabled: submitDisabled,
+    ...restSubmitProps
+  } = submitButtonProps ?? {};
+
   return (
-    <InputGroup className="w-full">
+    <InputGroup className={cn("w-full", className)}>
       <TextareaAutosize
         data-slot="input-group-control"
         minRows={3}
@@ -142,27 +197,40 @@ function GraphSearchDeep({
           <Tooltip>
             <TooltipTrigger asChild>
               <InputGroupButton
-                size="icon-sm"
-                variant="ghost"
-                onClick={onLeaveDeep}
+                size={leaveSize}
+                variant={leaveVariant}
                 aria-pressed
                 aria-label="Disable deep search"
-                className="text-foreground shrink-0"
+                {...restLeaveProps}
+                className={cn("text-foreground shrink-0", leaveClassName)}
+                onClick={(e) => {
+                  leaveOnClick?.(e);
+                  onLeaveDeep();
+                }}
               >
-                <ScanSearchIcon className="text-muted-foreground" aria-hidden />
+                {leaveChildren ?? <ScanSearchIcon className="text-muted-foreground" aria-hidden />}
               </InputGroupButton>
             </TooltipTrigger>
             <TooltipContent side="right">Disable deep search</TooltipContent>
           </Tooltip>
         </TooltipProvider>
         <InputGroupButton
-          size="icon-sm"
-          variant="outline"
-          className="ml-auto"
-          onClick={() => onSubmit()}
-          disabled={!canSend}
+          size={submitSize}
+          variant={submitVariant}
+          {...restSubmitProps}
+          className={cn("ml-auto", submitClassName)}
+          onClick={(e) => {
+            submitOnClick?.(e);
+            onSubmit();
+          }}
+          disabled={submitDisabled ?? !canSend}
         >
-          {investigating ? <Spinner className="size-4" aria-label="Investigating" /> : <SendIcon />}
+          {submitChildren ??
+            (investigating ? (
+              <Spinner className="size-4" aria-label="Investigating" />
+            ) : (
+              <SendIcon />
+            ))}
         </InputGroupButton>
       </InputGroupAddon>
     </InputGroup>
@@ -175,6 +243,11 @@ export type GraphSearchProps = {
    * Default true.
    */
   deepSearch?: boolean;
+  className?: string;
+  inputProps?: ComponentProps<typeof InputGroupInput>;
+  deepToggleButtonProps?: ComponentProps<typeof InputGroupButton>;
+  submitButtonProps?: ComponentProps<typeof InputGroupButton>;
+  leaveDeepButtonProps?: ComponentProps<typeof InputGroupButton>;
 };
 
 /**
@@ -182,7 +255,14 @@ export type GraphSearchProps = {
  * {@link useGraphInvestigator} for deep-search state — must be under both
  * {@link GraphProjectionProvider} and `GraphInvestigatorProvider`.
  */
-export function GraphSearch({ deepSearch = true }: GraphSearchProps = {}) {
+export function GraphSearch({
+  deepSearch = true,
+  className,
+  inputProps,
+  deepToggleButtonProps,
+  submitButtonProps,
+  leaveDeepButtonProps,
+}: GraphSearchProps = {}) {
   const { graphSearch, searchLoading } = useMemoriesGraphChrome();
   const {
     deepEnabled,
@@ -208,6 +288,9 @@ export function GraphSearch({ deepSearch = true }: GraphSearchProps = {}) {
         investigating={investigating}
         onSubmit={submit}
         onLeaveDeep={() => setDeepEnabled(false)}
+        className={className}
+        submitButtonProps={submitButtonProps}
+        leaveDeepButtonProps={leaveDeepButtonProps}
       />
     );
   }
@@ -220,6 +303,9 @@ export function GraphSearch({ deepSearch = true }: GraphSearchProps = {}) {
       searchLoading={searchLoading}
       deepSearch={deepSearch}
       onToggleDeep={() => setDeepEnabled(true)}
+      className={className}
+      inputProps={inputProps}
+      deepToggleButtonProps={deepToggleButtonProps}
     />
   );
 }

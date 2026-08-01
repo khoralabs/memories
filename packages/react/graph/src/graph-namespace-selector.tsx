@@ -1,4 +1,4 @@
-import { Check, FolderSearchIcon, RefreshCcwIcon } from "lucide-react";
+import { Check, FolderSearchIcon } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Command,
@@ -8,13 +8,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { InputGroup, InputGroupAddon, InputGroupButton } from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { GraphRefreshButton, type GraphRefreshButtonProps } from "./graph-refresh-button.js";
 import { type GraphScope, useMemoriesGraphChrome } from "./use-projection.js";
 
 export type GraphNamespaceSelectorProps = {
   className?: string;
+  refreshButtonProps?: GraphRefreshButtonProps;
 };
 
 type NamespacePickerMenuProps = { close: () => void };
@@ -148,13 +150,21 @@ function NamespacePickerMenu({ close }: NamespacePickerMenuProps) {
 }
 
 /** Namespace row + combobox; reads {@link useMemoriesGraphChrome} — must be under {@link GraphProjectionProvider}. */
-export function GraphNamespaceSelector({ className }: GraphNamespaceSelectorProps = {}) {
+export function GraphNamespaceSelector({
+  className,
+  refreshButtonProps,
+}: GraphNamespaceSelectorProps = {}) {
+  const { namespace: value, graphLoading: disabled, graphSummary } = useMemoriesGraphChrome();
+
   const {
-    namespace: value,
-    graphLoading: disabled,
-    graphSummary,
-    refreshAll,
-  } = useMemoriesGraphChrome();
+    className: refreshClassName,
+    onClick: refreshOnClick,
+    children: refreshChildren,
+    variant: refreshVariant = "ghost",
+    disabled: refreshDisabled,
+    type: refreshType = "button",
+    ...restRefreshProps
+  } = refreshButtonProps ?? {};
 
   const [open, setOpen] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -192,17 +202,18 @@ export function GraphNamespaceSelector({ className }: GraphNamespaceSelectorProp
               {graphSummary || "\u00a0"}
             </InputGroupAddon>
             <InputGroupAddon align="inline-end" className="relative z-[2]">
-              <InputGroupButton
-                variant="ghost"
-                disabled={disabled}
-                type="button"
+              <GraphRefreshButton
                 data-namespace-refresh
-                onClick={() => {
-                  void refreshAll();
-                }}
+                size="xs"
+                variant={refreshVariant}
+                type={refreshType}
+                {...restRefreshProps}
+                disabled={refreshDisabled ?? disabled}
+                className={refreshClassName}
+                onClick={refreshOnClick}
               >
-                <RefreshCcwIcon className="text-muted-foreground" aria-hidden />
-              </InputGroupButton>
+                {refreshChildren}
+              </GraphRefreshButton>
             </InputGroupAddon>
             <PopoverTrigger asChild>
               <button

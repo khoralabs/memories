@@ -71,6 +71,24 @@ export type SceneEdge = {
   directed?: boolean;
 };
 
+/**
+ * Host-supplied kind → props map for typed billboard / preview labels.
+ * Open by default (`string` kinds); closed maps narrow render-prop generics.
+ */
+export type GraphOntologyLabelMap = Record<string, Record<string, unknown>>;
+
+export type TypedGraphLabelInstance<TMap extends GraphOntologyLabelMap> = {
+  [K in keyof TMap & string]: { kind: K; props: TMap[K] };
+}[keyof TMap & string];
+
+export type TypedProjectionPoint<TNode extends GraphOntologyLabelMap = GraphOntologyLabelMap> =
+  Omit<ProjectionPoint, "labels"> & { labels: TypedGraphLabelInstance<TNode>[] };
+
+export type TypedSceneEdge<TEdge extends GraphOntologyLabelMap = GraphOntologyLabelMap> = Omit<
+  SceneEdge,
+  "labels"
+> & { labels: TypedGraphLabelInstance<TEdge>[] };
+
 /** Render-prop item for `GraphScene.Nodes` / `GraphScene.Node`. */
 export type GraphSceneNodeItem = ProjectionPoint & {
   /** World position after {@link SCALE}. */

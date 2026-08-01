@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { EdgePreviewCard } from "./edge-billboard.js";
+import { EdgeBillboard } from "./edge-billboard.js";
 import { GraphOverlayContainer } from "./graph-overlay-container.js";
-import { NodePreviewCard } from "./node-billboard.js";
+import { NodeBillboard } from "./node-billboard.js";
 import type { ProjectionPoint, SceneEdge } from "./projection-types.js";
 import { useProjection } from "./use-projection.js";
 
@@ -13,7 +13,7 @@ export type GraphPreviewDockContent =
 export type GraphPreviewDockProps = {
   /**
    * Optional render prop for the preview body. When omitted, the built-in
-   * {@link NodePreviewCard} / {@link EdgePreviewCard} are used.
+   * {@link NodeBillboard} / {@link EdgeBillboard} are used.
    */
   children?: (content: GraphPreviewDockContent) => ReactNode;
 };
@@ -32,9 +32,11 @@ export type GraphPreviewDockProps = {
  * <GraphPreviewDock>
  *   {(content) =>
  *     content.kind === "node" ? (
- *       <MyNodePreview point={content.point} />
+ *       <NodeBillboard point={content.point} open>
+ *         {(node) => <MyNodePreview node={node} />}
+ *       </NodeBillboard>
  *     ) : (
- *       <MyEdgePreview edge={content.edge} />
+ *       <EdgeBillboard edge={content.edge} open />
  *     )
  *   }
  * </GraphPreviewDock>
@@ -48,9 +50,9 @@ export function GraphPreviewDock({ children }: GraphPreviewDockProps) {
   const body = children ? (
     children(graphPreview)
   ) : graphPreview.kind === "edge" ? (
-    <EdgePreviewCard edge={graphPreview.edge} open />
+    <EdgeBillboard edge={graphPreview.edge} open />
   ) : (
-    <NodePreviewCard point={graphPreview.point} open />
+    <NodeBillboard point={graphPreview.point} open />
   );
 
   return (

@@ -34,11 +34,28 @@ export {
 } from "./components/ui/sidebar.js";
 export { Spinner } from "./components/ui/spinner.js";
 export {
+  EdgeBillboard,
+  EdgeBillboardHeader,
+  type EdgeBillboardHeaderProps,
+  EdgeBillboardLabels,
+  type EdgeBillboardLabelsProps,
+  EdgeBillboardLoading,
+  type EdgeBillboardLoadingProps,
+  EdgeBillboardMetadata,
+  type EdgeBillboardMetadataProps,
+  type EdgeBillboardProps,
+  EdgePreviewCard,
+  type EdgePreviewJson,
+  useEdgeBillboard,
+} from "./edge-billboard.js";
+export {
+  GraphCameraChrome,
   GraphCameraChromeProvider,
   GraphCameraReframeHint,
+  type GraphCameraReframeHintProps,
   useGraphCameraChrome,
 } from "./graph-camera-chrome.js";
-export { GraphFetchError } from "./graph-fetch-error.js";
+export { GraphFetchError, type GraphFetchErrorProps } from "./graph-fetch-error.js";
 export {
   GraphInvestigatorAnswer,
   GraphInvestigatorAnswerOverlay,
@@ -56,7 +73,7 @@ export {
   type GraphInvestigatorSession,
   type JobStreamInvestigationEvent,
 } from "./graph-investigator-client.js";
-export { GraphLoading } from "./graph-loading.js";
+export { GraphLoading, type GraphLoadingProps } from "./graph-loading.js";
 export {
   GraphNamespaceSelector,
   type GraphNamespaceSelectorProps,
@@ -66,12 +83,16 @@ export {
   type GraphNamespaceTreeProps,
 } from "./graph-namespace-tree.js";
 export { GraphOverlayContainer } from "./graph-overlay-container.js";
-export { GraphPinnedEscHint } from "./graph-pinned-esc-hint.js";
+export { GraphPinnedEscHint, type GraphPinnedEscHintProps } from "./graph-pinned-esc-hint.js";
 export {
   GraphPreviewDock,
   type GraphPreviewDockContent,
   type GraphPreviewDockProps,
 } from "./graph-preview-dock.js";
+export {
+  GraphRefreshButton,
+  type GraphRefreshButtonProps,
+} from "./graph-refresh-button.js";
 export type { GraphSceneEdgeProps } from "./graph-scene-edge.js";
 export type {
   GraphSceneFogBlurOptions,
@@ -107,6 +128,16 @@ export {
   installBenignResizeObserverErrorSuppression,
   isBenignResizeObserverError,
 } from "./lib/suppress-benign-resize-observer-errors.js";
+export {
+  NodeBillboard,
+  NodeBillboardHeader,
+  type NodeBillboardHeaderProps,
+  NodeBillboardLabels,
+  type NodeBillboardLabelsProps,
+  type NodeBillboardProps,
+  NodePreviewCard,
+  useNodeBillboard,
+} from "./node-billboard.js";
 export * from "./projection-types.js";
 export type {
   GraphEdgeRenderMode,
