@@ -74,6 +74,12 @@ export { renameNamespaceAsync } from "../models/rename-namespace-async";
 export type { SuppressMemoryParams } from "../models/suppress-memory";
 export { suppressMemory, unsuppressMemory } from "../models/suppress-memory";
 export { suppressMemoryAsync, unsuppressMemoryAsync } from "../models/suppress-memory-async";
+export type { SuppressNamespaceParams } from "../models/suppress-namespace";
+export { suppressNamespace, unsuppressNamespace } from "../models/suppress-namespace";
+export {
+  suppressNamespaceAsync,
+  unsuppressNamespaceAsync,
+} from "../models/suppress-namespace-async";
 export * from "./client";
 export * from "./client-async";
 export type {

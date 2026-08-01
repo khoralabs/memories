@@ -33,6 +33,8 @@ export type NamespaceProjectionInput = {
   includeSuppressed?: boolean;
   /** Node memory keys that are suppressed (qualified in subtree mode). */
   suppressedKeys?: string[];
+  /** Namespace paths under the collect root suppressed via self or ancestor. */
+  suppressedNamespaces?: string[];
 };
 
 export type CollectProjectionInputOptions = {
@@ -196,6 +198,14 @@ export function validateProjectionInput(value: unknown): NamespaceProjectionInpu
       assertString(key, `NamespaceProjectionInput.suppressedKeys[${i}]`),
     );
   }
+  if (record.suppressedNamespaces !== undefined) {
+    if (!Array.isArray(record.suppressedNamespaces)) {
+      throw new Error("NamespaceProjectionInput.suppressedNamespaces must be an array");
+    }
+    input.suppressedNamespaces = record.suppressedNamespaces.map((ns, i) =>
+      assertString(ns, `NamespaceProjectionInput.suppressedNamespaces[${i}]`),
+    );
+  }
   return input;
 }
 
@@ -253,11 +263,11 @@ export async function collectNamespaceProjectionInput(
   const includeOpts =
     options.includeSuppressed === true ? { includeSuppressed: true as const } : undefined;
   if (scope === "subtree") {
-    const namespaces = await source.listNamespacesUnderPrefix(namespace);
+    const namespaces = await source.listNamespacesUnderPrefix(namespace, includeOpts);
     const chunks = await Promise.all(
       namespaces.map(async (ns) => {
-        const [edges, embeddings, labelsByKey, propertiesByKey, suppressedKeys] = await Promise.all(
-          [
+        const [edges, embeddings, labelsByKey, propertiesByKey, suppressedKeys, nsSuppressed] =
+          await Promise.all([
             graphReads.loadGraphEdgesForNamespace(ns, includeOpts),
             source.loadMeanEmbeddingsForNamespace(ns, includeOpts),
             graphReads.loadNodeLabelsForNamespace(ns, includeOpts),
@@ -265,14 +275,18 @@ export async function collectNamespaceProjectionInput(
             includeOpts
               ? graphReads.listSuppressedNodeKeysForNamespace(ns)
               : Promise.resolve([] as string[]),
-          ],
-        );
+            includeOpts
+              ? Promise.resolve(graphReads.isNamespaceSuppressed(ns)).then((v) => v)
+              : Promise.resolve(false),
+          ]);
         return {
           edges: qualifyEdges(ns, edges),
           embeddings: qualifyEmbeddings(ns, embeddings),
           labelsByKey: qualifyMap(ns, labelsByKey),
           propertiesByKey: qualifyMap(ns, propertiesByKey),
           suppressedKeys: suppressedKeys.map((key) => qualifyMemoryKey(ns, key)),
+          nsSuppressed,
+          ns,
         };
       }),
     );
@@ -280,10 +294,12 @@ export async function collectNamespaceProjectionInput(
     const labelsByKey = new Map<string, OntologyLabelInstance[]>();
     const propertiesByKey = new Map<string, Record<string, unknown> | null>();
     const suppressedKeys: string[] = [];
+    const suppressedNamespaces: string[] = [];
     for (const chunk of chunks) {
       for (const [key, labels] of chunk.labelsByKey) labelsByKey.set(key, labels);
       for (const [key, props] of chunk.propertiesByKey) propertiesByKey.set(key, props);
       suppressedKeys.push(...chunk.suppressedKeys);
+      if (chunk.nsSuppressed) suppressedNamespaces.push(chunk.ns);
     }
 
     return {
@@ -298,20 +314,28 @@ export async function collectNamespaceProjectionInput(
         ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
         : {}),
       ...(includeOpts
-        ? { includeSuppressed: true, suppressedKeys: [...new Set(suppressedKeys)].sort() }
+        ? {
+            includeSuppressed: true,
+            suppressedKeys: [...new Set(suppressedKeys)].sort(),
+            suppressedNamespaces: [...new Set(suppressedNamespaces)].sort(),
+          }
         : {}),
     };
   }
 
-  const [edges, embeddings, labelsByKey, propertiesByKey, suppressedKeys] = await Promise.all([
-    graphReads.loadGraphEdgesForNamespace(namespace, includeOpts),
-    source.loadMeanEmbeddingsForNamespace(namespace, includeOpts),
-    graphReads.loadNodeLabelsForNamespace(namespace, includeOpts),
-    graphReads.loadNodePropertiesForNamespace(namespace, includeOpts),
-    includeOpts
-      ? graphReads.listSuppressedNodeKeysForNamespace(namespace)
-      : Promise.resolve([] as string[]),
-  ]);
+  const [edges, embeddings, labelsByKey, propertiesByKey, suppressedKeys, nsSuppressed] =
+    await Promise.all([
+      graphReads.loadGraphEdgesForNamespace(namespace, includeOpts),
+      source.loadMeanEmbeddingsForNamespace(namespace, includeOpts),
+      graphReads.loadNodeLabelsForNamespace(namespace, includeOpts),
+      graphReads.loadNodePropertiesForNamespace(namespace, includeOpts),
+      includeOpts
+        ? graphReads.listSuppressedNodeKeysForNamespace(namespace)
+        : Promise.resolve([] as string[]),
+      includeOpts
+        ? Promise.resolve(graphReads.isNamespaceSuppressed(namespace)).then((v) => v)
+        : Promise.resolve(false),
+    ]);
   return {
     version: PROJECTION_INPUT_VERSION,
     namespace,
@@ -323,7 +347,13 @@ export async function collectNamespaceProjectionInput(
     ...(options.provenanceHeadRootHex !== undefined
       ? { provenanceHeadRootHex: options.provenanceHeadRootHex }
       : {}),
-    ...(includeOpts ? { includeSuppressed: true, suppressedKeys: [...suppressedKeys].sort() } : {}),
+    ...(includeOpts
+      ? {
+          includeSuppressed: true,
+          suppressedKeys: [...suppressedKeys].sort(),
+          suppressedNamespaces: nsSuppressed ? [namespace] : [],
+        }
+      : {}),
   };
 }
 

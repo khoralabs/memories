@@ -52,6 +52,17 @@ describe("memories service client wire", () => {
     expect(json).not.toContain("contributor");
   });
 
+  test("DatabaseSuppressNamespaceRequest includes intentSnapshotId but not contributor", () => {
+    const req = {
+      database: { kind: "account", ownerKey: "owner" },
+      namespace: "ns",
+      intentSnapshotId: "run-ns",
+    };
+    const json = JSON.stringify(req);
+    expect(json).toContain("intentSnapshotId");
+    expect(json).not.toContain("contributor");
+  });
+
   test("DatabaseSuppressMemoryRequest includes intentSnapshotId but not contributor", () => {
     const req = {
       database: { kind: "account", ownerKey: "owner" },

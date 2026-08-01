@@ -58,6 +58,9 @@ const graphReads: GraphProjectionGraphReads = {
   async listSuppressedNodeKeysForNamespace() {
     return [];
   },
+  async isNamespaceSuppressed() {
+    return false;
+  },
 };
 
 describe("NamespaceProjectionInput", () => {

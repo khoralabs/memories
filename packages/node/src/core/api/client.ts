@@ -27,6 +27,11 @@ import {
   unsuppressMemory as unsuppressMemoryHandler,
 } from "../models/suppress-memory";
 import {
+  type SuppressNamespaceParams,
+  suppressNamespace as suppressNamespaceHandler,
+  unsuppressNamespace as unsuppressNamespaceHandler,
+} from "../models/suppress-namespace";
+import {
   type MergeMemoryParams,
   type MutationCtx,
   mergeMemory,
@@ -189,6 +194,16 @@ export class MemoriesClient<
   /** Clears suppression so the memory can surface in search/graph again. */
   unsuppressMemory(params: SuppressMemoryParams): void {
     unsuppressMemoryHandler(this.mutationCtx, params);
+  }
+
+  /** Hides a namespace and descendants from discovery without deleting rows. */
+  suppressNamespace(params: SuppressNamespaceParams): void {
+    suppressNamespaceHandler(this.mutationCtx, params);
+  }
+
+  /** Clears exact-path namespace suppression (child flags unchanged). */
+  unsuppressNamespace(params: SuppressNamespaceParams): void {
+    unsuppressNamespaceHandler(this.mutationCtx, params);
   }
 
   /** Deletes a namespace (default recursive) and cascaded memories/metadata. */

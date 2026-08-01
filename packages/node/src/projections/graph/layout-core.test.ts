@@ -123,6 +123,9 @@ describe("buildNamespaceGraphLayoutFromSource", () => {
         listSuppressedNodeKeysForNamespace() {
           return [];
         },
+        isNamespaceSuppressed() {
+          return false;
+        },
       },
       "ns",
     );

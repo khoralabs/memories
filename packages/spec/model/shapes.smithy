@@ -328,6 +328,20 @@ structure UnsuppressMemoryParams {
 
 structure UnsuppressMemoryOutput {}
 
+structure SuppressNamespaceParams {
+    namespace: MemoryNamespace
+    attribution: MemoryMutationAttribution
+}
+
+structure SuppressNamespaceOutput {}
+
+structure UnsuppressNamespaceParams {
+    namespace: MemoryNamespace
+    attribution: MemoryMutationAttribution
+}
+
+structure UnsuppressNamespaceOutput {}
+
 structure SearchContent {
     text: String
     vector: DoubleList
@@ -468,6 +482,8 @@ union MemoryProvenanceEvent {
     SUPPRESS_MEMORY: SuppressMemoryProvenanceEvent
     UNSUPPRESS_MEMORY: UnsuppressMemoryProvenanceEvent
     RENAME_NAMESPACE: RenameNamespaceProvenanceEvent
+    SUPPRESS_NAMESPACE: SuppressNamespaceProvenanceEvent
+    UNSUPPRESS_NAMESPACE: UnsuppressNamespaceProvenanceEvent
 }
 
 structure MergeMemoryProvenanceEvent {
@@ -519,6 +535,22 @@ structure RenameNamespaceProvenanceEvent {
     from_namespace: String
     to_namespace: String
     recursive: Boolean
+    contributor: ContributorAttestation
+    intent_snapshot_id: String
+}
+
+structure SuppressNamespaceProvenanceEvent {
+    /// Schema version; TS requires literal `1`.
+    v: Integer
+    namespace: String
+    contributor: ContributorAttestation
+    intent_snapshot_id: String
+}
+
+structure UnsuppressNamespaceProvenanceEvent {
+    /// Schema version; TS requires literal `1`.
+    v: Integer
+    namespace: String
     contributor: ContributorAttestation
     intent_snapshot_id: String
 }

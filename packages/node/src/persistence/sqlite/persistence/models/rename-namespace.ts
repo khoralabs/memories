@@ -331,20 +331,24 @@ function moveNamespaceMetadata(
         {
           display_name: string | null;
           description: string;
+          suppressed: number;
           _ts_created: number;
         },
         [string]
-      >(`SELECT display_name, description, _ts_created FROM namespace_metadata WHERE _id = ?`)
+      >(
+        `SELECT display_name, description, suppressed, _ts_created FROM namespace_metadata WHERE _id = ?`,
+      )
       .get(oldNs);
     if (row === null) continue;
     db.run(
-      `INSERT INTO namespace_metadata (_id, display_name, description, _ts_created, _ts_updated)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO namespace_metadata (_id, display_name, description, suppressed, _ts_created, _ts_updated)
+       VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(_id) DO UPDATE SET
          display_name = excluded.display_name,
          description = excluded.description,
+         suppressed = excluded.suppressed,
          _ts_updated = excluded._ts_updated`,
-      [newNs, row.display_name, row.description, row._ts_created, now],
+      [newNs, row.display_name, row.description, row.suppressed, row._ts_created, now],
     );
     db.run(`DELETE FROM namespace_metadata WHERE _id = ?`, [oldNs]);
   }

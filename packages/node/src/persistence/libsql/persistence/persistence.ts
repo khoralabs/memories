@@ -68,6 +68,10 @@ import {
   upsertMemorySearchMetaVector,
 } from "./models/memory-search-meta";
 import { clearMemorySubtree } from "./models/memory-subtree";
+import {
+  isNamespaceSuppressed as isNamespaceSuppressedQuery,
+  setNamespaceSuppressed as setNamespaceSuppressedQuery,
+} from "./models/namespace-suppress";
 import { insertNodeLabelAssignment } from "./models/node-label-assignments";
 import { ensureNodeLabel } from "./models/node-labels";
 import { nodeExists, upsertNodeForMemoryKey } from "./models/nodes";
@@ -474,6 +478,17 @@ export class MemoriesLibsqlPersistence {
     await setMemorySuppressedRow(this.activeCtx(op), input);
   }
 
+  async isNamespaceSuppressed(namespace: string): Promise<boolean> {
+    return isNamespaceSuppressedQuery(this.db, namespace);
+  }
+
+  async setNamespaceSuppressed(
+    op: MemoryOpContext,
+    input: { namespace: string; suppressed: boolean },
+  ): Promise<void> {
+    await setNamespaceSuppressedQuery(this.activeCtx(op), op, input);
+  }
+
   async searchLexicalSourceMapIds(input: {
     scope: SearchNamespaceScope;
     text: string;
@@ -533,15 +548,24 @@ export class MemoriesLibsqlPersistence {
       this.db.client,
       `SELECT DISTINCT namespace FROM memories ORDER BY namespace`,
     );
-    return rows.map((row) => row.namespace);
+    const out: string[] = [];
+    for (const row of rows) {
+      if (await isNamespaceSuppressedQuery(this.db, row.namespace)) continue;
+      out.push(row.namespace);
+    }
+    return out;
   }
 
-  async listNamespacesWithMetadata(): Promise<NamespaceMetadataInfo[]> {
+  async listNamespacesWithMetadata(opts?: {
+    includeSuppressed?: boolean;
+  }): Promise<NamespaceMetadataInfo[]> {
+    const include = opts?.includeSuppressed === true;
     const byKey = new Map<string, NamespaceMetadataInfo>();
     for (const row of await queryAll<{ namespace: string }>(
       this.db.client,
       `SELECT DISTINCT namespace FROM memories`,
     )) {
+      if (!include && (await isNamespaceSuppressedQuery(this.db, row.namespace))) continue;
       byKey.set(row.namespace, {
         namespace: row.namespace,
         alias: null,
@@ -552,14 +576,17 @@ export class MemoriesLibsqlPersistence {
       id: string;
       alias: string | null;
       description: string;
+      suppressed: number;
     }>(
       this.db.client,
-      `SELECT _id AS id, display_name AS alias, description FROM namespace_metadata`,
+      `SELECT _id AS id, display_name AS alias, description, suppressed FROM namespace_metadata`,
     )) {
+      if (!include && (await isNamespaceSuppressedQuery(this.db, row.id))) continue;
       byKey.set(row.id, {
         namespace: row.id,
         alias: row.alias,
         description: row.description,
+        ...(row.suppressed !== 0 ? { suppressed: true } : {}),
       });
     }
     return [...byKey.values()].sort((a, b) => a.namespace.localeCompare(b.namespace));
@@ -571,12 +598,20 @@ export class MemoriesLibsqlPersistence {
       id: string;
       alias: string | null;
       description: string;
+      suppressed: number;
     }>(
       this.db.client,
-      `SELECT _id AS id, display_name AS alias, description FROM namespace_metadata WHERE _id = ?`,
+      `SELECT _id AS id, display_name AS alias, description, suppressed FROM namespace_metadata WHERE _id = ?`,
       [ns],
     );
-    return row ? { namespace: row.id, alias: row.alias, description: row.description } : undefined;
+    return row
+      ? {
+          namespace: row.id,
+          alias: row.alias,
+          description: row.description,
+          ...(row.suppressed !== 0 ? { suppressed: true } : {}),
+        }
+      : undefined;
   }
 
   async listMemoryKeysInNamespace(namespace: string): Promise<string[]> {

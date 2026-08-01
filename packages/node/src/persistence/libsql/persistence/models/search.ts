@@ -437,6 +437,11 @@ export async function listNeighborsForMemory<
      WHERE (e.from_node_id = ? OR e.to_node_id = ?)
        AND m.suppressed = 0
        AND NOT EXISTS (
+         SELECT 1 FROM namespace_metadata nm
+         WHERE nm.suppressed != 0
+           AND (m.namespace = nm._id OR m.namespace LIKE nm._id || '/%')
+       )
+       AND NOT EXISTS (
          SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
        )
      ORDER BY e._id ASC, el.kind ASC`,

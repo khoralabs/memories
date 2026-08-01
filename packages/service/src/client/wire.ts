@@ -83,6 +83,10 @@ export type SuppressMemoryParamsWire = {
   key: string;
 };
 
+export type SuppressNamespaceParamsWire = {
+  namespace: string;
+};
+
 export type DatabaseScopedBody<T> = {
   database: { kind: string; ownerKey: string };
 } & T;
@@ -118,6 +122,16 @@ export type DatabaseUnsuppressMemoryRequest = DatabaseScopedBody<
   SuppressMemoryParamsWire & { intentSnapshotId?: string }
 >;
 export type DatabaseUnsuppressMemoryResponse = { ok: true };
+
+export type DatabaseSuppressNamespaceRequest = DatabaseScopedBody<
+  SuppressNamespaceParamsWire & { intentSnapshotId?: string }
+>;
+export type DatabaseSuppressNamespaceResponse = { ok: true };
+
+export type DatabaseUnsuppressNamespaceRequest = DatabaseScopedBody<
+  SuppressNamespaceParamsWire & { intentSnapshotId?: string }
+>;
+export type DatabaseUnsuppressNamespaceResponse = { ok: true };
 
 export type DatabaseProvenanceHeadRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseProvenanceHeadResponse = { rootHex: string };

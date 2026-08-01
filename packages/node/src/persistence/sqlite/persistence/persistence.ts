@@ -61,8 +61,10 @@ import { clearMemorySubtree } from "./models/memory-subtree";
 import {
   deleteNamespaceMetadata as deleteNamespaceMetadataQuery,
   getNamespaceMetadata as getNamespaceMetadataQuery,
+  isNamespaceSuppressed as isNamespaceSuppressedQuery,
   listMemoryKeysInNamespace as listMemoryKeysInNamespaceQuery,
   listNamespacesWithMetadata as listNamespacesWithMetadataQuery,
+  setNamespaceSuppressed as setNamespaceSuppressedQuery,
   upsertNamespaceMetadata as upsertNamespaceMetadataQuery,
 } from "./models/namespace-metadata";
 import { insertNodeLabelAssignment } from "./models/node-label-assignments";
@@ -416,6 +418,17 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     setMemorySuppressedRow(this.ctx(op), input);
   }
 
+  isNamespaceSuppressed(namespace: string): boolean {
+    return isNamespaceSuppressedQuery(this.db, namespace);
+  }
+
+  setNamespaceSuppressed(
+    op: MemoryOpContext,
+    input: { namespace: string; suppressed: boolean },
+  ): void {
+    setNamespaceSuppressedQuery(this.db, op, input);
+  }
+
   searchLexicalSourceMapIds(input: {
     scope: SearchNamespaceScope;
     text: string;
@@ -474,8 +487,8 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return listMemoryNamespacesQuery(this.db);
   }
 
-  listNamespacesWithMetadata(): NamespaceMetadataInfo[] {
-    return listNamespacesWithMetadataQuery(this.db);
+  listNamespacesWithMetadata(opts?: { includeSuppressed?: boolean }): NamespaceMetadataInfo[] {
+    return listNamespacesWithMetadataQuery(this.db, opts);
   }
 
   getNamespaceMetadata(namespace: string): NamespaceMetadataInfo | undefined {

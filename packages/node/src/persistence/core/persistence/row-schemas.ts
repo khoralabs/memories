@@ -132,6 +132,8 @@ export const zScopes = z.object({});
 export const zNamespaceMetadata = z.object({
   display_name: z.string().nullable(),
   description: z.string(),
+  /** `1` when the namespace (and descendants) are hidden from discovery. */
+  suppressed: z.union([z.literal(0), z.literal(1)]).optional(),
   _ts_updated: z.number().nonnegative(),
 });
 

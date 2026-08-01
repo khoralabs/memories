@@ -10,7 +10,7 @@ import type {
 export type MaybePromise<T> = T | Promise<T>;
 
 export type GraphProjectionSource = {
-  listNamespacesUnderPrefix(prefix: string): Promise<string[]>;
+  listNamespacesUnderPrefix(prefix: string, opts?: IncludeSuppressedOpts): Promise<string[]>;
   loadMeanEmbeddingsForNamespace(
     namespace: string,
     opts?: IncludeSuppressedOpts,
@@ -33,6 +33,7 @@ export type GraphProjectionGraphReads = {
     opts?: IncludeSuppressedOpts,
   ): MaybePromise<Map<string, Record<string, unknown> | null>>;
   listSuppressedNodeKeysForNamespace(namespace: string): MaybePromise<string[]>;
+  isNamespaceSuppressed(namespace: string): MaybePromise<boolean>;
 };
 
 export type EdgePreviewReads = {

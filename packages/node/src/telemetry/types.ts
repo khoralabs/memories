@@ -13,7 +13,14 @@ export const MEMORIES_DATABASE_KIND_ATTR = "memories.database.kind" as const;
 /** Database id `ownerKey` when emitted from the service. */
 export const MEMORIES_DATABASE_OWNER_KEY_ATTR = "memories.database.owner_key" as const;
 
-export type MemoriesOpName = "merge" | "delete" | "suppress" | "unsuppress" | "search";
+export type MemoriesOpName =
+  | "merge"
+  | "delete"
+  | "suppress"
+  | "unsuppress"
+  | "suppress_namespace"
+  | "unsuppress_namespace"
+  | "search";
 
 export type MemoriesDatabaseLifecycleOperation = "open" | "close" | "delete" | "evict";
 

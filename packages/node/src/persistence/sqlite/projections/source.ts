@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { GraphMemoryEmbedding, IncludeSuppressedOpts } from "../../../persistence/core";
 import type { GraphProjectionSource } from "../../../projections/index";
 import { blobToVector, listNamespacesUnderPrefix } from "../persistence/index";
+import { isNamespaceSuppressed } from "../persistence/models/namespace-metadata";
 
 export function loadMeanEmbeddingsForNamespace(
   db: Database,
@@ -9,6 +10,8 @@ export function loadMeanEmbeddingsForNamespace(
   opts?: IncludeSuppressedOpts,
 ): GraphMemoryEmbedding[] {
   const include = opts?.includeSuppressed === true;
+  const nsSuppressed = isNamespaceSuppressed(db, namespace);
+  if (!include && nsSuppressed) return [];
   const rows = db
     .query<
       { memory_id: string; key: string; vector: Buffer | Uint8Array; suppressed: number },
@@ -40,7 +43,7 @@ export function loadMeanEmbeddingsForNamespace(
         sums: new Array(dim).fill(0),
         count: 0,
         dim,
-        suppressed: r.suppressed !== 0,
+        suppressed: r.suppressed !== 0 || nsSuppressed,
       };
       byMemory.set(r.memory_id, agg);
     }
@@ -110,8 +113,8 @@ export function loadMemoryTextPreview(
 
 export function createSqliteGraphProjectionSource(db: Database): GraphProjectionSource {
   return {
-    async listNamespacesUnderPrefix(prefix) {
-      return listNamespacesUnderPrefix(db, prefix);
+    async listNamespacesUnderPrefix(prefix, opts) {
+      return listNamespacesUnderPrefix(db, prefix, opts);
     },
     async loadMeanEmbeddingsForNamespace(namespace, opts) {
       return loadMeanEmbeddingsForNamespace(db, namespace, opts);

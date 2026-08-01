@@ -340,20 +340,24 @@ async function moveNamespaceMetadata(
     const row = await ctxQueryOne<{
       display_name: string | null;
       description: string;
+      suppressed: number;
       _ts_created: number;
-    }>(ctx, `SELECT display_name, description, _ts_created FROM namespace_metadata WHERE _id = ?`, [
-      oldNs,
-    ]);
+    }>(
+      ctx,
+      `SELECT display_name, description, suppressed, _ts_created FROM namespace_metadata WHERE _id = ?`,
+      [oldNs],
+    );
     if (row === undefined) continue;
     await ctxExec(
       ctx,
-      `INSERT INTO namespace_metadata (_id, display_name, description, _ts_created, _ts_updated)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO namespace_metadata (_id, display_name, description, suppressed, _ts_created, _ts_updated)
+       VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(_id) DO UPDATE SET
          display_name = excluded.display_name,
          description = excluded.description,
+         suppressed = excluded.suppressed,
          _ts_updated = excluded._ts_updated`,
-      [newNs, row.display_name, row.description, row._ts_created, now],
+      [newNs, row.display_name, row.description, row.suppressed, row._ts_created, now],
     );
     await ctxExec(ctx, `DELETE FROM namespace_metadata WHERE _id = ?`, [oldNs]);
   }

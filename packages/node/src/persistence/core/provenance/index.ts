@@ -15,7 +15,9 @@ export {
   provenanceEventLeaf,
   type RenameNamespaceProvenanceEvent,
   type SuppressMemoryProvenanceEvent,
+  type SuppressNamespaceProvenanceEvent,
   type UnsuppressMemoryProvenanceEvent,
+  type UnsuppressNamespaceProvenanceEvent,
 } from "./hash-chain";
 export {
   computeSourceMapContentHash,

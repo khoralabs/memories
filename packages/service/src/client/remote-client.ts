@@ -5,6 +5,7 @@ import type {
   SearchOutput,
   SearchParams,
   SuppressMemoryParams,
+  SuppressNamespaceParams,
 } from "@khoralabs/memories-node";
 import { MemoriesClientAsync } from "@khoralabs/memories-node";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
@@ -32,7 +33,9 @@ import {
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
   type DatabaseSuppressMemoryRequest,
+  type DatabaseSuppressNamespaceRequest,
   type DatabaseUnsuppressMemoryRequest,
+  type DatabaseUnsuppressNamespaceRequest,
   deserializeSearchHits,
   type SearchHitWire,
 } from "./wire";
@@ -160,6 +163,34 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         : {}),
     };
     await this.#client.postJson("/databases/unsuppress-memory", body);
+  }
+
+  override async suppressNamespace(params: SuppressNamespaceParams): Promise<void> {
+    const { attribution, ...safeParams } = params as SuppressNamespaceParams & {
+      attribution?: { intentSnapshotId?: string };
+    };
+    const body: DatabaseSuppressNamespaceRequest = {
+      database: this.#database,
+      namespace: safeParams.namespace,
+      ...(attribution?.intentSnapshotId !== undefined
+        ? { intentSnapshotId: attribution.intentSnapshotId }
+        : {}),
+    };
+    await this.#client.postJson("/databases/suppress-namespace", body);
+  }
+
+  override async unsuppressNamespace(params: SuppressNamespaceParams): Promise<void> {
+    const { attribution, ...safeParams } = params as SuppressNamespaceParams & {
+      attribution?: { intentSnapshotId?: string };
+    };
+    const body: DatabaseUnsuppressNamespaceRequest = {
+      database: this.#database,
+      namespace: safeParams.namespace,
+      ...(attribution?.intentSnapshotId !== undefined
+        ? { intentSnapshotId: attribution.intentSnapshotId }
+        : {}),
+    };
+    await this.#client.postJson("/databases/unsuppress-namespace", body);
   }
 }
 

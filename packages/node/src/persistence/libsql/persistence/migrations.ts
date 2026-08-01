@@ -13,7 +13,7 @@ import {
 } from "./schema";
 import { batchWriteStatements } from "./transactions";
 
-export const MEMORIES_SCHEMA_VERSION = "0.5.0";
+export const MEMORIES_SCHEMA_VERSION = "0.6.0";
 
 const NS_PREFIX_COLUMNS = [
   "ns_prefix_1",
@@ -82,6 +82,22 @@ const migrations: Migration[] = [
         await execSql(
           db.client,
           `ALTER TABLE memories ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0`,
+        );
+      }
+    },
+  },
+  {
+    to: "0.6.0",
+    name: "001-add-namespace-suppressed",
+    up: async (db) => {
+      const cols = await queryAll<{ name: string }>(
+        db.client,
+        `PRAGMA table_info(namespace_metadata)`,
+      );
+      if (!cols.some((r) => r.name === "suppressed")) {
+        await execSql(
+          db.client,
+          `ALTER TABLE namespace_metadata ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0`,
         );
       }
     },

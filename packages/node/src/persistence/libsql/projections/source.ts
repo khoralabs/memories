@@ -49,10 +49,27 @@ function parseVectorJson(value: unknown): number[] | null {
   return out.every((item) => Number.isFinite(item)) ? out : null;
 }
 
+async function isNamespaceSuppressedClient(
+  queryClient: LibsqlProjectionQueryClient,
+  namespace: string,
+): Promise<boolean> {
+  const result = await executeQuery(
+    queryClient,
+    `SELECT 1 AS ok FROM namespace_metadata
+     WHERE suppressed != 0
+       AND (_id = ? OR ? LIKE _id || '/%')
+     LIMIT 1`,
+    [namespace, namespace],
+  );
+  return result.rows.length > 0;
+}
+
 export async function listNamespacesUnderPrefix(
   queryClient: LibsqlProjectionQueryClient,
   prefix: string,
+  opts?: IncludeSuppressedOpts,
 ): Promise<string[]> {
+  const include = opts?.includeSuppressed === true;
   const result = await executeQuery(
     queryClient,
     `SELECT DISTINCT namespace FROM memories
@@ -60,10 +77,30 @@ export async function listNamespacesUnderPrefix(
      ORDER BY namespace`,
     [prefix, prefix],
   );
-  return result.rows.flatMap((row) => {
+  const out: string[] = [];
+  for (const row of result.rows) {
     const namespace = stringValue(row, "namespace");
-    return namespace ? [namespace] : [];
-  });
+    if (!namespace) continue;
+    if (!include && (await isNamespaceSuppressedClient(queryClient, namespace))) continue;
+    out.push(namespace);
+  }
+  if (include) {
+    const meta = await executeQuery(
+      queryClient,
+      `SELECT _id AS id FROM namespace_metadata
+       WHERE _id = ? OR _id LIKE ? || '/%'`,
+      [prefix, prefix],
+    );
+    const seen = new Set(out);
+    for (const row of meta.rows) {
+      const id = stringValue(row, "id");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      out.push(id);
+    }
+    out.sort();
+  }
+  return out;
 }
 
 export async function loadMeanEmbeddingsForNamespace(
@@ -72,6 +109,8 @@ export async function loadMeanEmbeddingsForNamespace(
   opts?: IncludeSuppressedOpts,
 ): Promise<GraphMemoryEmbedding[]> {
   const include = opts?.includeSuppressed === true;
+  const nsSuppressed = await isNamespaceSuppressedClient(queryClient, namespace);
+  if (!include && nsSuppressed) return [];
   const result = await executeQuery(
     queryClient,
     `SELECT vf.memory_id AS memory_id, m.key AS key, vector_extract(vf.vector) AS vector_json,
@@ -97,7 +136,7 @@ export async function loadMeanEmbeddingsForNamespace(
     const vector = parseVectorJson(row.vector_json);
     if (!vector) continue;
     const dim = vector.length;
-    const suppressed = Number(row.suppressed ?? 0) !== 0;
+    const suppressed = Number(row.suppressed ?? 0) !== 0 || nsSuppressed;
     let agg = byMemory.get(memoryId);
     if (!agg) {
       agg = { key, sums: new Array(dim).fill(0), count: 0, dim, suppressed };
@@ -175,8 +214,8 @@ export function createLibsqlGraphProjectionSource(
   queryClient: LibsqlProjectionQueryClient,
 ): GraphProjectionSource {
   return {
-    listNamespacesUnderPrefix(prefix) {
-      return listNamespacesUnderPrefix(queryClient, prefix);
+    listNamespacesUnderPrefix(prefix, opts) {
+      return listNamespacesUnderPrefix(queryClient, prefix, opts);
     },
     loadMeanEmbeddingsForNamespace(namespace, opts) {
       return loadMeanEmbeddingsForNamespace(queryClient, namespace, opts);

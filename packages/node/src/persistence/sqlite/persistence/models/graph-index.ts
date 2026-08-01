@@ -6,6 +6,7 @@ import type {
   OntologyLabelInstance,
 } from "../../../../persistence/core";
 import { ids } from "../../../../persistence/core";
+import { isNamespaceSuppressed } from "./namespace-metadata";
 
 function parsePropsColumn(raw: unknown): Record<string, unknown> {
   if (raw == null || raw === "") return {};
@@ -48,11 +49,19 @@ function parseEdgeRowProperties(json: string | null): Record<string, unknown> | 
   return null;
 }
 
-/** Edge visible in graph layout when neither endpoint (nor a suppressed edge memory) is suppressed. */
+/** Edge visible in graph layout when neither endpoint/memory nor namespace is suppressed. */
 const GRAPH_EDGE_NOT_SUPPRESSED = `
   AND mf.suppressed = 0 AND mt.suppressed = 0
   AND NOT EXISTS (
     SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM namespace_metadata nm
+    WHERE nm.suppressed != 0
+      AND (
+        mf.namespace = nm._id OR mf.namespace LIKE nm._id || '/%'
+        OR mt.namespace = nm._id OR mt.namespace LIKE nm._id || '/%'
+      )
   )`;
 
 const GRAPH_EDGE_SUPPRESSION_COLS = `,
@@ -171,6 +180,8 @@ export function loadGraphEdgesForNamespace(
   opts?: IncludeSuppressedOpts,
 ): GraphEdgeLink[] {
   const include = opts?.includeSuppressed === true;
+  const nsSuppressed = isNamespaceSuppressed(db, namespace);
+  if (!include && nsSuppressed) return [];
   const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = db
     .query<GraphEdgeQueryRow, [string, string]>(
@@ -180,7 +191,11 @@ export function loadGraphEdgesForNamespace(
     )
     .all(namespace, namespace);
 
-  return graphEdgeLinksFromRows(rows, include);
+  const links = graphEdgeLinksFromRows(rows, include);
+  if (include && nsSuppressed) {
+    return links.map((l) => (l.suppressed === true ? l : { ...l, suppressed: true }));
+  }
+  return links;
 }
 
 /** Incident edges only (both endpoints in `namespace`, one endpoint matches `memoryKey`). */
@@ -191,6 +206,8 @@ export function listIncidentGraphEdgesForMemory(
   opts?: IncludeSuppressedOpts,
 ): GraphEdgeLink[] {
   const include = opts?.includeSuppressed === true;
+  const nsSuppressed = isNamespaceSuppressed(db, namespace);
+  if (!include && nsSuppressed) return [];
   const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = db
     .query<GraphEdgeQueryRow, [string, string, string, string]>(
@@ -200,7 +217,11 @@ export function listIncidentGraphEdgesForMemory(
     )
     .all(namespace, namespace, memoryKey, memoryKey);
 
-  return graphEdgeLinksFromRows(rows, include);
+  const links = graphEdgeLinksFromRows(rows, include);
+  if (include && nsSuppressed) {
+    return links.map((l) => (l.suppressed === true ? l : { ...l, suppressed: true }));
+  }
+  return links;
 }
 
 export function loadNodeLabelsForMemory(
@@ -264,7 +285,10 @@ export function loadGraphNode(
   const labels = loadNodeLabelsForMemory(db, namespace, memoryKey);
   const properties = loadNodePropertiesForMemory(db, namespace, memoryKey);
   const node: GraphNode = { namespace, memoryKey, nodeId, labels, properties };
-  if (opts?.includeSuppressed === true && mem.suppressed !== 0) {
+  if (
+    opts?.includeSuppressed === true &&
+    (mem.suppressed !== 0 || isNamespaceSuppressed(db, namespace))
+  ) {
     node.suppressed = true;
   }
   return node;
@@ -277,6 +301,8 @@ export function loadGraphEdge(
   opts?: IncludeSuppressedOpts,
 ): GraphEdgeLink | null {
   const include = opts?.includeSuppressed === true;
+  const nsSuppressed = isNamespaceSuppressed(db, namespace);
+  if (!include && nsSuppressed) return null;
   const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = db
     .query<GraphEdgeQueryRow, [string, string, string]>(
@@ -287,7 +313,11 @@ export function loadGraphEdge(
     .all(namespace, namespace, edgeId);
 
   const links = graphEdgeLinksFromRows(rows, include);
-  return links[0] ?? null;
+  const link = links[0] ?? null;
+  if (link && include && nsSuppressed && link.suppressed !== true) {
+    return { ...link, suppressed: true };
+  }
+  return link;
 }
 
 function nodeKeysSql(includeSuppressed: boolean): string {
@@ -309,6 +339,14 @@ function nodeRowsSql(includeSuppressed: boolean): string {
 }
 
 export function listSuppressedNodeKeysForNamespace(db: Database, namespace: string): string[] {
+  if (isNamespaceSuppressed(db, namespace)) {
+    return db
+      .query<{ key: string }, [string]>(
+        `SELECT key FROM memories WHERE namespace = ? AND kind = 'node'`,
+      )
+      .all(namespace)
+      .map((r) => r.key);
+  }
   return db
     .query<{ key: string }, [string]>(
       `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed != 0`,
@@ -323,6 +361,7 @@ export function loadNodePropertiesForNamespace(
   opts?: IncludeSuppressedOpts,
 ): Map<string, Record<string, unknown> | null> {
   const include = opts?.includeSuppressed === true;
+  if (!include && isNamespaceSuppressed(db, namespace)) return new Map();
   const keys = db.query<{ key: string }, [string]>(nodeKeysSql(include)).all(namespace);
   const map = new Map<string, Record<string, unknown> | null>();
   for (const { key } of keys) {
@@ -360,6 +399,7 @@ export function loadNodeLabelsForNamespace(
   opts?: IncludeSuppressedOpts,
 ): Map<string, OntologyLabelInstance[]> {
   const include = opts?.includeSuppressed === true;
+  if (!include && isNamespaceSuppressed(db, namespace)) return new Map();
   const keys = db.query<{ key: string }, [string]>(nodeKeysSql(include)).all(namespace);
   if (keys.length === 0) return new Map();
   const nodeIds = keys.map((k) => ids.node(namespace, k.key));

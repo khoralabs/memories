@@ -111,12 +111,30 @@ export type RenameNamespaceProvenanceEvent = {
   intent_snapshot_id?: string;
 };
 
+export type SuppressNamespaceProvenanceEvent = {
+  v: 1;
+  kind: "SUPPRESS_NAMESPACE";
+  namespace: string;
+  contributor?: ContributorAttestation;
+  intent_snapshot_id?: string;
+};
+
+export type UnsuppressNamespaceProvenanceEvent = {
+  v: 1;
+  kind: "UNSUPPRESS_NAMESPACE";
+  namespace: string;
+  contributor?: ContributorAttestation;
+  intent_snapshot_id?: string;
+};
+
 export type MemoryProvenanceEvent =
   | MergeMemoryProvenanceEvent
   | DeleteMemoryProvenanceEvent
   | SuppressMemoryProvenanceEvent
   | UnsuppressMemoryProvenanceEvent
-  | RenameNamespaceProvenanceEvent;
+  | RenameNamespaceProvenanceEvent
+  | SuppressNamespaceProvenanceEvent
+  | UnsuppressNamespaceProvenanceEvent;
 
 /** Next root hex given optional current head (`undefined` at genesis). */
 export function nextProvenanceRoot(

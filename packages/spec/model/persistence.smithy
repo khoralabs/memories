@@ -1118,6 +1118,12 @@ enum ProvenanceEventType {
 
     @enumValue("RENAME_NAMESPACE")
     RENAME_NAMESPACE
+
+    @enumValue("SUPPRESS_NAMESPACE")
+    SUPPRESS_NAMESPACE
+
+    @enumValue("UNSUPPRESS_NAMESPACE")
+    UNSUPPRESS_NAMESPACE
 }
 
 structure ContentOutboxEntry {

@@ -27,11 +27,16 @@ export type NamespaceMetadataInfo = {
   namespace: NamespacePath;
   alias: string | null;
   description: string;
+  /** Present when the metadata row marks this path suppressed (exact; not ancestor-inferred). */
+  suppressed?: boolean;
 };
 
 /** Options for graph / projection loaders that can surface suppressed memories. */
 export type IncludeSuppressedOpts = {
-  /** When true, include suppressed memories and mark them; default excludes them. */
+  /**
+   * When true, include suppressed memories and namespaces (and mark them).
+   * Default excludes memory-level suppression and namespaces under a suppressed ancestor.
+   */
   includeSuppressed?: boolean;
 };
 
@@ -291,6 +296,21 @@ export interface MemoriesMutationCore {
   /** Set or clear the materialized suppression flag (does not append provenance). */
   setMemorySuppressed(op: MemoryOpContext, input: { memoryId: string; suppressed: boolean }): void;
 
+  /**
+   * Whether `namespace` is suppressed via its own metadata row or any ancestor path.
+   * Creates no rows.
+   */
+  isNamespaceSuppressed(namespace: NamespacePath): boolean;
+
+  /**
+   * Ensure a metadata row exists and set/clear its exact-path suppression flag
+   * (does not append provenance; does not fan out to children).
+   */
+  setNamespaceSuppressed(
+    op: MemoryOpContext,
+    input: { namespace: NamespacePath; suppressed: boolean },
+  ): void;
+
   /** Latest provenance chain head (`root_hex`), or `undefined` if empty. */
   getProvenanceHeadRootHex(): string | undefined;
 
@@ -508,7 +528,7 @@ export interface MemoriesPersistenceReads {
    * Union of namespaces that have memories and/or metadata rows, sorted by path.
    * Memory-only keys appear with `alias: null` and empty `description`.
    */
-  listNamespacesWithMetadata(): NamespaceMetadataInfo[];
+  listNamespacesWithMetadata(opts?: IncludeSuppressedOpts): NamespaceMetadataInfo[];
 
   /** Metadata row for one namespace, or `undefined` if none. */
   getNamespaceMetadata(namespace: NamespacePath): NamespaceMetadataInfo | undefined;

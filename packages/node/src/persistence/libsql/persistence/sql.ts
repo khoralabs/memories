@@ -69,12 +69,17 @@ export function namespaceSubtreeOrClauses(
   return { sql: parts.join(" OR "), bindings };
 }
 
-/** Hide suppressed memories and edge memories whose endpoints are suppressed. */
+/** Hide suppressed memories, suppressed namespaces (self/ancestor), and edges to suppressed endpoints. */
 function memoryDiscoveryVisibleSql(tableAlias?: string): string {
   // Default to `memories.` so EXISTS joins to other memories rows stay unambiguous.
   const prefix = tableAlias ?? "memories";
   const col = (name: string) => `${prefix}.${name}`;
   return `${col("suppressed")} = 0
+    AND NOT EXISTS (
+      SELECT 1 FROM namespace_metadata nm
+      WHERE nm.suppressed != 0
+        AND (${col("namespace")} = nm._id OR ${col("namespace")} LIKE nm._id || '/%')
+    )
     AND NOT (
       ${col("kind")} = 'edge' AND ${col("edge_id")} IS NOT NULL AND EXISTS (
         SELECT 1
@@ -84,7 +89,17 @@ function memoryDiscoveryVisibleSql(tableAlias?: string): string {
         JOIN memories m_from ON m_from._id = n_from.memory_id
         JOIN memories m_to ON m_to._id = n_to.memory_id
         WHERE e._id = ${col("edge_id")}
-          AND (m_from.suppressed != 0 OR m_to.suppressed != 0)
+          AND (
+            m_from.suppressed != 0 OR m_to.suppressed != 0
+            OR EXISTS (
+              SELECT 1 FROM namespace_metadata nm
+              WHERE nm.suppressed != 0
+                AND (
+                  m_from.namespace = nm._id OR m_from.namespace LIKE nm._id || '/%'
+                  OR m_to.namespace = nm._id OR m_to.namespace LIKE nm._id || '/%'
+                )
+            )
+          )
       )
     )`;
 }

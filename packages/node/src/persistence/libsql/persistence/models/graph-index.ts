@@ -9,6 +9,7 @@ import type { DbCtx } from "../context";
 import type { LibsqlDatabase } from "../db";
 import { ctxQueryAll, readQueryAll } from "../db";
 import { parsePropsColumn } from "../sql";
+import { isNamespaceSuppressed } from "./namespace-suppress";
 
 function directedFromEdgePropertiesJson(json: string | null): boolean {
   if (!json) return false;
@@ -34,11 +35,19 @@ function parseEdgeRowProperties(json: string | null): Record<string, unknown> | 
   return null;
 }
 
-/** Edge visible in graph layout when neither endpoint (nor a suppressed edge memory) is suppressed. */
+/** Edge visible in graph layout when neither endpoint/memory nor namespace is suppressed. */
 const GRAPH_EDGE_NOT_SUPPRESSED = `
   AND mf.suppressed = 0 AND mt.suppressed = 0
   AND NOT EXISTS (
     SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM namespace_metadata nm
+    WHERE nm.suppressed != 0
+      AND (
+        mf.namespace = nm._id OR mf.namespace LIKE nm._id || '/%'
+        OR mt.namespace = nm._id OR mt.namespace LIKE nm._id || '/%'
+      )
   )`;
 
 const GRAPH_EDGE_SUPPRESSION_COLS = `,
@@ -157,6 +166,8 @@ export async function loadGraphEdgesForNamespace(
   opts?: IncludeSuppressedOpts,
 ): Promise<GraphEdgeLink[]> {
   const include = opts?.includeSuppressed === true;
+  const nsSuppressed = await isNamespaceSuppressed(db, namespace);
+  if (!include && nsSuppressed) return [];
   const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = await readQueryAll<GraphEdgeQueryRow>(
     db,
@@ -165,7 +176,11 @@ export async function loadGraphEdgesForNamespace(
      ORDER BY e._id ASC, el.kind ASC`,
     [namespace, namespace],
   );
-  return graphEdgeLinksFromRows(rows, include);
+  const links = graphEdgeLinksFromRows(rows, include);
+  if (include && nsSuppressed) {
+    return links.map((l) => (l.suppressed === true ? l : { ...l, suppressed: true }));
+  }
+  return links;
 }
 
 export async function listIncidentGraphEdgesForMemory(
@@ -175,6 +190,8 @@ export async function listIncidentGraphEdgesForMemory(
   opts?: IncludeSuppressedOpts,
 ): Promise<GraphEdgeLink[]> {
   const include = opts?.includeSuppressed === true;
+  const nsSuppressed = await isNamespaceSuppressed(db, namespace);
+  if (!include && nsSuppressed) return [];
   const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = await readQueryAll<GraphEdgeQueryRow>(
     db,
@@ -183,7 +200,11 @@ export async function listIncidentGraphEdgesForMemory(
      ORDER BY e._id ASC, el.kind ASC`,
     [namespace, namespace, memoryKey, memoryKey],
   );
-  return graphEdgeLinksFromRows(rows, include);
+  const links = graphEdgeLinksFromRows(rows, include);
+  if (include && nsSuppressed) {
+    return links.map((l) => (l.suppressed === true ? l : { ...l, suppressed: true }));
+  }
+  return links;
 }
 
 export async function loadNodeLabelsForMemory(
@@ -248,7 +269,10 @@ export async function loadGraphNode(
   const labels = await loadNodeLabelsForMemory(db, namespace, memoryKey);
   const properties = await loadNodePropertiesForMemory(db, namespace, memoryKey);
   const node: GraphNode = { namespace, memoryKey, nodeId, labels, properties };
-  if (opts?.includeSuppressed === true && first.suppressed !== 0) {
+  if (
+    opts?.includeSuppressed === true &&
+    (first.suppressed !== 0 || (await isNamespaceSuppressed(db, namespace)))
+  ) {
     node.suppressed = true;
   }
   return node;
@@ -261,6 +285,9 @@ export async function loadGraphEdge(
   opts?: IncludeSuppressedOpts,
 ): Promise<GraphEdgeLink | null> {
   const include = opts?.includeSuppressed === true;
+  const db = "now" in dbOrCtx ? dbOrCtx.db : dbOrCtx;
+  const nsSuppressed = await isNamespaceSuppressed(db, namespace);
+  if (!include && nsSuppressed) return null;
   const filter = include ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const sql = `${edgeSelectSql(include)}
      WHERE e._id = ?${filter}
@@ -270,7 +297,11 @@ export async function loadGraphEdge(
     "now" in dbOrCtx
       ? await ctxQueryAll<GraphEdgeQueryRow>(dbOrCtx, sql, args)
       : await readQueryAll<GraphEdgeQueryRow>(dbOrCtx, sql, args);
-  return graphEdgeLinksFromRows(rows, include)[0] ?? null;
+  const link = graphEdgeLinksFromRows(rows, include)[0] ?? null;
+  if (link && include && nsSuppressed && link.suppressed !== true) {
+    return { ...link, suppressed: true };
+  }
+  return link;
 }
 
 function nodeKeysSql(includeSuppressed: boolean): string {
@@ -295,11 +326,10 @@ export async function listSuppressedNodeKeysForNamespace(
   db: LibsqlDatabase,
   namespace: string,
 ): Promise<string[]> {
-  const rows = await readQueryAll<{ key: string }>(
-    db,
-    `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed != 0`,
-    [namespace],
-  );
+  const sql = (await isNamespaceSuppressed(db, namespace))
+    ? `SELECT key FROM memories WHERE namespace = ? AND kind = 'node'`
+    : `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed != 0`;
+  const rows = await readQueryAll<{ key: string }>(db, sql, [namespace]);
   return rows.map((r) => r.key);
 }
 
@@ -309,6 +339,7 @@ export async function loadNodePropertiesForNamespace(
   opts?: IncludeSuppressedOpts,
 ): Promise<Map<string, Record<string, unknown> | null>> {
   const include = opts?.includeSuppressed === true;
+  if (!include && (await isNamespaceSuppressed(db, namespace))) return new Map();
   const keys = await readQueryAll<{ key: string }>(db, nodeKeysSql(include), [namespace]);
   const map = new Map<string, Record<string, unknown> | null>();
   for (const { key } of keys) {
@@ -348,6 +379,7 @@ export async function loadNodeLabelsForNamespace(
   opts?: IncludeSuppressedOpts,
 ): Promise<Map<string, OntologyLabelInstance[]>> {
   const include = opts?.includeSuppressed === true;
+  if (!include && (await isNamespaceSuppressed(db, namespace))) return new Map();
   const keys = await readQueryAll<{ key: string }>(db, nodeKeysSql(include), [namespace]);
   if (keys.length === 0) return new Map();
   const nodeIds = keys.map((k) => ids.node(namespace, k.key));

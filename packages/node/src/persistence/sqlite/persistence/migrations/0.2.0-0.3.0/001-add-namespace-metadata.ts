@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS "namespace_metadata" (
   "_id" TEXT PRIMARY KEY NOT NULL,
   "display_name" TEXT,
   "description" TEXT NOT NULL DEFAULT '',
+  "suppressed" INTEGER NOT NULL DEFAULT 0,
   "_ts_created" REAL NOT NULL,
   "_ts_updated" REAL NOT NULL
 );

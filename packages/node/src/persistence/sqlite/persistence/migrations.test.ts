@@ -45,6 +45,7 @@ describe("memories sqlite migrations", () => {
       { from_version: "0.2.0", to_version: "0.3.0", name: "001-add-namespace-metadata" },
       { from_version: "0.3.0", to_version: "0.4.0", name: "001-drop-ns-prefix-columns" },
       { from_version: "0.4.0", to_version: "0.5.0", name: "001-add-memory-suppressed" },
+      { from_version: "0.5.0", to_version: "0.6.0", name: "001-add-namespace-suppressed" },
     ]);
 
     const nsIdx = db
@@ -61,6 +62,7 @@ describe("memories sqlite migrations", () => {
     const namespaceMetadata = tableColumns(db, "namespace_metadata");
     expect(namespaceMetadata.has("display_name")).toBe(true);
     expect(namespaceMetadata.has("description")).toBe(true);
+    expect(namespaceMetadata.has("suppressed")).toBe(true);
 
     const ftsSql = db
       .query<{ sql: string | null }, []>(

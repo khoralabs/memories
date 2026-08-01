@@ -17,6 +17,8 @@ service MemoriesPublic {
         DeleteMemory
         SuppressMemory
         UnsuppressMemory
+        SuppressNamespace
+        UnsuppressNamespace
     ]
 }
 
@@ -43,4 +45,14 @@ operation SuppressMemory {
 operation UnsuppressMemory {
     input: UnsuppressMemoryParams
     output: UnsuppressMemoryOutput
+}
+
+operation SuppressNamespace {
+    input: SuppressNamespaceParams
+    output: SuppressNamespaceOutput
+}
+
+operation UnsuppressNamespace {
+    input: UnsuppressNamespaceParams
+    output: UnsuppressNamespaceOutput
 }

@@ -10,6 +10,7 @@ import m001AddContentOutbox from "./migrations/0.1.0-0.2.0/001-add-content-outbo
 import m001AddNamespaceMetadata from "./migrations/0.2.0-0.3.0/001-add-namespace-metadata";
 import m001DropNsPrefixColumns from "./migrations/0.3.0-0.4.0/001-drop-ns-prefix-columns";
 import m001AddMemorySuppressed from "./migrations/0.4.0-0.5.0/001-add-memory-suppressed";
+import m001AddNamespaceSuppressed from "./migrations/0.5.0-0.6.0/001-add-namespace-suppressed";
 import { backfillVectorFeaturesVecTables } from "./search-indexes";
 
 const memoriesMigrations = [
@@ -18,6 +19,7 @@ const memoriesMigrations = [
   m001AddNamespaceMetadata,
   m001DropNsPrefixColumns,
   m001AddMemorySuppressed,
+  m001AddNamespaceSuppressed,
 ];
 
 export function loadSqliteVec(db: Database): void {
