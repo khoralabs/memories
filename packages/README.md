@@ -210,7 +210,7 @@ Reserved source keys — [`node/src/persistence/core/search-meta-constants.ts`](
 
 ### Search pipeline (read path)
 
-[`node/src/core/helpers/memory-search-pipeline.ts`](node/src/core/helpers/memory-search-pipeline.ts) — `runHybridMemorySearch`: embeds query, calls client search, returns slim hits for agents.
+[`node/src/core/helpers/memory-search-pipeline.ts`](node/src/core/helpers/memory-search-pipeline.ts) — `runHybridMemorySearch`: embeds query, calls client search, returns slim hits for agents. Peer helper [`namespace-search.ts`](node/src/core/helpers/namespace-search.ts) — `searchNamespaces`: unscoped hybrid search then aggregate by exact `memory.namespace` (v1; no per-namespace index).
 
 ---
 
