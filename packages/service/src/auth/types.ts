@@ -8,14 +8,28 @@ export type AuthenticatedActor = {
   claims?: Record<string, unknown>;
 };
 
+/** Resource targeted by an HTTP authorize check. */
+export type AuthorizeScope =
+  | { kind: "database" }
+  | { kind: "namespace"; namespace: string; mode: "exact" | "subtree" }
+  | { kind: "namespaces"; namespaces: string[]; mode: "exact" | "subtree" }
+  | { kind: "namespaceRename"; from: string; to: string; mode: "exact" | "subtree" }
+  | { kind: "unscoped" };
+
+export type AuthorizeInput = {
+  actor: AuthenticatedActor;
+  action: DatabaseAction;
+  database?: MemoriesDatabaseId;
+  scope: AuthorizeScope;
+  /**
+   * @deprecated Prefer `scope`. Mirrored when `scope.kind === "namespace"` for back-compat.
+   */
+  namespace?: string;
+};
+
 export type MemoriesDatabaseAccessStrategy = {
   authenticate(req: Request): Promise<AuthenticatedActor>;
-  authorize(input: {
-    actor: AuthenticatedActor;
-    action: DatabaseAction;
-    database?: MemoriesDatabaseId;
-    namespace?: string;
-  }): Promise<void>;
+  authorize(input: AuthorizeInput): Promise<void>;
 };
 
 export class AuthStrategyError extends Error {

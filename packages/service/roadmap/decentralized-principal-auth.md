@@ -100,7 +100,7 @@ For `MemoriesDatabaseId { kind, ownerKey }`:
 
 Actions map to existing `DatabaseAction` values: `read`, `write`, `manage`.
 
-Namespace scoping (optional grant field) applies at the auth layer before any HTTP memory APIs call into persistence.
+Namespace scoping (optional grant field) applies at the auth layer before any HTTP memory APIs call into persistence. Grant `namespaces[]` must be matched against the HTTP **authorize scope v1** model (`AuthorizeScope`: single namespace, multi-namespace, rename `from`/`to`, unscoped, database) — see [HOST_POLICY.md](../src/auth/HOST_POLICY.md) and [spec.md](../spec.md#authorization).
 
 ## Delegation grants
 

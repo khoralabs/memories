@@ -1,19 +1,13 @@
-import type { MemoriesDatabaseId } from "../storage/core/index";
-import type { AuthenticatedActor, DatabaseAction, MemoriesDatabaseAccessStrategy } from "./types";
+import type { AuthenticatedActor, AuthorizeInput, MemoriesDatabaseAccessStrategy } from "./types";
 
 export type AppPolicyAuthStrategyOptions = {
   authenticate(req: Request): Promise<AuthenticatedActor>;
-  authorize(input: {
-    actor: AuthenticatedActor;
-    action: DatabaseAction;
-    database?: MemoriesDatabaseId;
-    namespace?: string;
-  }): Promise<void>;
+  authorize(input: AuthorizeInput): Promise<void>;
 };
 
 /**
  * Host-wired access strategy. Identity, membership, and namespace rules stay in the host;
- * the service only receives opaque database ids and lifecycle actions.
+ * the service only receives opaque database ids, actions, and typed scopes.
  */
 export function createAppPolicyAuthStrategy(
   opts: AppPolicyAuthStrategyOptions,

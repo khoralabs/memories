@@ -10,7 +10,8 @@ Feature plans for `@khoralabs/memories-service`. Current implementation referenc
 | Local SQLite / libSQL / Turso backends + composite factory | Shipped |
 | Placement store (programmatic) | Shipped |
 | Auth: `none`, `server-admin`, `app-policy` | Shipped |
-| [Decentralized principal auth](./decentralized-principal-auth.md) | Phase 1 shipped; `did-principal` + grants TBD |
+| Authorize scope v1 (typed namespace / rename / unscoped) | Shipped — see [HOST_POLICY.md](../src/auth/HOST_POLICY.md) |
+| [Decentralized principal auth](./decentralized-principal-auth.md) | Phase 1 shipped; `did-principal` + grants TBD (maps onto authorize scope) |
 | Placement admin HTTP API | Not implemented |
 | Remote Memories node backend | Not implemented |
 | Principal-registered nodes | Not implemented |
@@ -59,18 +60,28 @@ MEMORIES_SERVICE_AUTH=app-policy
 ```
 
 ```ts
+type AuthorizeScope =
+  | { kind: "database" }
+  | { kind: "namespace"; namespace: string; mode: "exact" | "subtree" }
+  | { kind: "namespaces"; namespaces: string[]; mode: "exact" | "subtree" }
+  | { kind: "namespaceRename"; from: string; to: string; mode: "exact" | "subtree" }
+  | { kind: "unscoped" };
+
 type AppPolicyAuthStrategyOptions = {
   authenticate(req: Request): Promise<AuthenticatedActor>;
   authorize(input: {
     actor: AuthenticatedActor;
     action: DatabaseAction;
     database?: MemoriesDatabaseId;
-    namespace?: string;
+    scope: AuthorizeScope;
+    namespace?: string; // deprecated mirror when scope.kind === "namespace"
   }): Promise<void>;
 };
 ```
 
-The host supplies identity, team/org membership, and namespace rules; the service stays limited to opaque `{ kind, ownerKey }` ids and lifecycle. Mutually exclusive with `server-admin` and `did-principal` per instance. Env alone is insufficient — requires host wiring at server creation (`createAppPolicyAuthStrategy({ authenticate, authorize })`). HTTP passes `namespace` into `authorize` when present on the JSON body (or `params.namespace`).
+The host supplies identity, team/org membership, and namespace rules; the service stays limited to opaque `{ kind, ownerKey }` ids, lifecycle actions, and typed scopes. Mutually exclusive with `server-admin` and `did-principal` per instance. Env alone is insufficient — requires host wiring at server creation (`createAppPolicyAuthStrategy({ authenticate, authorize })`).
+
+Reference helpers: `actionAllowed`, `namespaceCovered`, `authorizeScopeAgainstGrants`. Host contract: [../src/auth/HOST_POLICY.md](../src/auth/HOST_POLICY.md). **Authorize scope v1 is a prerequisite** for DID grant enforcement — grant `namespaces[]` maps onto these scope matching rules.
 
 ---
 

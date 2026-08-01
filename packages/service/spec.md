@@ -283,15 +283,24 @@ Client usage: `@khoralabs/memories-service/client` (see [Client](#client) below)
 
 ## Authorization
 
-The database service is pure: it does not decide who may access a database. The HTTP adapter authenticates and authorizes before calling the service.
+The database service is pure: it does not decide who may access a database. The HTTP adapter authenticates and authorizes before calling the service. Authz is **not** part of the Smithy persistence model; scopes are derived from existing operation inputs.
 
 ```ts
+type AuthorizeScope =
+  | { kind: "database" }
+  | { kind: "namespace"; namespace: string; mode: "exact" | "subtree" }
+  | { kind: "namespaces"; namespaces: string[]; mode: "exact" | "subtree" }
+  | { kind: "namespaceRename"; from: string; to: string; mode: "exact" | "subtree" }
+  | { kind: "unscoped" };
+
 type MemoriesDatabaseAccessStrategy = {
   authenticate(req: Request): Promise<AuthenticatedActor>;
   authorize(input: {
     actor: AuthenticatedActor;
     action: "read" | "write" | "manage";
     database?: MemoriesDatabaseId;
+    scope: AuthorizeScope;
+    /** @deprecated Mirrored when scope.kind === "namespace" */
     namespace?: string;
   }): Promise<void>;
 };
@@ -305,7 +314,20 @@ Shipped strategies (`MEMORIES_SERVICE_AUTH`):
 | `server-admin` | Bearer token (`MEMORIES_SERVICE_ADMIN_TOKEN`) grants full access |
 | `app-policy` | Host-wired `createAppPolicyAuthStrategy({ authenticate, authorize })`; env alone cannot construct it |
 
-One scheme per service instance. Planned: [did-principal](./roadmap/decentralized-principal-auth.md). HTTP passes `namespace` into `authorize` when present on the request body (or `params.namespace`).
+One scheme per service instance. Planned: [did-principal](./roadmap/decentralized-principal-auth.md).
+
+HTTP always passes a typed `scope` into `authorize`:
+
+| Route pattern | Typical `scope` |
+|---------------|-----------------|
+| Open / close / delete DB, list namespaces, capabilities, ontology link | `{ kind: "database" }` |
+| Merge, delete-memory, namespace get/upsert, scoped search | `{ kind: "namespace", … }` |
+| Search with `additionalNamespaces` | `{ kind: "namespaces", … }` |
+| Search with `searchEntireDatabase` | `{ kind: "unscoped" }` |
+| Namespace delete | `{ kind: "namespace", mode: "subtree" \| "exact" }` from `recursive` (default subtree) |
+| Namespace rename | `{ kind: "namespaceRename", from, to, mode }` |
+
+Host matching rules and reference helpers (`authorizeScopeAgainstGrants`, etc.): [src/auth/HOST_POLICY.md](./src/auth/HOST_POLICY.md).
 
 ## Client
 

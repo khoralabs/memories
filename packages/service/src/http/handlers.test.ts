@@ -5,12 +5,19 @@ import path from "node:path";
 import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-node/sqlite";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
 import {
+  type AuthorizeScope,
   createAppPolicyAuthStrategy,
   createNoneAuthStrategy,
   createServerAdminAuthStrategy,
 } from "../auth/index";
 import { createLocalSqliteServiceStack } from "../storage/sqlite/index";
 
+import {
+  scopeFromMemoryBody,
+  scopeFromNamespaceDelete,
+  scopeFromNamespaceMutation,
+  scopeFromRename,
+} from "./authorize-scope";
 import { handleMemoriesServiceHttpRequest } from "./handlers";
 
 ensureCustomSqliteForExtensions();
@@ -237,12 +244,14 @@ describe("memories service http handlers", () => {
     await service.open(database);
 
     let seenNamespace: string | undefined;
+    let seenScope: AuthorizeScope | undefined;
     const auth = createAppPolicyAuthStrategy({
       async authenticate() {
         return { scheme: "app-policy", subject: "tester" };
       },
       async authorize(input) {
         seenNamespace = input.namespace;
+        seenScope = input.scope;
       },
     });
 
@@ -264,5 +273,158 @@ describe("memories service http handlers", () => {
 
     expect(response.status).toBe(200);
     expect(seenNamespace).toBe("user/a");
+    expect(seenScope).toEqual({ kind: "namespace", namespace: "user/a", mode: "exact" });
+  });
+
+  test("app-policy authorize receives rename and unscoped/multi-ns scopes", async () => {
+    const { service } = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-scopes" };
+    await service.open(database);
+
+    const seen: AuthorizeScope[] = [];
+    const auth = createAppPolicyAuthStrategy({
+      async authenticate() {
+        return { scheme: "app-policy", subject: "tester" };
+      },
+      async authorize(input) {
+        seen.push(input.scope);
+      },
+    });
+
+    const rename = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/namespaces/rename", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          from: "old/path",
+          to: "new/path",
+          recursive: false,
+        }),
+      }),
+      { service, auth },
+    );
+    // rename may 400 if source missing; auth still runs first
+    expect(rename.status === 200 || rename.status === 400).toBe(true);
+    expect(seen.at(-1)).toEqual({
+      kind: "namespaceRename",
+      from: "old/path",
+      to: "new/path",
+      mode: "exact",
+    });
+
+    const unscoped = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            namespace: "ignored",
+            searchEntireDatabase: true,
+            content: { text: "hello" },
+            options: { topK: 5, arms: { lexical: 1, vector: 0 } },
+          },
+        }),
+      }),
+      { service, auth },
+    );
+    expect(unscoped.status).toBe(200);
+    expect(seen.at(-1)).toEqual({ kind: "unscoped" });
+
+    const multi = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            namespace: "a",
+            additionalNamespaces: ["b", "a"],
+            content: { text: "hello" },
+            options: { topK: 5, arms: { lexical: 1, vector: 0 } },
+          },
+        }),
+      }),
+      { service, auth },
+    );
+    expect(multi.status).toBe(200);
+    expect(seen.at(-1)).toEqual({
+      kind: "namespaces",
+      namespaces: ["a", "b"],
+      mode: "exact",
+    });
+
+    const delSubtree = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/namespaces/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "team" }),
+      }),
+      { service, auth },
+    );
+    expect(delSubtree.status).toBe(200);
+    expect(seen.at(-1)).toEqual({ kind: "namespace", namespace: "team", mode: "subtree" });
+
+    const delExact = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/namespaces/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "team", recursive: false }),
+      }),
+      { service, auth },
+    );
+    expect(delExact.status).toBe(200);
+    expect(seen.at(-1)).toEqual({ kind: "namespace", namespace: "team", mode: "exact" });
+  });
+});
+
+describe("authorize-scope extractors", () => {
+  test("scopeFromRename and recursive modes", () => {
+    expect(scopeFromRename({ from: "a", to: "b" })).toEqual({
+      kind: "namespaceRename",
+      from: "a",
+      to: "b",
+      mode: "subtree",
+    });
+    expect(scopeFromRename({ from: "a", to: "b", recursive: false })).toEqual({
+      kind: "namespaceRename",
+      from: "a",
+      to: "b",
+      mode: "exact",
+    });
+  });
+
+  test("scopeFromNamespaceMutation exact; delete uses recursive default", () => {
+    expect(scopeFromNamespaceMutation({ namespace: "x" })).toEqual({
+      kind: "namespace",
+      namespace: "x",
+      mode: "exact",
+    });
+    expect(scopeFromNamespaceDelete({ namespace: "x" })).toEqual({
+      kind: "namespace",
+      namespace: "x",
+      mode: "subtree",
+    });
+    expect(scopeFromNamespaceDelete({ namespace: "x", recursive: false })).toEqual({
+      kind: "namespace",
+      namespace: "x",
+      mode: "exact",
+    });
+  });
+
+  test("scopeFromMemoryBody unscoped and multi", () => {
+    expect(
+      scopeFromMemoryBody({
+        params: { namespace: "n", searchEntireDatabase: true },
+      }),
+    ).toEqual({ kind: "unscoped" });
+    expect(
+      scopeFromMemoryBody({
+        namespace: "a",
+        additionalNamespaces: ["b"],
+        searchScopeMode: "pathSubtree",
+      }),
+    ).toEqual({ kind: "namespaces", namespaces: ["a", "b"], mode: "subtree" });
   });
 });

@@ -7,6 +7,7 @@ import type { GraphProjectionSource } from "@khoralabs/memories-node/projections
 import type { MemoryMutationAttribution } from "@khoralabs/memories-node/provenance";
 import {
   type AuthenticatedActor,
+  type AuthorizeScope,
   AuthStrategyError,
   type DatabaseAction,
   type MemoriesDatabaseAccessStrategy,
@@ -19,6 +20,13 @@ import type {
   MemoriesDatabaseOntologyStore,
   MemoriesDatabaseService,
 } from "../service/index";
+import {
+  scopeDatabase,
+  scopeFromMemoryBody,
+  scopeFromNamespaceDelete,
+  scopeFromNamespaceMutation,
+  scopeFromRename,
+} from "./authorize-scope";
 import {
   handleDatabaseHash,
   handleDatabaseOntologyCurrent,
@@ -139,28 +147,17 @@ async function authorize(
   req: Request,
   action: DatabaseAction,
   database?: MemoriesDatabaseId,
-  namespace?: string,
+  scope: AuthorizeScope = scopeDatabase(),
 ): Promise<AuthenticatedActor> {
   const actor = await auth.authenticate(req);
   await auth.authorize({
     actor,
     action,
+    scope,
     ...(database !== undefined ? { database } : {}),
-    ...(namespace !== undefined ? { namespace } : {}),
+    ...(scope.kind === "namespace" ? { namespace: scope.namespace } : {}),
   });
   return actor;
-}
-
-function namespaceFromBody(body: unknown): string | undefined {
-  if (body === null || typeof body !== "object") return undefined;
-  const record = body as Record<string, unknown>;
-  if (typeof record.namespace === "string") return record.namespace;
-  const params = record.params;
-  if (params !== null && typeof params === "object") {
-    const ns = (params as Record<string, unknown>).namespace;
-    if (typeof ns === "string") return ns;
-  }
-  return undefined;
 }
 
 async function buildRequestAttribution(
@@ -295,14 +292,14 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/search") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseSearch(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/merge") {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      const actor = await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
       const attribution =
         opts.attribution !== undefined
           ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
@@ -319,7 +316,7 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/delete-memory") {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      const actor = await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
       const attribution =
         opts.attribution !== undefined
           ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
@@ -330,98 +327,98 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/provenance/head") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseProvenanceHead(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/capabilities") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseCapabilities(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseNamespaces(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces/get") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeFromNamespaceMutation(body));
       return handleDatabaseNamespaceGet(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces/upsert") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "write", id, scopeFromNamespaceMutation(body));
       return await handleDatabaseNamespaceUpsert(opts.service, body, opts.maxNamespaces);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces/delete") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "write", id, scopeFromNamespaceDelete(body));
       return await handleDatabaseNamespaceDelete(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces/rename") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "write", id, scopeFromRename(body));
       return await handleDatabaseNamespaceRename(opts.service, body, opts.maxNamespaces);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/edge-preview") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseEdgePreview(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/source-map/text-preview") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseSourceMapTextPreview(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/vector-dimensions") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseVectorDimensions(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/projections/umap-input") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseUmapInput(opts.service, opts.projectionSource, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ensure-scope-chain") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
       return handleDatabaseEnsureScopeChain(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/find-memory-id") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseFindMemoryId(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/load-memory-namespace-key") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseLoadMemoryNamespaceKey(opts.service, body);
     }
 
@@ -446,28 +443,28 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/ontology/link") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "write", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "write", id, scopeDatabase());
       return handleDatabaseOntologyLink(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ontology/current") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseOntologyCurrent(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/hash") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseHash(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/ontology/history") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, namespaceFromBody(body));
+      await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseOntologyHistory(requireOntology(opts), body);
     }
 
