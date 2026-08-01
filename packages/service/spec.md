@@ -10,7 +10,7 @@ Reusable packages for managing many Memories databases per principal: route requ
 |--------|------|
 | `.` | Backend-agnostic lifecycle: ids, placement interfaces, resolver, LRU cache |
 | `./http` | HTTP adapter (lifecycle, persistence, reads, ontology, attribution) |
-| `./auth` | Auth strategies (`none`, `server-admin`, `app-policy`) |
+| `./auth` | Auth strategies (`none`, `server-admin`, `app-policy`, `did-principal`) |
 | `./client` | Management HTTP client, remote `MemoriesClientAsync`, read client, ontology helpers |
 | `./storage/sqlite` | Local SQLCipher backend, SQLite placement + ontology registries, turnkey stack (**Bun**) |
 | `./storage/libsql` | Local libSQL backend (Node-safe) |
@@ -313,8 +313,35 @@ Shipped strategies (`MEMORIES_SERVICE_AUTH`):
 | `none` | Embedded, local, or test deployments inside a trust boundary |
 | `server-admin` | Bearer token (`MEMORIES_SERVICE_ADMIN_TOKEN`) grants full access |
 | `app-policy` | Host-wired `createAppPolicyAuthStrategy({ authenticate, authorize })`; env alone cannot construct it |
+| `did-principal` | Host-wired `createDidPrincipalAuthStrategy({ verify, resolveGrants? })`; proof verify is injected (no khora dependency); env alone cannot construct it |
 
-One scheme per service instance. Planned: [did-principal](./roadmap/decentralized-principal-auth.md).
+One scheme per service instance.
+
+### `did-principal`
+
+Proof verification is **host-injected**. Memories does not depend on khora/relay and does not parse `X-Agent-*` headers.
+
+```ts
+type PrincipalProofVerifier = {
+  verify(input: {
+    method: string;
+    request: Request;
+  }): Promise<{ did: string; keyId?: string }>;
+};
+
+createDidPrincipalAuthStrategy({
+  verify: PrincipalProofVerifier;
+  resolveGrants?: (input: {
+    actor: AuthenticatedActor;
+    database: MemoriesDatabaseId;
+  }) => Promise<HostGrant[]> | HostGrant[];
+}): MemoriesDatabaseAccessStrategy
+```
+
+- **authenticate:** `verify` → `{ scheme: "did-principal", subject: did }` (401 on failure).
+- **authorize:** requires `database`; allow if `actor.subject === database.ownerKey` (full `manage` ⊇ write ⊇ read); else match `resolveGrants` via `authorizeScopeAgainstGrants`; else 403.
+
+Hosts typically adapt `@khoralabs/khora-auth` `verifySignedAgentRequest` into `PrincipalProofVerifier`. For HTTP attribution, use `principalForActor: (actor) => actor.subject`.
 
 HTTP always passes a typed `scope` into `authorize`:
 
@@ -370,4 +397,4 @@ Optional HTTP/stack option **`maxNamespaces`**: cap on distinct paths (memories 
 
 ## Roadmap
 
-Status and planned work: [roadmap/](./roadmap/). Spec for remaining DID auth: [decentralized-principal-auth.md](./roadmap/decentralized-principal-auth.md).
+Status and planned work: [roadmap/](./roadmap/).

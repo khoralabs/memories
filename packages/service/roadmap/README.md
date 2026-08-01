@@ -9,9 +9,8 @@ Feature plans for `@khoralabs/memories-service`. Current implementation referenc
 | HTTP-safe contributor attribution | Shipped |
 | Local SQLite / libSQL / Turso backends + composite factory | Shipped |
 | Placement store (programmatic) | Shipped |
-| Auth: `none`, `server-admin`, `app-policy` | Shipped |
+| Auth: `none`, `server-admin`, `app-policy`, `did-principal` | Shipped (app-policy / did-principal host-wired) |
 | Authorize scope v1 (typed namespace / rename / unscoped) | Shipped — see [HOST_POLICY.md](../src/auth/HOST_POLICY.md) |
-| [Decentralized principal auth](./decentralized-principal-auth.md) | Phase 1 shipped; `did-principal` + grants TBD (maps onto authorize scope) |
 | Placement admin HTTP API | Not implemented |
 | Remote Memories node backend | Not implemented |
 | Principal-registered nodes | Not implemented |
@@ -81,7 +80,11 @@ type AppPolicyAuthStrategyOptions = {
 
 The host supplies identity, team/org membership, and namespace rules; the service stays limited to opaque `{ kind, ownerKey }` ids, lifecycle actions, and typed scopes. Mutually exclusive with `server-admin` and `did-principal` per instance. Env alone is insufficient — requires host wiring at server creation (`createAppPolicyAuthStrategy({ authenticate, authorize })`).
 
-Reference helpers: `actionAllowed`, `namespaceCovered`, `authorizeScopeAgainstGrants`. Host contract: [../src/auth/HOST_POLICY.md](../src/auth/HOST_POLICY.md). **Authorize scope v1 is a prerequisite** for DID grant enforcement — grant `namespaces[]` maps onto these scope matching rules.
+Reference helpers: `actionAllowed`, `namespaceCovered`, `authorizeScopeAgainstGrants`. Host contract: [../src/auth/HOST_POLICY.md](../src/auth/HOST_POLICY.md).
+
+### DID principal auth
+
+`createDidPrincipalAuthStrategy({ verify, resolveGrants? })` — injected `PrincipalProofVerifier` (no memories→khora dependency); owner authorize on `database.ownerKey`; optional grants via `HostGrant` / `authorizeScopeAgainstGrants`. Usage: [../spec.md](../spec.md#did-principal), [../README.md](../README.md#did-principal-auth).
 
 ---
 
@@ -113,7 +116,7 @@ A placement strategy that opens a client-backed `MemoriesPersistenceAsync` again
 { kind: "remote"; endpoint: string; auth: ... }
 ```
 
-Distinct from the shipped remote *HTTP clients* (callers talking to this service). Sidecars and WAL stay hidden. Order after that: principal node registration/discovery (resolve `database.ownerKey` to an authorized endpoint; registration signed by owner DID; coupled with [DID auth](./decentralized-principal-auth.md)). Placement store is the natural home for `{ id → remote strategy }` overrides once the admin API exists.
+Distinct from the shipped remote *HTTP clients* (callers talking to this service). Sidecars and WAL stay hidden. Order after that: principal node registration/discovery (resolve `database.ownerKey` to an authorized endpoint; registration signed by owner DID; pairs with shipped `did-principal`). Placement store is the natural home for `{ id → remote strategy }` overrides once the admin API exists.
 
 ### Telemetry event ingest (phase 2)
 
@@ -129,6 +132,6 @@ Body: JSON array (or single object) matching the `MemoriesOpEvent` / `MemoriesDa
 
 Non-goals: full OTLP collector, multi-tenant routing UI, replacing the host’s OTel SDK/exporters. See [`../otel/README.md`](../otel/README.md).
 
-### Decentralized principal auth
+### Portable DID grant credentials (optional)
 
-Phase 1 (attestation + HTTP attribution) is shipped. Remaining work — `did-principal` proofs, grants, portable credentials, revocation — is specified in [decentralized-principal-auth.md](./decentralized-principal-auth.md).
+`resolveGrants` is shipped for host-supplied grants. Not implemented in-service: portable signed credentials (issuer/subject/database/actions/namespaces) and an issuer-signed revocation log. Prefer host-side grant stores until that design is needed.

@@ -30,6 +30,11 @@ export function createAuthStrategy(input: {
       `${MEMORIES_SERVICE_AUTH_ENV}=app-policy cannot be constructed from env alone; wire createAppPolicyAuthStrategy({ authenticate, authorize }) at server creation`,
     );
   }
+  if (input.scheme === "did-principal") {
+    throw new Error(
+      `${MEMORIES_SERVICE_AUTH_ENV}=did-principal cannot be constructed from env alone; wire createDidPrincipalAuthStrategy({ verify }) at server creation`,
+    );
+  }
   const token = input.adminToken?.trim();
   if (token === undefined || token.length === 0) {
     throw new Error(`${MEMORIES_SERVICE_ADMIN_TOKEN_ENV} is required for server-admin auth`);

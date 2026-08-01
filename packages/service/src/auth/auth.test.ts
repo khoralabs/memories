@@ -114,6 +114,12 @@ describe("auth scheme env", () => {
       createAuthStrategyFromEnv({}, { [MEMORIES_SERVICE_AUTH_ENV]: "app-policy" }),
     ).toThrow(/createAppPolicyAuthStrategy/);
   });
+
+  test("createAuthStrategyFromEnv rejects did-principal", () => {
+    expect(() =>
+      createAuthStrategyFromEnv({}, { [MEMORIES_SERVICE_AUTH_ENV]: "did-principal" }),
+    ).toThrow(/createDidPrincipalAuthStrategy/);
+  });
 });
 
 describe("namespace policy helpers", () => {

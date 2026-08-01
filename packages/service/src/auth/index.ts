@@ -2,6 +2,11 @@ export {
   type AppPolicyAuthStrategyOptions,
   createAppPolicyAuthStrategy,
 } from "./app-policy";
+export {
+  type CreateDidPrincipalAuthStrategyOptions,
+  createDidPrincipalAuthStrategy,
+  type PrincipalProofVerifier,
+} from "./did-principal";
 export { createAuthStrategy, createAuthStrategyFromEnv } from "./factory";
 export {
   actionAllowed,

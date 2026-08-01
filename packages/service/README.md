@@ -11,7 +11,7 @@ Depends on [`@khoralabs/memories-node`](../node) for the data plane.
 | `.` | Lifecycle service, database ids, placement/ontology store interfaces, composite backend factory |
 | `./client` | Management client, `RemoteMemoriesClientAsync`, `RemoteMemoriesReadClient`, `MemoriesOntologyClient` |
 | `./http` | `createMemoriesServiceHttpServer` / request handler (lifecycle, persistence, reads, ontology, attribution) |
-| `./auth` | `none`, `server-admin`, `app-policy` (+ env factory for `none` / `server-admin`) |
+| `./auth` | `none`, `server-admin`, `app-policy`, `did-principal` (+ env factory for `none` / `server-admin`) |
 | `./storage/sqlite` | Local SQLite backend (optional SQLCipher), placement + ontology + database catalog registries, `createLocalSqliteServiceStack` (**Bun**) |
 | `./storage/libsql` | Local libSQL backend factory; Node-safe |
 | `./storage/turso-serverless` | Turso serverless backend factory; Node-safe |
@@ -27,7 +27,7 @@ Attestation formats for HTTP attribution live in `@khoralabs/memories-node/attes
 
 **Ontology registry (phase 1)** — content-addressed register/link/history over HTTP; merge enforcement and runtime rehydration from stored JSON are still open.
 
-**Auth (shipped)** — `none`, `server-admin`, `app-policy` (host-wired). HTTP-safe contributor attribution signs `khora.http-request-v1` server-side. Planned: `did-principal`, placement admin HTTP, remote node backend — see [roadmap](./roadmap/README.md).
+**Auth (shipped)** — `none`, `server-admin`, `app-policy`, `did-principal` (last two host-wired). HTTP-safe contributor attribution signs `khora.http-request-v1` server-side. Planned: placement admin HTTP, remote node backend — see [roadmap](./roadmap/README.md).
 
 ## Telemetry
 
@@ -71,9 +71,9 @@ Or pass `telemetry` to `createMemoriesDatabaseService({ resolver, telemetry })` 
 
 | Doc | Role |
 |-----|------|
-| [`spec.md`](./spec.md) | Authoritative service architecture |
+| [`spec.md`](./spec.md) | Authoritative service architecture (incl. authorize scope + did-principal) |
+| [`src/auth/HOST_POLICY.md`](./src/auth/HOST_POLICY.md) | Host grant matching for `app-policy` / `resolveGrants` |
 | [`roadmap/README.md`](./roadmap/README.md) | Shipped vs planned features |
-| [`roadmap/decentralized-principal-auth.md`](./roadmap/decentralized-principal-auth.md) | DID auth design |
 
 ```ts
 import { createLocalSqliteServiceStack } from "@khoralabs/memories-service/storage/sqlite";
@@ -124,3 +124,23 @@ const auth =
 ```
 
 Host matching rules: [`src/auth/HOST_POLICY.md`](./src/auth/HOST_POLICY.md).
+
+### DID principal auth
+
+Host-wired only (env cannot construct it). Proof verify is injected — memories does not depend on khora:
+
+```ts
+import { createDidPrincipalAuthStrategy } from "@khoralabs/memories-service/auth";
+// Host typically adapts @khoralabs/khora-auth verifySignedAgentRequest:
+const auth = createDidPrincipalAuthStrategy({
+  verify: {
+    async verify({ request }) {
+      const { did } = await hostVerifySignedRequest(request);
+      return { did };
+    },
+  },
+  // optional: resolveGrants: ({ actor, database }) => hostGrants,
+});
+```
+
+Authorize: owner when `actor.subject === database.ownerKey`; else optional `resolveGrants` matched with `authorizeScopeAgainstGrants`. Attribution: `principalForActor: (actor) => actor.subject`. Details: [`spec.md`](./spec.md#did-principal).
