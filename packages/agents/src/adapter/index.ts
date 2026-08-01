@@ -1,6 +1,8 @@
 export {
   type ExpandedMemoryWire,
+  type ExpandedMemoryWireOptions,
   memoryAdapterExpandedOutput,
+  parseAdapterGenerationToExpandedMemoryWire,
   zExpandedMemoryWireFromOntology,
 } from "./adapter-output.js";
 export {

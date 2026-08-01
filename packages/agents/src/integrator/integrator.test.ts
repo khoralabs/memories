@@ -183,4 +183,53 @@ describe("MemoryIntegratorPlan schema + merge mapping", () => {
       }),
     ).toThrow();
   });
+
+  test("rejects nested objects in properties", () => {
+    const ontology = defineOntology({
+      nodeLabels: { fact: z.object({}) },
+      edgeLabels: {},
+    });
+    const schema = zIntegratorPlanWire(ontology);
+    expect(() =>
+      schema.parse({
+        nodeLabels: {},
+        edges: [],
+        properties: { nested: { a: 1 } },
+      }),
+    ).toThrow();
+  });
+
+  test("allowedNodeKinds / allowedEdgeKinds filter schema kinds", () => {
+    const ontology = defineOntology({
+      nodeLabels: {
+        fact: z.object({ subject: z.string() }),
+        belief: z.object({ claim: z.string() }),
+      },
+      edgeLabels: {
+        references: z.object({}),
+        affects: z.object({}),
+      },
+    });
+    const schema = zIntegratorPlanWire(ontology, {
+      allowedNodeKinds: ["fact"],
+      allowedEdgeKinds: ["references"],
+    });
+    const parsed = schema.parse({
+      nodeLabels: { fact: { subject: "x" } },
+      edges: [{ memory: "n", direction: "out", references: {} }],
+    });
+    expect(parsed.nodeLabels).toEqual({ fact: { subject: "x" } });
+    expect(() =>
+      schema.parse({
+        nodeLabels: { belief: { claim: "y" } },
+        edges: [],
+      }),
+    ).toThrow();
+    expect(() =>
+      schema.parse({
+        nodeLabels: {},
+        edges: [{ memory: "n", direction: "out", affects: {} }],
+      }),
+    ).toThrow();
+  });
 });

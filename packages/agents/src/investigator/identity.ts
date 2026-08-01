@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   type AnyComposable,
   createRegisteredAgent,
@@ -7,6 +6,13 @@ import {
 } from "@khoralabs/agent-capabilities";
 import { memorySearchToolkit } from "../tools/index";
 import { memoryInvestigatorBaseInstruction } from "./instructions.js";
+
+async function sha256HexPrefix(value: string, hexChars: number): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, hexChars);
+}
 
 export const MEMORY_INVESTIGATOR_AGENT_ID = "memory-investigator";
 
@@ -45,7 +51,7 @@ export async function buildMemoryInvestigatorAgentId(args: {
     .map((s) => s.trim())
     .filter(Boolean);
   const uniqNs = [...new Set(nsLine)].sort((a, b) => a.localeCompare(b)).join("\n");
-  const h = createHash("sha256").update(`${uniqNs}\n${extraHashes}`).digest("hex").slice(0, 20);
+  const h = await sha256HexPrefix(`${uniqNs}\n${extraHashes}`, 20);
   return `${MEMORY_INVESTIGATOR_AGENT_ID}-${h}`;
 }
 

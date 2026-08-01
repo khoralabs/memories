@@ -1,19 +1,37 @@
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import { Output } from "ai";
 import z from "zod";
+import { zFlatJsonProperties } from "../flat-json-properties.js";
 
+/**
+ * Options for bounding the structured-output schema.
+ * Large ontologies should pass kind allowlists (or a reduced ontology) rather than the full catalog.
+ */
 export type IntegratorPlanWireOptions = {
   allowedMemoryKeys?: readonly string[];
+  /** When set, only these ontology node kinds appear in the wire schema (intersection with ontology). */
+  allowedNodeKinds?: readonly string[];
+  /** When set, only these ontology edge kinds appear in the wire schema (intersection with ontology). */
+  allowedEdgeKinds?: readonly string[];
 };
+
+function intersectSortedKinds(all: readonly string[], allowed?: readonly string[]): string[] {
+  if (allowed === undefined) return [...all];
+  const allow = new Set(allowed);
+  return all.filter((k) => allow.has(k));
+}
 
 /** Sorted ontology label kind strings (stable for schema + parsing). */
 export function integratorLabelKindsFromOntology<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
->(ontology: OntologyDefinition<TNode, TEdge>): { node: string[]; edge: string[] } {
+>(
+  ontology: OntologyDefinition<TNode, TEdge>,
+  options?: Pick<IntegratorPlanWireOptions, "allowedNodeKinds" | "allowedEdgeKinds">,
+): { node: string[]; edge: string[] } {
   return {
-    node: Object.keys(ontology.nodeLabels).sort(),
-    edge: Object.keys(ontology.edgeLabels).sort(),
+    node: intersectSortedKinds(Object.keys(ontology.nodeLabels).sort(), options?.allowedNodeKinds),
+    edge: intersectSortedKinds(Object.keys(ontology.edgeLabels).sort(), options?.allowedEdgeKinds),
   };
 }
 
@@ -23,8 +41,9 @@ export function integratorLabelKindsFromOntology<
  */
 function zNodeLabelsObjectFromOntology<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ontology: OntologyDefinition<TNode, TEdge>,
+  options?: IntegratorPlanWireOptions,
 ): z.ZodType {
-  const kinds = integratorLabelKindsFromOntology(ontology).node;
+  const kinds = integratorLabelKindsFromOntology(ontology, options).node;
   const schemas = ontology.nodeLabels as unknown as Record<string, z.ZodType>;
   if (kinds.length === 0) {
     return z.object({}).describe("No node label kinds in this ontology — use an empty object {}.");
@@ -41,6 +60,7 @@ function zNodeLabelsObjectFromOntology<TNode extends LabelSchemaMap, TEdge exten
   }
   return z
     .object(shape)
+    .strict()
     .describe(
       "Node labels: only include keys you need; each key is an ontology kind name; value matches that kind's fields.",
     );
@@ -70,7 +90,7 @@ function zIntegratorEdgeItemKeyed<TNode extends LabelSchemaMap, TEdge extends La
   ontology: OntologyDefinition<TNode, TEdge>,
   options?: IntegratorPlanWireOptions,
 ): z.ZodType {
-  const edgeKinds = integratorLabelKindsFromOntology(ontology).edge;
+  const edgeKinds = integratorLabelKindsFromOntology(ontology, options).edge;
   if (edgeKinds.length === 0) {
     return z.never();
   }
@@ -88,16 +108,20 @@ function zIntegratorEdgeItemKeyed<TNode extends LabelSchemaMap, TEdge extends La
       );
   }
 
-  const base = z.object({
-    memory: zIntegratorEdgeMemoryKey(options),
-    direction: z
-      .enum(["in", "out"])
-      .describe(
-        'Relative to the focal memory row: "out" = focal → neighbor; "in" = neighbor → focal.',
+  const base = z
+    .object({
+      memory: zIntegratorEdgeMemoryKey(options),
+      direction: z
+        .enum(["in", "out"])
+        .describe(
+          'Relative to the focal memory row: "out" = focal → neighbor; "in" = neighbor → focal.',
+        ),
+      ...shape,
+      properties: zFlatJsonProperties(
+        "Optional flat edge JSON (string/number/boolean/null values).",
       ),
-    ...shape,
-    properties: z.record(z.string(), z.unknown()).optional().describe("Optional edge JSON."),
-  });
+    })
+    .strict();
 
   return base.refine(
     (row) => {
@@ -119,9 +143,9 @@ export function zIntegratorPlanWire<TNode extends LabelSchemaMap, TEdge extends 
   ontology: OntologyDefinition<TNode, TEdge>,
   options?: IntegratorPlanWireOptions,
 ) {
-  const { edge } = integratorLabelKindsFromOntology(ontology);
+  const { edge } = integratorLabelKindsFromOntology(ontology, options);
 
-  const nodeLabelsSchema = zNodeLabelsObjectFromOntology(ontology);
+  const nodeLabelsSchema = zNodeLabelsObjectFromOntology(ontology, options);
 
   const edgesSchema =
     edge.length === 0
@@ -137,7 +161,9 @@ export function zIntegratorPlanWire<TNode extends LabelSchemaMap, TEdge extends 
   return z.object({
     nodeLabels: nodeLabelsSchema,
     edges: edgesSchema,
-    properties: z.record(z.string(), z.unknown()).optional().describe("Optional node/memory JSON."),
+    properties: zFlatJsonProperties(
+      "Optional flat node/memory JSON (string/number/boolean/null values).",
+    ),
   });
 }
 
@@ -150,14 +176,14 @@ export type IntegratorNodeLabelsWire = Record<string, unknown>;
 export type IntegratorEdgeWire = {
   memory: string;
   direction: "in" | "out";
-  properties?: Record<string, unknown>;
+  properties?: Record<string, string | number | boolean | null>;
 } & Record<string, unknown>;
 
 /** Parsed integrator structured output before mapping to merge. */
 export type IntegratorPlanWire = {
   nodeLabels: IntegratorNodeLabelsWire;
   edges: IntegratorEdgeWire[];
-  properties?: Record<string, unknown>;
+  properties?: Record<string, string | number | boolean | null>;
 };
 
 export function integratorPlanOutputFromOntology<

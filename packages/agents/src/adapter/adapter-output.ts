@@ -1,21 +1,41 @@
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import { Output } from "ai";
 import z from "zod";
+import { zFlatJsonProperties } from "../flat-json-properties.js";
+
+/**
+ * Options for bounding the adapter structured-output schema.
+ * Large ontologies should pass kind allowlists (or a reduced ontology) rather than the full catalog.
+ */
+export type ExpandedMemoryWireOptions = {
+  /** When set, only these ontology node kinds appear in hints (intersection with ontology). */
+  allowedNodeKinds?: readonly string[];
+  /** When set, only these ontology edge kinds appear in hints (intersection with ontology). */
+  allowedEdgeKinds?: readonly string[];
+};
+
+function intersectSortedKinds(all: readonly string[], allowed?: readonly string[]): string[] {
+  if (allowed === undefined) return [...all];
+  const allow = new Set(allowed);
+  return all.filter((k) => allow.has(k));
+}
 
 function labelKindsFromOntology<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ontology: OntologyDefinition<TNode, TEdge>,
+  options?: ExpandedMemoryWireOptions,
 ): { node: string[]; edge: string[] } {
   return {
-    node: Object.keys(ontology.nodeLabels).sort(),
-    edge: Object.keys(ontology.edgeLabels).sort(),
+    node: intersectSortedKinds(Object.keys(ontology.nodeLabels).sort(), options?.allowedNodeKinds),
+    edge: intersectSortedKinds(Object.keys(ontology.edgeLabels).sort(), options?.allowedEdgeKinds),
   };
 }
 
 /** Optional keyed object: one optional field per ontology node kind (payload = that kind’s schema). */
 function zNodeLabelHintsFromOntology<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ontology: OntologyDefinition<TNode, TEdge>,
+  options?: ExpandedMemoryWireOptions,
 ): z.ZodType {
-  const kinds = labelKindsFromOntology(ontology).node;
+  const kinds = labelKindsFromOntology(ontology, options).node;
   const schemas = ontology.nodeLabels as unknown as Record<string, z.ZodType>;
   if (kinds.length === 0) {
     return z.object({}).describe("No node label kinds — use {} or omit nodeLabelHints.");
@@ -32,6 +52,7 @@ function zNodeLabelHintsFromOntology<TNode extends LabelSchemaMap, TEdge extends
   }
   return z
     .object(shape)
+    .strict()
     .describe(
       "Optional hints for node labels on the memory row: only include keys you can justify; values match each ontology kind.",
     );
@@ -42,8 +63,9 @@ function zNodeLabelHintsFromOntology<TNode extends LabelSchemaMap, TEdge extends
  */
 function zEdgeLabelHintRowFromOntology<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ontology: OntologyDefinition<TNode, TEdge>,
+  options?: ExpandedMemoryWireOptions,
 ): z.ZodType {
-  const edgeKinds = labelKindsFromOntology(ontology).edge;
+  const edgeKinds = labelKindsFromOntology(ontology, options).edge;
   if (edgeKinds.length === 0) {
     return z.never();
   }
@@ -61,18 +83,22 @@ function zEdgeLabelHintRowFromOntology<TNode extends LabelSchemaMap, TEdge exten
       );
   }
 
-  const base = z.object({
-    memory: z
-      .string()
-      .describe("Neighbor memory key from memory_search or host context; do not invent."),
-    direction: z
-      .enum(["in", "out"])
-      .describe(
-        'Relative to the memory being written: "out" = this memory → neighbor; "in" = neighbor → this memory.',
+  const base = z
+    .object({
+      memory: z
+        .string()
+        .describe("Neighbor memory key from memory_search or host context; do not invent."),
+      direction: z
+        .enum(["in", "out"])
+        .describe(
+          'Relative to the memory being written: "out" = this memory → neighbor; "in" = neighbor → this memory.',
+        ),
+      ...shape,
+      properties: zFlatJsonProperties(
+        "Optional flat edge JSON (string/number/boolean/null values).",
       ),
-    ...shape,
-    properties: z.record(z.string(), z.unknown()).optional().describe("Optional edge JSON."),
-  });
+    })
+    .strict();
 
   return base.refine(
     (row) => {
@@ -95,9 +121,9 @@ function zEdgeLabelHintRowFromOntology<TNode extends LabelSchemaMap, TEdge exten
 export function zExpandedMemoryWireFromOntology<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
->(ontology: OntologyDefinition<TNode, TEdge>) {
-  const { edge } = labelKindsFromOntology(ontology);
-  const nodeLabelHintsSchema = zNodeLabelHintsFromOntology(ontology);
+>(ontology: OntologyDefinition<TNode, TEdge>, options?: ExpandedMemoryWireOptions) {
+  const { edge } = labelKindsFromOntology(ontology, options);
+  const nodeLabelHintsSchema = zNodeLabelHintsFromOntology(ontology, options);
 
   const shape: Record<string, z.ZodType> = {
     plaintext: z
@@ -119,7 +145,7 @@ export function zExpandedMemoryWireFromOntology<
 
   if (edge.length > 0) {
     shape.edgeLabelHints = z
-      .array(zEdgeLabelHintRowFromOntology(ontology))
+      .array(zEdgeLabelHintRowFromOntology(ontology, options))
       .optional()
       .describe(
         "Optional hints for edges to other memories; each row targets one neighbor key and at most one edge kind.",
@@ -136,12 +162,15 @@ export function zExpandedMemoryWireFromOntology<
 export function memoryAdapterExpandedOutput<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
->(ontology: OntologyDefinition<TNode, TEdge>): ReturnType<typeof Output.object> {
+>(
+  ontology: OntologyDefinition<TNode, TEdge>,
+  options?: ExpandedMemoryWireOptions,
+): ReturnType<typeof Output.object> {
   return Output.object({
     name: "ExpandedMemory",
     description:
       "Expanded domain content as plaintext plus optional memory key and ontology-aware node/edge label hints for ingestion.",
-    schema: zExpandedMemoryWireFromOntology(ontology),
+    schema: zExpandedMemoryWireFromOntology(ontology, options),
   });
 }
 
@@ -170,8 +199,9 @@ export function parseAdapterGenerationToExpandedMemoryWire<
 >(
   ontology: OntologyDefinition<TNode, TEdge>,
   generation: AdapterGenerationLike,
+  options?: ExpandedMemoryWireOptions,
 ): ExpandedMemoryWire {
-  const wire = zExpandedMemoryWireFromOntology(ontology);
+  const wire = zExpandedMemoryWireFromOntology(ontology, options);
   const out = wire.safeParse(generation.output);
   if (!out.success) {
     throw new Error(
