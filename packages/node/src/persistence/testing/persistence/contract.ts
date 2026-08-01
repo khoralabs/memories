@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { deleteMemoryAsync, mergeMemoryAsync, searchAsync } from "../../../core/index";
+import {
+  deleteMemoryAsync,
+  mergeMemoryAsync,
+  searchAsync,
+  suppressMemoryAsync,
+  unsuppressMemoryAsync,
+} from "../../../core/index";
 import { ids, namespacePath } from "../../../persistence/core";
 import type {
   MemoriesPersistenceAsync,
@@ -277,6 +283,75 @@ export function runMemoriesPersistenceContractTests(
 
         await deleteMemoryAsync({ persistence }, { namespace, key });
         expect(await persistence.getProvenanceHeadRootHex()).toBe(afterDelete);
+      });
+
+      test("suppress advances chain; duplicate suppress does not; unsuppress restores search", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.lexicalSearch) return;
+
+        const namespace = uniqueNs("contract/prov-suppress");
+        const key = "hidden";
+        const token = `sup_token_${Math.random().toString(36).slice(2, 10)}`;
+
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key,
+            namespace,
+            content: [{ key: "s", text: `findme ${token}` }],
+            labels: [],
+            edges: [],
+          },
+        );
+        const afterMerge = await persistence.getProvenanceHeadRootHex();
+        expect(afterMerge).toBeDefined();
+
+        const beforeHits = await searchAsync(
+          { persistence },
+          { namespace, content: { text: token }, options: { topK: 10 } },
+        );
+        expect(beforeHits.hits.some((h) => h.memory.key === key)).toBe(true);
+
+        await suppressMemoryAsync({ persistence }, { namespace, key });
+        const suppressEvent = {
+          v: 1 as const,
+          kind: "SUPPRESS_MEMORY" as const,
+          namespace,
+          memory_key: key,
+          memory_id: ids.memory(namespace, key),
+        };
+        const afterSuppress = await persistence.getProvenanceHeadRootHex();
+        expect(afterSuppress).toBe(nextProvenanceRoot(afterMerge, suppressEvent).root_hex);
+        expect(await persistence.isMemorySuppressed(ids.memory(namespace, key))).toBe(true);
+        expect(await persistence.findMemoryIdByKey(namespace, key)).toBeDefined();
+
+        const suppressedHits = await searchAsync(
+          { persistence },
+          { namespace, content: { text: token }, options: { topK: 10 } },
+        );
+        expect(suppressedHits.hits.some((h) => h.memory.key === key)).toBe(false);
+
+        await suppressMemoryAsync({ persistence }, { namespace, key });
+        expect(await persistence.getProvenanceHeadRootHex()).toBe(afterSuppress);
+
+        await unsuppressMemoryAsync({ persistence }, { namespace, key });
+        const unsuppressEvent = {
+          v: 1 as const,
+          kind: "UNSUPPRESS_MEMORY" as const,
+          namespace,
+          memory_key: key,
+          memory_id: ids.memory(namespace, key),
+        };
+        const afterUnsuppress = await persistence.getProvenanceHeadRootHex();
+        expect(afterUnsuppress).toBe(nextProvenanceRoot(afterSuppress, unsuppressEvent).root_hex);
+        expect(await persistence.isMemorySuppressed(ids.memory(namespace, key))).toBe(false);
+
+        const restoredHits = await searchAsync(
+          { persistence },
+          { namespace, content: { text: token }, options: { topK: 10 } },
+        );
+        expect(restoredHits.hits.some((h) => h.memory.key === key)).toBe(true);
       });
 
       test("getProvenanceTimestampMsForRootHex returns a timestamp for the head", async () => {

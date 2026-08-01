@@ -20,6 +20,8 @@ export const zMemory = z.object({
   kind: zMemoryKind,
   /** Set when `kind` is `edge`; unique per non-null value. */
   edge_id: zId("edges").optional(),
+  /** `1` when hidden from search/graph discovery; rows remain. */
+  suppressed: z.union([z.literal(0), z.literal(1)]).optional(),
 });
 
 /**
@@ -39,7 +41,7 @@ export const zSourceMap = z.object({
 export const zMemoryProvenance = z.object({
   parent_root_hex: zSha256HexLower,
   root_hex: zSha256HexLower,
-  /** `MERGE_MEMORY` | `DELETE_MEMORY` | `RENAME_NAMESPACE` (validated at insert). */
+  /** `MERGE_MEMORY` | `DELETE_MEMORY` | `SUPPRESS_MEMORY` | `UNSUPPRESS_MEMORY` | `RENAME_NAMESPACE`. */
   event_type: z.string(),
   event_json: z.string(),
   intent_snapshot_id: z.string().optional(),

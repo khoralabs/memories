@@ -73,7 +73,7 @@ function isSearchEntireDatabase(body: unknown): boolean {
 }
 
 /**
- * Scope for memory ops and search: merge, delete-memory, search, and similar bodies
+ * Scope for memory ops and search: merge, delete-memory, suppress-memory, search, and similar bodies
  * that carry `namespace` / `params.namespace` / `additionalNamespaces` / `searchEntireDatabase`.
  */
 export function scopeFromMemoryBody(body: unknown): AuthorizeScope {

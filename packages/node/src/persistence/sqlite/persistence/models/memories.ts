@@ -49,6 +49,22 @@ export function findMemoryAssociation(
   return { memoryId, kind: "node", nodeId: ids.node(namespace, key) };
 }
 
+export function isMemorySuppressed(ctx: DbCtx, memoryId: string): boolean {
+  const row = ctx.db
+    .query<{ suppressed: number }, [string]>(`SELECT suppressed FROM memories WHERE _id = ?`)
+    .get(memoryId);
+  return row !== null && row.suppressed !== 0;
+}
+
+export function setMemorySuppressed(
+  ctx: DbCtx,
+  input: { memoryId: string; suppressed: boolean },
+): void {
+  ctx.db
+    .query(`UPDATE memories SET suppressed = ? WHERE _id = ?`)
+    .run(input.suppressed ? 1 : 0, input.memoryId);
+}
+
 /**
  * Upserts `memories` by deterministic id; preserves `_ts_created` when the row already exists.
  */

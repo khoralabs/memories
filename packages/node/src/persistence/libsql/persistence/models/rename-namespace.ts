@@ -9,6 +9,7 @@ type MemoryRow = {
   key: string;
   kind: string;
   edge_id: string | null;
+  suppressed: number;
   _ts_created: number;
 };
 
@@ -48,7 +49,7 @@ export async function renameNamespacePaths(
 
   const memories = await ctxQueryAll<MemoryRow>(
     ctx,
-    `SELECT _id, namespace, key, kind, edge_id, _ts_created FROM memories WHERE namespace IN (${ph})`,
+    `SELECT _id, namespace, key, kind, edge_id, suppressed, _ts_created FROM memories WHERE namespace IN (${ph})`,
     sources,
   );
 
@@ -121,9 +122,9 @@ export async function renameNamespacePaths(
     }
     await ctxExec(
       ctx,
-      `INSERT INTO memories (_id, _ts_created, namespace, key, kind, edge_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [newMemId, m._ts_created, newNs, m.key, m.kind, newEdgeId],
+      `INSERT INTO memories (_id, _ts_created, namespace, key, kind, edge_id, suppressed)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [newMemId, m._ts_created, newNs, m.key, m.kind, newEdgeId, m.suppressed],
     );
     await copyMemoryDependents(ctx, m._id, newMemId, nsMap);
   }

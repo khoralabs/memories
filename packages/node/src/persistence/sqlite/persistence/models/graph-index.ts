@@ -43,6 +43,13 @@ function parseEdgeRowProperties(json: string | null): Record<string, unknown> | 
   return null;
 }
 
+/** Edge visible in graph layout when neither endpoint (nor a suppressed edge memory) is suppressed. */
+const GRAPH_EDGE_NOT_SUPPRESSED = `
+  AND mf.suppressed = 0 AND mt.suppressed = 0
+  AND NOT EXISTS (
+    SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
+  )`;
+
 function finishGraphEdgeLink(
   edgeId: string,
   fromKey: string,
@@ -121,6 +128,7 @@ export function loadGraphEdgesForNamespace(db: Database, namespace: string): Gra
        JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
        LEFT JOIN edge_label_assignments ela ON ela.edge_id = e._id
        LEFT JOIN edge_labels el ON el._id = ela.label_id
+       WHERE 1 = 1${GRAPH_EDGE_NOT_SUPPRESSED}
        ORDER BY e._id ASC, el.kind ASC`,
     )
     .all(namespace, namespace);
@@ -147,7 +155,7 @@ export function listIncidentGraphEdgesForMemory(
        JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
        LEFT JOIN edge_label_assignments ela ON ela.edge_id = e._id
        LEFT JOIN edge_labels el ON el._id = ela.label_id
-       WHERE nf.value = ? OR nt.value = ?
+       WHERE (nf.value = ? OR nt.value = ?)${GRAPH_EDGE_NOT_SUPPRESSED}
        ORDER BY e._id ASC, el.kind ASC`,
     )
     .all(namespace, namespace, memoryKey, memoryKey);
@@ -235,7 +243,7 @@ export function loadGraphEdge(
        JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
        LEFT JOIN edge_label_assignments ela ON ela.edge_id = e._id
        LEFT JOIN edge_labels el ON el._id = ela.label_id
-       WHERE e._id = ?
+       WHERE e._id = ?${GRAPH_EDGE_NOT_SUPPRESSED}
        ORDER BY el.kind ASC`,
     )
     .all(namespace, namespace, edgeId);
@@ -249,7 +257,9 @@ export function loadNodePropertiesForNamespace(
   namespace: string,
 ): Map<string, Record<string, unknown> | null> {
   const keys = db
-    .query<{ key: string }, [string]>(`SELECT key FROM memories WHERE namespace = ?`)
+    .query<{ key: string }, [string]>(
+      `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`,
+    )
     .all(namespace);
   const map = new Map<string, Record<string, unknown> | null>();
   for (const { key } of keys) {
@@ -262,7 +272,7 @@ export function loadNodePropertiesForNamespace(
       `SELECT m.key AS memoryKey, n.properties AS propertiesJson
        FROM memories m
        LEFT JOIN nodes n ON n.value = m.key
-       WHERE m.namespace = ?`,
+       WHERE m.namespace = ? AND m.kind = 'node' AND m.suppressed = 0`,
     )
     .all(namespace);
 
@@ -291,7 +301,9 @@ export function loadNodeLabelsForNamespace(
   namespace: string,
 ): Map<string, OntologyLabelInstance[]> {
   const keys = db
-    .query<{ key: string }, [string]>(`SELECT key FROM memories WHERE namespace = ?`)
+    .query<{ key: string }, [string]>(
+      `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`,
+    )
     .all(namespace);
   if (keys.length === 0) return new Map();
   const nodeIds = keys.map((k) => ids.node(namespace, k.key));

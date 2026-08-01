@@ -127,11 +127,30 @@ function namespaceSubtreeOrClauses(
   return { sql: parts.join(" OR "), bindings };
 }
 
+/** Hide suppressed memories and edge memories whose endpoints are suppressed. */
+function memoryDiscoveryVisibleSql(): string {
+  // Qualify outer `memories.*` so EXISTS joins to other memories rows stay unambiguous.
+  return `memories.suppressed = 0
+    AND NOT (
+      memories.kind = 'edge' AND memories.edge_id IS NOT NULL AND EXISTS (
+        SELECT 1
+        FROM edges e
+        JOIN nodes n_from ON n_from._id = e.from_node_id
+        JOIN nodes n_to ON n_to._id = e.to_node_id
+        JOIN memories m_from ON m_from._id = n_from.memory_id
+        JOIN memories m_to ON m_to._id = n_to.memory_id
+        WHERE e._id = memories.edge_id
+          AND (m_from.suppressed != 0 OR m_to.suppressed != 0)
+      )
+    )`;
+}
+
 function memoriesWhereClauseFromScope(
   scope: SearchNamespaceScope,
   memoryIds: string[] | undefined,
   asOfTimestampMs?: number,
 ): { sql: string; bindings: SQLQueryBindings[] } {
+  const visible = ` AND ${memoryDiscoveryVisibleSql()}`;
   const asOfClause = asOfTimestampMs !== undefined ? " AND _ts_created <= ?" : "";
   const asOfBind: SQLQueryBindings[] = asOfTimestampMs !== undefined ? [asOfTimestampMs] : [];
 
@@ -140,7 +159,7 @@ function memoriesWhereClauseFromScope(
 
   if (scope.kind === "unscoped") {
     return {
-      sql: `1 = 1${idClause}${asOfClause}`,
+      sql: `1 = 1${idClause}${asOfClause}${visible}`,
       bindings: [...idBindings, ...asOfBind],
     };
   }
@@ -152,7 +171,7 @@ function memoriesWhereClauseFromScope(
     }
     const { sql: nsOr, bindings: nsBindings } = namespaceSubtreeOrClauses(ns);
     return {
-      sql: `(${nsOr})${idClause}${asOfClause}`,
+      sql: `(${nsOr})${idClause}${asOfClause}${visible}`,
       bindings: [...nsBindings, ...idBindings, ...asOfBind],
     };
   }
@@ -166,7 +185,7 @@ function memoriesWhereClauseFromScope(
       sql: `_id IN (
         SELECT memory_id FROM memory_scopes
         WHERE scope_id IN (${placeholders(ss.length)})
-      )${idClause}${asOfClause}`,
+      )${idClause}${asOfClause}${visible}`,
       bindings: [...ss, ...idBindings, ...asOfBind],
     };
   }
@@ -182,7 +201,7 @@ function memoriesWhereClauseFromScope(
       FROM memory_scopes ms
       INNER JOIN scope_closure c ON c.descendant_scope_id = ms.scope_id
       WHERE c.ancestor_scope_id IN (${placeholders(roots.length)})
-    )${idClause}${asOfClause}`,
+    )${idClause}${asOfClause}${visible}`,
     bindings: [...roots, ...idBindings, ...asOfBind],
   };
 }
@@ -198,7 +217,7 @@ function memoryIdSubqueryFromScope(
     asOfTimestampMs,
   );
   return {
-    sql: `memory_id IN (SELECT _id FROM memories WHERE ${innerSql})`,
+    sql: `memory_id IN (SELECT memories._id FROM memories WHERE ${innerSql})`,
     bindings,
   };
 }
@@ -592,7 +611,11 @@ export function listNeighborsForMemory<
          ELSE e.from_node_id
        END
        JOIN memories m ON m._id = n.memory_id
-       WHERE e.from_node_id = ? OR e.to_node_id = ?
+       WHERE (e.from_node_id = ? OR e.to_node_id = ?)
+         AND m.suppressed = 0
+         AND NOT EXISTS (
+           SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
+         )
        ORDER BY e._id ASC, el.kind ASC`,
     )
     .all(nodeId, nodeId, nodeId);

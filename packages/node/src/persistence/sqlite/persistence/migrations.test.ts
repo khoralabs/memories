@@ -35,6 +35,7 @@ describe("memories sqlite migrations", () => {
     const memories = tableColumns(db, "memories");
     expect(memories.has("kind")).toBe(true);
     expect(memories.has("edge_id")).toBe(true);
+    expect(memories.has("suppressed")).toBe(true);
     expect(memories.has("ns_prefix_1")).toBe(false);
 
     const rows = trackingRows(db);
@@ -43,6 +44,7 @@ describe("memories sqlite migrations", () => {
       { from_version: "0.1.0", to_version: "0.2.0", name: "001-add-content-outbox" },
       { from_version: "0.2.0", to_version: "0.3.0", name: "001-add-namespace-metadata" },
       { from_version: "0.3.0", to_version: "0.4.0", name: "001-drop-ns-prefix-columns" },
+      { from_version: "0.4.0", to_version: "0.5.0", name: "001-add-memory-suppressed" },
     ]);
 
     const nsIdx = db

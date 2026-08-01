@@ -50,7 +50,9 @@ import { listTextFeatureExportRowsForMemory as listTextFeatureExportRowsForMemor
 import {
   findMemoryAssociation,
   findMemoryIdByKey,
+  isMemorySuppressed as isMemorySuppressedRow,
   loadMemoryNamespaceKey as loadMemoryNamespaceKeyRow,
+  setMemorySuppressed as setMemorySuppressedRow,
   upsertMemory,
 } from "./models/memories";
 import {
@@ -458,6 +460,17 @@ export class MemoriesLibsqlPersistence {
       return;
     }
     await ctxExec(ctx, `DELETE FROM edges WHERE _id = ?`, [input.edgeId]);
+  }
+
+  async isMemorySuppressed(memoryId: string): Promise<boolean> {
+    return isMemorySuppressedRow(this.txCtx ?? this.readDbCtx(), memoryId);
+  }
+
+  async setMemorySuppressed(
+    op: MemoryOpContext,
+    input: { memoryId: string; suppressed: boolean },
+  ): Promise<void> {
+    await setMemorySuppressedRow(this.activeCtx(op), input);
   }
 
   async searchLexicalSourceMapIds(input: {

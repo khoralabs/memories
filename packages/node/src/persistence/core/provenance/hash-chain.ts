@@ -81,6 +81,26 @@ export type DeleteMemoryProvenanceEvent = {
   intent_snapshot_id?: string;
 };
 
+export type SuppressMemoryProvenanceEvent = {
+  v: 1;
+  kind: "SUPPRESS_MEMORY";
+  namespace: string;
+  memory_key: string;
+  memory_id: string;
+  contributor?: ContributorAttestation;
+  intent_snapshot_id?: string;
+};
+
+export type UnsuppressMemoryProvenanceEvent = {
+  v: 1;
+  kind: "UNSUPPRESS_MEMORY";
+  namespace: string;
+  memory_key: string;
+  memory_id: string;
+  contributor?: ContributorAttestation;
+  intent_snapshot_id?: string;
+};
+
 export type RenameNamespaceProvenanceEvent = {
   v: 1;
   kind: "RENAME_NAMESPACE";
@@ -94,6 +114,8 @@ export type RenameNamespaceProvenanceEvent = {
 export type MemoryProvenanceEvent =
   | MergeMemoryProvenanceEvent
   | DeleteMemoryProvenanceEvent
+  | SuppressMemoryProvenanceEvent
+  | UnsuppressMemoryProvenanceEvent
   | RenameNamespaceProvenanceEvent;
 
 /** Next root hex given optional current head (`undefined` at genesis). */

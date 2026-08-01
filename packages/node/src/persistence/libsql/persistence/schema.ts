@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS "memories" (
   "key" TEXT NOT NULL,
   "kind" TEXT NOT NULL,
   "edge_id" TEXT REFERENCES "edges" ("_id") ON DELETE CASCADE,
+  "suppressed" INTEGER NOT NULL DEFAULT 0,
   "_id" TEXT PRIMARY KEY NOT NULL,
   "_ts_created" REAL NOT NULL
 );

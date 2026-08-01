@@ -40,7 +40,9 @@ import { listTextFeatureExportRowsForMemory as listTextFeatureExportRowsForMemor
 import {
   findMemoryAssociation,
   findMemoryIdByKey,
+  isMemorySuppressed as isMemorySuppressedRow,
   loadMemoryNamespaceKey as loadMemoryNamespaceKeyRow,
+  setMemorySuppressed as setMemorySuppressedRow,
   upsertMemory,
 } from "./models/memories";
 import {
@@ -403,6 +405,14 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     }
     /** With `edge_id` FK ON DELETE CASCADE, removing the edge removes the edge-attached memory row. */
     this.stmts.deleteEdgeById.run(input.edgeId);
+  }
+
+  isMemorySuppressed(memoryId: string): boolean {
+    return isMemorySuppressedRow(this.readCtx(), memoryId);
+  }
+
+  setMemorySuppressed(op: MemoryOpContext, input: { memoryId: string; suppressed: boolean }): void {
+    setMemorySuppressedRow(this.ctx(op), input);
   }
 
   searchLexicalSourceMapIds(input: {

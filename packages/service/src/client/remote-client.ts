@@ -4,6 +4,7 @@ import type {
   SearchHit,
   SearchOutput,
   SearchParams,
+  SuppressMemoryParams,
 } from "@khoralabs/memories-node";
 import { MemoriesClientAsync } from "@khoralabs/memories-node";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
@@ -29,7 +30,9 @@ import {
   type DatabaseProvenanceHeadResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
+  type DatabaseSuppressMemoryRequest,
   type DatabaseUmapInputRequest,
+  type DatabaseUnsuppressMemoryRequest,
   deserializeSearchHits,
   type SearchHitWire,
 } from "./wire";
@@ -127,6 +130,36 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         : {}),
     };
     await this.#client.postJson("/databases/delete-memory", body);
+  }
+
+  override async suppressMemory(params: SuppressMemoryParams): Promise<void> {
+    const { attribution, ...safeParams } = params as SuppressMemoryParams & {
+      attribution?: { intentSnapshotId?: string };
+    };
+    const body: DatabaseSuppressMemoryRequest = {
+      database: this.#database,
+      namespace: safeParams.namespace,
+      key: safeParams.key,
+      ...(attribution?.intentSnapshotId !== undefined
+        ? { intentSnapshotId: attribution.intentSnapshotId }
+        : {}),
+    };
+    await this.#client.postJson("/databases/suppress-memory", body);
+  }
+
+  override async unsuppressMemory(params: SuppressMemoryParams): Promise<void> {
+    const { attribution, ...safeParams } = params as SuppressMemoryParams & {
+      attribution?: { intentSnapshotId?: string };
+    };
+    const body: DatabaseUnsuppressMemoryRequest = {
+      database: this.#database,
+      namespace: safeParams.namespace,
+      key: safeParams.key,
+      ...(attribution?.intentSnapshotId !== undefined
+        ? { intentSnapshotId: attribution.intentSnapshotId }
+        : {}),
+    };
+    await this.#client.postJson("/databases/unsuppress-memory", body);
   }
 }
 

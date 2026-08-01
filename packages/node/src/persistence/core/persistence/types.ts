@@ -270,6 +270,12 @@ export interface MemoriesMutationCore {
       | { memoryKind: "edge"; edgeId: string },
   ): void;
 
+  /** Whether the memory row is currently suppressed (`false` if absent). */
+  isMemorySuppressed(memoryId: string): boolean;
+
+  /** Set or clear the materialized suppression flag (does not append provenance). */
+  setMemorySuppressed(op: MemoryOpContext, input: { memoryId: string; suppressed: boolean }): void;
+
   /** Latest provenance chain head (`root_hex`), or `undefined` if empty. */
   getProvenanceHeadRootHex(): string | undefined;
 
@@ -284,6 +290,7 @@ export interface MemoriesMutationCore {
    * Write raw content to the append-only outbox so point-in-time reconstruction is possible.
    * Must be called inside the same transaction as {@link appendProvenanceEvent}, immediately after.
    * For `MERGE_MEMORY` pass one entry per user content item. For `DELETE_MEMORY` pass `entries: []`.
+   * Suppress/unsuppress do not write the outbox (flag + provenance only) so PIT reconstruction stays intact.
    * Omitting this method is valid (outbox stays empty); reconstruction will simply return no rows.
    */
   appendContentOutbox?(

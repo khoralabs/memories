@@ -54,6 +54,25 @@ export async function findMemoryAssociation(
   return { memoryId, kind: "node", nodeId: ids.node(namespace, key) };
 }
 
+export async function isMemorySuppressed(ctx: DbCtx, memoryId: string): Promise<boolean> {
+  const row = await ctxQueryOne<{ suppressed: number }>(
+    ctx,
+    `SELECT suppressed FROM memories WHERE _id = ?`,
+    [memoryId],
+  );
+  return row != null && row.suppressed !== 0;
+}
+
+export async function setMemorySuppressed(
+  ctx: DbCtx,
+  input: { memoryId: string; suppressed: boolean },
+): Promise<void> {
+  await ctxExec(ctx, `UPDATE memories SET suppressed = ? WHERE _id = ?`, [
+    input.suppressed ? 1 : 0,
+    input.memoryId,
+  ]);
+}
+
 export async function upsertMemory(
   ctx: DbCtx,
   input: {

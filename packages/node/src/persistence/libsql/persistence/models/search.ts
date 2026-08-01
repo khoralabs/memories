@@ -434,7 +434,11 @@ export async function listNeighborsForMemory<
        ELSE e.from_node_id
      END
      JOIN memories m ON m._id = n.memory_id
-     WHERE e.from_node_id = ? OR e.to_node_id = ?
+     WHERE (e.from_node_id = ? OR e.to_node_id = ?)
+       AND m.suppressed = 0
+       AND NOT EXISTS (
+         SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
+       )
      ORDER BY e._id ASC, el.kind ASC`,
     [nodeId, nodeId, nodeId],
   );

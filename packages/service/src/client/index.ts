@@ -52,7 +52,11 @@ export {
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
   type DatabaseSourceMapTextPreviewRequest,
+  type DatabaseSuppressMemoryRequest,
+  type DatabaseSuppressMemoryResponse,
   type DatabaseUmapInputRequest,
+  type DatabaseUnsuppressMemoryRequest,
+  type DatabaseUnsuppressMemoryResponse,
   type DatabaseVectorDimensionsRequest,
   type DeleteMemoryParamsWire,
   deserializeSearchHit,
@@ -64,5 +68,6 @@ export {
   type SearchHitWire,
   type SearchNeighborHitWire,
   type SearchParamsWire,
+  type SuppressMemoryParamsWire,
   serializeSearchHit,
 } from "./wire";

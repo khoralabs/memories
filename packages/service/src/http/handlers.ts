@@ -52,7 +52,9 @@ import {
   handleDatabaseProvenanceHead,
   handleDatabaseSearch,
   handleDatabaseSourceMapTextPreview,
+  handleDatabaseSuppressMemory,
   handleDatabaseUmapInput,
+  handleDatabaseUnsuppressMemory,
   handleDatabaseVectorDimensions,
 } from "./persistence-handlers";
 
@@ -322,6 +324,28 @@ export async function handleMemoriesServiceHttpRequest(
           ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
           : undefined;
       return handleDatabaseDeleteMemory(opts.service, body, attribution);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/suppress-memory") {
+      const { body, bodySha256 } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
+      const attribution =
+        opts.attribution !== undefined
+          ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
+          : undefined;
+      return handleDatabaseSuppressMemory(opts.service, body, attribution);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/unsuppress-memory") {
+      const { body, bodySha256 } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
+      const attribution =
+        opts.attribution !== undefined
+          ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
+          : undefined;
+      return handleDatabaseUnsuppressMemory(opts.service, body, attribution);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/provenance/head") {

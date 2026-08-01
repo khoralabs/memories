@@ -13,6 +13,8 @@ import type { DeleteNamespaceParams, DeleteNamespaceResult } from "../models/del
 import { deleteNamespaceAsync } from "../models/delete-namespace-async";
 import type { RenameNamespaceParams, RenameNamespaceResult } from "../models/rename-namespace";
 import { renameNamespaceAsync } from "../models/rename-namespace-async";
+import type { SuppressMemoryParams } from "../models/suppress-memory";
+import { suppressMemoryAsync, unsuppressMemoryAsync } from "../models/suppress-memory-async";
 import type { DefaultEntityMap, MemoriesClientOptions } from "./client";
 import {
   type MergeMemoryParams,
@@ -153,6 +155,14 @@ export class MemoriesClientAsync<
 
   async deleteMemory(params: DeleteMemoryParams): Promise<void> {
     return deleteMemoryAsync(this.mutationCtx, params);
+  }
+
+  async suppressMemory(params: SuppressMemoryParams): Promise<void> {
+    return suppressMemoryAsync(this.mutationCtx, params);
+  }
+
+  async unsuppressMemory(params: SuppressMemoryParams): Promise<void> {
+    return unsuppressMemoryAsync(this.mutationCtx, params);
   }
 
   async deleteNamespace(params: DeleteNamespaceParams): Promise<DeleteNamespaceResult> {

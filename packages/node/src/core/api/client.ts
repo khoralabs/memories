@@ -22,6 +22,11 @@ import {
   renameNamespace as renameNamespaceHandler,
 } from "../models/rename-namespace";
 import {
+  type SuppressMemoryParams,
+  suppressMemory as suppressMemoryHandler,
+  unsuppressMemory as unsuppressMemoryHandler,
+} from "../models/suppress-memory";
+import {
   type MergeMemoryParams,
   type MutationCtx,
   mergeMemory,
@@ -174,6 +179,16 @@ export class MemoriesClient<
   /** Deletes the memory and cascaded data; delegates to the package `deleteMemory` function. */
   deleteMemory(params: DeleteMemoryParams): void {
     deleteMemoryHandler(this.mutationCtx, params);
+  }
+
+  /** Hides the memory from search/graph discovery without deleting rows. */
+  suppressMemory(params: SuppressMemoryParams): void {
+    suppressMemoryHandler(this.mutationCtx, params);
+  }
+
+  /** Clears suppression so the memory can surface in search/graph again. */
+  unsuppressMemory(params: SuppressMemoryParams): void {
+    unsuppressMemoryHandler(this.mutationCtx, params);
   }
 
   /** Deletes a namespace (default recursive) and cascaded memories/metadata. */

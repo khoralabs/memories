@@ -78,6 +78,11 @@ export type DeleteMemoryParamsWire = {
   key: string;
 };
 
+export type SuppressMemoryParamsWire = {
+  namespace: string;
+  key: string;
+};
+
 export type DatabaseScopedBody<T> = {
   database: { kind: string; ownerKey: string };
 } & T;
@@ -103,6 +108,16 @@ export type DatabaseDeleteMemoryRequest = DatabaseScopedBody<
   DeleteMemoryParamsWire & { intentSnapshotId?: string }
 >;
 export type DatabaseDeleteMemoryResponse = { ok: true };
+
+export type DatabaseSuppressMemoryRequest = DatabaseScopedBody<
+  SuppressMemoryParamsWire & { intentSnapshotId?: string }
+>;
+export type DatabaseSuppressMemoryResponse = { ok: true };
+
+export type DatabaseUnsuppressMemoryRequest = DatabaseScopedBody<
+  SuppressMemoryParamsWire & { intentSnapshotId?: string }
+>;
+export type DatabaseUnsuppressMemoryResponse = { ok: true };
 
 export type DatabaseProvenanceHeadRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseProvenanceHeadResponse = { rootHex: string };

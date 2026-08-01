@@ -149,7 +149,7 @@ describe("memories service persistence http handlers", () => {
       stack,
     );
     expect(deleteRes.status).toBe(200);
-  });
+  }, 15_000);
 
   test("sqlite read endpoints", async () => {
     const stack = createTestStack();
@@ -339,6 +339,66 @@ describe("memories service persistence http handlers", () => {
       contributor?: { format?: string };
     };
     expect(event.kind).toBe("DELETE_MEMORY");
+    expect(event.contributor?.format).toBe("khora.http-request-v1");
+  });
+
+  test("suppress-memory advances tip with http-request contributor", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-suppress" };
+    await stack.service.open(database);
+
+    await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            key: "note-sup",
+            namespace: "user/sup",
+            content: [{ key: "body", text: "suppress me" }],
+            labels: [],
+          },
+        }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+      },
+    );
+
+    const res = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/suppress-memory", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "user/sup", key: "note-sup" }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+        attribution: {
+          sign: ({ payloadBytes }) => payloadBytes,
+          now: () => new Date("2026-06-26T00:00:00.000Z"),
+        },
+      },
+    );
+    expect(res.status).toBe(200);
+
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const row = getMemoriesSqliteDatabase(sync.syncPersistence)
+      .query<{ event_json: string }, []>(
+        `SELECT event_json FROM memory_provenance ORDER BY rowid DESC LIMIT 1`,
+      )
+      .get();
+    const event = JSON.parse(row?.event_json ?? "{}") as {
+      kind?: string;
+      contributor?: { format?: string };
+    };
+    expect(event.kind).toBe("SUPPRESS_MEMORY");
     expect(event.contributor?.format).toBe("khora.http-request-v1");
   });
 

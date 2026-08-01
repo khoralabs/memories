@@ -30,7 +30,9 @@ import {
   type DatabaseNamespacesRequest,
   type DatabaseSearchRequest,
   type DatabaseSourceMapTextPreviewRequest,
+  type DatabaseSuppressMemoryRequest,
   type DatabaseUmapInputRequest,
+  type DatabaseUnsuppressMemoryRequest,
   type DatabaseVectorDimensionsRequest,
   serializeSearchHit,
 } from "../client/index";
@@ -359,6 +361,75 @@ export async function handleDatabaseDeleteMemory(
   }
 
   return Response.json({ ok: true, database });
+}
+
+async function handleSuppressToggle(
+  service: MemoriesDatabaseService,
+  body: unknown,
+  serverAttribution: MemoryMutationAttribution | undefined,
+  mode: "suppress" | "unsuppress",
+): Promise<Response> {
+  const scoped = body as (DatabaseSuppressMemoryRequest | DatabaseUnsuppressMemoryRequest) & {
+    intentSnapshotId?: string;
+  };
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || typeof scoped.key !== "string") {
+    throw new HttpError("namespace and key are required", 400);
+  }
+  const intentSnapshotId =
+    typeof scoped.intentSnapshotId === "string" ? scoped.intentSnapshotId : undefined;
+  const attribution: MemoryMutationAttribution | undefined =
+    serverAttribution !== undefined || intentSnapshotId !== undefined
+      ? {
+          ...(serverAttribution !== undefined ? serverAttribution : {}),
+          ...(intentSnapshotId !== undefined ? { intentSnapshotId } : {}),
+        }
+      : undefined;
+
+  const params = {
+    namespace: scoped.namespace,
+    key: scoped.key,
+    ...(attribution !== undefined ? { attribution } : {}),
+  };
+
+  if (handle.sync !== undefined) {
+    const client = new MemoriesClient(
+      handle.sync.syncPersistence,
+      {
+        nodeLabels: {},
+        edgeLabels: {},
+      },
+      { telemetry: handle.telemetry },
+    );
+    if (mode === "suppress") client.suppressMemory(params);
+    else client.unsuppressMemory(params);
+  } else {
+    const client = new MemoriesClientAsync(
+      handle.persistence,
+      { nodeLabels: {}, edgeLabels: {} },
+      { telemetry: handle.telemetry },
+    );
+    if (mode === "suppress") await client.suppressMemory(params);
+    else await client.unsuppressMemory(params);
+  }
+
+  return Response.json({ ok: true, database });
+}
+
+export async function handleDatabaseSuppressMemory(
+  service: MemoriesDatabaseService,
+  body: unknown,
+  serverAttribution?: MemoryMutationAttribution,
+): Promise<Response> {
+  return handleSuppressToggle(service, body, serverAttribution, "suppress");
+}
+
+export async function handleDatabaseUnsuppressMemory(
+  service: MemoriesDatabaseService,
+  body: unknown,
+  serverAttribution?: MemoryMutationAttribution,
+): Promise<Response> {
+  return handleSuppressToggle(service, body, serverAttribution, "unsuppress");
 }
 
 export async function handleDatabaseProvenanceHead(

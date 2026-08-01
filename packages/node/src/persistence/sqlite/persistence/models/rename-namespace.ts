@@ -15,6 +15,7 @@ type MemoryRow = {
   key: string;
   kind: string;
   edge_id: string | null;
+  suppressed: number;
   _ts_created: number;
 };
 
@@ -54,7 +55,7 @@ export function renameNamespacePaths(
 
   const memories = db
     .query<MemoryRow, string[]>(
-      `SELECT _id, namespace, key, kind, edge_id, _ts_created FROM memories WHERE namespace IN (${placeholders})`,
+      `SELECT _id, namespace, key, kind, edge_id, suppressed, _ts_created FROM memories WHERE namespace IN (${placeholders})`,
     )
     .all(...sources);
 
@@ -119,9 +120,9 @@ export function renameNamespacePaths(
       newEdgeId = edgeIdMap.get(m.edge_id) ?? m.edge_id;
     }
     db.run(
-      `INSERT INTO memories (_id, _ts_created, namespace, key, kind, edge_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [newMemId, m._ts_created, newNs, m.key, m.kind, newEdgeId],
+      `INSERT INTO memories (_id, _ts_created, namespace, key, kind, edge_id, suppressed)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [newMemId, m._ts_created, newNs, m.key, m.kind, newEdgeId, m.suppressed],
     );
     copyMemoryDependents(ctx, m._id, newMemId, nsMap);
   }

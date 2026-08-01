@@ -312,6 +312,22 @@ structure DeleteMemoryParams {
 
 structure DeleteMemoryOutput {}
 
+structure SuppressMemoryParams {
+    namespace: MemoryNamespace
+    key: String
+    attribution: MemoryMutationAttribution
+}
+
+structure SuppressMemoryOutput {}
+
+structure UnsuppressMemoryParams {
+    namespace: MemoryNamespace
+    key: String
+    attribution: MemoryMutationAttribution
+}
+
+structure UnsuppressMemoryOutput {}
+
 structure SearchContent {
     text: String
     vector: DoubleList
@@ -449,6 +465,8 @@ structure MemoryOpContext {
 union MemoryProvenanceEvent {
     MERGE_MEMORY: MergeMemoryProvenanceEvent
     DELETE_MEMORY: DeleteMemoryProvenanceEvent
+    SUPPRESS_MEMORY: SuppressMemoryProvenanceEvent
+    UNSUPPRESS_MEMORY: UnsuppressMemoryProvenanceEvent
     RENAME_NAMESPACE: RenameNamespaceProvenanceEvent
 }
 
@@ -466,6 +484,26 @@ structure MergeMemoryProvenanceEvent {
 }
 
 structure DeleteMemoryProvenanceEvent {
+    /// Schema version; TS requires literal `1`.
+    v: Integer
+    namespace: String
+    memory_key: String
+    memory_id: String
+    contributor: ContributorAttestation
+    intent_snapshot_id: String
+}
+
+structure SuppressMemoryProvenanceEvent {
+    /// Schema version; TS requires literal `1`.
+    v: Integer
+    namespace: String
+    memory_key: String
+    memory_id: String
+    contributor: ContributorAttestation
+    intent_snapshot_id: String
+}
+
+structure UnsuppressMemoryProvenanceEvent {
     /// Schema version; TS requires literal `1`.
     v: Integer
     namespace: String

@@ -13,7 +13,7 @@ import {
   TURSO_PRAGMAS_SQL,
 } from "./turso-schema";
 
-export const MEMORIES_SCHEMA_VERSION = "0.4.0";
+export const MEMORIES_SCHEMA_VERSION = "0.5.0";
 
 const NS_PREFIX_COLUMNS = [
   "ns_prefix_1",
@@ -72,6 +72,19 @@ const migrations: Migration[] = [
     to: "0.4.0",
     name: "001-drop-ns-prefix-columns",
     up: dropNsPrefixColumns,
+  },
+  {
+    to: "0.5.0",
+    name: "001-add-memory-suppressed",
+    up: async (db) => {
+      const cols = await queryAll<{ name: string }>(db.read, `PRAGMA table_info(memories)`);
+      if (!cols.some((r) => r.name === "suppressed")) {
+        await execSql(
+          db.write,
+          `ALTER TABLE memories ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0`,
+        );
+      }
+    },
   },
 ];
 

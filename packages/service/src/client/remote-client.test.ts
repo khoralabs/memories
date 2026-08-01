@@ -51,4 +51,16 @@ describe("memories service client wire", () => {
     expect(json).toContain("intentSnapshotId");
     expect(json).not.toContain("contributor");
   });
+
+  test("DatabaseSuppressMemoryRequest includes intentSnapshotId but not contributor", () => {
+    const req = {
+      database: { kind: "account", ownerKey: "owner" },
+      namespace: "ns",
+      key: "k1",
+      intentSnapshotId: "run-3",
+    };
+    const json = JSON.stringify(req);
+    expect(json).toContain("intentSnapshotId");
+    expect(json).not.toContain("contributor");
+  });
 });
