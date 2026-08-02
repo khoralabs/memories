@@ -23,6 +23,10 @@ export type GraphSceneFogChannelOptions = {
 export type GraphSceneFogColorOptions = GraphSceneFogChannelOptions & {
   /** Max veil opacity at full strength (`0..1`). Default `1`. */
   strength?: number;
+  /** Apply color wash to Html node markers. Default `true` when color is enabled. */
+  nodes?: boolean;
+  /** Apply color wash to WebGL edge lines. Default `false` (opt-in). */
+  edges?: boolean;
 };
 
 export type GraphSceneFogBlurOptions = GraphSceneFogChannelOptions & {
@@ -31,6 +35,10 @@ export type GraphSceneFogBlurOptions = GraphSceneFogChannelOptions & {
    * compensation). Screen DOF for edges: scaled into bokeh (`amount * 0.5`). Default `4`.
    */
   max?: number;
+  /** Apply CSS blur to Html node markers. Default `true` when blur is enabled. */
+  nodes?: boolean;
+  /** Apply screen-space DOF to WebGL edges (expensive). Default `false` (opt-in). */
+  edges?: boolean;
 };
 
 export type GraphSceneFogOptions = {
@@ -41,15 +49,15 @@ export type GraphSceneFogOptions = {
   /** Shared default ease for channels that omit their own. */
   ease?: GraphSceneFogEase;
   /**
-   * Color wash toward the scene background (Html veil + edge line color).
-   * Default on when fog is enabled. Pass `false` to disable; `true` or options to configure
-   * independently of blur.
+   * Color wash toward the scene background (Html veil; edge line color when `edges: true`).
+   * Default on when fog is enabled (nodes only). Pass `false` to disable; `true` or options
+   * to configure. Set `edges: true` to include WebGL edges.
    */
   color?: boolean | GraphSceneFogColorOptions;
   /**
-   * Depth blur: CSS on Html markers, half-res screen DOF on WebGL edges.
+   * Depth blur: CSS on Html markers; half-res screen DOF on WebGL edges when `edges: true`.
    * Default off (`fog={true}` keeps prior color-only behavior).
-   * Pass `true` or options to enable with its own bounds/ease.
+   * Pass `true` or options to enable (nodes only by default).
    */
   blur?: boolean | GraphSceneFogBlurOptions;
 };
@@ -58,12 +66,17 @@ export type GraphSceneFogOptions = {
 export type GraphSceneFogProp = boolean | GraphSceneFogOptions;
 
 export type GraphSceneFogChannel = {
+  /** True when the channel is opted in and at least one of {@link nodes} / {@link edges} is on. */
   enabled: boolean;
   near: number;
   far: number;
   ease: GraphSceneFogEase;
   /** Color: max veil opacity. Blur: max blur radius in px. */
   amount: number;
+  /** Apply this channel to Html node markers. */
+  nodes: boolean;
+  /** Apply this channel to WebGL edges (color wash or screen DOF). */
+  edges: boolean;
 };
 
 export type GraphSceneFogValue = {
@@ -155,6 +168,8 @@ type ParsedChannel = {
   far?: number;
   ease: GraphSceneFogEase;
   amount: number;
+  nodes: boolean;
+  edges: boolean;
 };
 
 export type ParsedGraphSceneFog = {
@@ -168,13 +183,13 @@ export type ParsedGraphSceneFog = {
 };
 
 function parseChannelFlag(
-  flag: boolean | GraphSceneFogChannelOptions | undefined,
+  flag: boolean | (GraphSceneFogChannelOptions & { nodes?: boolean; edges?: boolean }) | undefined,
   shared: { near?: number; far?: number; ease: GraphSceneFogEase },
   defaultEnabled: boolean,
   amount: number,
 ): ParsedChannel {
   if (flag === false) {
-    return { enabled: false, ease: shared.ease, amount };
+    return { enabled: false, ease: shared.ease, amount, nodes: false, edges: false };
   }
   if (flag == null) {
     return {
@@ -183,6 +198,8 @@ function parseChannelFlag(
       far: shared.far,
       ease: shared.ease,
       amount,
+      nodes: defaultEnabled,
+      edges: false,
     };
   }
   if (flag === true) {
@@ -192,20 +209,32 @@ function parseChannelFlag(
       far: shared.far,
       ease: shared.ease,
       amount,
+      nodes: true,
+      edges: false,
     };
   }
+  const nodes = flag.nodes ?? true;
+  const edges = flag.edges ?? false;
   return {
-    enabled: true,
+    enabled: nodes || edges,
     near: flag.near ?? shared.near,
     far: flag.far ?? shared.far,
     ease: flag.ease ?? shared.ease,
     amount,
+    nodes,
+    edges,
   };
 }
 
 export function parseGraphSceneFogProp(fog: GraphSceneFogProp | undefined): ParsedGraphSceneFog {
   if (fog == null || fog === false) {
-    const off: ParsedChannel = { enabled: false, ease: DEFAULT_EASE, amount: 0 };
+    const off: ParsedChannel = {
+      enabled: false,
+      ease: DEFAULT_EASE,
+      amount: 0,
+      nodes: false,
+      edges: false,
+    };
     return { active: false, enabled: false, color: off, blur: off, needsFitDistance: false };
   }
 
@@ -252,6 +281,8 @@ function resolveChannel(parsed: ParsedChannel, fitDistance: number | null): Grap
       far: FALLBACK_FAR,
       ease: parsed.ease,
       amount: parsed.amount,
+      nodes: parsed.nodes,
+      edges: parsed.edges,
     };
   }
   const near =
@@ -263,6 +294,8 @@ function resolveChannel(parsed: ParsedChannel, fitDistance: number | null): Grap
     far: Math.max(far, near + 1e-4),
     ease: parsed.ease,
     amount: parsed.amount,
+    nodes: parsed.nodes,
+    edges: parsed.edges,
   };
 }
 
@@ -294,6 +327,8 @@ const DISABLED_CHANNEL: GraphSceneFogChannel = {
   far: FALLBACK_FAR,
   ease: DEFAULT_EASE,
   amount: 0,
+  nodes: false,
+  edges: false,
 };
 
 export function GraphSceneFogProvider({

@@ -75,7 +75,7 @@ function GraphDashedEdgeLine({
 
     if (!("color" in mat) || !(mat.color instanceof THREE.Color)) return;
 
-    if (fog.color.enabled) {
+    if (fog.color.edges) {
       _edgeMid.set((from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2);
       const t = fogChannelStrength(camera.position.distanceTo(_edgeMid), fog.color);
       mat.color.lerpColors(EDGE_LINE_BASE, fogBg, Math.min(1, Math.max(0, t)));
@@ -90,8 +90,8 @@ function GraphDashedEdgeLine({
       points={[from, to]}
       opacity={opacity}
       {...dashedLineDefaults}
-      // Write depth when screen blur is on so DOF can sample edge distance.
-      depthWrite={fog.blur.enabled}
+      // Write depth when edge screen blur is on so DOF can sample edge distance.
+      depthWrite={fog.blur.edges}
     />
   );
 }

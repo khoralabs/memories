@@ -25,8 +25,10 @@ describe("parseGraphSceneFogProp", () => {
       enabled: true,
       ease: "smoothstep",
       amount: 1,
+      nodes: true,
+      edges: false,
     });
-    expect(parsed.blur.enabled).toBe(false);
+    expect(parsed.blur).toMatchObject({ enabled: false, nodes: false, edges: false });
     expect(parsed.needsFitDistance).toBe(true);
   });
 
@@ -66,6 +68,8 @@ describe("parseGraphSceneFogProp", () => {
       far: 10,
       ease: colorEase,
       amount: 0.6,
+      nodes: true,
+      edges: false,
     });
     expect(parsed.blur).toEqual({
       enabled: true,
@@ -73,7 +77,48 @@ describe("parseGraphSceneFogProp", () => {
       far: 20,
       ease: "smootherstep",
       amount: 8,
+      nodes: true,
+      edges: false,
     });
+  });
+
+  test("color: true applies to nodes only by default", () => {
+    const parsed = parseGraphSceneFogProp({ color: true });
+    expect(parsed.color).toMatchObject({ enabled: true, nodes: true, edges: false });
+  });
+
+  test("color: { edges: true } opts into edge color wash", () => {
+    const parsed = parseGraphSceneFogProp({ color: { edges: true } });
+    expect(parsed.color).toMatchObject({
+      enabled: true,
+      nodes: true,
+      edges: true,
+      amount: 1,
+    });
+    expect(parsed.enabled).toBe(true);
+  });
+
+  test("blur: true enables blur for nodes only by default", () => {
+    const parsed = parseGraphSceneFogProp({
+      color: false,
+      blur: true,
+    });
+    expect(parsed.blur).toMatchObject({
+      enabled: true,
+      nodes: true,
+      edges: false,
+    });
+    expect(parsed.enabled).toBe(true);
+  });
+
+  test("color: { nodes: false, edges: false } disables the channel", () => {
+    const parsed = parseGraphSceneFogProp({ color: { nodes: false, edges: false } });
+    expect(parsed.color).toMatchObject({
+      enabled: false,
+      nodes: false,
+      edges: false,
+    });
+    expect(parsed.enabled).toBe(false);
   });
 
   test("color: false disables wash while blur can stay on", () => {

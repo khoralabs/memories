@@ -124,7 +124,7 @@ export function GraphSceneNodeButton({
         style={{
           backgroundColor: fog.background,
           opacity: 0,
-          visibility: fog.color.enabled ? "visible" : "hidden",
+          visibility: fog.color.nodes ? "visible" : "hidden",
         }}
       />
     </div>
@@ -284,7 +284,7 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
       const distance = camera.position.distanceTo(_nodeWorld);
 
       if (fogVeilRef.current) {
-        if (fog.color.enabled) {
+        if (fog.color.nodes) {
           const t = fogFactor(distance, fog.color.near, fog.color.far, fog.color.ease);
           fogVeilRef.current.style.opacity = String(t * fog.color.amount);
         } else {
@@ -293,7 +293,7 @@ export function GraphSceneNode({ node, className, children }: GraphSceneNodeProp
       }
 
       if (fogBlurRef.current) {
-        if (fog.blur.enabled) {
+        if (fog.blur.nodes) {
           const px = fogBlurCssPx(
             distance,
             fog.blur.near,

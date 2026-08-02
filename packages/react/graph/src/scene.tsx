@@ -508,11 +508,12 @@ export type GraphSceneProps = {
   /** Three.js scene clear color (default `var(--card)`). */
   background?: string;
   /**
-   * Opt-in depth fog for Html node markers and WebGL edge lines.
-   * Color washes markers (CSS veil) and edges (line color) toward {@link background}.
-   * Blur uses CSS on Html markers and a cheap half-res depth-of-field pass on the canvas
-   * (edges and other depth-writing geometry) — each channel has its own bounds and ease.
-   * `true` enables color wash only (auto near/far). Pass `{ color, blur }` for independent control.
+   * Opt-in depth fog for Html node markers (and WebGL edges when `edges: true`).
+   * Color washes markers (CSS veil) toward {@link background}; edge line color wash is opt-in.
+   * Blur uses CSS on Html markers; screen DOF for edges is opt-in via `blur.edges`
+   * — each channel has its own bounds and ease.
+   * `true` enables node color wash only (auto near/far). Pass `{ color, blur }` for independent
+   * control. Opt into edge effects: `fog={{ color: true, blur: { edges: true } }}`.
    */
   fog?: GraphSceneFogProp;
   className?: string;
