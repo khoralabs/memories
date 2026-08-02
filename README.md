@@ -126,7 +126,7 @@ const { answer } = await inv.investigate({
 
 A **memory** is keyed by `(namespace, key)` with `kind: "node" | "edge"`. Each memory has one or more **source maps** (one per content chunk), each indexed for lexical and/or vector search. Graph topology (labels, edges, scopes) is stored alongside. On merge, the store clears the old subtree, rewrites topology and indexes, syncs system meta chunks, and appends a provenance event. The chain head (`root_hex`) is committed in the same transaction as the mutation.
 
-Search fuses BM25 and KNN with **RRF**; arm weights are tunable. Graph neighbors can be expanded per query. SQLite also writes raw text to `memory_content_outbox` for point-in-time reconstruction (`getMemoryContentAtRootHex` / `reconstructStoreAtRootHex`).
+Search fuses BM25 and KNN with **RRF**; arm weights are tunable. Graph neighbors can be expanded per query. The SQL backends (sqlite, libsql, turso-serverless) also write raw text to `memory_content_outbox` for point-in-time reconstruction (`getMemoryContentAtRootHex` / `reconstructStoreAtRootHex`).
 
 **Deeper guide** — mental model, schema, merge/search pipelines, and file map: [`packages/README.md`](packages/README.md).
 
