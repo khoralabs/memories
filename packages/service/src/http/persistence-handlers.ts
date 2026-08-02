@@ -512,6 +512,27 @@ export async function handleDatabaseProvenanceHead(
   return Response.json({ rootHex: rootHex ?? "", database });
 }
 
+export async function handleDatabaseProvenanceTimestamp(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as { database?: unknown; rootHex?: unknown };
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.rootHex !== "string" || scoped.rootHex.trim().length === 0) {
+    throw new HttpError("rootHex is required", 400);
+  }
+  const fn = handle.persistence.getProvenanceTimestampMsForRootHex;
+  if (fn === undefined) {
+    return Response.json({ timestampMs: null, database });
+  }
+  const timestampMs = await Promise.resolve(fn.call(handle.persistence, scoped.rootHex.trim()));
+  return Response.json({
+    timestampMs:
+      typeof timestampMs === "number" && Number.isFinite(timestampMs) ? timestampMs : null,
+    database,
+  });
+}
+
 export async function handleDatabaseCapabilities(
   service: MemoriesDatabaseService,
   body: unknown,

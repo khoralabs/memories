@@ -30,6 +30,7 @@ import {
   type DatabaseNamespacesResponse,
   type DatabaseProjectionInputRequest,
   type DatabaseProvenanceHeadResponse,
+  type DatabaseProvenanceTimestampResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
   type DatabaseSuppressMemoryRequest,
@@ -60,6 +61,13 @@ function createRemotePersistence(
         { database },
       );
       return response.rootHex.length > 0 ? response.rootHex : undefined;
+    },
+    getProvenanceTimestampMsForRootHex: async (rootHex: string) => {
+      const response = await client.postJson<DatabaseProvenanceTimestampResponse>(
+        "/databases/provenance/timestamp",
+        { database, rootHex },
+      );
+      return response.timestampMs ?? undefined;
     },
     findMemoryIdByKey: async (namespace: string, key: string) =>
       reads.findMemoryIdByKey(namespace, key),
@@ -203,6 +211,115 @@ export async function createRemoteMemoriesClientAsync(
     { database: opts.database },
   );
   return new RemoteMemoriesClientAsync(opts, capabilities as MemoriesBackendCapabilities);
+}
+
+const deferredRemoteReady = new WeakMap<
+  RemoteMemoriesClientAsync,
+  () => Promise<RemoteMemoriesClientAsync>
+>();
+
+/**
+ * Materialize a deferred remote client (capabilities fetch) and return the underlying
+ * concrete {@link RemoteMemoriesClientAsync}. Safe to call concurrently (single-flight).
+ *
+ * Pass-through for already-eager clients (no-op identity). Prefer this before sync reads
+ * (`ontology`) or optional `persistence` method presence checks when using a deferred handle.
+ */
+export async function readyDeferredRemoteMemoriesClientAsync(
+  client: RemoteMemoriesClientAsync,
+): Promise<RemoteMemoriesClientAsync> {
+  const getReady = deferredRemoteReady.get(client);
+  if (getReady === undefined) return client;
+  return getReady();
+}
+
+/**
+ * Sync handle that lazily materializes {@link createRemoteMemoriesClientAsync} on first use
+ * (capabilities fetch + construction). Forwards the full client and `persistence` surface.
+ *
+ * Concurrent first operations share one in-flight create. Sync reads of non-function
+ * properties (e.g. `ontology`) throw until materialization completes — call
+ * {@link readyDeferredRemoteMemoriesClientAsync} first when you need those.
+ */
+export function createDeferredRemoteMemoriesClientAsync(
+  opts: RemoteMemoriesClientAsyncOptions,
+): RemoteMemoriesClientAsync {
+  let clientPromise: Promise<RemoteMemoriesClientAsync> | undefined;
+  let resolved: RemoteMemoriesClientAsync | undefined;
+
+  const getClient = (): Promise<RemoteMemoriesClientAsync> => {
+    if (resolved !== undefined) return Promise.resolve(resolved);
+    clientPromise ??= createRemoteMemoriesClientAsync(opts).then(
+      (client) => {
+        resolved = client;
+        return client;
+      },
+      (err: unknown) => {
+        clientPromise = undefined;
+        throw err;
+      },
+    );
+    return clientPromise;
+  };
+
+  const forwardPersistence = (): MemoriesPersistenceAsync =>
+    new Proxy({} as MemoriesPersistenceAsync, {
+      get(_target, prop) {
+        if (prop === "then") return undefined;
+        if (resolved !== undefined) {
+          const value = Reflect.get(resolved.persistence, prop, resolved.persistence);
+          if (typeof value === "function") {
+            return (value as (...a: unknown[]) => unknown).bind(resolved.persistence);
+          }
+          return value;
+        }
+        return async (...args: unknown[]) => {
+          const client = await getClient();
+          const value = Reflect.get(client.persistence, prop, client.persistence);
+          if (typeof value !== "function") return value;
+          return (value as (...a: unknown[]) => unknown).apply(client.persistence, args);
+        };
+      },
+    });
+
+  const deferred = new Proxy({} as RemoteMemoriesClientAsync, {
+    get(_target, prop) {
+      if (prop === "then") return undefined;
+      if (prop === "persistence") return forwardPersistence();
+
+      if (resolved !== undefined) {
+        const value = Reflect.get(resolved, prop, resolved);
+        if (typeof value === "function") {
+          return (value as (...a: unknown[]) => unknown).bind(resolved);
+        }
+        return value;
+      }
+
+      // Sync non-function fields cannot be forwarded until the client exists.
+      if (prop === "ontology") {
+        throw new Error(
+          'createDeferredRemoteMemoriesClientAsync: "ontology" is unavailable until the ' +
+            "first successful operation materializes the client; " +
+            "await readyDeferredRemoteMemoriesClientAsync(client) first",
+        );
+      }
+
+      return async (...args: unknown[]) => {
+        const client = await getClient();
+        const value = Reflect.get(client, prop, client);
+        if (typeof value !== "function") {
+          throw new Error(
+            `createDeferredRemoteMemoriesClientAsync: "${String(prop)}" is not a method; ` +
+              "read non-function properties only after the first successful operation",
+          );
+        }
+        return (value as (...a: unknown[]) => unknown).apply(client, args);
+      };
+    },
+  });
+
+  deferredRemoteReady.set(deferred, getClient);
+  return deferred;
 }
 
 export type RemoteMemoriesReadClientOptions = RemoteMemoriesClientAsyncOptions;

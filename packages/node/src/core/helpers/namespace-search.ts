@@ -332,7 +332,7 @@ export async function searchNamespaces(
     namespace: primaryNamespace,
     searchEntireDatabase: true,
     content,
-    ...(asOfTs !== undefined ? { asOfTimestampMs: asOfTs } : {}),
+    ...(asOfTs !== undefined ? { asOf: { lte: asOfTs } } : {}),
     options: {
       topK: nodeTopK,
       neighbors: neighborOptionForSearch("off"),

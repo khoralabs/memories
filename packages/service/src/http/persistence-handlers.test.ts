@@ -155,6 +155,18 @@ describe("memories service persistence http handlers", () => {
       stack,
     );
     expect(provRes.status).toBe(200);
+    const provBody = (await provRes.json()) as { rootHex: string };
+    expect(typeof provBody.rootHex).toBe("string");
+    expect(provBody.rootHex.length).toBeGreaterThan(0);
+
+    const tsRes = await postJson(
+      "http://localhost/databases/provenance/timestamp",
+      { database, rootHex: provBody.rootHex },
+      stack,
+    );
+    expect(tsRes.status).toBe(200);
+    const tsBody = (await tsRes.json()) as { timestampMs: number | null };
+    expect(typeof tsBody.timestampMs).toBe("number");
 
     const deleteRes = await postJson(
       "http://localhost/databases/delete-memory",
@@ -705,11 +717,24 @@ describe("remote memories client over http", () => {
       });
       expect(hits.length).toBeGreaterThan(0);
 
+      const headFn = client.persistence.getProvenanceHeadRootHex;
+      const tsFn = client.persistence.getProvenanceTimestampMsForRootHex;
+      expect(headFn).toBeDefined();
+      expect(tsFn).toBeDefined();
+      const rootHex = await headFn?.call(client.persistence);
+      expect(typeof rootHex).toBe("string");
+      expect((rootHex ?? "").length).toBeGreaterThan(0);
+      if (rootHex === undefined || rootHex.length === 0) {
+        throw new Error("expected provenance head rootHex");
+      }
+      const timestampMs = await tsFn?.call(client.persistence, rootHex);
+      expect(typeof timestampMs).toBe("number");
+
       await client.deleteMemory({ namespace: "user/remote", key: "remote-note" });
     } finally {
       server.stop(true);
     }
-  });
+  }, 15_000);
 
   test("HTTP merge accepts labeled nodes (permissive schema implements jsonSchema)", async () => {
     const stack = createTestStack();

@@ -17,12 +17,14 @@ export {
   storedOntologyFromDefinition,
 } from "./ontology-client";
 export {
+  createDeferredRemoteMemoriesClientAsync,
   createRemoteMemoriesClientAsync,
   createRemoteMemoriesReadClient,
   RemoteMemoriesClientAsync,
   type RemoteMemoriesClientAsyncOptions,
   RemoteMemoriesReadClient,
   type RemoteMemoriesReadClientOptions,
+  readyDeferredRemoteMemoriesClientAsync,
 } from "./remote-client";
 export {
   type DatabaseCapabilitiesResponse,
@@ -50,6 +52,8 @@ export {
   type DatabaseNamespaceUpsertResponse,
   type DatabaseProjectionInputRequest,
   type DatabaseProvenanceHeadResponse,
+  type DatabaseProvenanceTimestampRequest,
+  type DatabaseProvenanceTimestampResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
   type DatabaseSourceMapTextPreviewRequest,

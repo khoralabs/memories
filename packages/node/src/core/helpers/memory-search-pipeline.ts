@@ -239,7 +239,7 @@ export async function runHybridMemorySearch(
       : {}),
     content,
     searchScopeMode,
-    ...(asOfTs !== undefined ? { asOfTimestampMs: asOfTs } : {}),
+    ...(asOfTs !== undefined ? { asOf: { lte: asOfTs } } : {}),
     options: opts
       ? {
           ...opts,

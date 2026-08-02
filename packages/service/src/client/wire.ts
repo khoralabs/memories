@@ -143,6 +143,9 @@ export type DatabaseUnsuppressNamespaceResponse = { ok: true };
 export type DatabaseProvenanceHeadRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseProvenanceHeadResponse = { rootHex: string };
 
+export type DatabaseProvenanceTimestampRequest = DatabaseScopedBody<{ rootHex: string }>;
+export type DatabaseProvenanceTimestampResponse = { timestampMs: number | null };
+
 export type DatabaseCapabilitiesRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseCapabilitiesResponse = {
   capabilities: Record<string, boolean | undefined>;

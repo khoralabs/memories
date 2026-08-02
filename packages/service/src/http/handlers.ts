@@ -51,6 +51,7 @@ import {
   handleDatabaseNamespaceUpsert,
   handleDatabaseProjectionInput,
   handleDatabaseProvenanceHead,
+  handleDatabaseProvenanceTimestamp,
   handleDatabaseSearch,
   handleDatabaseSourceMapTextPreview,
   handleDatabaseSuppressMemory,
@@ -377,6 +378,13 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseProvenanceHead(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/provenance/timestamp") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return handleDatabaseProvenanceTimestamp(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/capabilities") {
