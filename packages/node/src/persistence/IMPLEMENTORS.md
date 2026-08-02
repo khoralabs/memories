@@ -107,7 +107,8 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 - **`upsertNamespaceMetadata`:** may create metadata before any memories exist. Prefer `alias`; `displayName` accepted as deprecated synonym. `alias: null` means UI should show the path key.
 - **`deleteNamespaceMetadata`:** remove one metadata row (idempotent if missing).
 - **`listMemoryKeysInNamespace`:** keys for one primary namespace.
-- **`listNamespacesWithMetadata`:** union of distinct `memories.namespace` and metadata keys (memory-only → `alias: null`, empty description).
+- **`listNamespacesWithMetadata`:** **primary catalog list** — union of distinct `memories.namespace` and metadata keys (memory-only → `alias: null`, empty description). Prefer this for UI/agents.
+- **`listMemoryNamespaces`:** path-only helper — namespaces that currently have memories (algorithms/filters), not the UI catalog. Use `namespacePathsFromMetadata(listNamespacesWithMetadata())` when you need paths from the catalog union.
 - **`getNamespaceMetadata`:** single row or missing.
 - Distinct from scope DAG metadata — keyed to primary memory namespaces, not `scopes` rows.
 - **Namespace delete (core API):** `deleteNamespace` / `deleteNamespaceAsync` removes memories under a path (default recursive via prefix), then metadata rows. Uses per-memory `deleteMemory` provenance. Orphaned scope DAG rows may remain (best-effort; not required for correctness).

@@ -1,4 +1,8 @@
-import { assertNamespacePath, isPrefixOf } from "../../persistence/core";
+import {
+  assertNamespacePath,
+  isPrefixOf,
+  namespacePathsFromMetadata,
+} from "../../persistence/core";
 import { runWithOpTelemetryAsync } from "../../telemetry/index.js";
 import { buildMemoryOpContext } from "../api/merge-memory";
 import type { MutationCtxAsync } from "../api/merge-memory-async";
@@ -33,7 +37,7 @@ export async function deleteNamespaceAsync(
     memoryKey: "*",
     getProvenanceRootHex: async () => (await ctx.persistence.getProvenanceHeadRootHex()) ?? "",
     fn: async () => {
-      const listed = (await ctx.persistence.listNamespacesWithMetadata()).map((n) => n.namespace);
+      const listed = namespacePathsFromMetadata(await ctx.persistence.listNamespacesWithMetadata());
       const namespaces = collectTargetNamespaces(listed, root, recursive);
       let deletedMemories = 0;
 

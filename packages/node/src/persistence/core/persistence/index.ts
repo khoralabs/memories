@@ -1,3 +1,4 @@
+export { namespacePathsFromMetadata } from "../models/namespace-metadata-paths";
 export type { NamespacePath } from "../models/namespace-path";
 export type { MemoriesPersistenceAsync } from "./async-types";
 export {

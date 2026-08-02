@@ -1,4 +1,4 @@
-import { assertNamespacePath } from "../../persistence/core";
+import { assertNamespacePath, namespacePathsFromMetadata } from "../../persistence/core";
 import {
   buildRenameNamespaceMap,
   collectRenameSourceNamespaces,
@@ -47,7 +47,7 @@ export function renameNamespace(
         return { namespaces: [], renamedMemories: 0 };
       }
 
-      const listed = ctx.persistence.listNamespacesWithMetadata().map((n) => n.namespace);
+      const listed = namespacePathsFromMetadata(ctx.persistence.listNamespacesWithMetadata());
       const sources = collectRenameSourceNamespaces(listed, from, recursive);
       const nsMap = buildRenameNamespaceMap(sources, from, to);
 

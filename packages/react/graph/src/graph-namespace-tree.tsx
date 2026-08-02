@@ -11,6 +11,7 @@ import {
   SidebarMenuSub,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { type MemoriesGraphNamespaceEntry, namespaceEntryLabel } from "./lib/namespace-entries.js";
 import {
   buildNamespaceTree,
   isNamespaceUnderPath,
@@ -27,17 +28,32 @@ type NamespaceTreeItemProps = {
   node: NamespaceTreeNode;
   activeNamespace: string;
   namespaceRoot: string;
+  entriesByPath: Map<string, MemoriesGraphNamespaceEntry>;
   onSelect: (path: string, scope: GraphScope) => void;
 };
+
+function treeNodeLabel(
+  node: NamespaceTreeNode,
+  entriesByPath: Map<string, MemoriesGraphNamespaceEntry>,
+): { label: string; title: string } {
+  const entry = entriesByPath.get(node.path);
+  if (entry === undefined) return { label: node.name, title: node.path };
+  const label = namespaceEntryLabel(entry);
+  const display = label !== entry.namespace ? label : node.name;
+  const title = entry.description.trim().length > 0 ? entry.description : entry.namespace;
+  return { label: display, title };
+}
 
 function NamespaceTreeItem({
   node,
   activeNamespace,
   namespaceRoot,
+  entriesByPath,
   onSelect,
 }: NamespaceTreeItemProps) {
   const isActive = node.path === activeNamespace;
   const hasChildren = node.children.length > 0;
+  const { label, title } = treeNodeLabel(node, entriesByPath);
 
   if (!hasChildren) {
     const scope: GraphScope = node.path === namespaceRoot ? "subtree" : "exact";
@@ -46,9 +62,10 @@ function NamespaceTreeItem({
         <SidebarMenuButton
           isActive={isActive}
           className="data-[active=true]:bg-transparent"
+          title={title}
           onClick={() => onSelect(node.path, scope)}
         >
-          {node.name}
+          {label}
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -61,10 +78,14 @@ function NamespaceTreeItem({
         defaultOpen={isNamespaceUnderPath(activeNamespace, node.path)}
       >
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton isActive={isActive} onClick={() => onSelect(node.path, "subtree")}>
+          <SidebarMenuButton
+            isActive={isActive}
+            title={title}
+            onClick={() => onSelect(node.path, "subtree")}
+          >
             <ChevronRight className="transition-transform" />
             <Folder />
-            {node.name}
+            {label}
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -75,6 +96,7 @@ function NamespaceTreeItem({
                 node={child}
                 activeNamespace={activeNamespace}
                 namespaceRoot={namespaceRoot}
+                entriesByPath={entriesByPath}
                 onSelect={onSelect}
               />
             ))}
@@ -96,11 +118,17 @@ export function GraphNamespaceTree({
     setScope,
     namespaceRoot,
     knownNamespaces,
+    knownNamespaceEntries,
     namespacesLoading,
     namespacesError,
   } = useMemoriesGraphChrome();
 
   const tree = useMemo(() => buildNamespaceTree(knownNamespaces), [knownNamespaces]);
+  const entriesByPath = useMemo(() => {
+    const map = new Map<string, MemoriesGraphNamespaceEntry>();
+    for (const entry of knownNamespaceEntries) map.set(entry.namespace, entry);
+    return map;
+  }, [knownNamespaceEntries]);
 
   const onSelect = (path: string, scope: GraphScope) => {
     setScope(scope);
@@ -123,6 +151,7 @@ export function GraphNamespaceTree({
             node={node}
             activeNamespace={namespace}
             namespaceRoot={namespaceRoot}
+            entriesByPath={entriesByPath}
             onSelect={onSelect}
           />
         ))}

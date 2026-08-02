@@ -8,6 +8,12 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  type MemoriesGraphNamespaceEntry,
+  type MemoriesGraphNamespacesPayload,
+  namespacePathsFromEntries,
+  normalizeNamespaceEntries,
+} from "./lib/namespace-entries.js";
 import type {
   GraphPayload,
   GraphSearchState,
@@ -15,6 +21,8 @@ import type {
   SceneEdge,
 } from "./projection-types.js";
 import { graphLabelFingerprint, mergeSceneEdgesForPairPreview } from "./projection-types.js";
+
+export type { MemoriesGraphNamespaceEntry } from "./lib/namespace-entries.js";
 
 /** Default delay (ms) before debounced hover state catches up to the pointer. */
 export const DEFAULT_GRAPH_FOCUS_DELAY_MS = 0;
@@ -87,7 +95,13 @@ export type MemoriesGraphProfileEntry = {
   indexed: boolean;
 };
 
-/** Fetch/search chrome from {@link GraphProjectionProvider} (namespaces, graph load, search). */
+/**
+ * Fetch/search chrome from {@link GraphProjectionProvider} (namespaces, graph load, search).
+ *
+ * Host `GET ${apiBase}/namespaces` should return:
+ * `{ namespaces: MemoriesGraphNamespaceEntry[]; profiles?; namespaceRoot? }`
+ * Legacy `namespaces: string[]` is still accepted and coerced.
+ */
 export type MemoriesGraphChromeBaseValue = {
   apiBase: string;
   namespace: string;
@@ -95,7 +109,10 @@ export type MemoriesGraphChromeBaseValue = {
   namespaceRoot: string;
   scope: GraphScope;
   setScope: (scope: GraphScope) => void;
+  /** Path strings derived from {@link knownNamespaceEntries} (tree / selection). */
   knownNamespaces: string[];
+  /** Full catalog rows (alias/description) from the namespaces endpoint. */
+  knownNamespaceEntries: MemoriesGraphNamespaceEntry[];
   knownProfiles: MemoriesGraphProfileEntry[];
   namespacesLoading: boolean;
   namespacesError: string | null;
@@ -604,7 +621,13 @@ export function GraphProjectionProvider({
   const [graphError, setGraphError] = useState<string | null>(null);
   const graphLoadSeqRef = useRef(0);
 
-  const [knownNamespaces, setKnownNamespaces] = useState<string[]>([]);
+  const [knownNamespaceEntries, setKnownNamespaceEntries] = useState<MemoriesGraphNamespaceEntry[]>(
+    [],
+  );
+  const knownNamespaces = useMemo(
+    () => namespacePathsFromEntries(knownNamespaceEntries),
+    [knownNamespaceEntries],
+  );
   const [knownProfiles, setKnownProfiles] = useState<MemoriesGraphProfileEntry[]>([]);
   const [namespaceRoot, setNamespaceRoot] = useState("global");
   const [namespacesLoading, setNamespacesLoading] = useState(false);
@@ -615,31 +638,28 @@ export function GraphProjectionProvider({
     setNamespacesError(null);
     try {
       const res = await fetch(`${apiBase}/namespaces`);
-      const json = (await res.json()) as {
-        namespaces?: string[];
+      const json = (await res.json()) as MemoriesGraphNamespacesPayload & {
         profiles?: MemoriesGraphProfileEntry[];
-        namespaceRoot?: string;
-        error?: string;
       };
       if (!res.ok) {
-        setKnownNamespaces([]);
+        setKnownNamespaceEntries([]);
         setKnownProfiles([]);
         setNamespacesError(json.error ?? res.statusText);
         return;
       }
       if (json.error) {
-        setKnownNamespaces([]);
+        setKnownNamespaceEntries([]);
         setKnownProfiles([]);
         setNamespacesError(json.error);
         return;
       }
-      setKnownNamespaces(json.namespaces ?? []);
+      setKnownNamespaceEntries(normalizeNamespaceEntries(json.namespaces));
       setKnownProfiles(json.profiles ?? []);
       if (json.namespaceRoot?.trim()) {
         setNamespaceRoot(json.namespaceRoot.trim());
       }
     } catch (e) {
-      setKnownNamespaces([]);
+      setKnownNamespaceEntries([]);
       setKnownProfiles([]);
       setNamespacesError(String(e));
     } finally {
@@ -810,6 +830,7 @@ export function GraphProjectionProvider({
       scope,
       setScope,
       knownNamespaces,
+      knownNamespaceEntries,
       knownProfiles,
       namespacesLoading,
       namespacesError,
@@ -832,6 +853,7 @@ export function GraphProjectionProvider({
       namespaceRoot,
       scope,
       knownNamespaces,
+      knownNamespaceEntries,
       knownProfiles,
       namespacesLoading,
       namespacesError,

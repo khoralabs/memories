@@ -8,6 +8,7 @@ import {
   MemoriesClientAsync,
   type MergeMemoryParams,
   NamespaceConstraintError,
+  namespacePathsFromMetadata,
   type SearchParams,
   searchAsync,
 } from "@khoralabs/memories-node";
@@ -64,12 +65,8 @@ async function enforceMaxNamespaces(
   maxNamespaces: number | undefined,
 ): Promise<void> {
   if (maxNamespaces === undefined) return;
-  const listed = await handle.persistence.listNamespacesWithMetadata();
-  assertNamespaceCountAllowsNew(
-    listed.map((n) => n.namespace),
-    namespace,
-    maxNamespaces,
-  );
+  const listed = namespacePathsFromMetadata(await handle.persistence.listNamespacesWithMetadata());
+  assertNamespaceCountAllowsNew(listed, namespace, maxNamespaces);
 }
 async function ensureScopeChain(
   handle: MemoriesDatabaseHandle,
@@ -720,7 +717,9 @@ export async function handleDatabaseNamespaceRename(
   const recursive = scoped.recursive !== false;
 
   try {
-    const listed = (await handle.persistence.listNamespacesWithMetadata()).map((n) => n.namespace);
+    const listed = namespacePathsFromMetadata(
+      await handle.persistence.listNamespacesWithMetadata(),
+    );
     const sources = collectRenameSourceNamespaces(listed, from, recursive);
     const nsMap = buildRenameNamespaceMap(sources, from, to);
     assertRenameRespectsMaxNamespaces(listed, nsMap, maxNamespaces);

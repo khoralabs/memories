@@ -254,7 +254,7 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 
 | Method | Path | Action | Auth action |
 |--------|------|--------|-------------|
-| `POST` | `/databases/namespaces` | List namespaces with metadata (`alias`, description) | `read` |
+| `POST` | `/databases/namespaces` | Primary catalog list (`alias`, `description`, optional `suppressed`); path-only helpers are client-side projections | `read` |
 | `POST` | `/databases/namespaces/get` | Get one namespace metadata row | `read` |
 | `POST` | `/databases/namespaces/upsert` | Upsert namespace alias/description (soft rename) | `write` |
 | `POST` | `/databases/namespaces/delete` | Delete namespace (default recursive subtree) | `write` |

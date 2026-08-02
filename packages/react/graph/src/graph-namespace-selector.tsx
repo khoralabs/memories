@@ -12,6 +12,7 @@ import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { GraphRefreshButton, type GraphRefreshButtonProps } from "./graph-refresh-button.js";
+import { namespaceEntryLabel } from "./lib/namespace-entries.js";
 import { type GraphScope, useMemoriesGraphChrome } from "./use-projection.js";
 
 export type GraphNamespaceSelectorProps = {
@@ -28,6 +29,7 @@ function NamespacePickerMenu({ close }: NamespacePickerMenuProps) {
     namespaceRoot,
     setScope,
     knownNamespaces,
+    knownNamespaceEntries,
     knownProfiles,
     namespacesLoading: knownLoading,
     namespacesError: knownError,
@@ -43,9 +45,17 @@ function NamespacePickerMenu({ close }: NamespacePickerMenuProps) {
     });
   }, [knownProfiles, q]);
 
-  const filteredNs = !q
-    ? knownNamespaces
-    : knownNamespaces.filter((ns) => ns.toLowerCase().includes(q));
+  const filteredNs = useMemo(() => {
+    if (!q) return knownNamespaceEntries;
+    return knownNamespaceEntries.filter((entry) => {
+      const alias = entry.alias?.toLowerCase() ?? "";
+      return (
+        entry.namespace.toLowerCase().includes(q) ||
+        alias.includes(q) ||
+        entry.description.toLowerCase().includes(q)
+      );
+    });
+  }, [knownNamespaceEntries, q]);
 
   const customExact = search.trim();
   const showCustom = customExact.length > 0 && !knownNamespaces.includes(customExact);
@@ -122,15 +132,34 @@ function NamespacePickerMenu({ close }: NamespacePickerMenuProps) {
 
         {filteredNs.length > 0 && (
           <CommandGroup heading="In database">
-            {filteredNs.map((ns) => (
-              <CommandItem key={ns} value={ns} onSelect={() => commitFromList(ns)}>
-                <Check
-                  className={cn("mr-2 size-4 shrink-0", value === ns ? "opacity-100" : "opacity-0")}
-                  aria-hidden
-                />
-                <span className="min-w-0 break-all">{ns}</span>
-              </CommandItem>
-            ))}
+            {filteredNs.map((entry) => {
+              const label = namespaceEntryLabel(entry);
+              const showPath = label !== entry.namespace;
+              return (
+                <CommandItem
+                  key={entry.namespace}
+                  value={`${entry.namespace} ${entry.alias ?? ""} ${entry.description}`}
+                  title={entry.description || entry.namespace}
+                  onSelect={() => commitFromList(entry.namespace)}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 size-4 shrink-0",
+                      value === entry.namespace ? "opacity-100" : "opacity-0",
+                    )}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="break-all">{label}</span>
+                    {showPath ? (
+                      <span className="mt-0.5 block break-all text-xs text-muted-foreground">
+                        {entry.namespace}
+                      </span>
+                    ) : null}
+                  </span>
+                </CommandItem>
+              );
+            })}
           </CommandGroup>
         )}
 

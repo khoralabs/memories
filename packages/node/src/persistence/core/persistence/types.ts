@@ -522,12 +522,16 @@ export interface MemoriesNeighborIndex {
  * {@link listVectorEmbeddingIndexDimensions} returns `[]` when the store cannot infer dimensions (unknown or not applicable).
  */
 export interface MemoriesPersistenceReads {
-  /** All distinct primary memory namespaces, sorted for stable UI. */
+  /**
+   * Path-only helper: distinct primary namespaces that currently have memories.
+   * Prefer {@link listNamespacesWithMetadata} for UI/catalog listing (alias/description).
+   */
   listMemoryNamespaces(): NamespacePath[];
 
   /**
-   * Union of namespaces that have memories and/or metadata rows, sorted by path.
+   * Primary catalog list: union of namespaces that have memories and/or metadata rows, sorted by path.
    * Memory-only keys appear with `alias: null` and empty `description`.
+   * Use {@link namespacePathsFromMetadata} when algorithms need path strings only.
    */
   listNamespacesWithMetadata(opts?: IncludeSuppressedOpts): NamespaceMetadataInfo[];
 

@@ -124,6 +124,7 @@ export {
   type GraphSearchProps,
   graphSearchSummaryLine,
 } from "./graph-search.js";
+export type { MemoriesGraphNamespaceEntry } from "./lib/namespace-entries.js";
 export {
   installBenignResizeObserverErrorSuppression,
   isBenignResizeObserverError,

@@ -730,6 +730,11 @@ describe("remote memories client over http", () => {
       const timestampMs = await tsFn?.call(client.persistence, rootHex);
       expect(typeof timestampMs).toBe("number");
 
+      const withMeta = client.persistence.listNamespacesWithMetadata;
+      expect(withMeta).toBeDefined();
+      const catalog = await withMeta?.call(client.persistence);
+      expect(catalog?.some((n) => n.namespace === "user/remote")).toBe(true);
+
       await client.deleteMemory({ namespace: "user/remote", key: "remote-note" });
     } finally {
       server.stop(true);

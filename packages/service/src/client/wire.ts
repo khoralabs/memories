@@ -152,10 +152,15 @@ export type DatabaseCapabilitiesResponse = {
 };
 
 export type DatabaseNamespacesRequest = DatabaseScopedBody<Record<string, never>>;
+/**
+ * Namespace catalog row on the wire (⊆ node `NamespaceMetadataInfo`).
+ * `suppressed` is the exact-path flag when present.
+ */
 export type DatabaseNamespaceMetadata = {
   namespace: string;
   alias: string | null;
   description: string;
+  suppressed?: boolean;
 };
 export type DatabaseNamespacesResponse = { namespaces: DatabaseNamespaceMetadata[] };
 

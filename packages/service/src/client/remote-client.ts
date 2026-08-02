@@ -72,9 +72,18 @@ function createRemotePersistence(
     findMemoryIdByKey: async (namespace: string, key: string) =>
       reads.findMemoryIdByKey(namespace, key),
     loadMemoryNamespaceKey: async (memoryId: string) => reads.loadMemoryNamespaceKey(memoryId),
+    /**
+     * Remote path list is the catalog union (same rows as {@link listNamespacesWithMetadata}),
+     * not the local memory-only distinct set.
+     */
     listMemoryNamespaces: async () => {
       const namespaces = await reads.listNamespaces();
       return namespaces.map((entry) => entry.namespace);
+    },
+    listNamespacesWithMetadata: async () => reads.listNamespaces(),
+    getNamespaceMetadata: async (namespace: string) => {
+      const row = await reads.getNamespaceMetadata(namespace);
+      return row ?? undefined;
     },
     getSourceMapTextPreview: async (sourceMapId: string, maxChars?: number) =>
       reads.getSourceMapTextPreview(sourceMapId, maxChars),
@@ -333,6 +342,7 @@ export class RemoteMemoriesReadClient {
     this.#database = opts.database;
   }
 
+  /** Primary remote catalog list (alias/description); same rows as persistence `listNamespacesWithMetadata`. */
   async listNamespaces(): Promise<DatabaseNamespaceMetadata[]> {
     const response = await this.#client.postJson<DatabaseNamespacesResponse>(
       "/databases/namespaces",
