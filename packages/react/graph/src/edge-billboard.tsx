@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/utils";
+import type { EdgePreviewJson } from "./memories-client.js";
+import { useMemoriesClient } from "./memories-client-provider.js";
 import {
   type GraphOntologyLabelMap,
   graphLabelFingerprint,
@@ -15,15 +17,6 @@ import {
   type TypedSceneEdge,
 } from "./projection-types.js";
 import { useMemoriesGraphChrome, useProjection } from "./use-projection.js";
-
-export type EdgePreviewJson = {
-  edgeId?: string;
-  fromKey?: string;
-  toKey?: string;
-  labels?: Array<{ kind: string; props: Record<string, unknown> }>;
-  properties?: Record<string, unknown> | null;
-  error?: string;
-};
 
 type EdgeBillboardContextValue = {
   edge: TypedSceneEdge;
@@ -71,7 +64,8 @@ function EdgeBillboardRoot<TEdge extends GraphOntologyLabelMap = GraphOntologyLa
   className,
   children,
 }: EdgeBillboardProps<TEdge>) {
-  const { apiBase, namespace } = useMemoriesGraphChrome();
+  const { namespace } = useMemoriesGraphChrome();
+  const client = useMemoriesClient();
   const { onMemoryPreviewPointerEnter, onMemoryPreviewPointerLeave } = useProjection();
 
   const [detail, setDetail] = useState<EdgePreviewJson | null>(null);
@@ -86,13 +80,14 @@ function EdgeBillboardRoot<TEdge extends GraphOntologyLabelMap = GraphOntologyLa
     const ac = new AbortController();
     setLoading(true);
     setDetail(null);
-    void fetch(
-      `${apiBase}/edge-preview?namespace=${encodeURIComponent(namespace)}&edgeId=${encodeURIComponent(edge.edgeId)}`,
-      { signal: ac.signal },
-    )
-      .then((res) => res.json() as Promise<EdgePreviewJson>)
+    void client
+      .getEdgePreview({
+        namespace,
+        edgeId: edge.edgeId,
+        signal: ac.signal,
+      })
       .then((json) => {
-        if (!ac.signal.aborted) setDetail(json.error ? null : json);
+        if (!ac.signal.aborted) setDetail(json);
       })
       .catch(() => {
         if (!ac.signal.aborted) setDetail(null);
@@ -101,7 +96,7 @@ function EdgeBillboardRoot<TEdge extends GraphOntologyLabelMap = GraphOntologyLa
         if (!ac.signal.aborted) setLoading(false);
       });
     return () => ac.abort();
-  }, [open, apiBase, namespace, edge.edgeId]);
+  }, [open, client, namespace, edge.edgeId]);
 
   const ontologyLabels = useMemo(() => {
     const m = new Map<string, TypedGraphLabelInstance<GraphOntologyLabelMap>>();

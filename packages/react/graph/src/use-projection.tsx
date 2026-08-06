@@ -10,10 +10,10 @@ import {
 } from "react";
 import {
   type MemoriesGraphNamespaceEntry,
-  type MemoriesGraphNamespacesPayload,
   namespacePathsFromEntries,
   normalizeNamespaceEntries,
 } from "./lib/namespace-entries.js";
+import { useMemoriesClient } from "./memories-client-provider.js";
 import type {
   GraphPayload,
   GraphSearchState,
@@ -97,13 +97,9 @@ export type MemoriesGraphProfileEntry = {
 
 /**
  * Fetch/search chrome from {@link GraphProjectionProvider} (namespaces, graph load, search).
- *
- * Host `GET ${apiBase}/namespaces` should return:
- * `{ namespaces: MemoriesGraphNamespaceEntry[]; profiles?; namespaceRoot? }`
- * Legacy `namespaces: string[]` is still accepted and coerced.
+ * Data loads via {@link useMemoriesClient} — mount {@link MemoriesClientProvider} above this provider.
  */
 export type MemoriesGraphChromeBaseValue = {
-  apiBase: string;
   namespace: string;
   setNamespace: (v: string) => void;
   namespaceRoot: string;
@@ -291,18 +287,9 @@ export type GraphProjectionProviderProps = PropsWithChildren<{
   namespace?: string;
   /** Graph query scope: exact namespace or subtree under prefix (default `exact`). */
   scope?: GraphScope;
-  /** API prefix for graph endpoints (default `/api`). */
-  apiBase?: string;
   focusDelay?: number;
   unFocusDelay?: number;
 }>;
-
-const DEFAULT_API_BASE = "/api";
-
-function normalizeApiBase(base: string | undefined): string {
-  const trimmed = (base ?? DEFAULT_API_BASE).trim() || DEFAULT_API_BASE;
-  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
-}
 
 function ProjectionProviderInner({
   children,
@@ -601,11 +588,10 @@ export function GraphProjectionProvider({
   children,
   namespace: namespaceProp = DEFAULT_MEMORIES_NAMESPACE,
   scope: scopeProp = "exact",
-  apiBase: apiBaseProp,
   focusDelay = DEFAULT_GRAPH_FOCUS_DELAY_MS,
   unFocusDelay = DEFAULT_GRAPH_UNFOCUS_DELAY_MS,
 }: GraphProjectionProviderProps) {
-  const apiBase = useMemo(() => normalizeApiBase(apiBaseProp), [apiBaseProp]);
+  const client = useMemoriesClient();
   const seed = namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE;
   const [namespace, setNamespace] = useState(seed);
   const [scope, setScope] = useState<GraphScope>(scopeProp);
@@ -637,22 +623,7 @@ export function GraphProjectionProvider({
     setNamespacesLoading(true);
     setNamespacesError(null);
     try {
-      const res = await fetch(`${apiBase}/namespaces`);
-      const json = (await res.json()) as MemoriesGraphNamespacesPayload & {
-        profiles?: MemoriesGraphProfileEntry[];
-      };
-      if (!res.ok) {
-        setKnownNamespaceEntries([]);
-        setKnownProfiles([]);
-        setNamespacesError(json.error ?? res.statusText);
-        return;
-      }
-      if (json.error) {
-        setKnownNamespaceEntries([]);
-        setKnownProfiles([]);
-        setNamespacesError(json.error);
-        return;
-      }
+      const json = await client.listNamespaces();
       setKnownNamespaceEntries(normalizeNamespaceEntries(json.namespaces));
       setKnownProfiles(json.profiles ?? []);
       if (json.namespaceRoot?.trim()) {
@@ -661,11 +632,11 @@ export function GraphProjectionProvider({
     } catch (e) {
       setKnownNamespaceEntries([]);
       setKnownProfiles([]);
-      setNamespacesError(String(e));
+      setNamespacesError(e instanceof Error ? e.message : String(e));
     } finally {
       setNamespacesLoading(false);
     }
-  }, [apiBase]);
+  }, [client]);
 
   useEffect(() => {
     void reloadNamespaces();
@@ -677,27 +648,11 @@ export function GraphProjectionProvider({
     setGraphError(null);
     const ns = namespace.trim();
     try {
-      const scopeParam = scope === "subtree" ? "&scope=subtree" : "";
-      const res = await fetch(`${apiBase}/graph?namespace=${encodeURIComponent(ns)}${scopeParam}`);
-      const json = (await res.json()) as GraphPayload & { error?: string };
+      const payload = await client.getGraph({
+        namespace: ns,
+        ...(scope === "subtree" ? { scope: "subtree" } : {}),
+      });
       if (loadSeq !== graphLoadSeqRef.current) return;
-      if (!res.ok) {
-        setFetchedPayload(null);
-        setGraphError(json.error ?? res.statusText);
-        setGraphLoading(false);
-        return;
-      }
-      if ("error" in json && json.error) {
-        setFetchedPayload(null);
-        setGraphError(json.error);
-        setGraphLoading(false);
-        return;
-      }
-      const payload: GraphPayload = {
-        namespace: json.namespace,
-        nodes: json.nodes ?? [],
-        edges: json.edges ?? [],
-      };
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (loadSeq !== graphLoadSeqRef.current) return;
@@ -709,10 +664,10 @@ export function GraphProjectionProvider({
     } catch (e) {
       if (loadSeq !== graphLoadSeqRef.current) return;
       setFetchedPayload(null);
-      setGraphError(String(e));
+      setGraphError(e instanceof Error ? e.message : String(e));
       setGraphLoading(false);
     }
-  }, [apiBase, namespace, scope]);
+  }, [client, namespace, scope]);
 
   useEffect(() => {
     void loadGraph();
@@ -736,51 +691,31 @@ export function GraphProjectionProvider({
       void (async () => {
         setSearchLoading(true);
         try {
-          const res = await fetch(`${apiBase}/search`, {
-            method: "POST",
+          const json = await client.search({
+            namespace: ns,
+            query: q,
+            topK: 10,
+            maxNeighbors: 5,
+            maxVectorDistance: GRAPH_SEARCH_MAX_VECTOR_DISTANCE,
             signal: ac.signal,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              namespace: ns,
-              query: q,
-              topK: 10,
-              maxNeighbors: 5,
-              maxVectorDistance: GRAPH_SEARCH_MAX_VECTOR_DISTANCE,
-              ...(scope === "subtree" ? { scope: "subtree" } : {}),
-            }),
+            ...(scope === "subtree" ? { scope: "subtree" } : {}),
           });
-          const json = (await res.json()) as {
-            hitCount?: number;
-            keys?: string[];
-            hitSnippets?: Array<{ key?: string; text?: string | null }>;
-            edgeHitSnippets?: Array<{
-              edgeId?: string;
-              text?: string | null;
-            }>;
-            error?: string;
-          };
           if (ac.signal.aborted) return;
-          if (!res.ok || json.error) {
-            setGraphSearch(null);
-            return;
-          }
           const hitSnippetByKey = new Map<string, string>();
-          for (const row of json.hitSnippets ?? []) {
-            const k = row.key?.trim();
+          for (const row of json.hitSnippets) {
             const t = row.text?.trim();
-            if (!k || !t || hitSnippetByKey.has(k)) continue;
-            hitSnippetByKey.set(k, t);
+            if (!t || hitSnippetByKey.has(row.key)) continue;
+            hitSnippetByKey.set(row.key, t);
           }
           const hitSnippetByEdgeId = new Map<string, string>();
-          for (const row of json.edgeHitSnippets ?? []) {
-            const id = row.edgeId?.trim();
+          for (const row of json.edgeHitSnippets) {
             const t = row.text?.trim();
-            if (!id || !t || hitSnippetByEdgeId.has(id)) continue;
-            hitSnippetByEdgeId.set(id, t);
+            if (!t || hitSnippetByEdgeId.has(row.edgeId)) continue;
+            hitSnippetByEdgeId.set(row.edgeId, t);
           }
           setGraphSearch({
-            relevantKeys: new Set(json.keys ?? []),
-            hitCount: json.hitCount ?? 0,
+            relevantKeys: new Set(json.keys),
+            hitCount: json.hitCount,
             hitSnippetByKey,
             hitSnippetByEdgeId,
           });
@@ -795,7 +730,7 @@ export function GraphProjectionProvider({
       window.clearTimeout(id);
       ac.abort();
     };
-  }, [apiBase, searchQuery, namespace, scope]);
+  }, [client, searchQuery, namespace, scope]);
 
   const effectiveData = useMemo((): GraphPayload => {
     return (
@@ -823,7 +758,6 @@ export function GraphProjectionProvider({
 
   const chromeValue = useMemo(
     (): MemoriesGraphChromeBaseValue => ({
-      apiBase,
       namespace,
       setNamespace,
       namespaceRoot,
@@ -848,7 +782,6 @@ export function GraphProjectionProvider({
       refreshAll,
     }),
     [
-      apiBase,
       namespace,
       namespaceRoot,
       scope,

@@ -2,14 +2,16 @@
 
 React components for exploring a memories knowledge graph in 3D: hybrid search, namespace selection, memory preview, and an optional investigator Q&A overlay.
 
-Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database — the host injects layout and search. Layout types and builders come from `@khoralabs/memories-node/projections` (or a backend-specific helper such as `@khoralabs/memories-node/sqlite` / `./libsql`).
+Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database — the host injects a `ReactMemoriesClient` (HTTP or custom) via `MemoriesClientProvider`.
 
 ## Exports
 
 | Export | Role |
 |--------|------|
+| `MemoriesClientProvider` / `useMemoriesClient` | Injected graph backend client |
+| `createHttpReactMemoriesClient` / `ReactMemoriesClient` | Default HTTP client + interface |
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |
-| `GraphProjectionProvider` / `useProjection` | Projection + chrome context from host |
+| `GraphProjectionProvider` / `useProjection` | Projection + chrome context (requires client provider) |
 | `GraphSearch` | Search input with hybrid query + optional deep-search toggle |
 | `GraphNamespaceSelector` | Namespace picker |
 | `GraphInvestigatorProvider` / `GraphInvestigatorAnswer` | Investigator Q&A overlay (requires a `GraphInvestigatorClient`) |
@@ -21,28 +23,36 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 
 ## Host integration
 
-1. Build a `NamespaceGraphLayout` via `@khoralabs/memories-node/projections` (or sqlite/libsql projection helpers).
-2. Expose search and layout through HTTP or in-process handlers.
-3. Wrap the scene in `GraphProjectionProvider` with fetch callbacks and namespace state.
+1. Expose host REST routes under a base URL (or implement `ReactMemoriesClient` yourself):
+   - `GET /namespaces`
+   - `GET /graph?namespace=…[&scope=subtree]`
+   - `POST /search`
+   - `GET /edge-preview?namespace=…&edgeId=…`
+   - `POST /investigate` (optional)
+2. Mount `MemoriesClientProvider` above `GraphProjectionProvider`.
 
 ```tsx
-import { GraphProjectionProvider, GraphScene, GraphSearch } from "@khoralabs/memories-react-graph";
+import {
+  createHttpReactMemoriesClient,
+  GraphProjectionProvider,
+  GraphScene,
+  GraphSearch,
+  MemoriesClientProvider,
+} from "@khoralabs/memories-react-graph";
+
+const client = createHttpReactMemoriesClient({ baseUrl: "/api/memories" });
 
 function MemoriesGraphPage() {
   return (
-    <GraphProjectionProvider
-      namespace={namespace}
-      onSearch={runHybridSearch}
-      layout={graphLayout}
-    >
-      <GraphScene />
-      <GraphSearch />
-    </GraphProjectionProvider>
+    <MemoriesClientProvider client={client}>
+      <GraphProjectionProvider namespace="global" scope="subtree">
+        <GraphScene />
+        <GraphSearch />
+      </GraphProjectionProvider>
+    </MemoriesClientProvider>
   );
 }
 ```
-
-See `src/graph-search.tsx`, `src/scene.tsx`, and `src/use-projection.tsx` for prop shapes.
 
 ### Investigator client
 
@@ -52,16 +62,18 @@ See `src/graph-search.tsx`, `src/scene.tsx`, and `src/use-projection.tsx` for pr
 import {
   GraphInvestigatorProvider,
   createSyncInvestigatorClient,
+  createHttpReactMemoriesClient,
 } from "@khoralabs/memories-react-graph";
 
-const client = createSyncInvestigatorClient({
-  investigateUrl: "/api/memories/investigate",
-});
+const memoriesClient = createHttpReactMemoriesClient({ baseUrl: "/api/memories" });
+const investigatorClient = createSyncInvestigatorClient({ client: memoriesClient });
 
-<GraphInvestigatorProvider client={client}>
-  <GraphSearch />
-  <GraphInvestigatorAnswerOverlay />
-</GraphInvestigatorProvider>
+<MemoriesClientProvider client={memoriesClient}>
+  <GraphInvestigatorProvider client={investigatorClient}>
+    <GraphSearch />
+    <GraphInvestigatorAnswerOverlay />
+  </GraphInvestigatorProvider>
+</MemoriesClientProvider>
 ```
 
 For async job + SSE backends, use `createJobStreamInvestigatorClient` with host-specific `startJob`, `streamUrl`, and `parseEvent` hooks.

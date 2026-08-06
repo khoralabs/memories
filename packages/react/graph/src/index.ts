@@ -45,7 +45,6 @@ export {
   type EdgeBillboardMetadataProps,
   type EdgeBillboardProps,
   EdgePreviewCard,
-  type EdgePreviewJson,
   useEdgeBillboard,
 } from "./edge-billboard.js";
 export {
@@ -67,6 +66,7 @@ export {
   useGraphInvestigator,
 } from "./graph-investigator.js";
 export {
+  type CreateSyncInvestigatorClientOptions,
   createJobStreamInvestigatorClient,
   createSyncInvestigatorClient,
   type GraphInvestigatorClient,
@@ -129,6 +129,18 @@ export {
   installBenignResizeObserverErrorSuppression,
   isBenignResizeObserverError,
 } from "./lib/suppress-benign-resize-observer-errors.js";
+export {
+  type CreateHttpReactMemoriesClientOptions,
+  createHttpReactMemoriesClient,
+  type EdgePreviewJson,
+  type GraphSearchResult,
+  type ReactMemoriesClient,
+} from "./memories-client.js";
+export {
+  MemoriesClientProvider,
+  type MemoriesClientProviderProps,
+  useMemoriesClient,
+} from "./memories-client-provider.js";
 export {
   NodeBillboard,
   NodeBillboardHeader,

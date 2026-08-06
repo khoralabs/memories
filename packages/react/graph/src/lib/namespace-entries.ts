@@ -11,7 +11,12 @@ export type MemoriesGraphNamespaceEntry = {
 
 export type MemoriesGraphNamespacesPayload = {
   namespaces?: Array<string | MemoriesGraphNamespaceEntry>;
-  profiles?: unknown;
+  profiles?: Array<{
+    profileId: string;
+    username?: string;
+    namespace: string;
+    indexed: boolean;
+  }>;
   namespaceRoot?: string;
   error?: string;
 };

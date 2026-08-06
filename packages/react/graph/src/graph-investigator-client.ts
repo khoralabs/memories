@@ -1,4 +1,5 @@
 import type { InvestigatorAnswer } from "./graph-investigator-types.js";
+import { createHttpReactMemoriesClient, type ReactMemoriesClient } from "./memories-client.js";
 
 export type GraphInvestigatorSession = {
   cancel: () => void;
@@ -22,40 +23,48 @@ export type JobStreamInvestigationEvent =
   | { type: "complete"; answer: InvestigatorAnswer }
   | { type: "error"; error: string };
 
+export type CreateSyncInvestigatorClientOptions =
+  | {
+      client: ReactMemoriesClient;
+      progressMessage?: string;
+    }
+  | {
+      /** @deprecated Prefer `{ client }` from {@link createHttpReactMemoriesClient}. */
+      investigateUrl: string;
+      credentials?: RequestCredentials;
+      progressMessage?: string;
+    };
+
 /** POST investigate and await a synchronous JSON answer (legacy / in-process backends). */
-export function createSyncInvestigatorClient(options: {
-  investigateUrl: string;
-  credentials?: RequestCredentials;
-  progressMessage?: string;
-}): GraphInvestigatorClient {
+export function createSyncInvestigatorClient(
+  options: CreateSyncInvestigatorClientOptions,
+): GraphInvestigatorClient {
   const progressMessage = options.progressMessage ?? "Investigating…";
+  const client: ReactMemoriesClient =
+    "client" in options
+      ? options.client
+      : createHttpReactMemoriesClient({
+          baseUrl: options.investigateUrl.replace(/\/investigate\/?$/, ""),
+          credentials: options.credentials,
+        });
 
   return {
     startInvestigation(input, callbacks) {
       const controller = new AbortController();
       void (async () => {
         try {
-          callbacks.onProgress(progressMessage);
-          const res = await fetch(options.investigateUrl, {
-            method: "POST",
-            credentials: options.credentials ?? "include",
-            signal: controller.signal,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ namespace: input.namespace, question: input.question }),
-          });
-          const json = (await res.json()) as InvestigatorAnswer & { error?: string };
-          if (controller.signal.aborted) return;
-          if (!res.ok || json.error) {
-            callbacks.onError(json.error ?? res.statusText);
+          if (client.investigate === undefined) {
+            callbacks.onError("ReactMemoriesClient.investigate is not implemented");
             return;
           }
-          callbacks.onComplete({
-            answer: json.answer,
-            ...(json.citations !== undefined ? { citations: json.citations } : {}),
-            ...(json.follow_up_queries !== undefined
-              ? { follow_up_queries: json.follow_up_queries }
-              : {}),
+          callbacks.onProgress(progressMessage);
+          const answer = await client.investigate({
+            namespace: input.namespace,
+            question: input.question,
+            signal: controller.signal,
           });
+          if (controller.signal.aborted) return;
+          callbacks.onComplete(answer);
         } catch (err) {
           if (controller.signal.aborted) return;
           callbacks.onError(String(err));
