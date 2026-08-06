@@ -4,6 +4,7 @@ import {
   assertRenameRespectsMaxNamespaces,
   buildRenameNamespaceMap,
   collectRenameSourceNamespaces,
+  ids,
   MemoriesClient,
   MemoriesClientAsync,
   type MergeMemoryParams,
@@ -29,6 +30,7 @@ import {
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
   type DatabaseGraphLayoutRequest,
+  type DatabaseMemoryPreviewRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespacesRequest,
   type DatabaseProjectionInputRequest,
@@ -785,6 +787,45 @@ export async function handleDatabaseEdgePreview(
     toKey: link.toKey,
     labels: link.labels,
     properties: link.properties ?? null,
+    database,
+  });
+}
+
+export async function handleDatabaseMemoryPreview(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as DatabaseMemoryPreviewRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || typeof scoped.key !== "string") {
+    throw new HttpError("namespace and key are required", 400);
+  }
+  const namespace = scoped.namespace.trim();
+  const key = scoped.key.trim();
+  if (namespace.length === 0 || key.length === 0) {
+    throw new HttpError("namespace and key are required", 400);
+  }
+  const memoryId = await handle.persistence.findMemoryIdByKey(namespace, key);
+  if (memoryId === undefined) {
+    throw new HttpError("memory not found", 404);
+  }
+  const maxChars = scoped.maxChars ?? 2400;
+  const labels = await handle.persistence.loadNodeLabelsForMemory(namespace, key);
+  const sourceMaps = await handle.persistence.listSourceMapsForMemory(memoryId, 32);
+  const content = await Promise.all(
+    sourceMaps.map(async (sm) => {
+      const sourceMapId = ids.sourceMap(memoryId, sm.source_key);
+      return {
+        sourceKey: sm.source_key,
+        text: await handle.persistence.getSourceMapTextPreview(sourceMapId, maxChars),
+      };
+    }),
+  );
+  return Response.json({
+    key,
+    namespace,
+    labels,
+    content,
     database,
   });
 }

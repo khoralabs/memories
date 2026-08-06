@@ -219,6 +219,18 @@ export type DatabaseEdgePreviewRequest = DatabaseScopedBody<{
 }>;
 export type DatabaseEdgePreviewResponse = Record<string, unknown>;
 
+export type DatabaseMemoryPreviewRequest = DatabaseScopedBody<{
+  namespace: string;
+  key: string;
+  maxChars?: number;
+}>;
+export type DatabaseMemoryPreviewResponse = {
+  key: string;
+  namespace: string;
+  labels: OntologyLabelWire[];
+  content: Array<{ sourceKey: string; text: string | null }>;
+};
+
 export type DatabaseSourceMapTextPreviewRequest = DatabaseScopedBody<{
   sourceMapId: string;
   maxChars?: number;

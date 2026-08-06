@@ -1,4 +1,8 @@
-export type { MemoriesDatabaseId } from "../storage/core/index";
+export type {
+  MemoriesDatabaseId,
+  StoredOntologyJsonSchema,
+  StoredOntologyJsonSchemaMetadata,
+} from "../storage/core/index";
 export {
   createBearerTokenAuthProvider,
   createNoAuthProvider,
@@ -36,6 +40,8 @@ export {
   type DatabaseHashResponse,
   type DatabaseListEntry,
   type DatabaseListResponse,
+  type DatabaseMemoryPreviewRequest,
+  type DatabaseMemoryPreviewResponse,
   type DatabaseMergeRequest,
   type DatabaseMetadataGetRequest,
   type DatabaseMetadataGetResponse,

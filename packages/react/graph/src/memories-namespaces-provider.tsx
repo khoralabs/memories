@@ -18,7 +18,7 @@ import {
   validateNamespaceSegment,
 } from "./lib/namespace-path.js";
 import { buildNamespaceTree, type NamespaceTreeNode } from "./lib/namespace-tree.js";
-import { useMemoriesClient } from "./memories-client-provider.js";
+import { useMemoriesClient, useMemoriesDatabase } from "./memories-client-provider.js";
 
 export type GraphScope = "exact" | "subtree";
 
@@ -123,6 +123,8 @@ export function MemoriesNamespacesProvider({
   namespaceRoot: namespaceRootProp = DEFAULT_NAMESPACE_ROOT,
 }: MemoriesNamespacesProviderProps) {
   const client = useMemoriesClient();
+  const { database } = useMemoriesDatabase();
+  const databaseKey = `${database.kind}:${database.ownerKey}`;
   const [namespace, setNamespace] = useState(
     () => namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE,
   );
@@ -146,6 +148,13 @@ export function MemoriesNamespacesProvider({
   useEffect(() => {
     setNamespaceRoot(namespaceRootProp.trim() || DEFAULT_NAMESPACE_ROOT);
   }, [namespaceRootProp]);
+
+  // Reset focus when the focused database changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on DB switch
+  useEffect(() => {
+    setNamespace(namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE);
+    setScopeState(scopeProp);
+  }, [databaseKey]);
 
   const paths = useMemo(() => namespacePathsFromEntries(entries), [entries]);
   const tree = useMemo(() => buildNamespaceTree(paths), [paths]);

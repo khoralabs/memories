@@ -412,6 +412,20 @@ export class RemoteMemoriesReadClient {
     });
   }
 
+  async getMemoryPreview(input: { namespace: string; key: string; maxChars?: number }): Promise<{
+    key: string;
+    namespace: string;
+    labels: Array<{ kind: string; props: Record<string, unknown> }>;
+    content: Array<{ sourceKey: string; text: string | null }>;
+  }> {
+    return this.#client.postJson("/databases/memory-preview", {
+      database: this.#database,
+      namespace: input.namespace,
+      key: input.key,
+      ...(input.maxChars !== undefined ? { maxChars: input.maxChars } : {}),
+    });
+  }
+
   async getSourceMapTextPreview(sourceMapId: string, maxChars = 2400): Promise<string | null> {
     const response = await this.#client.postJson<{ text: string | null }>(
       "/databases/source-map/text-preview",

@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMemoriesClient } from "./memories-client-provider.js";
+import { useMemoriesMemory } from "./memories-memory-provider.js";
 import { useMemoriesNamespaces } from "./memories-namespaces-provider.js";
 import type {
   GraphPayload,
@@ -85,9 +85,10 @@ type ProjectionValue = {
 const ProjectionContext = createContext<ProjectionValue | null>(null);
 
 /**
- * Graph/search chrome from {@link GraphProjectionProvider}.
- * Namespace catalog + focus live in {@link useMemoriesNamespaces}.
- * Mount {@link MemoriesClientProvider} → {@link MemoriesNamespacesProvider} → this provider.
+ * Graph chrome from {@link GraphProjectionProvider}.
+ * Namespace catalog: {@link useMemoriesNamespaces}. Memory catalog/search/focus: {@link useMemoriesMemory}.
+ * Mount {@link MemoriesClientProvider} → {@link MemoriesNamespacesProvider} →
+ * {@link MemoriesMemoryProvider} → this provider.
  */
 export type MemoriesGraphChromeBaseValue = {
   searchQuery: string;
@@ -101,7 +102,7 @@ export type MemoriesGraphChromeBaseValue = {
   graphError: string | null;
   reloadGraph: () => Promise<void>;
   graphSummary: string;
-  /** Reloads graph payload and namespace catalog. */
+  /** Reloads namespace catalog + memory catalog (graph payload). */
   refreshAll: () => void;
 };
 
@@ -274,12 +275,21 @@ function ProjectionProviderInner({
   focusDelay = DEFAULT_GRAPH_FOCUS_DELAY_MS,
   unFocusDelay = DEFAULT_GRAPH_UNFOCUS_DELAY_MS,
 }: ProjectionProviderInnerProps) {
+  const { focused, focusNode, focusEdge, clearFocus } = useMemoriesMemory();
   const points = useMemo(() => buildPoints(data), [data]);
   const sceneEdges = useMemo(() => buildSceneEdges(data.edges), [data.edges]);
   const adjacency = useMemo(() => buildAdjacency(data), [data]);
 
-  const [selected, setSelectedInternal] = useState<ProjectionPoint | null>(null);
-  const [pinnedEdge, setPinnedEdgeInternal] = useState<SceneEdge | null>(null);
+  const selected = useMemo((): ProjectionPoint | null => {
+    if (focused?.kind !== "node") return null;
+    return points.find((p) => p.entryId === focused.key) ?? null;
+  }, [focused, points]);
+
+  const pinnedEdge = useMemo((): SceneEdge | null => {
+    if (focused?.kind !== "edge") return null;
+    return sceneEdges.find((e) => e.edgeId === focused.edgeId) ?? null;
+  }, [focused, sceneEdges]);
+
   const [rawHoveredId, setRawHoveredId] = useState<string | null>(null);
   const [debouncedHoveredId, setDebouncedHoveredId] = useState<string | null>(null);
   const [rawHoveredEdgeKey, setRawHoveredEdgeKey] = useState<string | null>(null);
@@ -316,15 +326,21 @@ function ProjectionProviderInner({
     return () => window.clearTimeout(t);
   }, [rawHoveredEdgeKey, focusDelay]);
 
-  const setSelected = useCallback((p: ProjectionPoint | null) => {
-    setPinnedEdgeInternal(null);
-    setSelectedInternal(p);
-  }, []);
+  const setSelected = useCallback(
+    (p: ProjectionPoint | null) => {
+      if (p == null) clearFocus();
+      else focusNode(p.entryId);
+    },
+    [clearFocus, focusNode],
+  );
 
-  const setPinnedEdge = useCallback((e: SceneEdge | null) => {
-    setSelectedInternal(null);
-    setPinnedEdgeInternal(e);
-  }, []);
+  const setPinnedEdge = useCallback(
+    (e: SceneEdge | null) => {
+      if (e == null) clearFocus();
+      else focusEdge(e.edgeId);
+    },
+    [clearFocus, focusEdge],
+  );
 
   const onHoverStart = useCallback(
     (entryId: string) => {
@@ -369,9 +385,8 @@ function ProjectionProviderInner({
   }, [cancelAllHoverTimers]);
 
   const clearPinnedSelection = useCallback(() => {
-    setSelectedInternal(null);
-    setPinnedEdgeInternal(null);
-  }, []);
+    clearFocus();
+  }, [clearFocus]);
 
   const dismissPersistentGraphFocus = useCallback(() => {
     clearHover();
@@ -406,9 +421,8 @@ function ProjectionProviderInner({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: clear click-pin when search text or fetched results change
   useEffect(() => {
-    setSelectedInternal(null);
-    setPinnedEdgeInternal(null);
-  }, [searchQuery, graphSearch]);
+    clearFocus();
+  }, [searchQuery, graphSearch, clearFocus]);
 
   const hoverData = useMemo((): HoverData | undefined => {
     if (!debouncedHoveredId) return undefined;
@@ -555,135 +569,36 @@ function ProjectionProviderInner({
   );
 }
 
-const SEARCH_DEBOUNCE_MS = 320;
-const GRAPH_SEARCH_MAX_VECTOR_DISTANCE = 0.65;
-
 export function GraphProjectionProvider({
   children,
   focusDelay = DEFAULT_GRAPH_FOCUS_DELAY_MS,
   unFocusDelay = DEFAULT_GRAPH_UNFOCUS_DELAY_MS,
 }: GraphProjectionProviderProps) {
-  const client = useMemoriesClient();
-  const { namespace, scope, reload: reloadNamespaces } = useMemoriesNamespaces();
-
-  const [fetchedPayload, setFetchedPayload] = useState<GraphPayload | null>(null);
-  const [graphLoading, setGraphLoading] = useState(true);
-  const [graphError, setGraphError] = useState<string | null>(null);
-  const graphLoadSeqRef = useRef(0);
-
-  const loadGraph = useCallback(async () => {
-    const loadSeq = ++graphLoadSeqRef.current;
-    setGraphLoading(true);
-    setGraphError(null);
-    const ns = namespace.trim();
-    try {
-      const payload = await client.getGraph({
-        namespace: ns,
-        ...(scope === "subtree" ? { scope: "subtree" } : {}),
-      });
-      if (loadSeq !== graphLoadSeqRef.current) return;
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (loadSeq !== graphLoadSeqRef.current) return;
-          setFetchedPayload(payload);
-          setGraphLoading(false);
-          setGraphError(null);
-        });
-      });
-    } catch (e) {
-      if (loadSeq !== graphLoadSeqRef.current) return;
-      setFetchedPayload(null);
-      setGraphError(e instanceof Error ? e.message : String(e));
-      setGraphLoading(false);
-    }
-  }, [client, namespace, scope]);
-
-  useEffect(() => {
-    void loadGraph();
-  }, [loadGraph]);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [graphSearch, setGraphSearch] = useState<GraphSearchState | null>(null);
-  const [graphSearchOverride, setGraphSearchOverride] = useState<GraphSearchState | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-
-  useEffect(() => {
-    const q = searchQuery.trim();
-    if (!q) {
-      setGraphSearch(null);
-      setSearchLoading(false);
-      return;
-    }
-    const ac = new AbortController();
-    const ns = namespace.trim();
-    const id = window.setTimeout(() => {
-      void (async () => {
-        setSearchLoading(true);
-        try {
-          const json = await client.search({
-            namespace: ns,
-            query: q,
-            topK: 10,
-            maxNeighbors: 5,
-            maxVectorDistance: GRAPH_SEARCH_MAX_VECTOR_DISTANCE,
-            signal: ac.signal,
-            ...(scope === "subtree" ? { scope: "subtree" } : {}),
-          });
-          if (ac.signal.aborted) return;
-          const hitSnippetByKey = new Map<string, string>();
-          for (const row of json.hitSnippets) {
-            const t = row.text?.trim();
-            if (!t || hitSnippetByKey.has(row.key)) continue;
-            hitSnippetByKey.set(row.key, t);
-          }
-          const hitSnippetByEdgeId = new Map<string, string>();
-          for (const row of json.edgeHitSnippets) {
-            const t = row.text?.trim();
-            if (!t || hitSnippetByEdgeId.has(row.edgeId)) continue;
-            hitSnippetByEdgeId.set(row.edgeId, t);
-          }
-          setGraphSearch({
-            relevantKeys: new Set(json.keys),
-            hitCount: json.hitCount,
-            hitSnippetByKey,
-            hitSnippetByEdgeId,
-          });
-        } catch {
-          if (!ac.signal.aborted) setGraphSearch(null);
-        } finally {
-          setSearchLoading(false);
-        }
-      })();
-    }, SEARCH_DEBOUNCE_MS);
-    return () => {
-      window.clearTimeout(id);
-      ac.abort();
-    };
-  }, [client, searchQuery, namespace, scope]);
-
-  const effectiveData = useMemo((): GraphPayload => {
-    return (
-      fetchedPayload ?? {
-        namespace: namespace.trim(),
-        nodes: [],
-        edges: [],
-      }
-    );
-  }, [fetchedPayload, namespace]);
+  const { reload: reloadNamespaces, namespace } = useMemoriesNamespaces();
+  const {
+    payload,
+    loading: graphLoading,
+    error: graphError,
+    reload: reloadGraph,
+    searchQuery,
+    setSearchQuery,
+    graphSearchOverride,
+    setGraphSearchOverride,
+    searchLoading,
+    effectiveGraphSearch,
+  } = useMemoriesMemory();
 
   const graphSummary = useMemo(() => {
-    if (!fetchedPayload) return "";
-    return `${fetchedPayload.nodes.length} nodes · ${fetchedPayload.edges.length} edges`;
-  }, [fetchedPayload]);
+    if (graphLoading && payload.nodes.length === 0 && payload.edges.length === 0) return "";
+    return `${payload.nodes.length} nodes · ${payload.edges.length} edges`;
+  }, [graphLoading, payload.edges.length, payload.nodes.length]);
 
-  const clearSearch = useCallback(() => setSearchQuery(""), []);
+  const clearSearch = useCallback(() => setSearchQuery(""), [setSearchQuery]);
 
   const refreshAll = useCallback(() => {
-    void loadGraph();
+    void reloadGraph();
     void reloadNamespaces();
-  }, [loadGraph, reloadNamespaces]);
-
-  const effectiveGraphSearch = graphSearchOverride ?? graphSearch;
+  }, [reloadGraph, reloadNamespaces]);
 
   const chromeValue = useMemo(
     (): MemoriesGraphChromeBaseValue => ({
@@ -695,22 +610,29 @@ export function GraphProjectionProvider({
       searchLoading,
       graphLoading,
       graphError,
-      reloadGraph: loadGraph,
+      reloadGraph,
       graphSummary,
       refreshAll,
     }),
     [
       searchQuery,
+      setSearchQuery,
       effectiveGraphSearch,
       graphSearchOverride,
+      setGraphSearchOverride,
       searchLoading,
       graphLoading,
       graphError,
-      loadGraph,
+      reloadGraph,
       graphSummary,
       refreshAll,
     ],
   );
+
+  const effectiveData = useMemo((): GraphPayload => {
+    if (payload.namespace) return payload;
+    return { namespace: namespace.trim(), nodes: payload.nodes, edges: payload.edges };
+  }, [payload, namespace]);
 
   return (
     <MemoriesGraphChromeBaseContext.Provider value={chromeValue}>

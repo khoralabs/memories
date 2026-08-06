@@ -44,6 +44,7 @@ import {
   handleDatabaseFindMemoryId,
   handleDatabaseGraphLayout,
   handleDatabaseLoadMemoryNamespaceKey,
+  handleDatabaseMemoryPreview,
   handleDatabaseMerge,
   handleDatabaseNamespaceDelete,
   handleDatabaseNamespaceGet,
@@ -435,6 +436,13 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseEdgePreview(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/memory-preview") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseMemoryPreview(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/source-map/text-preview") {

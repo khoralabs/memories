@@ -15,6 +15,7 @@ function createMockReads(
     listNamespaces: RemoteMemoriesReadClient["listNamespaces"];
     getGraphLayout: RemoteMemoriesReadClient["getGraphLayout"];
     getEdgePreview: RemoteMemoriesReadClient["getEdgePreview"];
+    getMemoryPreview: RemoteMemoriesReadClient["getMemoryPreview"];
     upsertNamespaceMetadata: RemoteMemoriesReadClient["upsertNamespaceMetadata"];
     getNamespaceMetadata: RemoteMemoriesReadClient["getNamespaceMetadata"];
     renameNamespace: RemoteMemoriesReadClient["renameNamespace"];
@@ -50,6 +51,14 @@ function createMockReads(
         toKey: "b",
         labels: [],
         properties: null,
+      })),
+    getMemoryPreview:
+      overrides.getMemoryPreview ??
+      (async () => ({
+        key: "k",
+        namespace: "ns",
+        labels: [{ kind: "Person", props: {} }],
+        content: [{ sourceKey: "body", text: "hello" }],
       })),
     upsertNamespaceMetadata:
       overrides.upsertNamespaceMetadata ??
@@ -386,6 +395,73 @@ describe("createServiceReactMemoriesClient", () => {
       deletedMemories: 3,
     });
     expect(deleteNamespace).toHaveBeenCalledWith({ namespace: "a", recursive: true });
+  });
+
+  test("mergeMemory posts /databases/merge", async () => {
+    const postJson = mock(async (path: string, body: unknown) => {
+      expect(path).toBe("/databases/merge");
+      expect(body).toEqual({
+        database,
+        params: { kind: "node", namespace: "ns", key: "k", content: [] },
+        intentSnapshotId: "snap-1",
+      });
+      return { memoryIds: ["m1"] };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+    await expect(
+      client.mergeMemory({
+        params: { kind: "node", namespace: "ns", key: "k", content: [] },
+        intentSnapshotId: "snap-1",
+      }),
+    ).resolves.toEqual({ memoryIds: ["m1"] });
+  });
+
+  test("deleteMemory posts /databases/delete-memory", async () => {
+    const postJson = mock(async (path: string, body: unknown) => {
+      expect(path).toBe("/databases/delete-memory");
+      expect(body).toEqual({ database, namespace: "ns", key: "k" });
+      return { ok: true };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+    await expect(client.deleteMemory({ namespace: "ns", key: "k" })).resolves.toBeUndefined();
+  });
+
+  test("getMemoryPreview delegates to reads", async () => {
+    const getMemoryPreview = mock(
+      async (input: { namespace: string; key: string; maxChars?: number }) => {
+        expect(input).toEqual({ namespace: "ns", key: "k", maxChars: 100 });
+        return {
+          key: "k",
+          namespace: "ns",
+          labels: [],
+          content: [{ sourceKey: "body", text: "hi" }],
+        };
+      },
+    );
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ getMemoryPreview }),
+      service: createMockService(),
+    });
+    await expect(
+      client.getMemoryPreview({ namespace: "ns", key: "k", maxChars: 100 }),
+    ).resolves.toEqual({
+      key: "k",
+      namespace: "ns",
+      labels: [],
+      content: [{ sourceKey: "body", text: "hi" }],
+    });
   });
 
   test("omits investigate unless provided", async () => {

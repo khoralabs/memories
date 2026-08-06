@@ -1,4 +1,8 @@
 export {
+  AddMemoryButton,
+  type AddMemoryButtonProps,
+} from "./add-memory-button.js";
+export {
   AddNamespaceButton,
   type AddNamespaceButtonProps,
 } from "./add-namespace-button.js";
@@ -145,8 +149,23 @@ export {
 export {
   MemoriesClientProvider,
   type MemoriesClientProviderProps,
+  type MemoriesClientValue,
   useMemoriesClient,
+  useMemoriesDatabase,
 } from "./memories-client-provider.js";
+export {
+  type CatalogMemory,
+  type CreateMemoryInput,
+  type FocusedMemory,
+  MemoriesMemoryProvider,
+  type MemoriesMemoryProviderProps,
+  type MemoriesMemoryValue,
+  type MemoryContentArm,
+  type MemoryFeatures,
+  type MemoryLabelArm,
+  type UpdateMemoryFeaturesInput,
+  useMemoriesMemory,
+} from "./memories-memory-provider.js";
 export {
   type CreateNamespaceInput,
   DEFAULT_MEMORIES_NAMESPACE,

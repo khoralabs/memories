@@ -96,6 +96,26 @@ export type ReactMemoriesClient = {
     signal?: AbortSignal;
   }): Promise<{ namespaces: string[]; deletedMemories: number }>;
 
+  mergeMemory(input: {
+    params: Record<string, unknown>;
+    intentSnapshotId?: string;
+    signal?: AbortSignal;
+  }): Promise<{ memoryIds: string[] }>;
+
+  deleteMemory(input: { namespace: string; key: string; signal?: AbortSignal }): Promise<void>;
+
+  getMemoryPreview(input: {
+    namespace: string;
+    key: string;
+    maxChars?: number;
+    signal?: AbortSignal;
+  }): Promise<{
+    key: string;
+    namespace: string;
+    labels: Array<{ kind: string; props: Record<string, unknown> }>;
+    content: Array<{ sourceKey: string; text: string | null }>;
+  }>;
+
   /** Sync investigate. Omit when the host has no investigate route. */
   investigate?(input: {
     namespace: string;
@@ -323,6 +343,32 @@ export function createServiceReactMemoriesClient(
       return reads.deleteNamespace({
         namespace: input.namespace,
         ...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
+      });
+    },
+
+    async mergeMemory(input) {
+      return service.postJson<{ memoryIds: string[] }>("/databases/merge", {
+        database,
+        params: input.params,
+        ...(input.intentSnapshotId !== undefined
+          ? { intentSnapshotId: input.intentSnapshotId }
+          : {}),
+      });
+    },
+
+    async deleteMemory(input) {
+      await service.postJson("/databases/delete-memory", {
+        database,
+        namespace: input.namespace,
+        key: input.key,
+      });
+    },
+
+    async getMemoryPreview(input) {
+      return reads.getMemoryPreview({
+        namespace: input.namespace,
+        key: input.key,
+        ...(input.maxChars !== undefined ? { maxChars: input.maxChars } : {}),
       });
     },
 

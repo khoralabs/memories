@@ -2,20 +2,21 @@
 
 React components for exploring a memories knowledge graph in 3D: hybrid search, namespace selection, memory preview, and an optional investigator Q&A overlay.
 
-Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database — the host injects a `ReactMemoriesClient` via `MemoriesClientProvider`, then mounts `MemoriesNamespacesProvider` for catalog/focus/CRUD.
+Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database by itself — mount `MemoriesClientProvider` with a `ReactMemoriesClient` (or `createClient` factory for database switching), then namespaces + memory providers for catalog/focus/CRUD.
 
 ## Exports
 
 | Export | Role |
 |--------|------|
-| `MemoriesClientProvider` / `useMemoriesClient` | Injected graph backend client |
+| `MemoriesClientProvider` / `useMemoriesClient` / `useMemoriesDatabase` | Client + database focus + resolved ontology |
 | `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, create/rename/metadata/delete |
+| `MemoriesMemoryProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove |
 | `createServiceReactMemoriesClient` / `ReactMemoriesClient` | Service HTTP client + interface |
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |
-| `GraphProjectionProvider` / `useProjection` | Projection + graph/search chrome (reads focus from namespaces) |
+| `GraphProjectionProvider` / `useProjection` | Scene projection + chrome (reads payload/search/focus from memory provider) |
 | `GraphSearch` | Search input with hybrid query + optional deep-search toggle |
 | `GraphNamespaceSelector` / `GraphNamespaceTree` | Namespace picker / tree (read namespaces context) |
-| `AddNamespaceButton` / `RefreshGraphButton` | Compound chrome buttons (`.Tooltip` + `Button` props) |
+| `AddNamespaceButton` / `AddMemoryButton` / `RefreshGraphButton` | Compound chrome buttons (`.Tooltip` + `Button` props) |
 | `GraphInvestigatorProvider` / `GraphInvestigatorAnswer` | Investigator Q&A overlay (requires a `GraphInvestigatorClient`) |
 | `createSyncInvestigatorClient` / `createJobStreamInvestigatorClient` | Sync POST or job+SSE investigator transports |
 | `GraphPreviewDock` | Selected memory preview panel |
@@ -26,25 +27,48 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 ## Host integration
 
 1. Point at memories-service (`createServiceReactMemoriesClient`) or implement `ReactMemoriesClient`.
-2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `GraphProjectionProvider`.
-3. Hosts own create/rename forms; call `useMemoriesNamespaces().create` / `.rename` / `.updateMetadata` / `.remove`. Use `AddNamespaceButton` as a chrome trigger only (wire `onClick`).
+2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesMemoryProvider` → `GraphProjectionProvider`.
+3. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
+4. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Search uses the same scope via `useMemoriesMemory`.
 
 ```tsx
 import {
+  AddMemoryButton,
   AddNamespaceButton,
   createServiceReactMemoriesClient,
   GraphProjectionProvider,
   GraphScene,
   GraphSearch,
   MemoriesClientProvider,
+  MemoriesMemoryProvider,
   MemoriesNamespacesProvider,
+  useMemoriesMemory,
   useMemoriesNamespaces,
 } from "@khoralabs/memories-react-graph";
 
-const client = createServiceReactMemoriesClient({
-  baseUrl: "https://memories.example",
-  database: { kind: "account", ownerKey: "user-1" },
-});
+const database = { kind: "account" as const, ownerKey: "user-1" };
+const createClient = (db: typeof database) =>
+  createServiceReactMemoriesClient({
+    baseUrl: "https://memories.example",
+    database: db,
+  });
+
+function CreateMemoryControl() {
+  const { create } = useMemoriesMemory();
+  return (
+    <AddMemoryButton
+      onClick={() => {
+        const key = window.prompt("Memory key");
+        if (!key) return;
+        void create({
+          kind: "node",
+          key,
+          content: [{ key: "body", text: "…" }],
+        });
+      }}
+    />
+  );
+}
 
 function CreateNamespaceControl({ parent }: { parent?: string }) {
   const { create, validateSegment } = useMemoriesNamespaces();
@@ -62,13 +86,16 @@ function CreateNamespaceControl({ parent }: { parent?: string }) {
 
 function MemoriesGraphPage() {
   return (
-    <MemoriesClientProvider client={client}>
+    <MemoriesClientProvider createClient={createClient} database={database}>
       <MemoriesNamespacesProvider namespace="global" scope="subtree">
-        <GraphProjectionProvider>
-          <CreateNamespaceControl />
-          <GraphScene />
-          <GraphSearch />
-        </GraphProjectionProvider>
+        <MemoriesMemoryProvider>
+          <GraphProjectionProvider>
+            <CreateNamespaceControl />
+            <CreateMemoryControl />
+            <GraphScene />
+            <GraphSearch />
+          </GraphProjectionProvider>
+        </MemoriesMemoryProvider>
       </MemoriesNamespacesProvider>
     </MemoriesClientProvider>
   );
@@ -84,6 +111,7 @@ import {
   GraphInvestigatorProvider,
   createSyncInvestigatorClient,
   createServiceReactMemoriesClient,
+  MemoriesMemoryProvider,
 } from "@khoralabs/memories-react-graph";
 
 const memoriesClient = createServiceReactMemoriesClient({
@@ -97,10 +125,12 @@ const investigatorClient = createSyncInvestigatorClient({ client: memoriesClient
 
 <MemoriesClientProvider client={memoriesClient}>
   <MemoriesNamespacesProvider>
-    <GraphInvestigatorProvider client={investigatorClient}>
-      <GraphSearch />
-      <GraphInvestigatorAnswerOverlay />
-    </GraphInvestigatorProvider>
+    <MemoriesMemoryProvider>
+      <GraphInvestigatorProvider client={investigatorClient}>
+        <GraphSearch />
+        <GraphInvestigatorAnswerOverlay />
+      </GraphInvestigatorProvider>
+    </MemoriesMemoryProvider>
   </MemoriesNamespacesProvider>
 </MemoriesClientProvider>
 ```
