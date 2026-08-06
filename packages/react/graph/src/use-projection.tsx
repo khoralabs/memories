@@ -593,7 +593,10 @@ export function GraphProjectionProvider({
     return `${payload.nodes.length} nodes · ${payload.edges.length} edges`;
   }, [graphLoading, payload.edges.length, payload.nodes.length]);
 
-  const clearSearch = useCallback(() => setSearchQuery(""), [setSearchQuery]);
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+    setGraphSearchOverride(null);
+  }, [setSearchQuery, setGraphSearchOverride]);
 
   const refreshAll = useCallback(() => {
     void reloadGraph();
