@@ -121,6 +121,7 @@ Hosts can still drive subgraph highlighting via `useGraphMemoriesSearch().setGra
 
 ```bash
 bun run typecheck   # from this package
+bun test            # client, helpers, providers, search chrome
 ```
 
 Included in the root `bun run typecheck` workspace script.
