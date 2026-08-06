@@ -1,6 +1,6 @@
-import { RefreshCcwIcon } from "lucide-react";
+import { FolderPlusIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { Button } from "@/components/ui/button.js";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
@@ -9,40 +9,39 @@ import {
   chromeButtonTooltipRootProps,
   partitionChromeButtonChildren,
 } from "./lib/chrome-button-slots.js";
-import { useMemoriesGraphChrome } from "./use-projection.js";
 
-const DEFAULT_TOOLTIP = "Refresh graph";
+const DEFAULT_TOOLTIP = "New namespace";
 
-function RefreshGraphButtonTooltip(_props: ChromeButtonTooltipProps) {
+function AddNamespaceButtonTooltip(_props: ChromeButtonTooltipProps) {
   return null;
 }
-RefreshGraphButtonTooltip.displayName = "RefreshGraphButton.Tooltip";
+AddNamespaceButtonTooltip.displayName = "AddNamespaceButton.Tooltip";
 
-export type RefreshGraphButtonProps = Omit<ComponentProps<typeof Button>, "children"> & {
+export type AddNamespaceButtonProps = Omit<ComponentProps<typeof Button>, "children"> & {
   children?: ReactNode;
 };
 
-/** Refresh graph data + namespace catalog; reads {@link useMemoriesGraphChrome}. */
-function RefreshGraphButtonRoot({
+/**
+ * Chrome trigger for creating a namespace. Hosts wire `onClick` to open a form that
+ * calls {@link useMemoriesNamespaces} `.create` (no built-in dialog).
+ */
+function AddNamespaceButtonRoot({
   className,
   children,
-  onClick,
   type = "button",
   variant = "ghost",
   size = "icon-sm",
   "aria-label": ariaLabel = DEFAULT_TOOLTIP,
-  disabled,
   ...props
-}: RefreshGraphButtonProps = {}) {
-  const { refreshAll, graphLoading } = useMemoriesGraphChrome();
-  const slots = partitionChromeButtonChildren(children, RefreshGraphButtonTooltip);
+}: AddNamespaceButtonProps) {
+  const slots = partitionChromeButtonChildren(children, AddNamespaceButtonTooltip);
   const tooltipLabel = chromeButtonTooltipLabel(slots.tooltip, DEFAULT_TOOLTIP);
   const tooltipRootProps = chromeButtonTooltipRootProps(slots.tooltip);
   const icon =
     slots.icon.length > 0 ? (
       slots.icon
     ) : (
-      <RefreshCcwIcon className="text-muted-foreground" aria-hidden />
+      <FolderPlusIcon className="text-muted-foreground" aria-hidden />
     );
 
   return (
@@ -55,12 +54,7 @@ function RefreshGraphButtonRoot({
             size={size}
             aria-label={ariaLabel}
             {...props}
-            disabled={disabled ?? graphLoading}
             className={cn("shrink-0 text-muted-foreground", className)}
-            onClick={(e) => {
-              onClick?.(e);
-              if (!e.defaultPrevented) void refreshAll();
-            }}
           >
             {icon}
           </Button>
@@ -71,10 +65,6 @@ function RefreshGraphButtonRoot({
   );
 }
 
-export const RefreshGraphButton = Object.assign(RefreshGraphButtonRoot, {
-  Tooltip: RefreshGraphButtonTooltip,
+export const AddNamespaceButton = Object.assign(AddNamespaceButtonRoot, {
+  Tooltip: AddNamespaceButtonTooltip,
 });
-
-/** @deprecated Prefer {@link RefreshGraphButton}. */
-export const GraphRefreshButton = RefreshGraphButton;
-export type GraphRefreshButtonProps = RefreshGraphButtonProps;

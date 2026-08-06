@@ -1,5 +1,19 @@
+import {
+  createRemoteMemoriesReadClient,
+  type DatabaseSearchResponse,
+  deserializeSearchHits,
+  type MemoriesDatabaseId,
+  MemoriesServiceClient,
+  type MemoriesServiceClientAuthProvider,
+  type MemoriesServiceFetch,
+  type RemoteMemoriesReadClient,
+} from "@khoralabs/memories-service/client";
+
 import type { InvestigatorAnswer } from "./graph-investigator-types.js";
-import type { MemoriesGraphNamespacesPayload } from "./lib/namespace-entries.js";
+import type {
+  MemoriesGraphNamespaceEntry,
+  MemoriesGraphNamespacesPayload,
+} from "./lib/namespace-entries.js";
 import type { GraphPayload } from "./projection-types.js";
 
 export type EdgePreviewJson = {
@@ -11,7 +25,7 @@ export type EdgePreviewJson = {
   error?: string;
 };
 
-/** Wire result from host `POST …/search` (before chrome maps to {@link GraphSearchState}). */
+/** Wire result from {@link ReactMemoriesClient.search} (before chrome maps to search state). */
 export type GraphSearchResult = {
   hitCount: number;
   hitKeys?: string[];
@@ -29,12 +43,8 @@ export type GraphSearchResult = {
 /**
  * Host graph backend contract for React graph UI.
  *
- * Default HTTP shape (relative to `createHttpReactMemoriesClient` `baseUrl`):
- * - `GET /namespaces`
- * - `GET /graph?namespace=…[&scope=subtree]`
- * - `POST /search`
- * - `GET /edge-preview?namespace=…&edgeId=…`
- * - `POST /investigate` (optional)
+ * Prefer {@link createServiceReactMemoriesClient} over `@khoralabs/memories-service`
+ * (`POST /databases/*`). Custom hosts may implement this interface directly.
  */
 export type ReactMemoriesClient = {
   listNamespaces(opts?: { signal?: AbortSignal }): Promise<MemoriesGraphNamespacesPayload>;
@@ -61,6 +71,31 @@ export type ReactMemoriesClient = {
     signal?: AbortSignal;
   }): Promise<EdgePreviewJson>;
 
+  upsertNamespace(input: {
+    namespace: string;
+    alias?: string | null;
+    description?: string;
+    signal?: AbortSignal;
+  }): Promise<MemoriesGraphNamespaceEntry>;
+
+  getNamespaceMetadata(input: {
+    namespace: string;
+    signal?: AbortSignal;
+  }): Promise<MemoriesGraphNamespaceEntry | null>;
+
+  renameNamespace(input: {
+    from: string;
+    to: string;
+    recursive?: boolean;
+    signal?: AbortSignal;
+  }): Promise<{ namespaces: Array<{ from: string; to: string }>; renamedMemories: number }>;
+
+  deleteNamespace(input: {
+    namespace: string;
+    recursive?: boolean;
+    signal?: AbortSignal;
+  }): Promise<{ namespaces: string[]; deletedMemories: number }>;
+
   /** Sync investigate. Omit when the host has no investigate route. */
   investigate?(input: {
     namespace: string;
@@ -69,150 +104,229 @@ export type ReactMemoriesClient = {
   }): Promise<InvestigatorAnswer>;
 };
 
-export type CreateHttpReactMemoriesClientOptions = {
-  /** Former `apiBase` — host memories REST prefix (trailing slash stripped). */
+const QUALIFIED_MEMORY_KEY_SEP = "::";
+const SEARCH_HIT_SNIPPET_MAX = 2400;
+
+function qualifySearchKey(
+  namespace: string,
+  memoryKey: string,
+  scope: "exact" | "subtree",
+): string {
+  return scope === "subtree" ? `${namespace}${QUALIFIED_MEMORY_KEY_SEP}${memoryKey}` : memoryKey;
+}
+
+export type CreateServiceReactMemoriesClientOptions = {
   baseUrl: string;
-  credentials?: RequestCredentials;
-  fetch?: typeof fetch;
+  database: MemoriesDatabaseId;
+  auth?: MemoriesServiceClientAuthProvider;
+  fetch?: MemoriesServiceFetch;
+  /** When set, exposed as {@link ReactMemoriesClient.investigate}. */
+  investigate?: ReactMemoriesClient["investigate"];
+  /** Test seam — defaults to {@link createRemoteMemoriesReadClient}. */
+  reads?: RemoteMemoriesReadClient;
+  /** Test seam — defaults to {@link MemoriesServiceClient}. */
+  service?: MemoriesServiceClient;
 };
 
-function normalizeBaseUrl(base: string): string {
-  const trimmed = base.trim() || "/api";
-  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
-}
-
-async function readJsonOrThrow<T extends { error?: string }>(res: Response): Promise<T> {
-  const json = (await res.json()) as T;
-  if (!res.ok) {
-    throw new Error(json.error ?? res.statusText);
-  }
-  if (json.error) {
-    throw new Error(json.error);
-  }
-  return json;
-}
-
-/** Default {@link ReactMemoriesClient} over the host `baseUrl` REST surface. */
-export function createHttpReactMemoriesClient(
-  options: CreateHttpReactMemoriesClientOptions,
+/** {@link ReactMemoriesClient} over memories-service remote read + search HTTP. */
+export function createServiceReactMemoriesClient(
+  options: CreateServiceReactMemoriesClientOptions,
 ): ReactMemoriesClient {
-  const baseUrl = normalizeBaseUrl(options.baseUrl);
-  const credentials = options.credentials ?? "include";
-  const fetchFn = options.fetch ?? fetch;
+  const reads =
+    options.reads ??
+    createRemoteMemoriesReadClient({
+      baseUrl: options.baseUrl,
+      database: options.database,
+      ...(options.auth !== undefined ? { auth: options.auth } : {}),
+      ...(options.fetch !== undefined ? { fetch: options.fetch } : {}),
+    });
+  const service =
+    options.service ??
+    new MemoriesServiceClient({
+      baseUrl: options.baseUrl,
+      ...(options.auth !== undefined ? { auth: options.auth } : {}),
+      ...(options.fetch !== undefined ? { fetch: options.fetch } : {}),
+    });
+  const database = options.database;
 
   const client: ReactMemoriesClient = {
-    async listNamespaces(opts) {
-      const res = await fetchFn(`${baseUrl}/namespaces`, {
-        signal: opts?.signal,
-        credentials,
-      });
-      return readJsonOrThrow<MemoriesGraphNamespacesPayload>(res);
+    async listNamespaces() {
+      const namespaces = await reads.listNamespaces();
+      return { namespaces };
     },
 
     async getGraph(input) {
-      const scopeParam = input.scope === "subtree" ? "&scope=subtree" : "";
-      const res = await fetchFn(
-        `${baseUrl}/graph?namespace=${encodeURIComponent(input.namespace)}${scopeParam}`,
-        { signal: input.signal, credentials },
-      );
-      const json = await readJsonOrThrow<GraphPayload & { error?: string }>(res);
+      const layout = await reads.getGraphLayout({
+        namespace: input.namespace,
+        ...(input.scope !== undefined ? { scope: input.scope } : {}),
+      });
       return {
-        namespace: json.namespace,
-        nodes: json.nodes ?? [],
-        edges: json.edges ?? [],
+        namespace: layout.namespace,
+        nodes: layout.nodes.map((n) => ({
+          key: n.key,
+          x: n.x,
+          y: n.y,
+          z: n.z,
+          labels: n.labels,
+          degree: n.degree,
+        })),
+        edges: layout.edges.map((e) => ({
+          edgeId: e.edgeId,
+          fromKey: e.fromKey,
+          toKey: e.toKey,
+          labels: e.labels,
+          ...(e.directed !== undefined ? { directed: e.directed } : {}),
+        })),
       };
     },
 
     async search(input) {
-      const res = await fetchFn(`${baseUrl}/search`, {
-        method: "POST",
-        signal: input.signal,
-        credentials,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const query = input.query.trim();
+      const scope = input.scope === "exact" ? "exact" : "subtree";
+      if (query.length === 0) {
+        return {
+          hitCount: 0,
+          hitKeys: [],
+          neighborKeys: [],
+          keys: [],
+          hitSnippets: [],
+          edgeHitSnippets: [],
+        };
+      }
+
+      const topK = Math.min(50, Math.max(1, input.topK ?? 10));
+      const maxNeighbors = Math.min(50, Math.max(0, input.maxNeighbors ?? 5));
+      const response = await service.postJson<DatabaseSearchResponse>("/databases/search", {
+        database,
+        params: {
           namespace: input.namespace,
-          query: input.query,
-          topK: input.topK ?? 10,
-          maxNeighbors: input.maxNeighbors ?? 5,
-          ...(input.maxVectorDistance !== undefined
-            ? { maxVectorDistance: input.maxVectorDistance }
-            : {}),
-          ...(input.scope === "subtree" ? { scope: "subtree" } : {}),
-        }),
+          content: { text: query },
+          searchScopeMode: scope === "exact" ? "exactScope" : "pathSubtree",
+          options: {
+            topK,
+            maxNeighbors,
+            neighbors: true,
+            arms: { lexical: 1, vector: 0 },
+            ...(input.maxVectorDistance !== undefined
+              ? { maxVectorDistance: input.maxVectorDistance }
+              : {}),
+          },
+        },
       });
-      const json = await readJsonOrThrow<{
-        hitCount?: number;
-        hitKeys?: string[];
-        neighborKeys?: string[];
-        keys?: string[];
-        hitSnippets?: Array<{ key?: string; sourceKey?: string; text?: string | null }>;
-        edgeHitSnippets?: Array<{
-          edgeId?: string;
-          fromKey?: string;
-          toKey?: string;
-          text?: string | null;
-        }>;
-        error?: string;
-      }>(res);
 
-      const hitSnippets: GraphSearchResult["hitSnippets"] = [];
-      for (const row of json.hitSnippets ?? []) {
-        const key = row.key?.trim();
-        if (!key) continue;
-        hitSnippets.push({
-          key,
-          ...(row.sourceKey !== undefined ? { sourceKey: row.sourceKey } : {}),
-          text: row.text ?? null,
-        });
+      const hits = deserializeSearchHits(response.hits) as Array<{
+        _id: string;
+        source_key: string;
+        memory: { namespace: string; key: string; kind: string };
+        graph:
+          | { kind: "node" }
+          | {
+              kind: "edge";
+              edge: { edgeId: string; fromKey: string; toKey: string };
+            };
+        neighbors?: Array<{ namespace: string; key: string }>;
+      }>;
+
+      const hitKeys = hits.map((hit) =>
+        qualifySearchKey(hit.memory.namespace, hit.memory.key, scope),
+      );
+      const neighborKeys: string[] = [];
+      const edgeEndpointKeys: string[] = [];
+
+      for (const hit of hits) {
+        for (const neighbor of hit.neighbors ?? []) {
+          neighborKeys.push(qualifySearchKey(neighbor.namespace, neighbor.key, scope));
+        }
+        if (hit.graph.kind === "edge") {
+          edgeEndpointKeys.push(
+            qualifySearchKey(hit.memory.namespace, hit.graph.edge.fromKey, scope),
+            qualifySearchKey(hit.memory.namespace, hit.graph.edge.toKey, scope),
+          );
+        }
       }
 
-      const edgeHitSnippets: GraphSearchResult["edgeHitSnippets"] = [];
-      for (const row of json.edgeHitSnippets ?? []) {
-        const edgeId = row.edgeId?.trim();
-        if (!edgeId) continue;
-        edgeHitSnippets.push({
-          edgeId,
-          ...(row.fromKey !== undefined ? { fromKey: row.fromKey } : {}),
-          ...(row.toKey !== undefined ? { toKey: row.toKey } : {}),
-          text: row.text ?? null,
-        });
-      }
+      const keys = [...new Set([...hitKeys, ...neighborKeys, ...edgeEndpointKeys])];
+
+      const hitSnippets = await Promise.all(
+        hits.map(async (hit) => ({
+          key: qualifySearchKey(hit.memory.namespace, hit.memory.key, scope),
+          sourceKey: hit.source_key,
+          text: await reads.getSourceMapTextPreview(hit._id, SEARCH_HIT_SNIPPET_MAX),
+        })),
+      );
+
+      const edgeHitSnippets = (
+        await Promise.all(
+          hits.map(async (hit) => {
+            if (hit.graph.kind !== "edge") return [];
+            return [
+              {
+                edgeId: hit.memory.key,
+                fromKey: qualifySearchKey(hit.memory.namespace, hit.graph.edge.fromKey, scope),
+                toKey: qualifySearchKey(hit.memory.namespace, hit.graph.edge.toKey, scope),
+                text: await reads.getSourceMapTextPreview(hit._id, SEARCH_HIT_SNIPPET_MAX),
+              },
+            ];
+          }),
+        )
+      ).flat();
 
       return {
-        hitCount: json.hitCount ?? 0,
-        ...(json.hitKeys !== undefined ? { hitKeys: json.hitKeys } : {}),
-        ...(json.neighborKeys !== undefined ? { neighborKeys: json.neighborKeys } : {}),
-        keys: json.keys ?? [],
+        hitCount: hits.length,
+        hitKeys,
+        neighborKeys: [...new Set(neighborKeys)],
+        keys,
         hitSnippets,
         edgeHitSnippets,
       };
     },
 
     async getEdgePreview(input) {
-      const res = await fetchFn(
-        `${baseUrl}/edge-preview?namespace=${encodeURIComponent(input.namespace)}&edgeId=${encodeURIComponent(input.edgeId)}`,
-        { signal: input.signal, credentials },
-      );
-      return readJsonOrThrow<EdgePreviewJson>(res);
+      const preview = await reads.getEdgePreview(input.namespace, input.edgeId);
+      return preview as EdgePreviewJson;
     },
 
-    async investigate(input) {
-      const res = await fetchFn(`${baseUrl}/investigate`, {
-        method: "POST",
-        signal: input.signal,
-        credentials,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ namespace: input.namespace, question: input.question }),
+    async upsertNamespace(input) {
+      const row = await reads.upsertNamespaceMetadata({
+        namespace: input.namespace,
+        ...(input.alias !== undefined ? { alias: input.alias } : {}),
+        ...(input.description !== undefined ? { description: input.description } : {}),
       });
-      const json = await readJsonOrThrow<InvestigatorAnswer & { error?: string }>(res);
       return {
-        answer: json.answer,
-        ...(json.citations !== undefined ? { citations: json.citations } : {}),
-        ...(json.follow_up_queries !== undefined
-          ? { follow_up_queries: json.follow_up_queries }
-          : {}),
+        namespace: row.namespace,
+        alias: row.alias,
+        description: row.description,
+        ...(row.suppressed === true ? { suppressed: true } : {}),
       };
     },
+
+    async getNamespaceMetadata(input) {
+      const row = await reads.getNamespaceMetadata(input.namespace);
+      if (row === null) return null;
+      return {
+        namespace: row.namespace,
+        alias: row.alias,
+        description: row.description,
+        ...(row.suppressed === true ? { suppressed: true } : {}),
+      };
+    },
+
+    async renameNamespace(input) {
+      return reads.renameNamespace({
+        from: input.from,
+        to: input.to,
+        ...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
+      });
+    },
+
+    async deleteNamespace(input) {
+      return reads.deleteNamespace({
+        namespace: input.namespace,
+        ...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
+      });
+    },
+
+    ...(options.investigate !== undefined ? { investigate: options.investigate } : {}),
   };
 
   return client;

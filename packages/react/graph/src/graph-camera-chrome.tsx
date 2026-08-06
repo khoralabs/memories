@@ -3,13 +3,21 @@ import {
   type ComponentProps,
   createContext,
   type PropsWithChildren,
+  type ReactNode,
   type RefObject,
   useContext,
   useRef,
   useState,
 } from "react";
 import { Button } from "@/components/ui/button.js";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+  type ChromeButtonTooltipProps,
+  chromeButtonTooltipLabel,
+  chromeButtonTooltipRootProps,
+  partitionChromeButtonChildren,
+} from "./lib/chrome-button-slots.js";
 
 type GraphCameraChromeValue = {
   cameraViewDeviated: boolean;
@@ -40,42 +48,64 @@ export function useGraphCameraChrome(): GraphCameraChromeValue {
   return ctx;
 }
 
-export type GraphCameraReframeHintProps = ComponentProps<typeof Button>;
+const DEFAULT_TOOLTIP = "Reframe graph";
+
+function GraphCameraReframeHintTooltip(_props: ChromeButtonTooltipProps) {
+  return null;
+}
+GraphCameraReframeHintTooltip.displayName = "GraphCameraReframeHint.Tooltip";
+
+export type GraphCameraReframeHintProps = Omit<ComponentProps<typeof Button>, "children"> & {
+  children?: ReactNode;
+};
 
 /** Reframe-to-fit control when the camera has panned/zoomed; reads {@link useGraphCameraChrome}. */
-export function GraphCameraReframeHint({
+function GraphCameraReframeHintRoot({
   className,
   children,
   onClick,
   type = "button",
   variant = "ghost",
   size = "icon-sm",
-  title = "Reframe graph",
   "aria-label": ariaLabel = "Reframe graph to fit",
   ...props
 }: GraphCameraReframeHintProps = {}) {
   const { cameraViewDeviated, reframeRef } = useGraphCameraChrome();
+  const slots = partitionChromeButtonChildren(children, GraphCameraReframeHintTooltip);
+  const tooltipLabel = chromeButtonTooltipLabel(slots.tooltip, DEFAULT_TOOLTIP);
+  const tooltipRootProps = chromeButtonTooltipRootProps(slots.tooltip);
+  const icon = slots.icon.length > 0 ? slots.icon : <Focus className="size-4" aria-hidden />;
 
   if (!cameraViewDeviated) return null;
 
   return (
-    <Button
-      type={type}
-      variant={variant}
-      size={size}
-      title={title}
-      aria-label={ariaLabel}
-      {...props}
-      className={cn("shrink-0 text-muted-foreground", className)}
-      onClick={(e) => {
-        onClick?.(e);
-        reframeRef.current?.();
-      }}
-    >
-      {children ?? <Focus className="size-4" />}
-    </Button>
+    <TooltipProvider>
+      <Tooltip {...tooltipRootProps}>
+        <TooltipTrigger asChild>
+          <Button
+            type={type}
+            variant={variant}
+            size={size}
+            aria-label={ariaLabel}
+            {...props}
+            className={cn("shrink-0 text-muted-foreground", className)}
+            onClick={(e) => {
+              onClick?.(e);
+              reframeRef.current?.();
+            }}
+          >
+            {icon}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{tooltipLabel}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
+
+export const GraphCameraReframeHint = Object.assign(GraphCameraReframeHintRoot, {
+  Tooltip: GraphCameraReframeHintTooltip,
+});
 
 export const GraphCameraChrome = Object.assign(GraphCameraChromeProvider, {
   ReframeHint: GraphCameraReframeHint,

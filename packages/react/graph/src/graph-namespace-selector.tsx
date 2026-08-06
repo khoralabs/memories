@@ -13,7 +13,8 @@ import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/compon
 import { cn } from "@/lib/utils";
 import { GraphRefreshButton, type GraphRefreshButtonProps } from "./graph-refresh-button.js";
 import { namespaceEntryLabel } from "./lib/namespace-entries.js";
-import { type GraphScope, useMemoriesGraphChrome } from "./use-projection.js";
+import { useMemoriesNamespaces } from "./memories-namespaces-provider.js";
+import { useMemoriesGraphChrome } from "./use-projection.js";
 
 export type GraphNamespaceSelectorProps = {
   className?: string;
@@ -25,29 +26,28 @@ type NamespacePickerMenuProps = { close: () => void };
 function NamespacePickerMenu({ close }: NamespacePickerMenuProps) {
   const {
     namespace: value,
-    setNamespace: onValueChange,
+    focus,
     namespaceRoot,
-    setScope,
-    knownNamespaces,
-    knownNamespaceEntries,
-    knownProfiles,
-    namespacesLoading: knownLoading,
-    namespacesError: knownError,
-  } = useMemoriesGraphChrome();
+    paths,
+    entries,
+    profiles,
+    loading: knownLoading,
+    error: knownError,
+  } = useMemoriesNamespaces();
   const [search, setSearch] = useState("");
 
   const q = search.trim().toLowerCase();
   const filteredProfiles = useMemo(() => {
-    if (!q) return knownProfiles;
-    return knownProfiles.filter((p) => {
+    if (!q) return profiles;
+    return profiles.filter((p) => {
       const label = (p.username ?? p.profileId).toLowerCase();
       return label.includes(q) || p.namespace.toLowerCase().includes(q);
     });
-  }, [knownProfiles, q]);
+  }, [profiles, q]);
 
   const filteredNs = useMemo(() => {
-    if (!q) return knownNamespaceEntries;
-    return knownNamespaceEntries.filter((entry) => {
+    if (!q) return entries;
+    return entries.filter((entry) => {
       const alias = entry.alias?.toLowerCase() ?? "";
       return (
         entry.namespace.toLowerCase().includes(q) ||
@@ -55,27 +55,22 @@ function NamespacePickerMenu({ close }: NamespacePickerMenuProps) {
         entry.description.toLowerCase().includes(q)
       );
     });
-  }, [knownNamespaceEntries, q]);
+  }, [entries, q]);
 
   const customExact = search.trim();
-  const showCustom = customExact.length > 0 && !knownNamespaces.includes(customExact);
+  const showCustom = customExact.length > 0 && !paths.includes(customExact);
   const showNoMatches = filteredNs.length === 0 && filteredProfiles.length === 0 && !showCustom;
 
-  const commitNamespace = (raw: string, scope: GraphScope) => {
-    const trimmed = raw.trim();
+  const commitFromList = (ns: string) => {
+    const trimmed = ns.trim();
     if (!trimmed) return;
     close();
     setSearch("");
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        setScope(scope);
-        onValueChange(trimmed);
+        focus(trimmed, trimmed === namespaceRoot ? "subtree" : "exact");
       });
     });
-  };
-
-  const commitFromList = (ns: string) => {
-    commitNamespace(ns, ns === namespaceRoot ? "subtree" : "exact");
   };
 
   return (
@@ -111,7 +106,15 @@ function NamespacePickerMenu({ close }: NamespacePickerMenuProps) {
                 <CommandItem
                   key={p.profileId}
                   value={`profile:${p.profileId}`}
-                  onSelect={() => commitNamespace(p.namespace, "exact")}
+                  onSelect={() => {
+                    close();
+                    setSearch("");
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => {
+                        focus(p.namespace, "exact");
+                      });
+                    });
+                  }}
                 >
                   <Check
                     className={cn(
@@ -178,12 +181,13 @@ function NamespacePickerMenu({ close }: NamespacePickerMenuProps) {
   );
 }
 
-/** Namespace row + combobox; reads {@link useMemoriesGraphChrome} — must be under {@link GraphProjectionProvider}. */
+/** Namespace row + combobox; reads {@link useMemoriesNamespaces} + graph chrome summary. */
 export function GraphNamespaceSelector({
   className,
   refreshButtonProps,
 }: GraphNamespaceSelectorProps = {}) {
-  const { namespace: value, graphLoading: disabled, graphSummary } = useMemoriesGraphChrome();
+  const { namespace: value } = useMemoriesNamespaces();
+  const { graphLoading: disabled, graphSummary } = useMemoriesGraphChrome();
 
   const {
     className: refreshClassName,
@@ -233,7 +237,7 @@ export function GraphNamespaceSelector({
             <InputGroupAddon align="inline-end" className="relative z-[2]">
               <GraphRefreshButton
                 data-namespace-refresh
-                size="xs"
+                size="icon-sm"
                 variant={refreshVariant}
                 type={refreshType}
                 {...restRefreshProps}

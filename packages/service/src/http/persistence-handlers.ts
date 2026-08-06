@@ -13,6 +13,7 @@ import {
   searchAsync,
 } from "@khoralabs/memories-node";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
+import { buildNamespaceGraphLayoutFromProjectionInput } from "@khoralabs/memories-node/projections";
 import {
   collectNamespaceProjectionInput,
   encodeProjectionInput,
@@ -27,6 +28,7 @@ import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
+  type DatabaseGraphLayoutRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespacesRequest,
   type DatabaseProjectionInputRequest,
@@ -852,6 +854,42 @@ export async function handleDatabaseProjectionInput(
   );
   const payload = await encodeProjectionInput(input, { compression });
   return responseFromEncodedProjectionInput(payload, compression);
+}
+
+/** Ready graph layout JSON from the same projection source as projection-input. */
+export async function handleDatabaseGraphLayout(
+  service: MemoriesDatabaseService,
+  projectionSource: MemoriesServiceHttpOptions["projectionSource"],
+  body: unknown,
+): Promise<Response> {
+  if (projectionSource === undefined) {
+    throw new HttpError("Projection source is not configured", 501);
+  }
+  const scoped = body as DatabaseGraphLayoutRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
+    throw new HttpError("namespace is required", 400);
+  }
+  const source = await projectionSource({ database, handle });
+  if (source === undefined) {
+    throw new HttpError("Projection source is not configured for this backend", 501);
+  }
+
+  const namespace = scoped.namespace.trim();
+  const scope = parseProjectionInputScope(scoped.scope);
+  const input: NamespaceProjectionInput = await collectNamespaceProjectionInput(
+    source,
+    handle.persistence,
+    namespace,
+    {
+      scope,
+      ...(scoped.includeSuppressed === true ? { includeSuppressed: true } : {}),
+    },
+  );
+  const layout = buildNamespaceGraphLayoutFromProjectionInput(input, {
+    ...(scoped.includeSuppressed === true ? { includeSuppressed: true } : {}),
+  });
+  return Response.json({ layout, database });
 }
 
 /** @deprecated Use handleDatabaseProjectionInput */

@@ -1,5 +1,5 @@
 import type { InvestigatorAnswer } from "./graph-investigator-types.js";
-import { createHttpReactMemoriesClient, type ReactMemoriesClient } from "./memories-client.js";
+import type { ReactMemoriesClient } from "./memories-client.js";
 
 export type GraphInvestigatorSession = {
   cancel: () => void;
@@ -23,30 +23,17 @@ export type JobStreamInvestigationEvent =
   | { type: "complete"; answer: InvestigatorAnswer }
   | { type: "error"; error: string };
 
-export type CreateSyncInvestigatorClientOptions =
-  | {
-      client: ReactMemoriesClient;
-      progressMessage?: string;
-    }
-  | {
-      /** @deprecated Prefer `{ client }` from {@link createHttpReactMemoriesClient}. */
-      investigateUrl: string;
-      credentials?: RequestCredentials;
-      progressMessage?: string;
-    };
+export type CreateSyncInvestigatorClientOptions = {
+  client: ReactMemoriesClient;
+  progressMessage?: string;
+};
 
-/** POST investigate and await a synchronous JSON answer (legacy / in-process backends). */
+/** Await a synchronous investigate answer via {@link ReactMemoriesClient.investigate}. */
 export function createSyncInvestigatorClient(
   options: CreateSyncInvestigatorClientOptions,
 ): GraphInvestigatorClient {
   const progressMessage = options.progressMessage ?? "Investigating…";
-  const client: ReactMemoriesClient =
-    "client" in options
-      ? options.client
-      : createHttpReactMemoriesClient({
-          baseUrl: options.investigateUrl.replace(/\/investigate\/?$/, ""),
-          credentials: options.credentials,
-        });
+  const client = options.client;
 
   return {
     startInvestigation(input, callbacks) {

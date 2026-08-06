@@ -42,6 +42,7 @@ import {
   handleDatabaseEdgePreview,
   handleDatabaseEnsureScopeChain,
   handleDatabaseFindMemoryId,
+  handleDatabaseGraphLayout,
   handleDatabaseLoadMemoryNamespaceKey,
   handleDatabaseMerge,
   handleDatabaseNamespaceDelete,
@@ -448,6 +449,13 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseVectorDimensions(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/graph-layout") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseGraphLayout(opts.service, opts.projectionSource, body);
     }
 
     if (

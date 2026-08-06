@@ -8,12 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  type MemoriesGraphNamespaceEntry,
-  namespacePathsFromEntries,
-  normalizeNamespaceEntries,
-} from "./lib/namespace-entries.js";
 import { useMemoriesClient } from "./memories-client-provider.js";
+import { useMemoriesNamespaces } from "./memories-namespaces-provider.js";
 import type {
   GraphPayload,
   GraphSearchState,
@@ -23,6 +19,10 @@ import type {
 import { graphLabelFingerprint, mergeSceneEdgesForPairPreview } from "./projection-types.js";
 
 export type { MemoriesGraphNamespaceEntry } from "./lib/namespace-entries.js";
+export type {
+  GraphScope,
+  MemoriesGraphProfileEntry,
+} from "./memories-namespaces-provider.js";
 
 /** Default delay (ms) before debounced hover state catches up to the pointer. */
 export const DEFAULT_GRAPH_FOCUS_DELAY_MS = 0;
@@ -84,35 +84,12 @@ type ProjectionValue = {
 
 const ProjectionContext = createContext<ProjectionValue | null>(null);
 
-const DEFAULT_MEMORIES_NAMESPACE = "_global_";
-
-export type GraphScope = "exact" | "subtree";
-
-export type MemoriesGraphProfileEntry = {
-  profileId: string;
-  username?: string;
-  namespace: string;
-  indexed: boolean;
-};
-
 /**
- * Fetch/search chrome from {@link GraphProjectionProvider} (namespaces, graph load, search).
- * Data loads via {@link useMemoriesClient} — mount {@link MemoriesClientProvider} above this provider.
+ * Graph/search chrome from {@link GraphProjectionProvider}.
+ * Namespace catalog + focus live in {@link useMemoriesNamespaces}.
+ * Mount {@link MemoriesClientProvider} → {@link MemoriesNamespacesProvider} → this provider.
  */
 export type MemoriesGraphChromeBaseValue = {
-  namespace: string;
-  setNamespace: (v: string) => void;
-  namespaceRoot: string;
-  scope: GraphScope;
-  setScope: (scope: GraphScope) => void;
-  /** Path strings derived from {@link knownNamespaceEntries} (tree / selection). */
-  knownNamespaces: string[];
-  /** Full catalog rows (alias/description) from the namespaces endpoint. */
-  knownNamespaceEntries: MemoriesGraphNamespaceEntry[];
-  knownProfiles: MemoriesGraphProfileEntry[];
-  namespacesLoading: boolean;
-  namespacesError: string | null;
-  reloadNamespaces: () => Promise<void>;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   graphSearch: GraphSearchState | null;
@@ -124,6 +101,7 @@ export type MemoriesGraphChromeBaseValue = {
   graphError: string | null;
   reloadGraph: () => Promise<void>;
   graphSummary: string;
+  /** Reloads graph payload and namespace catalog. */
   refreshAll: () => void;
 };
 
@@ -283,10 +261,6 @@ type ProjectionProviderInnerProps = PropsWithChildren<{
 }>;
 
 export type GraphProjectionProviderProps = PropsWithChildren<{
-  /** Initial / reset seed; user can override via the namespace selector in chrome. */
-  namespace?: string;
-  /** Graph query scope: exact namespace or subtree under prefix (default `exact`). */
-  scope?: GraphScope;
   focusDelay?: number;
   unFocusDelay?: number;
 }>;
@@ -586,61 +560,16 @@ const GRAPH_SEARCH_MAX_VECTOR_DISTANCE = 0.65;
 
 export function GraphProjectionProvider({
   children,
-  namespace: namespaceProp = DEFAULT_MEMORIES_NAMESPACE,
-  scope: scopeProp = "exact",
   focusDelay = DEFAULT_GRAPH_FOCUS_DELAY_MS,
   unFocusDelay = DEFAULT_GRAPH_UNFOCUS_DELAY_MS,
 }: GraphProjectionProviderProps) {
   const client = useMemoriesClient();
-  const seed = namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE;
-  const [namespace, setNamespace] = useState(seed);
-  const [scope, setScope] = useState<GraphScope>(scopeProp);
-  useEffect(() => {
-    setNamespace(namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE);
-  }, [namespaceProp]);
-  useEffect(() => {
-    setScope(scopeProp);
-  }, [scopeProp]);
+  const { namespace, scope, reload: reloadNamespaces } = useMemoriesNamespaces();
 
   const [fetchedPayload, setFetchedPayload] = useState<GraphPayload | null>(null);
   const [graphLoading, setGraphLoading] = useState(true);
   const [graphError, setGraphError] = useState<string | null>(null);
   const graphLoadSeqRef = useRef(0);
-
-  const [knownNamespaceEntries, setKnownNamespaceEntries] = useState<MemoriesGraphNamespaceEntry[]>(
-    [],
-  );
-  const knownNamespaces = useMemo(
-    () => namespacePathsFromEntries(knownNamespaceEntries),
-    [knownNamespaceEntries],
-  );
-  const [knownProfiles, setKnownProfiles] = useState<MemoriesGraphProfileEntry[]>([]);
-  const [namespaceRoot, setNamespaceRoot] = useState("global");
-  const [namespacesLoading, setNamespacesLoading] = useState(false);
-  const [namespacesError, setNamespacesError] = useState<string | null>(null);
-
-  const reloadNamespaces = useCallback(async () => {
-    setNamespacesLoading(true);
-    setNamespacesError(null);
-    try {
-      const json = await client.listNamespaces();
-      setKnownNamespaceEntries(normalizeNamespaceEntries(json.namespaces));
-      setKnownProfiles(json.profiles ?? []);
-      if (json.namespaceRoot?.trim()) {
-        setNamespaceRoot(json.namespaceRoot.trim());
-      }
-    } catch (e) {
-      setKnownNamespaceEntries([]);
-      setKnownProfiles([]);
-      setNamespacesError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setNamespacesLoading(false);
-    }
-  }, [client]);
-
-  useEffect(() => {
-    void reloadNamespaces();
-  }, [reloadNamespaces]);
 
   const loadGraph = useCallback(async () => {
     const loadSeq = ++graphLoadSeqRef.current;
@@ -758,17 +687,6 @@ export function GraphProjectionProvider({
 
   const chromeValue = useMemo(
     (): MemoriesGraphChromeBaseValue => ({
-      namespace,
-      setNamespace,
-      namespaceRoot,
-      scope,
-      setScope,
-      knownNamespaces,
-      knownNamespaceEntries,
-      knownProfiles,
-      namespacesLoading,
-      namespacesError,
-      reloadNamespaces,
       searchQuery,
       setSearchQuery,
       graphSearch: effectiveGraphSearch,
@@ -782,15 +700,6 @@ export function GraphProjectionProvider({
       refreshAll,
     }),
     [
-      namespace,
-      namespaceRoot,
-      scope,
-      knownNamespaces,
-      knownNamespaceEntries,
-      knownProfiles,
-      namespacesLoading,
-      namespacesError,
-      reloadNamespaces,
       searchQuery,
       effectiveGraphSearch,
       graphSearchOverride,

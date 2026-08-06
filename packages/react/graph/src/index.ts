@@ -1,4 +1,8 @@
 export {
+  AddNamespaceButton,
+  type AddNamespaceButtonProps,
+} from "./add-namespace-button.js";
+export {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
@@ -92,6 +96,8 @@ export {
 export {
   GraphRefreshButton,
   type GraphRefreshButtonProps,
+  RefreshGraphButton,
+  type RefreshGraphButtonProps,
 } from "./graph-refresh-button.js";
 export type { GraphSceneEdgeProps } from "./graph-scene-edge.js";
 export type {
@@ -130,8 +136,8 @@ export {
   isBenignResizeObserverError,
 } from "./lib/suppress-benign-resize-observer-errors.js";
 export {
-  type CreateHttpReactMemoriesClientOptions,
-  createHttpReactMemoriesClient,
+  type CreateServiceReactMemoriesClientOptions,
+  createServiceReactMemoriesClient,
   type EdgePreviewJson,
   type GraphSearchResult,
   type ReactMemoriesClient,
@@ -141,6 +147,15 @@ export {
   type MemoriesClientProviderProps,
   useMemoriesClient,
 } from "./memories-client-provider.js";
+export {
+  type CreateNamespaceInput,
+  DEFAULT_MEMORIES_NAMESPACE,
+  DEFAULT_NAMESPACE_ROOT,
+  MemoriesNamespacesProvider,
+  type MemoriesNamespacesProviderProps,
+  type MemoriesNamespacesValue,
+  useMemoriesNamespaces,
+} from "./memories-namespaces-provider.js";
 export {
   NodeBillboard,
   NodeBillboardHeader,
@@ -161,7 +176,9 @@ export type {
 export { GraphScene, resolveGraphSceneOverlay } from "./scene.js";
 export type {
   GraphProjectionProviderProps,
+  GraphScope,
   MemoriesGraphChromeValue,
+  MemoriesGraphProfileEntry,
 } from "./use-projection.js";
 export {
   DEFAULT_GRAPH_FOCUS_DELAY_MS,

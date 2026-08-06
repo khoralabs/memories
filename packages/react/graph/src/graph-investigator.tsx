@@ -12,6 +12,7 @@ import { LoaderWithMessage } from "./components/loader-with-message.js";
 import type { GraphInvestigatorClient } from "./graph-investigator-client.js";
 import type { InvestigatorAnswer } from "./graph-investigator-types.js";
 import { GraphOverlayContainer } from "./graph-overlay-container.js";
+import { useMemoriesNamespaces } from "./memories-namespaces-provider.js";
 import type { GraphSearchState } from "./projection-types.js";
 import { unifiedMarkdown } from "./unified-markdown.js";
 import { useMemoriesGraphChrome, useProjection } from "./use-projection.js";
@@ -70,7 +71,8 @@ function citationsToGraphSearchState(
 }
 
 export function GraphInvestigatorProvider({ client, children }: GraphInvestigatorProviderProps) {
-  const { namespace, setSearchQuery, setGraphSearchOverride } = useMemoriesGraphChrome();
+  const { namespace } = useMemoriesNamespaces();
+  const { setSearchQuery, setGraphSearchOverride } = useMemoriesGraphChrome();
 
   const [deepEnabled, setDeepEnabledState] = useState(false);
   const [query, setQueryState] = useState("");

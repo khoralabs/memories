@@ -1,3 +1,4 @@
+export type { MemoriesDatabaseId } from "../storage/core/index";
 export {
   createBearerTokenAuthProvider,
   createNoAuthProvider,
@@ -30,6 +31,7 @@ export {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
+  type DatabaseGraphLayoutRequest,
   type DatabaseHashRequest,
   type DatabaseHashResponse,
   type DatabaseListEntry,

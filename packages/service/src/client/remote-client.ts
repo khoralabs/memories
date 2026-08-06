@@ -13,6 +13,7 @@ import type {
   MemoriesBackendCapabilities,
   MemoriesPersistenceAsync,
 } from "@khoralabs/memories-node/persistence";
+import type { NamespaceGraphLayout } from "@khoralabs/memories-node/projections";
 import {
   decodeProjectionInput,
   type NamespaceProjectionInput,
@@ -25,6 +26,7 @@ import { MemoriesServiceClient, type MemoriesServiceClientOptions } from "./clie
 import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
+  type DatabaseGraphLayoutRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespaceMetadata,
   type DatabaseNamespacesResponse,
@@ -331,7 +333,9 @@ export function createDeferredRemoteMemoriesClientAsync(
   return deferred;
 }
 
-export type RemoteMemoriesReadClientOptions = RemoteMemoriesClientAsyncOptions;
+export type RemoteMemoriesReadClientOptions = MemoriesServiceClientOptions & {
+  database: MemoriesDatabaseId;
+};
 
 export class RemoteMemoriesReadClient {
   readonly #client: MemoriesServiceClient;
@@ -455,6 +459,25 @@ export class RemoteMemoriesReadClient {
       compression: responseCompression,
       dangerousSkipValidation: input.dangerousSkipValidation,
     });
+  }
+
+  /** Ready graph layout JSON (server runs projection-input → UMAP layout). */
+  async getGraphLayout(input: {
+    namespace: string;
+    scope?: "exact" | "subtree";
+    includeSuppressed?: boolean;
+  }): Promise<NamespaceGraphLayout> {
+    const body: DatabaseGraphLayoutRequest = {
+      database: this.#database,
+      namespace: input.namespace,
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
+      ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
+    };
+    const response = await this.#client.postJson<{
+      layout: NamespaceGraphLayout;
+      database: MemoriesDatabaseId;
+    }>("/databases/graph-layout", body);
+    return response.layout;
   }
 
   /** @deprecated Use fetchProjectionInput */

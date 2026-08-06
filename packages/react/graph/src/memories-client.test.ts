@@ -1,87 +1,34 @@
 import { describe, expect, mock, test } from "bun:test";
-import { createHttpReactMemoriesClient } from "./memories-client.ts";
+import type {
+  DatabaseSearchResponse,
+  MemoriesDatabaseId,
+  MemoriesServiceClient,
+  RemoteMemoriesReadClient,
+} from "@khoralabs/memories-service/client";
 
-type FetchCall = {
-  url: string;
-  init?: RequestInit;
-};
+import { createServiceReactMemoriesClient } from "./memories-client.ts";
 
-function jsonResponse(body: unknown, init?: { status?: number; statusText?: string }): Response {
-  return new Response(JSON.stringify(body), {
-    status: init?.status ?? 200,
-    statusText: init?.statusText ?? "OK",
-    headers: { "Content-Type": "application/json" },
-  });
-}
+const database: MemoriesDatabaseId = { kind: "account", ownerKey: "test-owner" };
 
-function mockFetch(handler: (call: FetchCall) => Response | Promise<Response>) {
-  const calls: FetchCall[] = [];
-  const fetchFn = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    const call = { url, init };
-    calls.push(call);
-    return handler(call);
-  }) as unknown as typeof fetch;
-  return { fetchFn, calls };
-}
-
-describe("createHttpReactMemoriesClient", () => {
-  test("strips trailing slash from baseUrl", async () => {
-    const { fetchFn, calls } = mockFetch(() => jsonResponse({ namespaces: [] }));
-    const client = createHttpReactMemoriesClient({
-      baseUrl: "/api/memories/",
-      fetch: fetchFn,
-    });
-    await client.listNamespaces();
-    expect(calls[0]?.url).toBe("/api/memories/namespaces");
-  });
-
-  test("defaults credentials to include", async () => {
-    const { fetchFn, calls } = mockFetch(() => jsonResponse({ namespaces: [] }));
-    const client = createHttpReactMemoriesClient({
-      baseUrl: "/api",
-      fetch: fetchFn,
-    });
-    await client.listNamespaces();
-    expect(calls[0]?.init?.credentials).toBe("include");
-  });
-
-  test("passes custom credentials", async () => {
-    const { fetchFn, calls } = mockFetch(() => jsonResponse({ namespaces: [] }));
-    const client = createHttpReactMemoriesClient({
-      baseUrl: "/api",
-      credentials: "omit",
-      fetch: fetchFn,
-    });
-    await client.listNamespaces();
-    expect(calls[0]?.init?.credentials).toBe("omit");
-  });
-
-  test("listNamespaces returns payload and forwards signal", async () => {
-    const signal = new AbortController().signal;
-    const payload = {
-      namespaces: [{ namespace: "global", alias: null, description: "" }],
-      namespaceRoot: "global",
-      profiles: [{ profileId: "p1", namespace: "user/p1", indexed: true }],
-    };
-    const { fetchFn, calls } = mockFetch(() => jsonResponse(payload));
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    await expect(client.listNamespaces({ signal })).resolves.toEqual(payload);
-    expect(calls[0]?.url).toBe("/api/namespaces");
-    expect(calls[0]?.init?.signal).toBe(signal);
-  });
-
-  test("getGraph builds query and defaults missing nodes/edges", async () => {
-    const { fetchFn, calls } = mockFetch(() => jsonResponse({ namespace: "a/b" }));
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    const graph = await client.getGraph({ namespace: "a/b", scope: "subtree" });
-    expect(calls[0]?.url).toBe("/api/graph?namespace=a%2Fb&scope=subtree");
-    expect(graph).toEqual({ namespace: "a/b", nodes: [], edges: [] });
-  });
-
-  test("getGraph omits scope for exact", async () => {
-    const { fetchFn, calls } = mockFetch(() =>
-      jsonResponse({
+function createMockReads(
+  overrides: Partial<{
+    listNamespaces: RemoteMemoriesReadClient["listNamespaces"];
+    getGraphLayout: RemoteMemoriesReadClient["getGraphLayout"];
+    getEdgePreview: RemoteMemoriesReadClient["getEdgePreview"];
+    upsertNamespaceMetadata: RemoteMemoriesReadClient["upsertNamespaceMetadata"];
+    getNamespaceMetadata: RemoteMemoriesReadClient["getNamespaceMetadata"];
+    renameNamespace: RemoteMemoriesReadClient["renameNamespace"];
+    deleteNamespace: RemoteMemoriesReadClient["deleteNamespace"];
+    getSourceMapTextPreview: RemoteMemoriesReadClient["getSourceMapTextPreview"];
+  }> = {},
+): RemoteMemoriesReadClient {
+  return {
+    listNamespaces:
+      overrides.listNamespaces ??
+      (async () => [{ namespace: "global", alias: null, description: "" }]),
+    getGraphLayout:
+      overrides.getGraphLayout ??
+      (async () => ({
         namespace: "ns",
         nodes: [
           {
@@ -94,32 +41,187 @@ describe("createHttpReactMemoriesClient", () => {
           },
         ],
         edges: [],
-      }),
-    );
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    await client.getGraph({ namespace: "ns" });
-    expect(calls[0]?.url).toBe("/api/graph?namespace=ns");
+      })),
+    getEdgePreview:
+      overrides.getEdgePreview ??
+      (async () => ({
+        edgeId: "e1",
+        fromKey: "a",
+        toKey: "b",
+        labels: [],
+        properties: null,
+      })),
+    upsertNamespaceMetadata:
+      overrides.upsertNamespaceMetadata ??
+      (async (input) => ({
+        namespace: input.namespace,
+        alias: input.alias ?? null,
+        description: input.description ?? "",
+      })),
+    getNamespaceMetadata:
+      overrides.getNamespaceMetadata ??
+      (async () => ({ namespace: "ns", alias: null, description: "" })),
+    renameNamespace:
+      overrides.renameNamespace ?? (async () => ({ namespaces: [], renamedMemories: 0 })),
+    deleteNamespace:
+      overrides.deleteNamespace ?? (async () => ({ namespaces: [], deletedMemories: 0 })),
+    getSourceMapTextPreview: overrides.getSourceMapTextPreview ?? (async () => "snippet"),
+  } as unknown as RemoteMemoriesReadClient;
+}
+
+function createMockService(
+  postJson: (path: string, body: unknown) => Promise<unknown> = async () => ({ hits: [] }),
+): MemoriesServiceClient {
+  return {
+    postJson: postJson as MemoriesServiceClient["postJson"],
+  } as unknown as MemoriesServiceClient;
+}
+
+describe("createServiceReactMemoriesClient", () => {
+  test("listNamespaces maps catalog rows", async () => {
+    const listNamespaces = mock(async () => [
+      { namespace: "global", alias: "G", description: "root", suppressed: true },
+    ]);
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ listNamespaces }),
+      service: createMockService(),
+    });
+    await expect(client.listNamespaces()).resolves.toEqual({
+      namespaces: [{ namespace: "global", alias: "G", description: "root", suppressed: true }],
+    });
+    expect(listNamespaces).toHaveBeenCalled();
   });
 
-  test("search POSTs defaults and normalizes snippets", async () => {
-    const { fetchFn, calls } = mockFetch(() =>
-      jsonResponse({
-        hitCount: 2,
-        keys: ["a", "b"],
-        hitKeys: ["a"],
-        neighborKeys: ["b"],
-        hitSnippets: [
-          { key: " a ", text: "hit", sourceKey: "src" },
-          { key: "  ", text: "skip" },
-          { key: "b", text: null },
+  test("getGraph maps layout to GraphPayload", async () => {
+    const getGraphLayout = mock(async (input: { namespace: string; scope?: string }) => {
+      expect(input).toEqual({ namespace: "a/b", scope: "subtree" });
+      return {
+        namespace: "a/b",
+        nodes: [
+          {
+            key: "n1",
+            x: 1,
+            y: 2,
+            z: 3,
+            labels: [{ kind: "Thing", props: {} }],
+            degree: { count: 1, centrality: 1 },
+          },
         ],
-        edgeHitSnippets: [
-          { edgeId: " e1 ", fromKey: "a", toKey: "b", text: "edge" },
-          { edgeId: "", text: "bad" },
+        edges: [
+          {
+            edgeId: "e1",
+            fromKey: "n1",
+            toKey: "n2",
+            labels: [],
+            directed: true,
+          },
         ],
-      }),
-    );
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
+      };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ getGraphLayout }),
+      service: createMockService(),
+    });
+    await expect(client.getGraph({ namespace: "a/b", scope: "subtree" })).resolves.toEqual({
+      namespace: "a/b",
+      nodes: [
+        {
+          key: "n1",
+          x: 1,
+          y: 2,
+          z: 3,
+          labels: [{ kind: "Thing", props: {} }],
+          degree: { count: 1, centrality: 1 },
+        },
+      ],
+      edges: [
+        {
+          edgeId: "e1",
+          fromKey: "n1",
+          toKey: "n2",
+          labels: [],
+          directed: true,
+        },
+      ],
+    });
+  });
+
+  test("search maps hits, qualifies subtree keys, and loads snippets", async () => {
+    const getSourceMapTextPreview = mock(async (id: string) => `text:${id}`);
+    const postJson = mock(async (path: string, body: unknown) => {
+      expect(path).toBe("/databases/search");
+      expect(body).toEqual({
+        database,
+        params: {
+          namespace: "ns",
+          content: { text: "hello" },
+          searchScopeMode: "pathSubtree",
+          options: {
+            topK: 10,
+            maxNeighbors: 5,
+            neighbors: true,
+            arms: { lexical: 1, vector: 0 },
+            maxVectorDistance: 0.65,
+          },
+        },
+      });
+      return {
+        hits: [
+          {
+            id: "sm1",
+            memoryId: "m1",
+            sourceKey: "text",
+            score: 1,
+            memory: { namespace: "ns/child", key: "a", kind: "node" },
+            labels: [],
+            graph: { kind: "node" },
+            neighbors: [
+              {
+                namespace: "ns/child",
+                key: "b",
+                kind: "node",
+                labels: [],
+                edge: {
+                  from_node_id: "x",
+                  to_node_id: "y",
+                  label: { kind: "rel", props: {} },
+                },
+              },
+            ],
+          },
+          {
+            id: "sm2",
+            memoryId: "m2",
+            sourceKey: "text",
+            score: 0.5,
+            memory: { namespace: "ns/child", key: "e1", kind: "edge" },
+            labels: [],
+            graph: {
+              kind: "edge",
+              edge: {
+                edgeId: "e1",
+                fromKey: "a",
+                toKey: "b",
+                labels: [],
+                properties: null,
+              },
+            },
+          },
+        ],
+      } satisfies DatabaseSearchResponse;
+    });
+
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ getSourceMapTextPreview }),
+      service: createMockService(postJson),
+    });
+
     const result = await client.search({
       namespace: "ns",
       query: "hello",
@@ -127,105 +229,184 @@ describe("createHttpReactMemoriesClient", () => {
       scope: "subtree",
     });
 
-    expect(calls[0]?.url).toBe("/api/search");
-    expect(calls[0]?.init?.method).toBe("POST");
-    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
-      namespace: "ns",
-      query: "hello",
-      topK: 10,
-      maxNeighbors: 5,
-      maxVectorDistance: 0.65,
-      scope: "subtree",
-    });
-    expect(result).toEqual({
-      hitCount: 2,
-      hitKeys: ["a"],
-      neighborKeys: ["b"],
-      keys: ["a", "b"],
-      hitSnippets: [
-        { key: "a", sourceKey: "src", text: "hit" },
-        { key: "b", text: null },
-      ],
-      edgeHitSnippets: [{ edgeId: "e1", fromKey: "a", toKey: "b", text: "edge" }],
-    });
+    expect(result.hitCount).toBe(2);
+    expect(result.hitKeys).toEqual(["ns/child::a", "ns/child::e1"]);
+    expect(result.neighborKeys).toEqual(["ns/child::b"]);
+    expect(result.keys).toEqual(["ns/child::a", "ns/child::e1", "ns/child::b"]);
+    expect(result.hitSnippets).toEqual([
+      { key: "ns/child::a", sourceKey: "text", text: "text:sm1" },
+      { key: "ns/child::e1", sourceKey: "text", text: "text:sm2" },
+    ]);
+    expect(result.edgeHitSnippets).toEqual([
+      {
+        edgeId: "e1",
+        fromKey: "ns/child::a",
+        toKey: "ns/child::b",
+        text: "text:sm2",
+      },
+    ]);
+    expect(getSourceMapTextPreview).toHaveBeenCalled();
   });
 
-  test("search omits optional fields when not provided", async () => {
-    const { fetchFn, calls } = mockFetch(() => jsonResponse({}));
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    const result = await client.search({ namespace: "ns", query: "q" });
-    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
-      namespace: "ns",
-      query: "q",
-      topK: 10,
-      maxNeighbors: 5,
+  test("search returns empty for blank query without calling service", async () => {
+    const postJson = mock(async () => ({ hits: [] }));
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
     });
-    expect(result).toEqual({
+    await expect(client.search({ namespace: "ns", query: "  " })).resolves.toEqual({
       hitCount: 0,
+      hitKeys: [],
+      neighborKeys: [],
       keys: [],
       hitSnippets: [],
       edgeHitSnippets: [],
     });
+    expect(postJson).not.toHaveBeenCalled();
   });
 
-  test("getEdgePreview encodes namespace and edgeId", async () => {
-    const preview = {
+  test("search uses exactScope when scope is exact", async () => {
+    const postJson = mock(async (_path: string, body: unknown) => {
+      expect((body as { params: { searchScopeMode: string } }).params.searchScopeMode).toBe(
+        "exactScope",
+      );
+      return { hits: [] };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+    await client.search({ namespace: "ns", query: "q", scope: "exact" });
+    expect(postJson).toHaveBeenCalled();
+  });
+
+  test("getEdgePreview delegates to reads", async () => {
+    const getEdgePreview = mock(async (namespace: string, edgeId: string) => {
+      expect(namespace).toBe("n/s");
+      expect(edgeId).toBe("e/1");
+      return { edgeId: "e/1", fromKey: "a", toKey: "b", labels: [], properties: null };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ getEdgePreview }),
+      service: createMockService(),
+    });
+    await expect(client.getEdgePreview({ namespace: "n/s", edgeId: "e/1" })).resolves.toEqual({
       edgeId: "e/1",
       fromKey: "a",
       toKey: "b",
       labels: [],
       properties: null,
-    };
-    const { fetchFn, calls } = mockFetch(() => jsonResponse(preview));
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    await expect(client.getEdgePreview({ namespace: "n/s", edgeId: "e/1" })).resolves.toEqual(
-      preview,
-    );
-    expect(calls[0]?.url).toBe("/api/edge-preview?namespace=n%2Fs&edgeId=e%2F1");
+    });
   });
 
-  test("investigate POSTs question and returns answer fields", async () => {
-    const { fetchFn, calls } = mockFetch(() =>
-      jsonResponse({
-        answer: "yes",
-        citations: [{ memory_key: "k" }],
-        follow_up_queries: ["why?"],
+  test("upsertNamespace maps metadata row", async () => {
+    const upsertNamespaceMetadata = mock(
+      async (input: { namespace: string; alias?: string | null; description?: string }) => {
+        expect(input).toEqual({
+          namespace: "global/new",
+          alias: "New",
+          description: "d",
+        });
+        return {
+          namespace: "global/new",
+          alias: "New",
+          description: "d",
+          suppressed: true,
+        };
+      },
+    );
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ upsertNamespaceMetadata }),
+      service: createMockService(),
+    });
+    await expect(
+      client.upsertNamespace({
+        namespace: "global/new",
+        alias: "New",
+        description: "d",
       }),
-    );
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    const answer = await client.investigate?.({ namespace: "ns", question: "q?" });
-    expect(calls[0]?.url).toBe("/api/investigate");
-    expect(calls[0]?.init?.method).toBe("POST");
-    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
+    ).resolves.toEqual({
+      namespace: "global/new",
+      alias: "New",
+      description: "d",
+      suppressed: true,
+    });
+  });
+
+  test("getNamespaceMetadata maps null and rows", async () => {
+    const getNamespaceMetadata = mock(async (namespace: string) => {
+      if (namespace === "missing") return null;
+      return { namespace, alias: "A", description: "d", suppressed: true };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ getNamespaceMetadata }),
+      service: createMockService(),
+    });
+    await expect(client.getNamespaceMetadata({ namespace: "missing" })).resolves.toBeNull();
+    await expect(client.getNamespaceMetadata({ namespace: "ns" })).resolves.toEqual({
       namespace: "ns",
-      question: "q?",
-    });
-    expect(answer).toEqual({
-      answer: "yes",
-      citations: [{ memory_key: "k" }],
-      follow_up_queries: ["why?"],
+      alias: "A",
+      description: "d",
+      suppressed: true,
     });
   });
 
-  test("throws on HTTP error status using json.error", async () => {
-    const { fetchFn } = mockFetch(() =>
-      jsonResponse({ error: "not configured" }, { status: 503, statusText: "Service Unavailable" }),
-    );
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    await expect(client.listNamespaces()).rejects.toThrow("not configured");
+  test("renameNamespace and deleteNamespace delegate to reads", async () => {
+    const renameNamespace = mock(async () => ({
+      namespaces: [{ from: "a", to: "b" }],
+      renamedMemories: 2,
+    }));
+    const deleteNamespace = mock(async () => ({
+      namespaces: ["a"],
+      deletedMemories: 3,
+    }));
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ renameNamespace, deleteNamespace }),
+      service: createMockService(),
+    });
+    await expect(client.renameNamespace({ from: "a", to: "b", recursive: true })).resolves.toEqual({
+      namespaces: [{ from: "a", to: "b" }],
+      renamedMemories: 2,
+    });
+    expect(renameNamespace).toHaveBeenCalledWith({ from: "a", to: "b", recursive: true });
+    await expect(client.deleteNamespace({ namespace: "a", recursive: true })).resolves.toEqual({
+      namespaces: ["a"],
+      deletedMemories: 3,
+    });
+    expect(deleteNamespace).toHaveBeenCalledWith({ namespace: "a", recursive: true });
   });
 
-  test("throws on HTTP error status using statusText when no json.error", async () => {
-    const { fetchFn } = mockFetch(() =>
-      jsonResponse({}, { status: 500, statusText: "Internal Server Error" }),
-    );
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    await expect(client.getGraph({ namespace: "ns" })).rejects.toThrow("Internal Server Error");
-  });
+  test("omits investigate unless provided", async () => {
+    const without = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(),
+    });
+    expect(without.investigate).toBeUndefined();
 
-  test("throws when response JSON includes error with ok status", async () => {
-    const { fetchFn } = mockFetch(() => jsonResponse({ error: "bad query" }));
-    const client = createHttpReactMemoriesClient({ baseUrl: "/api", fetch: fetchFn });
-    await expect(client.search({ namespace: "ns", query: "x" })).rejects.toThrow("bad query");
+    const investigate = mock(async () => ({ answer: "yes" }));
+    const withInvestigate = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(),
+      investigate,
+    });
+    await expect(
+      withInvestigate.investigate?.({ namespace: "ns", question: "q?" }),
+    ).resolves.toEqual({ answer: "yes" });
   });
 });

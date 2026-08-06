@@ -239,6 +239,12 @@ export type DatabaseProjectionInputRequest = DatabaseScopedBody<{
 /** @deprecated Use DatabaseProjectionInputRequest */
 export type DatabaseUmapInputRequest = DatabaseProjectionInputRequest;
 
+export type DatabaseGraphLayoutRequest = DatabaseScopedBody<{
+  namespace: string;
+  scope?: "exact" | "subtree";
+  includeSuppressed?: boolean;
+}>;
+
 export type DatabaseEnsureScopeChainRequest = DatabaseScopedBody<{ scopePaths: string[] }>;
 export type DatabaseEnsureScopeChainResponse = { ok: true };
 

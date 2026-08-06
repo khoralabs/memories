@@ -678,6 +678,58 @@ describe("memories service persistence http handlers", () => {
       true,
     );
   }, 20_000);
+
+  test("graph-layout endpoint requires projection source", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-no-graph-layout" };
+
+    const res = await postJson(
+      "http://localhost/databases/graph-layout",
+      { database, namespace: "ns/a" },
+      stack,
+    );
+
+    expect(res.status).toBe(501);
+  }, 20_000);
+
+  test("graph-layout endpoint returns layout JSON", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-graph-layout" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sync.syncPersistence, testOntology).mergeMemory({
+      kind: "node",
+      key: "n1",
+      namespace: "ns/a",
+      content: [{ key: "text", text: "layout node" }],
+      labels: [],
+    });
+
+    const res = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/graph-layout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "ns/a" }),
+      }),
+      {
+        service: stack.service,
+        ontology: stack.ontology,
+        auth: createNoneAuthStrategy(),
+        projectionSource: createFakeProjectionSource,
+      },
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      layout: { namespace: string; nodes: Array<{ key: string }>; edges: unknown[] };
+      database: { kind: string; ownerKey: string };
+    };
+    expect(body.database).toEqual(database);
+    expect(body.layout.namespace).toBe("ns/a");
+    expect(body.layout.nodes.some((n) => n.key === "n1")).toBe(true);
+    expect(Array.isArray(body.layout.edges)).toBe(true);
+  }, 20_000);
 });
 
 describe("remote memories client over http", () => {
@@ -882,10 +934,48 @@ describe("remote memories client over http", () => {
       const reads = createRemoteMemoriesReadClient({
         baseUrl: `http://localhost:${server.port}`,
         database,
-        ontology: testOntology,
       });
       const input = await reads.fetchProjectionInput({ namespace: "ns/a" });
       expect(input.embeddings[0]?.memoryKey).toBe("n1");
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("read client getGraphLayout returns layout", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "remote-graph-layout" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sync.syncPersistence, testOntology).mergeMemory({
+      kind: "node",
+      key: "n1",
+      namespace: "ns/a",
+      content: [{ key: "text", text: "remote layout" }],
+      labels: [],
+    });
+
+    const server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        return handleMemoriesServiceHttpRequest(req, {
+          service: stack.service,
+          ontology: stack.ontology,
+          auth: createNoneAuthStrategy(),
+          projectionSource: createFakeProjectionSource,
+        });
+      },
+    });
+
+    try {
+      const reads = createRemoteMemoriesReadClient({
+        baseUrl: `http://localhost:${server.port}`,
+        database,
+      });
+      const layout = await reads.getGraphLayout({ namespace: "ns/a" });
+      expect(layout.namespace).toBe("ns/a");
+      expect(layout.nodes.some((n) => n.key === "n1")).toBe(true);
     } finally {
       server.stop(true);
     }

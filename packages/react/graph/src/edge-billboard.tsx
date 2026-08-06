@@ -16,7 +16,7 @@ import {
   type TypedGraphLabelInstance,
   type TypedSceneEdge,
 } from "./projection-types.js";
-import { useMemoriesGraphChrome, useProjection } from "./use-projection.js";
+import { useProjection } from "./use-projection.js";
 
 type EdgeBillboardContextValue = {
   edge: TypedSceneEdge;
@@ -64,9 +64,8 @@ function EdgeBillboardRoot<TEdge extends GraphOntologyLabelMap = GraphOntologyLa
   className,
   children,
 }: EdgeBillboardProps<TEdge>) {
-  const { namespace } = useMemoriesGraphChrome();
+  const { namespace, onMemoryPreviewPointerEnter, onMemoryPreviewPointerLeave } = useProjection();
   const client = useMemoriesClient();
-  const { onMemoryPreviewPointerEnter, onMemoryPreviewPointerLeave } = useProjection();
 
   const [detail, setDetail] = useState<EdgePreviewJson | null>(null);
   const [loading, setLoading] = useState(false);
