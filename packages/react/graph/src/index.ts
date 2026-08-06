@@ -152,8 +152,6 @@ export {
 } from "./memories-memory-provider.js";
 export {
   type CreateNamespaceInput,
-  DEFAULT_MEMORIES_NAMESPACE,
-  DEFAULT_NAMESPACE_ROOT,
   MemoriesNamespacesProvider,
   type MemoriesNamespacesProviderProps,
   type MemoriesNamespacesValue,

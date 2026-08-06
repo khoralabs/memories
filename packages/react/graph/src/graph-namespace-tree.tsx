@@ -37,7 +37,7 @@ export type GraphNamespaceTreeProps = {
 type NamespaceTreeItemProps = {
   node: NamespaceTreeNode;
   activeNamespace: string;
-  namespaceRoot: string;
+  namespaceRoot: string | null;
   entriesByPath: Map<string, MemoriesGraphNamespaceEntry>;
   hitPaths: Set<string> | null;
   hitCounts: Map<string, number> | null;
@@ -91,7 +91,8 @@ function NamespaceTreeItem({
   const defaultOpen = searchMode ? true : isNamespaceUnderPath(activeNamespace, node.path);
 
   if (!hasChildren) {
-    const scope: GraphScope = node.path === namespaceRoot ? "subtree" : "exact";
+    const scope: GraphScope =
+      namespaceRoot !== null && node.path === namespaceRoot ? "subtree" : "exact";
     return (
       <SidebarMenuItem>
         <SidebarMenuButton

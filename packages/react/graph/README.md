@@ -28,9 +28,10 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 
 1. Point at memories-service (`createServiceReactMemoriesClient`) or implement `ReactMemoriesClient`.
 2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesMemoryProvider` → `GraphProjectionProvider`.
-3. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
-4. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Search uses the same scope via `useMemoriesMemory` / `GraphSearch`.
-5. Namespace search (`GraphNamespaceSearch`) is arms-driven; tune with `useGraphNamespacesSearch().setSearchArms` (e.g. `{ nodes: 0, lexical: 1 }` for catalog-only). Pair with `GraphNamespaceTree` — Hierarchy shows the full catalog when the query is empty, and a score-ordered hit tree while searching.
+3. **Namespace root is host-owned** (no package default). Prefer `listNamespaces.namespaceRoot` (catalog wins); else provider `namespaceRoot` prop. With `createServiceReactMemoriesClient`, pass `namespaceRoot` on the client (stamped onto `listNamespaces`) and/or on the provider — bare service catalog has no root field. Omitting focus `namespace` lands on that root with `subtree` once known.
+4. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
+5. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Search uses the same scope via `useMemoriesMemory` / `GraphSearch`.
+6. Namespace search (`GraphNamespaceSearch`) is arms-driven; tune with `useGraphNamespacesSearch().setSearchArms` (e.g. `{ nodes: 0, lexical: 1 }` for catalog-only). Pair with `GraphNamespaceTree` — Hierarchy shows the full catalog when the query is empty, and a score-ordered hit tree while searching.
 
 ```tsx
 import {
@@ -54,6 +55,7 @@ const createClient = (db: typeof database) =>
   createServiceReactMemoriesClient({
     baseUrl: "https://memories.example",
     database: db,
+    namespaceRoot: "global", // host convention
   });
 
 function CreateMemoryControl() {
@@ -90,7 +92,7 @@ function CreateNamespaceControl({ parent }: { parent?: string }) {
 function MemoriesGraphPage() {
   return (
     <MemoriesClientProvider createClient={createClient} database={database}>
-      <MemoriesNamespacesProvider namespace="global" scope="subtree">
+      <MemoriesNamespacesProvider>
         <MemoriesMemoryProvider>
           <GraphProjectionProvider>
             <CreateNamespaceControl />

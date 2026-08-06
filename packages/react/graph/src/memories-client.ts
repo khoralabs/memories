@@ -193,6 +193,11 @@ export type CreateServiceReactMemoriesClientOptions = {
   database: MemoriesDatabaseId;
   auth?: MemoriesServiceClientAuthProvider;
   fetch?: MemoriesServiceFetch;
+  /**
+   * Host catalog root stamped onto {@link ReactMemoriesClient.listNamespaces}.
+   * Bare memories-service catalog has no root field — pass this (or provider prop).
+   */
+  namespaceRoot?: string;
   /** When set, exposed as {@link ReactMemoriesClient.investigate}. */
   investigate?: ReactMemoriesClient["investigate"];
   /** Test seam — defaults to {@link createRemoteMemoriesReadClient}. */
@@ -225,7 +230,8 @@ export function createServiceReactMemoriesClient(
   const client: ReactMemoriesClient = {
     async listNamespaces() {
       const namespaces = await reads.listNamespaces();
-      return { namespaces };
+      const root = options.namespaceRoot?.trim();
+      return root ? { namespaces, namespaceRoot: root } : { namespaces };
     },
 
     async getGraph(input) {

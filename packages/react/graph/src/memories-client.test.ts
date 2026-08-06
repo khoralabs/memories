@@ -103,6 +103,23 @@ describe("createServiceReactMemoriesClient", () => {
     expect(listNamespaces).toHaveBeenCalled();
   });
 
+  test("listNamespaces stamps optional namespaceRoot", async () => {
+    const listNamespaces = mock(async () => [
+      { namespace: "acme", alias: null, description: "", suppressed: false },
+    ]);
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      namespaceRoot: "  acme  ",
+      reads: createMockReads({ listNamespaces }),
+      service: createMockService(),
+    });
+    await expect(client.listNamespaces()).resolves.toEqual({
+      namespaces: [{ namespace: "acme", alias: null, description: "", suppressed: false }],
+      namespaceRoot: "acme",
+    });
+  });
+
   test("getGraph maps layout to GraphPayload", async () => {
     const getGraphLayout = mock(async (input: { namespace: string; scope?: string }) => {
       expect(input).toEqual({ namespace: "a/b", scope: "subtree" });

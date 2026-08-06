@@ -29,11 +29,6 @@ import { useMemoriesClient, useMemoriesDatabase } from "./memories-client-provid
  */
 export type GraphScope = "exact" | "subtree";
 
-/** Fallback focus path when none is provided. */
-export const DEFAULT_MEMORIES_NAMESPACE = "_global_";
-/** Default catalog root used for focus defaults and delete fallback. */
-export const DEFAULT_NAMESPACE_ROOT = "global";
-
 /** Optional profile ↔ namespace index row from the host catalog payload. */
 export type MemoriesGraphProfileEntry = {
   profileId: string;
@@ -81,11 +76,14 @@ export type MemoriesNamespacesValue = {
   namespace: string;
   /** Whether catalog/search cover only `namespace` or its subtree. */
   scope: GraphScope;
-  /** Catalog root path used when deleting the focused branch and for default scopes. */
-  namespaceRoot: string;
+  /**
+   * Catalog root from host (`listNamespaces` preferred, else provider prop).
+   * `null` until a non-empty root is supplied — React does not invent one.
+   */
+  namespaceRoot: string | null;
   /**
    * Set focus to `path`. When `scope` is omitted, uses `subtree` at `namespaceRoot`
-   * and `exact` elsewhere.
+   * and `exact` elsewhere (or `exact` when root is still unknown).
    * @param path - Full namespace path to focus
    * @param scope - Optional override for exact vs subtree
    */
@@ -147,7 +145,8 @@ export type MemoriesNamespacesValue = {
   }) => Promise<MemoriesGraphNamespaceEntry>;
   /**
    * Delete a namespace path (and optionally descendants) and its memories.
-   * If focus was on or under `namespace`, focus returns to `namespaceRoot`.
+   * If focus was on or under `namespace`, focus returns to `namespaceRoot` when known;
+   * otherwise focus is cleared.
    *
    * @param input.namespace - Full path to delete
    * @param input.recursive - When true, delete descendants as well (service semantics)
@@ -203,11 +202,21 @@ const MemoriesNamespacesContext = createContext<MemoriesNamespacesValue | null>(
 const DEFAULT_SEARCH_ARMS: NamespaceSearchArms = { nodes: 1, lexical: 1 };
 
 export type MemoriesNamespacesProviderProps = PropsWithChildren<{
-  /** Initial (and controlled) focused path. */
+  /**
+   * Initial (and controlled) focused path.
+   * When omitted or blank, focuses {@link namespaceRoot} once a root is known.
+   */
   namespace?: string;
-  /** Initial (and controlled) exact vs subtree scope. */
+  /**
+   * Initial (and controlled) exact vs subtree scope.
+   * When omitted, uses `subtree` at {@link namespaceRoot} and `exact` elsewhere.
+   */
   scope?: GraphScope;
-  /** Catalog root path for default scopes and delete fallback. */
+  /**
+   * Catalog root seed (host-owned). Prefer stamping root on `listNamespaces`
+   * (e.g. `createServiceReactMemoriesClient({ namespaceRoot })`); catalog wins when present.
+   * No package default — omit until catalog/prop supplies a path.
+   */
   namespaceRoot?: string;
   /**
    * Debounce for namespace search queries in ms.
@@ -215,6 +224,20 @@ export type MemoriesNamespacesProviderProps = PropsWithChildren<{
    */
   searchDebounceMs?: number;
 }>;
+
+function resolveNamespaceRootProp(prop: string | undefined): string | null {
+  const trimmed = prop?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function resolveFocusedNamespace(
+  namespace: string | undefined,
+  namespaceRoot: string | null,
+): string {
+  const trimmed = namespace?.trim();
+  if (trimmed) return trimmed;
+  return namespaceRoot ?? "";
+}
 
 function resolveCreatePath(input: CreateNamespaceInput): string {
   if ("namespace" in input) {
@@ -228,8 +251,8 @@ function resolveCreatePath(input: CreateNamespaceInput): string {
   return path;
 }
 
-function defaultFocusScope(path: string, namespaceRoot: string): GraphScope {
-  return path === namespaceRoot ? "subtree" : "exact";
+function defaultFocusScope(path: string, namespaceRoot: string | null): GraphScope {
+  return namespaceRoot !== null && path === namespaceRoot ? "subtree" : "exact";
 }
 
 function rewriteFocusedPath(current: string, from: string, to: string): string | null {
@@ -249,21 +272,25 @@ function isUnderOrEqual(path: string, ancestor: string): boolean {
  */
 export function MemoriesNamespacesProvider({
   children,
-  namespace: namespaceProp = DEFAULT_MEMORIES_NAMESPACE,
-  scope: scopeProp = "exact",
-  namespaceRoot: namespaceRootProp = DEFAULT_NAMESPACE_ROOT,
+  namespace: namespaceProp,
+  scope: scopeProp,
+  namespaceRoot: namespaceRootProp,
   searchDebounceMs = DEFAULT_SEARCH_DEBOUNCE_MS,
 }: MemoriesNamespacesProviderProps) {
   const client = useMemoriesClient();
   const { database } = useMemoriesDatabase();
   const databaseKey = `${database.kind}:${database.ownerKey}`;
-  const [namespace, setNamespace] = useState(
-    () => namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE,
+  const [namespaceRoot, setNamespaceRoot] = useState<string | null>(() =>
+    resolveNamespaceRootProp(namespaceRootProp),
   );
-  const [scope, setScopeState] = useState<GraphScope>(scopeProp);
-  const [namespaceRoot, setNamespaceRoot] = useState(
-    () => namespaceRootProp.trim() || DEFAULT_NAMESPACE_ROOT,
+  const [namespace, setNamespace] = useState(() =>
+    resolveFocusedNamespace(namespaceProp, resolveNamespaceRootProp(namespaceRootProp)),
   );
+  const [scope, setScopeState] = useState<GraphScope>(() => {
+    const root = resolveNamespaceRootProp(namespaceRootProp);
+    const focused = resolveFocusedNamespace(namespaceProp, root);
+    return scopeProp ?? defaultFocusScope(focused, root);
+  });
   const [entries, setEntries] = useState<MemoriesGraphNamespaceEntry[]>([]);
   const [profiles, setProfiles] = useState<MemoriesGraphProfileEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -277,22 +304,44 @@ export function MemoriesNamespacesProvider({
   const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
-    setNamespace(namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE);
-  }, [namespaceProp]);
-
-  useEffect(() => {
-    setScopeState(scopeProp);
-  }, [scopeProp]);
-
-  useEffect(() => {
-    setNamespaceRoot(namespaceRootProp.trim() || DEFAULT_NAMESPACE_ROOT);
+    const fromProp = resolveNamespaceRootProp(namespaceRootProp);
+    if (fromProp !== null) setNamespaceRoot(fromProp);
   }, [namespaceRootProp]);
+
+  useEffect(() => {
+    const root = resolveNamespaceRootProp(namespaceRootProp);
+    setNamespace(resolveFocusedNamespace(namespaceProp, root));
+  }, [namespaceProp, namespaceRootProp]);
+
+  useEffect(() => {
+    if (scopeProp !== undefined) {
+      setScopeState(scopeProp);
+      return;
+    }
+    const root = resolveNamespaceRootProp(namespaceRootProp);
+    const focused = resolveFocusedNamespace(namespaceProp, root);
+    setScopeState(defaultFocusScope(focused, root));
+  }, [scopeProp, namespaceProp, namespaceRootProp]);
+
+  // When catalog/prop later supplies a root and focus is still empty, land on root.
+  useEffect(() => {
+    if (namespaceRoot === null) return;
+    if (namespaceProp?.trim()) return;
+    setNamespace((current) => {
+      if (current.trim().length > 0) return current;
+      if (scopeProp === undefined) setScopeState("subtree");
+      return namespaceRoot;
+    });
+  }, [namespaceRoot, namespaceProp, scopeProp]);
 
   // Reset focus + search when the focused database changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on DB switch
   useEffect(() => {
-    setNamespace(namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE);
-    setScopeState(scopeProp);
+    const root = resolveNamespaceRootProp(namespaceRootProp);
+    const focused = resolveFocusedNamespace(namespaceProp, root);
+    setNamespaceRoot(root);
+    setNamespace(focused);
+    setScopeState(scopeProp ?? defaultFocusScope(focused, root));
     setSearchQuery("");
     setSearchResults(null);
     setSearchError(null);
@@ -332,9 +381,8 @@ export function MemoriesNamespacesProvider({
       const json = await client.listNamespaces();
       setEntries(normalizeNamespaceEntries(json.namespaces));
       setProfiles(json.profiles ?? []);
-      if (json.namespaceRoot?.trim()) {
-        setNamespaceRoot(json.namespaceRoot.trim());
-      }
+      const fromCatalog = json.namespaceRoot?.trim();
+      if (fromCatalog) setNamespaceRoot(fromCatalog);
     } catch (e) {
       setEntries([]);
       setProfiles([]);
@@ -364,7 +412,7 @@ export function MemoriesNamespacesProvider({
         try {
           const result = await client.searchNamespaces({
             query: q,
-            namespace: namespace.trim() || DEFAULT_MEMORIES_NAMESPACE,
+            namespace,
             signal: ac.signal,
             ...(searchUnder !== null ? { under: searchUnder } : {}),
             arms: searchArms,
@@ -444,8 +492,11 @@ export function MemoriesNamespacesProvider({
       await reload();
       setNamespace((current) => {
         if (!isUnderOrEqual(current, input.namespace)) return current;
-        setScopeState(defaultFocusScope(namespaceRoot, namespaceRoot));
-        return namespaceRoot;
+        if (namespaceRoot !== null) {
+          setScopeState(defaultFocusScope(namespaceRoot, namespaceRoot));
+          return namespaceRoot;
+        }
+        return "";
       });
       return result;
     },
