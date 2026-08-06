@@ -6,6 +6,7 @@ import {
   namespaceSegments,
 } from "../../persistence/core";
 import type { SearchContent, SearchHit, SearchParams } from "../api/search.js";
+import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import { embedTextChunks } from "./embedding-model.js";
 import type { HybridMemorySearchClient } from "./memory-search-pipeline.js";
 import {
@@ -26,7 +27,10 @@ export type NamespaceSearchHit = {
   namespace: string;
   /** Ancestors + self, root → leaf */
   lineage: string[];
-  /** namespaceScore (scoreSum * (1 + log1p(hitCount))) */
+  /**
+   * Ranking score: volume formula for nodes-only / lexical-only, or {@link fuseRrf} score
+   * when nodes + lexical arms are fused.
+   */
   score: number;
   hitCount: number;
   scoreSum: number;
@@ -97,11 +101,19 @@ export type NamespaceSearchInput = {
   limit?: number;
   /**
    * Node-hit pool size before aggregation (default 50, max 100).
-   * Larger → better coverage across namespaces; costlier.
+   * Larger → better coverage across namespaces; costlier. Ignored when `arms.nodes` is 0.
    */
   nodeTopK?: number;
-  /** Passed through to hybrid search arms (default: RRF when embeddingModel set) */
-  arms?: { lexical?: number; vector?: number };
+  /**
+   * Arm weights drive which path runs:
+   * - `nodes` — unscoped memory/node search (default `1` when omitted; `0` skips memory search)
+   * - `lexical` — memory content FTS when `nodes > 0`; also ranks catalog alias/description/path.
+   *   When both `nodes` and `lexical` are &gt; 0, namespace lists are fused with {@link fuseRrf}.
+   * - `vector` — memory content vector arm when `nodes > 0` (needs embeddingModel)
+   *
+   * Lexical-only: `{ nodes: 0, lexical: 1 }`. Nodes without metadata: `{ nodes: 1, lexical: 0, vector: 1 }`.
+   */
+  arms?: { nodes?: number; lexical?: number; vector?: number };
 };
 
 const DEFAULT_LIMIT = 10;
@@ -252,15 +264,130 @@ function namespaceSearchEmbeddingCacheKey(namespace: string, queryText: string):
   return `${namespace}\nsearchEntireDatabase\n${queryText.trim()}`;
 }
 
+function resolveNamespaceSearchArms(
+  inputArms: NamespaceSearchInput["arms"],
+  embeddingModel: NamespaceSearchContext["embeddingModel"],
+): {
+  nodesWeight: number;
+  lexicalWeight: number;
+  vectorWeight: number;
+  contentArms?: { lexical?: number; vector?: number };
+} {
+  // Missing `nodes` defaults to 1 so legacy `{ lexical, vector }` callers keep memory search.
+  const nodesWeight = inputArms?.nodes !== undefined ? Math.max(0, inputArms.nodes) : 1;
+
+  if (inputArms === undefined) {
+    if (embeddingModel !== undefined) {
+      // Match prior helper: omit content arms → search uses default RRF (lexical+vector weights 1).
+      return { nodesWeight: 1, lexicalWeight: 1, vectorWeight: 1 };
+    }
+    return {
+      nodesWeight: 1,
+      lexicalWeight: 1,
+      vectorWeight: 0,
+      contentArms: { lexical: 1, vector: 0 },
+    };
+  }
+
+  const lexicalWeight = inputArms.lexical !== undefined ? Math.max(0, inputArms.lexical) : 1;
+  const vectorWeight = inputArms.vector !== undefined ? Math.max(0, inputArms.vector) : 1;
+  return {
+    nodesWeight,
+    lexicalWeight,
+    vectorWeight,
+    contentArms: { lexical: lexicalWeight, vector: vectorWeight },
+  };
+}
+
+function rankNamespacesFromMetadataOnly(
+  query: string,
+  metadata: readonly NamespaceMetadataForRank[],
+  options: { limit: number; under: string | null },
+): NamespaceSearchHit[] {
+  const under =
+    options.under !== null && options.under.trim().length > 0
+      ? namespacePath(options.under.trim())
+      : undefined;
+
+  const ranked: NamespaceSearchHit[] = [];
+  for (const meta of metadata) {
+    if (under !== undefined && !isPrefixOf(under, meta.namespace)) continue;
+    const score = namespaceMetadataLexicalScore(query, meta);
+    if (score <= 0) continue;
+    ranked.push({
+      namespace: meta.namespace,
+      lineage: namespaceLineage(meta.namespace),
+      score,
+      hitCount: 0,
+      scoreSum: score,
+      scoreMax: score,
+      topHits: [],
+    });
+  }
+
+  ranked.sort((a, b) => b.score - a.score || a.namespace.localeCompare(b.namespace));
+  return ranked.slice(0, options.limit);
+}
+
 /**
- * Hybrid unscoped node search, then {@link rankNamespacesFromHits}.
+ * Fuse a nodes-evidence ranking with a metadata-lexical ranking via {@link fuseRrf}.
+ * Final `score` is the RRF score; hit evidence is taken from the nodes list when present.
+ */
+export function fuseNamespaceNodeAndLexicalArms(
+  nodesRanked: readonly NamespaceSearchHit[],
+  lexicalRanked: readonly NamespaceSearchHit[],
+  options: {
+    nodesWeight: number;
+    lexicalWeight: number;
+    limit: number;
+  },
+): NamespaceSearchHit[] {
+  const arms: RrfArm<string>[] = [];
+  if (nodesRanked.length > 0 && options.nodesWeight > 0) {
+    arms.push({
+      armId: "nodes",
+      ranked: nodesRanked.map((n) => n.namespace),
+      weight: options.nodesWeight,
+    });
+  }
+  if (lexicalRanked.length > 0 && options.lexicalWeight > 0) {
+    arms.push({
+      armId: "lexical",
+      ranked: lexicalRanked.map((n) => n.namespace),
+      weight: options.lexicalWeight,
+    });
+  }
+  if (arms.length === 0) return [];
+
+  const nodesByNs = new Map(nodesRanked.map((n) => [n.namespace, n]));
+  const lexicalByNs = new Map(lexicalRanked.map((n) => [n.namespace, n]));
+  const fused = fuseRrf(arms, { maxPerArm: MAX_LIMIT });
+
+  return fused.slice(0, options.limit).map((row) => {
+    const fromNodes = nodesByNs.get(row.id);
+    const fromLexical = lexicalByNs.get(row.id);
+    return {
+      namespace: row.id,
+      lineage: fromNodes?.lineage ?? fromLexical?.lineage ?? namespaceLineage(row.id),
+      score: row.score,
+      hitCount: fromNodes?.hitCount ?? 0,
+      scoreSum: fromNodes?.scoreSum ?? fromLexical?.scoreSum ?? 0,
+      scoreMax: fromNodes?.scoreMax ?? fromLexical?.scoreMax ?? 0,
+      topHits: fromNodes?.topHits ?? [],
+    };
+  });
+}
+
+/**
+ * Arms-driven namespace search: unscoped node search and/or catalog metadata lexical ranking.
  *
- * Peer to {@link runHybridMemorySearch}: aggregates memory-content hits by exact
- * `memory.namespace` (no new persistence indexes). When the lexical arm is active,
- * ranks with an in-memory boost from namespace alias/description
- * (`listNamespacesWithMetadata`). Vector-only searches skip metadata (no lexical query).
+ * Peer to {@link runHybridMemorySearch}: when `arms.nodes > 0`, aggregates memory-content hits by
+ * exact `memory.namespace`. When both `arms.nodes` and `arms.lexical` are &gt; 0, the nodes ranking
+ * and metadata ranking are fused with {@link fuseRrf} (metadata-only namespaces can surface).
+ * When `arms.nodes === 0` and `arms.lexical > 0`, ranks the catalog with
+ * {@link namespaceMetadataLexicalScore} only.
  *
- * Requires persistence capability `unscopedSearch`.
+ * Unscoped memory search requires persistence capability `unscopedSearch`.
  */
 export async function searchNamespaces(
   client: HybridMemorySearchClient,
@@ -284,12 +411,35 @@ export async function searchNamespaces(
   );
 
   const embeddingModel = context.embeddingModel;
-  const arms = input.arms ?? (embeddingModel !== undefined ? undefined : { lexical: 1, vector: 0 });
-  const lexicalWeight = arms?.lexical ?? 1;
-  const vectorWeight = arms?.vector ?? 1;
+  const { nodesWeight, lexicalWeight, vectorWeight, contentArms } = resolveNamespaceSearchArms(
+    input.arms,
+    embeddingModel,
+  );
+
+  if (nodesWeight <= 0 && lexicalWeight <= 0) {
+    throw new Error("searchNamespaces: at least one of arms.nodes or arms.lexical must be > 0");
+  }
+
+  const loadMetadata = async (): Promise<NamespaceMetadataForRank[]> => {
+    const listed = await Promise.resolve(client.persistence.listNamespacesWithMetadata());
+    return listed.map((m) => ({
+      namespace: m.namespace,
+      alias: m.alias,
+      description: m.description,
+    }));
+  };
+
+  // Lexical-only: catalog metadata ranking, no unscoped memory search.
+  if (nodesWeight <= 0) {
+    const metadata = await loadMetadata();
+    const namespaces = rankNamespacesFromMetadataOnly(query, metadata, { limit, under });
+    return { query, under, namespaces };
+  }
 
   if (lexicalWeight <= 0 && vectorWeight <= 0) {
-    throw new Error("searchNamespaces: at least one of arms.lexical or arms.vector must be > 0");
+    throw new Error(
+      "searchNamespaces: when arms.nodes > 0, at least one of arms.lexical or arms.vector must be > 0",
+    );
   }
 
   const primaryNamespace = (under ?? context.namespace) as NamespacePath;
@@ -336,7 +486,7 @@ export async function searchNamespaces(
     options: {
       topK: nodeTopK,
       neighbors: neighborOptionForSearch("off"),
-      ...(arms !== undefined ? { arms } : {}),
+      ...(contentArms !== undefined ? { arms: contentArms } : {}),
     },
   };
 
@@ -368,22 +518,27 @@ export async function searchNamespaces(
     kind: h.kind,
   }));
 
-  // Lexical arm only: boost with in-memory alias/description match. Vector-only skips metadata.
-  let metadata: NamespaceMetadataForRank[] | undefined;
-  if (lexicalWeight > 0) {
-    const listed = await Promise.resolve(client.persistence.listNamespacesWithMetadata());
-    metadata = listed.map((m) => ({
-      namespace: m.namespace,
-      alias: m.alias,
-      description: m.description,
-    }));
+  // Nodes arm: aggregate memory hits without multiplicative metadata boost.
+  const nodesRanked = rankNamespacesFromHits(rankable, {
+    limit: MAX_LIMIT,
+    ...(under !== null ? { under } : {}),
+    metadataBoost: 0,
+  });
+
+  if (lexicalWeight <= 0) {
+    return { query, under, namespaces: nodesRanked.slice(0, limit) };
   }
 
-  const namespaces = rankNamespacesFromHits(rankable, {
+  // Both arms: RRF-fuse nodes ranking with catalog metadata ranking.
+  const metadata = await loadMetadata();
+  const lexicalRanked = rankNamespacesFromMetadataOnly(query, metadata, {
+    limit: MAX_LIMIT,
+    under,
+  });
+  const namespaces = fuseNamespaceNodeAndLexicalArms(nodesRanked, lexicalRanked, {
+    nodesWeight,
+    lexicalWeight,
     limit,
-    query,
-    ...(under !== null ? { under } : {}),
-    ...(metadata !== undefined ? { metadata } : {}),
   });
 
   return { query, under, namespaces };

@@ -245,6 +245,7 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 | Method | Path | Action | Auth action |
 |--------|------|--------|-------------|
 | `POST` | `/databases/search` | Hybrid search | `read` |
+| `POST` | `/databases/search-namespaces` | Rank namespaces (arms-driven: nodes / lexical metadata) | `read` |
 | `POST` | `/databases/merge` | Merge memory node/edge | `write` |
 | `POST` | `/databases/delete-memory` | Delete memory by namespace/key | `write` |
 | `POST` | `/databases/provenance/head` | Provenance head root hex | `read` |

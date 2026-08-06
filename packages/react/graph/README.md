@@ -9,9 +9,10 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | Export | Role |
 |--------|------|
 | `MemoriesClientProvider` / `useMemoriesClient` / `useMemoriesDatabase` | Client + database focus + resolved ontology |
-| `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, create/rename/metadata/delete/suppress |
+| `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, CRUD/suppress, arms-driven search |
 | `MemoriesMemoryProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove |
 | `createServiceReactMemoriesClient` / `ReactMemoriesClient` | Service HTTP client + interface |
+| `DEFAULT_SEARCH_DEBOUNCE_MS` | Shared default debounce for namespace + memory search |
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |
 | `GraphProjectionProvider` / `useProjection` | Scene projection + chrome (reads payload/search/focus from memory provider) |
 | `GraphSearch` | Search input with hybrid query + optional deep-search toggle |

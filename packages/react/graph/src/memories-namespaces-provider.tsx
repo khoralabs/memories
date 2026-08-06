@@ -18,6 +18,8 @@ import {
   validateNamespaceSegment,
 } from "./lib/namespace-path.js";
 import { buildNamespaceTree, type NamespaceTreeNode } from "./lib/namespace-tree.js";
+import { DEFAULT_SEARCH_DEBOUNCE_MS } from "./lib/search-debounce.js";
+import type { NamespaceSearchArms, NamespaceSearchHitResult } from "./memories-client.js";
 import { useMemoriesClient, useMemoriesDatabase } from "./memories-client-provider.js";
 
 /**
@@ -166,6 +168,28 @@ export type MemoriesNamespacesValue = {
    */
   unsuppress: (input: { namespace: string }) => Promise<void>;
 
+  /**
+   * Debounced namespace search query. Empty clears {@link searchResults}.
+   * Behavior is driven by {@link searchArms} (nodes / lexical / vector).
+   */
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  /**
+   * Arm weights for namespace search (default `{ nodes: 1, lexical: 1 }`).
+   * - `nodes > 0` — unscoped memory search then rank by hits
+   * - `lexical > 0` with nodes — metadata alias/description boost
+   * - `nodes = 0`, `lexical > 0` — catalog metadata ranking only
+   */
+  searchArms: NamespaceSearchArms;
+  setSearchArms: (arms: NamespaceSearchArms) => void;
+  /** When set, only namespaces under this path (inclusive). `null` = whole DB. */
+  searchUnder: string | null;
+  setSearchUnder: (path: string | null) => void;
+  /** Last successful ranked namespace hits, or `null` when idle/empty query. */
+  searchResults: NamespaceSearchHitResult[] | null;
+  searchLoading: boolean;
+  searchError: string | null;
+
   /** Validate a single path segment; returns an error message or `null`. */
   validateSegment: typeof validateNamespaceSegment;
   /** Validate a full path (segments + max depth); returns an error message or `null`. */
@@ -176,6 +200,8 @@ export type MemoriesNamespacesValue = {
 
 const MemoriesNamespacesContext = createContext<MemoriesNamespacesValue | null>(null);
 
+const DEFAULT_SEARCH_ARMS: NamespaceSearchArms = { nodes: 1, lexical: 1 };
+
 export type MemoriesNamespacesProviderProps = PropsWithChildren<{
   /** Initial (and controlled) focused path. */
   namespace?: string;
@@ -183,6 +209,11 @@ export type MemoriesNamespacesProviderProps = PropsWithChildren<{
   scope?: GraphScope;
   /** Catalog root path for default scopes and delete fallback. */
   namespaceRoot?: string;
+  /**
+   * Debounce for namespace search queries in ms.
+   * @default DEFAULT_SEARCH_DEBOUNCE_MS
+   */
+  searchDebounceMs?: number;
 }>;
 
 function resolveCreatePath(input: CreateNamespaceInput): string {
@@ -221,6 +252,7 @@ export function MemoriesNamespacesProvider({
   namespace: namespaceProp = DEFAULT_MEMORIES_NAMESPACE,
   scope: scopeProp = "exact",
   namespaceRoot: namespaceRootProp = DEFAULT_NAMESPACE_ROOT,
+  searchDebounceMs = DEFAULT_SEARCH_DEBOUNCE_MS,
 }: MemoriesNamespacesProviderProps) {
   const client = useMemoriesClient();
   const { database } = useMemoriesDatabase();
@@ -237,6 +269,13 @@ export function MemoriesNamespacesProvider({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchArms, setSearchArms] = useState<NamespaceSearchArms>(DEFAULT_SEARCH_ARMS);
+  const [searchUnder, setSearchUnder] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<NamespaceSearchHitResult[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   useEffect(() => {
     setNamespace(namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE);
   }, [namespaceProp]);
@@ -249,11 +288,17 @@ export function MemoriesNamespacesProvider({
     setNamespaceRoot(namespaceRootProp.trim() || DEFAULT_NAMESPACE_ROOT);
   }, [namespaceRootProp]);
 
-  // Reset focus when the focused database changes.
+  // Reset focus + search when the focused database changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on DB switch
   useEffect(() => {
     setNamespace(namespaceProp.trim() || DEFAULT_MEMORIES_NAMESPACE);
     setScopeState(scopeProp);
+    setSearchQuery("");
+    setSearchResults(null);
+    setSearchError(null);
+    setSearchLoading(false);
+    setSearchUnder(null);
+    setSearchArms(DEFAULT_SEARCH_ARMS);
   }, [databaseKey]);
 
   const paths = useMemo(() => namespacePathsFromEntries(entries), [entries]);
@@ -302,6 +347,44 @@ export function MemoriesNamespacesProvider({
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      setSearchError(null);
+      return;
+    }
+    const ac = new AbortController();
+    const id = window.setTimeout(() => {
+      void (async () => {
+        setSearchLoading(true);
+        setSearchError(null);
+        try {
+          const result = await client.searchNamespaces({
+            query: q,
+            namespace: namespace.trim() || DEFAULT_MEMORIES_NAMESPACE,
+            signal: ac.signal,
+            ...(searchUnder !== null ? { under: searchUnder } : {}),
+            arms: searchArms,
+          });
+          if (ac.signal.aborted) return;
+          setSearchResults(result.namespaces);
+        } catch (e) {
+          if (ac.signal.aborted) return;
+          setSearchResults(null);
+          setSearchError(e instanceof Error ? e.message : String(e));
+        } finally {
+          if (!ac.signal.aborted) setSearchLoading(false);
+        }
+      })();
+    }, searchDebounceMs);
+    return () => {
+      window.clearTimeout(id);
+      ac.abort();
+    };
+  }, [client, searchQuery, searchArms, searchUnder, namespace, searchDebounceMs]);
 
   const create = useCallback(
     async (input: CreateNamespaceInput) => {
@@ -410,6 +493,15 @@ export function MemoriesNamespacesProvider({
       remove,
       suppress,
       unsuppress,
+      searchQuery,
+      setSearchQuery,
+      searchArms,
+      setSearchArms,
+      searchUnder,
+      setSearchUnder,
+      searchResults,
+      searchLoading,
+      searchError,
       validateSegment: validateNamespaceSegment,
       validatePath: validateNamespacePath,
       joinPath: joinNamespacePath,
@@ -434,6 +526,12 @@ export function MemoriesNamespacesProvider({
       remove,
       suppress,
       unsuppress,
+      searchQuery,
+      searchArms,
+      searchUnder,
+      searchResults,
+      searchLoading,
+      searchError,
     ],
   );
 

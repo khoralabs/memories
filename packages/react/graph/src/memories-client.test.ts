@@ -422,6 +422,80 @@ describe("createServiceReactMemoriesClient", () => {
     expect(postJson).toHaveBeenCalledTimes(2);
   });
 
+  test("searchNamespaces posts /databases/search-namespaces", async () => {
+    const postJson = mock(async (path: string, body: unknown) => {
+      expect(path).toBe("/databases/search-namespaces");
+      expect(body).toEqual({
+        database,
+        query: "inbox",
+        under: "ops",
+        arms: { nodes: 0, lexical: 1 },
+        limit: 5,
+      });
+      return {
+        query: "inbox",
+        under: "ops",
+        namespaces: [
+          {
+            namespace: "ops/mail",
+            lineage: ["ops", "ops/mail"],
+            score: 1,
+            hitCount: 0,
+            scoreSum: 1,
+            scoreMax: 1,
+            topHits: [],
+          },
+        ],
+      };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+    await expect(
+      client.searchNamespaces({
+        query: "inbox",
+        under: "ops",
+        arms: { nodes: 0, lexical: 1 },
+        limit: 5,
+      }),
+    ).resolves.toEqual({
+      query: "inbox",
+      under: "ops",
+      namespaces: [
+        {
+          namespace: "ops/mail",
+          lineage: ["ops", "ops/mail"],
+          score: 1,
+          hitCount: 0,
+          scoreSum: 1,
+          scoreMax: 1,
+          topHits: [],
+        },
+      ],
+    });
+  });
+
+  test("searchNamespaces returns empty for blank query without calling service", async () => {
+    const postJson = mock(async () => {
+      throw new Error("should not be called");
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+    await expect(client.searchNamespaces({ query: "  " })).resolves.toEqual({
+      query: "",
+      under: null,
+      namespaces: [],
+    });
+    expect(postJson).not.toHaveBeenCalled();
+  });
+
   test("mergeMemory posts /databases/merge", async () => {
     const postJson = mock(async (path: string, body: unknown) => {
       expect(path).toBe("/databases/merge");

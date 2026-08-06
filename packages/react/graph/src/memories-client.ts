@@ -40,6 +40,31 @@ export type GraphSearchResult = {
   }>;
 };
 
+/** Arm weights for {@link ReactMemoriesClient.searchNamespaces}. */
+export type NamespaceSearchArms = {
+  nodes?: number;
+  lexical?: number;
+  vector?: number;
+};
+
+/** Ranked namespace hit from {@link ReactMemoriesClient.searchNamespaces}. */
+export type NamespaceSearchHitResult = {
+  namespace: string;
+  lineage: string[];
+  score: number;
+  hitCount: number;
+  scoreSum: number;
+  scoreMax: number;
+  topHits: Array<{ memory_key: string; score: number; kind: "node" | "edge" }>;
+};
+
+/** Result from {@link ReactMemoriesClient.searchNamespaces}. */
+export type NamespaceSearchClientResult = {
+  query: string;
+  under: string | null;
+  namespaces: NamespaceSearchHitResult[];
+};
+
 /**
  * Host graph backend contract for React graph UI.
  *
@@ -64,6 +89,20 @@ export type ReactMemoriesClient = {
     scope?: "exact" | "subtree";
     signal?: AbortSignal;
   }): Promise<GraphSearchResult>;
+
+  /**
+   * Rank namespaces via arms-driven search (`POST /databases/search-namespaces`).
+   * @see NamespaceSearchArms
+   */
+  searchNamespaces(input: {
+    query: string;
+    namespace?: string;
+    under?: string;
+    limit?: number;
+    nodeTopK?: number;
+    arms?: NamespaceSearchArms;
+    signal?: AbortSignal;
+  }): Promise<NamespaceSearchClientResult>;
 
   getEdgePreview(input: {
     namespace: string;
@@ -310,6 +349,31 @@ export function createServiceReactMemoriesClient(
         keys,
         hitSnippets,
         edgeHitSnippets,
+      };
+    },
+
+    async searchNamespaces(input) {
+      const query = input.query.trim();
+      if (query.length === 0) {
+        return { query: "", under: input.under?.trim() || null, namespaces: [] };
+      }
+      const response = await service.postJson<{
+        query: string;
+        under: string | null;
+        namespaces: NamespaceSearchHitResult[];
+      }>("/databases/search-namespaces", {
+        database,
+        query,
+        ...(input.namespace !== undefined ? { namespace: input.namespace } : {}),
+        ...(input.under !== undefined ? { under: input.under } : {}),
+        ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        ...(input.nodeTopK !== undefined ? { nodeTopK: input.nodeTopK } : {}),
+        ...(input.arms !== undefined ? { arms: input.arms } : {}),
+      });
+      return {
+        query: response.query,
+        under: response.under,
+        namespaces: response.namespaces,
       };
     },
 

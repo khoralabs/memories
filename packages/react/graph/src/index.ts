@@ -135,6 +135,7 @@ export {
   graphSearchSummaryLine,
 } from "./graph-search.js";
 export type { MemoriesGraphNamespaceEntry } from "./lib/namespace-entries.js";
+export { DEFAULT_SEARCH_DEBOUNCE_MS } from "./lib/search-debounce.js";
 export {
   installBenignResizeObserverErrorSuppression,
   isBenignResizeObserverError,
@@ -144,6 +145,9 @@ export {
   createServiceReactMemoriesClient,
   type EdgePreviewJson,
   type GraphSearchResult,
+  type NamespaceSearchArms,
+  type NamespaceSearchClientResult,
+  type NamespaceSearchHitResult,
   type ReactMemoriesClient,
 } from "./memories-client.js";
 export {

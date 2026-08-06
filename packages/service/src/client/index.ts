@@ -62,6 +62,8 @@ export {
   type DatabaseProvenanceHeadResponse,
   type DatabaseProvenanceTimestampRequest,
   type DatabaseProvenanceTimestampResponse,
+  type DatabaseSearchNamespacesRequest,
+  type DatabaseSearchNamespacesResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
   type DatabaseSourceMapTextPreviewRequest,

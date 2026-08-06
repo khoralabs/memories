@@ -109,6 +109,34 @@ export type DatabaseSearchResponse = {
   vectorSearchMethod?: "knn" | "ann";
 };
 
+export type DatabaseSearchNamespacesRequest = DatabaseScopedBody<{
+  /** Query text (required). */
+  query: string;
+  /**
+   * Primary namespace for SearchParams when `under` is unset (required by unscoped search).
+   * Defaults to `"_global_"` on the handler when omitted.
+   */
+  namespace?: string;
+  /** Optional path filter after aggregation (inclusive). */
+  under?: string;
+  limit?: number;
+  nodeTopK?: number;
+  arms?: { nodes?: number; lexical?: number; vector?: number };
+}>;
+export type DatabaseSearchNamespacesResponse = {
+  query: string;
+  under: string | null;
+  namespaces: Array<{
+    namespace: string;
+    lineage: string[];
+    score: number;
+    hitCount: number;
+    scoreSum: number;
+    scoreMax: number;
+    topHits: Array<{ memory_key: string; score: number; kind: "node" | "edge" }>;
+  }>;
+};
+
 export type DatabaseMergeRequest = DatabaseScopedBody<{
   params: Record<string, unknown>;
   intentSnapshotId?: string;

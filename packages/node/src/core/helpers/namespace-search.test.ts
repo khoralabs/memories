@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { SearchHit, SearchParams } from "../api/search.js";
 import type { HybridMemorySearchClient } from "./memory-search-pipeline.js";
 import {
+  fuseNamespaceNodeAndLexicalArms,
+  type NamespaceSearchHit,
   namespaceLineage,
   namespaceMetadataLexicalScore,
   type RankableMemoryHit,
@@ -141,6 +143,103 @@ describe("rankNamespacesFromHits", () => {
       metadataBoost: 0,
     });
     expect(ranked[0]?.namespace).toBe("ops/b");
+  });
+});
+
+describe("fuseNamespaceNodeAndLexicalArms", () => {
+  test("surfaces metadata-only namespaces via RRF", () => {
+    const nodes: NamespaceSearchHit[] = [
+      {
+        namespace: "ops/b",
+        lineage: ["ops", "ops/b"],
+        score: 1,
+        hitCount: 1,
+        scoreSum: 0.9,
+        scoreMax: 0.9,
+        topHits: [{ memory_key: "x", score: 0.9, kind: "node" }],
+      },
+    ];
+    const lexical: NamespaceSearchHit[] = [
+      {
+        namespace: "ops/a",
+        lineage: ["ops", "ops/a"],
+        score: 1,
+        hitCount: 0,
+        scoreSum: 1,
+        scoreMax: 1,
+        topHits: [],
+      },
+      {
+        namespace: "ops/b",
+        lineage: ["ops", "ops/b"],
+        score: 0.2,
+        hitCount: 0,
+        scoreSum: 0.2,
+        scoreMax: 0.2,
+        topHits: [],
+      },
+    ];
+    const fused = fuseNamespaceNodeAndLexicalArms(nodes, lexical, {
+      nodesWeight: 1,
+      lexicalWeight: 1,
+      limit: 10,
+    });
+    expect(fused.map((n) => n.namespace).sort()).toEqual(["ops/a", "ops/b"]);
+    const a = fused.find((n) => n.namespace === "ops/a");
+    expect(a?.hitCount).toBe(0);
+    expect(a?.topHits).toEqual([]);
+    const b = fused.find((n) => n.namespace === "ops/b");
+    expect(b?.hitCount).toBe(1);
+    expect(b?.topHits[0]?.memory_key).toBe("x");
+  });
+
+  test("higher nodes weight prefers nodes ranking order", () => {
+    const nodes: NamespaceSearchHit[] = [
+      {
+        namespace: "ns/strong",
+        lineage: ["ns", "ns/strong"],
+        score: 1,
+        hitCount: 1,
+        scoreSum: 1,
+        scoreMax: 1,
+        topHits: [],
+      },
+      {
+        namespace: "ns/weak",
+        lineage: ["ns", "ns/weak"],
+        score: 0.5,
+        hitCount: 1,
+        scoreSum: 0.5,
+        scoreMax: 0.5,
+        topHits: [],
+      },
+    ];
+    const lexical: NamespaceSearchHit[] = [
+      {
+        namespace: "ns/weak",
+        lineage: ["ns", "ns/weak"],
+        score: 1,
+        hitCount: 0,
+        scoreSum: 1,
+        scoreMax: 1,
+        topHits: [],
+      },
+      {
+        namespace: "ns/strong",
+        lineage: ["ns", "ns/strong"],
+        score: 0.1,
+        hitCount: 0,
+        scoreSum: 0.1,
+        scoreMax: 0.1,
+        topHits: [],
+      },
+    ];
+    const fused = fuseNamespaceNodeAndLexicalArms(nodes, lexical, {
+      nodesWeight: 10,
+      lexicalWeight: 0.1,
+      limit: 2,
+    });
+    expect(fused[0]?.namespace).toBe("ns/strong");
   });
 });
 
@@ -315,5 +414,103 @@ describe("searchNamespaces", () => {
       { content: { text: "hello" }, arms: { lexical: 0, vector: 1 } },
     );
     expect(listed).toBe(false);
+  });
+
+  test("nodes+lexical RRF surfaces metadata-only namespace", async () => {
+    const client = mockClient({
+      search: () => ({
+        hits: [mockHit({ namespace: "ops/hits", key: "k1", score: 0.4 })],
+      }),
+      listNamespacesWithMetadata: () => [
+        { namespace: "ops/hits", alias: null, description: "" },
+        { namespace: "ops/inbox", alias: "Primary Inbox", description: "" },
+      ],
+    });
+
+    const result = await searchNamespaces(
+      client,
+      { namespace: "_root_" },
+      {
+        content: { text: "inbox" },
+        arms: { nodes: 1, lexical: 1, vector: 0 },
+        under: "ops",
+        limit: 10,
+      },
+    );
+
+    expect(result.namespaces.map((n) => n.namespace).sort()).toEqual(["ops/hits", "ops/inbox"]);
+    const inbox = result.namespaces.find((n) => n.namespace === "ops/inbox");
+    expect(inbox?.hitCount).toBe(0);
+    expect(inbox?.topHits).toEqual([]);
+  });
+
+  test("nodes=0 lexical-only ranks catalog without calling search", async () => {
+    let searched = false;
+    const client = mockClient({
+      search: () => {
+        searched = true;
+        return { hits: [] };
+      },
+      listNamespacesWithMetadata: () => [
+        { namespace: "ops/mail", alias: "Primary Inbox", description: "" },
+        { namespace: "ops/other", alias: null, description: "misc" },
+        { namespace: "z/skip", alias: "Inbox", description: "" },
+      ],
+    });
+
+    const result = await searchNamespaces(
+      client,
+      { namespace: "_root_" },
+      {
+        content: { text: "inbox" },
+        arms: { nodes: 0, lexical: 1 },
+        under: "ops",
+        limit: 10,
+      },
+    );
+
+    expect(searched).toBe(false);
+    expect(result.namespaces.map((n) => n.namespace)).toEqual(["ops/mail"]);
+    expect(result.namespaces[0]?.topHits).toEqual([]);
+    expect(result.namespaces[0]?.hitCount).toBe(0);
+    expect(result.namespaces[0]?.score).toBeGreaterThan(0);
+  });
+
+  test("nodes>0 with lexical=0 skips metadata boost listing", async () => {
+    let listed = false;
+    const client = mockClient({
+      search: () => ({
+        hits: [mockHit({ namespace: "ns", key: "k1", score: 0.5 })],
+      }),
+      listNamespacesWithMetadata: () => {
+        listed = true;
+        return [{ namespace: "ns", alias: "hello", description: "" }];
+      },
+    });
+
+    const cacheKey = `_root_\nsearchEntireDatabase\nhello`;
+    await searchNamespaces(
+      client,
+      {
+        namespace: "_root_",
+        embeddingModel: {} as never,
+        embeddingCache: new Map([[cacheKey, [0.1, 0.2]]]),
+      },
+      { content: { text: "hello" }, arms: { nodes: 1, lexical: 0, vector: 1 } },
+    );
+    expect(listed).toBe(false);
+  });
+
+  test("throws when nodes and lexical are both zero", async () => {
+    const client = mockClient({
+      search: () => ({ hits: [] }),
+    });
+    await expect(
+      searchNamespaces(
+        client,
+        { namespace: "_root_" },
+        { content: { text: "x" }, arms: { nodes: 0, lexical: 0, vector: 1 } },
+      ),
+    ).rejects.toThrow(/arms\.nodes or arms\.lexical/);
   });
 });

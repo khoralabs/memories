@@ -13,6 +13,7 @@ import {
   type SearchParams,
   searchAsync,
 } from "@khoralabs/memories-node";
+import { searchNamespaces } from "@khoralabs/memories-node/helpers";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import { buildNamespaceGraphLayoutFromProjectionInput } from "@khoralabs/memories-node/projections";
 import {
@@ -34,6 +35,7 @@ import {
   type DatabaseMergeRequest,
   type DatabaseNamespacesRequest,
   type DatabaseProjectionInputRequest,
+  type DatabaseSearchNamespacesRequest,
   type DatabaseSearchRequest,
   type DatabaseSourceMapTextPreviewRequest,
   type DatabaseSuppressMemoryRequest,
@@ -247,6 +249,55 @@ export async function handleDatabaseSearch(
     ...(result.vectorSearchMethod !== undefined
       ? { vectorSearchMethod: result.vectorSearchMethod }
       : {}),
+    database,
+  });
+}
+
+export async function handleDatabaseSearchNamespaces(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as DatabaseSearchNamespacesRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.query !== "string") {
+    throw new HttpError("query is required", 400);
+  }
+  const query = scoped.query.trim();
+  const under =
+    typeof scoped.under === "string" && scoped.under.trim().length > 0
+      ? scoped.under.trim()
+      : undefined;
+  const namespace =
+    typeof scoped.namespace === "string" && scoped.namespace.trim().length > 0
+      ? scoped.namespace.trim()
+      : (under ?? "_global_");
+
+  const emptyOntology = { nodeLabels: {}, edgeLabels: {} } as const;
+  const client =
+    handle.sync !== undefined
+      ? new MemoriesClient(handle.sync.syncPersistence, emptyOntology, {
+          telemetry: handle.telemetry,
+        })
+      : new MemoriesClientAsync(handle.persistence, emptyOntology, {
+          telemetry: handle.telemetry,
+        });
+
+  const result = await searchNamespaces(
+    client,
+    { namespace },
+    {
+      content: { text: query },
+      ...(under !== undefined ? { under } : {}),
+      ...(scoped.limit !== undefined ? { limit: scoped.limit } : {}),
+      ...(scoped.nodeTopK !== undefined ? { nodeTopK: scoped.nodeTopK } : {}),
+      ...(scoped.arms !== undefined ? { arms: scoped.arms } : {}),
+    },
+  );
+
+  return Response.json({
+    query: result.query,
+    under: result.under,
+    namespaces: result.namespaces,
     database,
   });
 }

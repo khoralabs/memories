@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import { DEFAULT_SEARCH_DEBOUNCE_MS } from "./lib/search-debounce.js";
 import { useMemoriesClient, useMemoriesDatabase } from "./memories-client-provider.js";
 import { useMemoriesNamespaces } from "./memories-namespaces-provider.js";
 import type { GraphPayload, GraphSearchState } from "./projection-types.js";
@@ -101,7 +102,6 @@ export type MemoryFeatures = {
   properties?: Record<string, unknown> | null;
 };
 
-const SEARCH_DEBOUNCE_MS = 320;
 const GRAPH_SEARCH_MAX_VECTOR_DISTANCE = 0.65;
 
 function emptyPayload(namespace: string): GraphPayload {
@@ -209,14 +209,23 @@ export type MemoriesMemoryValue = {
 
 const MemoriesMemoryContext = createContext<MemoriesMemoryValue | null>(null);
 
-/** Props for {@link MemoriesMemoryProvider} (children only; scope comes from namespaces). */
-export type MemoriesMemoryProviderProps = PropsWithChildren;
+/** Props for {@link MemoriesMemoryProvider} (scope comes from namespaces). */
+export type MemoriesMemoryProviderProps = PropsWithChildren<{
+  /**
+   * Debounce for graph search queries in ms.
+   * @default DEFAULT_SEARCH_DEBOUNCE_MS
+   */
+  searchDebounceMs?: number;
+}>;
 
 /**
  * Owns graph payload, search, and memory focus/mutations for the current namespace scope.
  * Requires {@link MemoriesClientProvider} and {@link MemoriesNamespacesProvider} above.
  */
-export function MemoriesMemoryProvider({ children }: MemoriesMemoryProviderProps) {
+export function MemoriesMemoryProvider({
+  children,
+  searchDebounceMs = DEFAULT_SEARCH_DEBOUNCE_MS,
+}: MemoriesMemoryProviderProps) {
   const client = useMemoriesClient();
   const { database } = useMemoriesDatabase();
   const { namespace, scope } = useMemoriesNamespaces();
@@ -322,12 +331,12 @@ export function MemoriesMemoryProvider({ children }: MemoriesMemoryProviderProps
           setSearchLoading(false);
         }
       })();
-    }, SEARCH_DEBOUNCE_MS);
+    }, searchDebounceMs);
     return () => {
       window.clearTimeout(id);
       ac.abort();
     };
-  }, [client, searchQuery, namespace, scope]);
+  }, [client, searchQuery, namespace, scope, searchDebounceMs]);
 
   const memories = useMemo(() => catalogFromPayload(payload), [payload]);
   const effectiveGraphSearch = graphSearchOverride ?? graphSearch;
