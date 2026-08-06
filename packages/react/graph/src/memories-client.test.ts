@@ -579,26 +579,4 @@ describe("createServiceReactMemoriesClient", () => {
       content: [{ sourceKey: "body", text: "hi" }],
     });
   });
-
-  test("omits investigate unless provided", async () => {
-    const without = createServiceReactMemoriesClient({
-      baseUrl: "http://localhost",
-      database,
-      reads: createMockReads(),
-      service: createMockService(),
-    });
-    expect(without.investigate).toBeUndefined();
-
-    const investigate = mock(async () => ({ answer: "yes" }));
-    const withInvestigate = createServiceReactMemoriesClient({
-      baseUrl: "http://localhost",
-      database,
-      reads: createMockReads(),
-      service: createMockService(),
-      investigate,
-    });
-    await expect(
-      withInvestigate.investigate?.({ namespace: "ns", question: "q?" }),
-    ).resolves.toEqual({ answer: "yes" });
-  });
 });

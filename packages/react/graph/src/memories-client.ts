@@ -9,14 +9,11 @@ import {
   type RemoteMemoriesReadClient,
 } from "@khoralabs/memories-service/client";
 
-import type { InvestigatorAnswer } from "./graph-investigator-types.js";
 import type {
   MemoriesGraphNamespaceEntry,
   MemoriesGraphNamespacesPayload,
 } from "./lib/namespace-entries.js";
 import type { GraphPayload } from "./projection-types.js";
-
-export type { InvestigatorAnswer, InvestigatorCitation } from "./graph-investigator-types.js";
 
 export type EdgePreviewJson = {
   edgeId?: string;
@@ -168,13 +165,6 @@ export type ReactMemoriesClient = {
     labels: Array<{ kind: string; props: Record<string, unknown> }>;
     content: Array<{ sourceKey: string; text: string | null }>;
   }>;
-
-  /** Sync investigate. Omit when the host has no investigate route. */
-  investigate?(input: {
-    namespace: string;
-    question: string;
-    signal?: AbortSignal;
-  }): Promise<InvestigatorAnswer>;
 };
 
 const QUALIFIED_MEMORY_KEY_SEP = "::";
@@ -198,8 +188,6 @@ export type CreateServiceReactMemoriesClientOptions = {
    * Bare memories-service catalog has no root field — pass this (or provider prop).
    */
   namespaceRoot?: string;
-  /** When set, exposed as {@link ReactMemoriesClient.investigate}. */
-  investigate?: ReactMemoriesClient["investigate"];
   /** Test seam — defaults to {@link createRemoteMemoriesReadClient}. */
   reads?: RemoteMemoriesReadClient;
   /** Test seam — defaults to {@link MemoriesServiceClient}. */
@@ -475,8 +463,6 @@ export function createServiceReactMemoriesClient(
         ...(input.maxChars !== undefined ? { maxChars: input.maxChars } : {}),
       });
     },
-
-    ...(options.investigate !== undefined ? { investigate: options.investigate } : {}),
   };
 
   return client;

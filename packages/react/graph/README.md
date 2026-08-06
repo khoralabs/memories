@@ -115,7 +115,7 @@ function MemoriesGraphPage() {
 }
 ```
 
-Optional `ReactMemoriesClient.investigate` remains for host-built agents; this package does not ship an investigator UI. Hosts can still drive subgraph highlighting via `useGraphMemoriesSearch().setGraphSearchOverride`.
+Hosts can still drive subgraph highlighting via `useGraphMemoriesSearch().setGraphSearchOverride` (e.g. after calling `@khoralabs/memories-agents` or a host investigate route).
 
 ## Development
 

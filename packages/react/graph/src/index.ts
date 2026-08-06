@@ -123,8 +123,6 @@ export {
   createServiceReactMemoriesClient,
   type EdgePreviewJson,
   type GraphSearchResult,
-  type InvestigatorAnswer,
-  type InvestigatorCitation,
   type NamespaceSearchArms,
   type NamespaceSearchClientResult,
   type NamespaceSearchHitResult,
