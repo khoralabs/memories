@@ -63,25 +63,11 @@ export {
   useGraphCameraChrome,
 } from "./graph-camera-chrome.js";
 export { GraphFetchError, type GraphFetchErrorProps } from "./graph-fetch-error.js";
-export {
-  GraphInvestigatorAnswer,
-  GraphInvestigatorAnswerOverlay,
-  GraphInvestigatorProvider,
-  type GraphInvestigatorProviderProps,
-  type GraphInvestigatorValue,
-  type InvestigatorAnswer,
-  type InvestigatorCitation,
-  useGraphInvestigator,
-} from "./graph-investigator.js";
-export {
-  type CreateSyncInvestigatorClientOptions,
-  createJobStreamInvestigatorClient,
-  createSyncInvestigatorClient,
-  type GraphInvestigatorClient,
-  type GraphInvestigatorSession,
-  type JobStreamInvestigationEvent,
-} from "./graph-investigator-client.js";
 export { GraphLoading, type GraphLoadingProps } from "./graph-loading.js";
+export {
+  GraphNamespaceSearch,
+  type GraphNamespaceSearchProps,
+} from "./graph-namespace-search.js";
 export {
   GraphNamespaceSelector,
   type GraphNamespaceSelectorProps,
@@ -129,11 +115,7 @@ export type {
   GraphSceneEdgeRender,
   GraphSceneNodeRender,
 } from "./graph-scene-slots.js";
-export {
-  GraphSearch,
-  type GraphSearchProps,
-  graphSearchSummaryLine,
-} from "./graph-search.js";
+export { GraphSearch, type GraphSearchProps } from "./graph-search.js";
 export type { MemoriesGraphNamespaceEntry } from "./lib/namespace-entries.js";
 export { DEFAULT_SEARCH_DEBOUNCE_MS } from "./lib/search-debounce.js";
 export {
@@ -145,6 +127,8 @@ export {
   createServiceReactMemoriesClient,
   type EdgePreviewJson,
   type GraphSearchResult,
+  type InvestigatorAnswer,
+  type InvestigatorCitation,
   type NamespaceSearchArms,
   type NamespaceSearchClientResult,
   type NamespaceSearchHitResult,
@@ -197,6 +181,14 @@ export type {
   GraphSceneResolvedOverlay,
 } from "./scene.js";
 export { GraphScene, resolveGraphSceneOverlay } from "./scene.js";
+export {
+  type GraphMemoriesSearchValue,
+  type GraphNamespacesSearchValue,
+  graphNamespaceSearchSummaryLine,
+  graphSearchSummaryLine,
+  useGraphMemoriesSearch,
+  useGraphNamespacesSearch,
+} from "./use-graph-search.js";
 export type {
   GraphProjectionProviderProps,
   GraphScope,

@@ -243,7 +243,7 @@ Use `defineOntology` / `mergeOntologies`. The old `canonicalOntology` export is 
 | `@khoralabs/memories-agents/adapter` | Domain payload → memory draft |
 | `@khoralabs/memories-node/autolink` | `integrateNewMemoryIntoGraph` — search, link patch, merge |
 | `@khoralabs/memories-service` | Multi-tenant open/list/delete, placement, HTTP, auth |
-| `@khoralabs/memories-react-graph` | React 3D graph: search, namespaces, investigator overlay |
+| `@khoralabs/memories-react-graph` | React 3D graph: search, namespaces, memory preview |
 
 Wire agents with `@khoralabs/agent-capabilities` (`createAgentRegistry`, tool loops). Each package README has package-specific usage.
 

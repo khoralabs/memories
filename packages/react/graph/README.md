@@ -1,6 +1,6 @@
 # @khoralabs/memories-react-graph
 
-React components for exploring a memories knowledge graph in 3D: hybrid search, namespace selection, memory preview, and an optional investigator Q&A overlay.
+React components for exploring a memories knowledge graph in 3D: hybrid search, namespace selection, and memory preview.
 
 Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database by itself — mount `MemoriesClientProvider` with a `ReactMemoriesClient` (or `createClient` factory for database switching), then namespaces + memory providers for catalog/focus/CRUD.
 
@@ -11,15 +11,14 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | `MemoriesClientProvider` / `useMemoriesClient` / `useMemoriesDatabase` | Client + database focus + resolved ontology |
 | `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, CRUD/suppress, arms-driven search |
 | `MemoriesMemoryProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove |
+| `useGraphMemoriesSearch` / `useGraphNamespacesSearch` | Thin chrome slices of provider search state |
 | `createServiceReactMemoriesClient` / `ReactMemoriesClient` | Service HTTP client + interface |
 | `DEFAULT_SEARCH_DEBOUNCE_MS` | Shared default debounce for namespace + memory search |
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |
 | `GraphProjectionProvider` / `useProjection` | Scene projection + chrome (reads payload/search/focus from memory provider) |
-| `GraphSearch` | Search input with hybrid query + optional deep-search toggle |
+| `GraphSearch` / `GraphNamespaceSearch` | Memory / namespace search inputs |
 | `GraphNamespaceSelector` / `GraphNamespaceTree` | Namespace picker / tree (read namespaces context) |
 | `AddNamespaceButton` / `AddMemoryButton` / `RefreshGraphButton` | Compound chrome buttons (`.Tooltip` + `Button` props) |
-| `GraphInvestigatorProvider` / `GraphInvestigatorAnswer` | Investigator Q&A overlay (requires a `GraphInvestigatorClient`) |
-| `createSyncInvestigatorClient` / `createJobStreamInvestigatorClient` | Sync POST or job+SSE investigator transports |
 | `GraphPreviewDock` | Selected memory preview panel |
 | `GraphLoading`, `GraphFetchError` | Loading and error states |
 
@@ -30,13 +29,15 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 1. Point at memories-service (`createServiceReactMemoriesClient`) or implement `ReactMemoriesClient`.
 2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesMemoryProvider` → `GraphProjectionProvider`.
 3. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
-4. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Search uses the same scope via `useMemoriesMemory`.
+4. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Search uses the same scope via `useMemoriesMemory` / `GraphSearch`.
+5. Namespace search (`GraphNamespaceSearch`) is arms-driven; tune with `useGraphNamespacesSearch().setSearchArms` (e.g. `{ nodes: 0, lexical: 1 }` for catalog-only).
 
 ```tsx
 import {
   AddMemoryButton,
   AddNamespaceButton,
   createServiceReactMemoriesClient,
+  GraphNamespaceSearch,
   GraphProjectionProvider,
   GraphScene,
   GraphSearch,
@@ -93,8 +94,9 @@ function MemoriesGraphPage() {
           <GraphProjectionProvider>
             <CreateNamespaceControl />
             <CreateMemoryControl />
-            <GraphScene />
+            <GraphNamespaceSearch />
             <GraphSearch />
+            <GraphScene />
           </GraphProjectionProvider>
         </MemoriesMemoryProvider>
       </MemoriesNamespacesProvider>
@@ -103,40 +105,7 @@ function MemoriesGraphPage() {
 }
 ```
 
-### Investigator client
-
-`GraphInvestigatorProvider` is transport-agnostic: pass a `GraphInvestigatorClient` that starts an investigation and reports progress, completion, or errors via callbacks.
-
-```tsx
-import {
-  GraphInvestigatorProvider,
-  createSyncInvestigatorClient,
-  createServiceReactMemoriesClient,
-  MemoriesMemoryProvider,
-} from "@khoralabs/memories-react-graph";
-
-const memoriesClient = createServiceReactMemoriesClient({
-  baseUrl: "https://memories.example",
-  database: { kind: "account", ownerKey: "user-1" },
-  investigate: async ({ namespace, question }) => {
-    return { answer: "…" };
-  },
-});
-const investigatorClient = createSyncInvestigatorClient({ client: memoriesClient });
-
-<MemoriesClientProvider client={memoriesClient}>
-  <MemoriesNamespacesProvider>
-    <MemoriesMemoryProvider>
-      <GraphInvestigatorProvider client={investigatorClient}>
-        <GraphSearch />
-        <GraphInvestigatorAnswerOverlay />
-      </GraphInvestigatorProvider>
-    </MemoriesMemoryProvider>
-  </MemoriesNamespacesProvider>
-</MemoriesClientProvider>
-```
-
-For async job + SSE backends, use `createJobStreamInvestigatorClient` with host-specific `startJob`, `streamUrl`, and `parseEvent` hooks.
+Optional `ReactMemoriesClient.investigate` remains for host-built agents; this package does not ship an investigator UI. Hosts can still drive subgraph highlighting via `useGraphMemoriesSearch().setGraphSearchOverride`.
 
 ## Development
 

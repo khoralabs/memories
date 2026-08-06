@@ -16,6 +16,8 @@ import type {
 } from "./lib/namespace-entries.js";
 import type { GraphPayload } from "./projection-types.js";
 
+export type { InvestigatorAnswer, InvestigatorCitation } from "./graph-investigator-types.js";
+
 export type EdgePreviewJson = {
   edgeId?: string;
   fromKey?: string;

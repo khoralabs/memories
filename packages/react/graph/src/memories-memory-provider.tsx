@@ -151,8 +151,8 @@ export type MemoriesMemoryValue = {
   /** Debounced search hits for the current namespace/scope, or `null` when empty/idle. */
   graphSearch: GraphSearchState | null;
   /**
-   * Host/investigator override; when set, replaces debounced `graphSearch` for
-   * subgraph activation (see `effectiveGraphSearch`).
+   * Host override; when set, replaces debounced `graphSearch` for subgraph
+   * activation (see `effectiveGraphSearch`). Useful for host agents.
    */
   graphSearchOverride: GraphSearchState | null;
   setGraphSearchOverride: (s: GraphSearchState | null) => void;

@@ -1,21 +1,22 @@
-import { ScanSearchIcon } from "lucide-react";
+import { FolderSearchIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group.js";
 import { Spinner } from "@/components/ui/spinner.js";
 import { cn } from "@/lib/utils";
-import { useGraphMemoriesSearch } from "./use-graph-search.js";
+import { useGraphNamespacesSearch } from "./use-graph-search.js";
 
-export type GraphSearchProps = {
+export type GraphNamespaceSearchProps = {
   className?: string;
   inputProps?: ComponentProps<typeof InputGroupInput>;
 };
 
 /**
- * Memory search row; reads {@link useGraphMemoriesSearch}.
- * Mount under {@link MemoriesMemoryProvider}.
+ * Namespace search row; reads {@link useGraphNamespacesSearch}.
+ * Mount under {@link MemoriesNamespacesProvider}. Hosts may render
+ * `searchResults` elsewhere (picker/tree); this control only drives the query.
  */
-export function GraphSearch({ className, inputProps }: GraphSearchProps = {}) {
-  const { searchQuery, setSearchQuery, searchLoading, summary } = useGraphMemoriesSearch();
+export function GraphNamespaceSearch({ className, inputProps }: GraphNamespaceSearchProps = {}) {
+  const { searchQuery, setSearchQuery, searchLoading, summary } = useGraphNamespacesSearch();
   const {
     className: inputClassName,
     onChange: inputOnChange,
@@ -26,8 +27,8 @@ export function GraphSearch({ className, inputProps }: GraphSearchProps = {}) {
   return (
     <InputGroup className={cn("w-full", className)}>
       <InputGroupInput
-        placeholder="Search…"
-        aria-label="Search memories"
+        placeholder="Search namespaces…"
+        aria-label="Search namespaces"
         {...restInputProps}
         value={searchQuery}
         onChange={(e) => {
@@ -37,7 +38,7 @@ export function GraphSearch({ className, inputProps }: GraphSearchProps = {}) {
         className={inputClassName}
       />
       <InputGroupAddon>
-        <ScanSearchIcon className="text-muted-foreground" aria-hidden />
+        <FolderSearchIcon className="text-muted-foreground" aria-hidden />
       </InputGroupAddon>
       <InputGroupAddon
         align="inline-end"
@@ -45,7 +46,7 @@ export function GraphSearch({ className, inputProps }: GraphSearchProps = {}) {
         aria-live={searchLoading ? "polite" : undefined}
       >
         {searchLoading ? (
-          <Spinner className="text-muted-foreground" aria-label="Searching" />
+          <Spinner className="text-muted-foreground" aria-label="Searching namespaces" />
         ) : (
           summary || "\u00a0"
         )}
