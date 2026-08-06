@@ -190,7 +190,7 @@ describe("createServiceReactMemoriesClient", () => {
             topK: 10,
             maxNeighbors: 5,
             neighbors: true,
-            arms: { lexical: 1, vector: 0 },
+            arms: { lexical: 1, vector: 1 },
             maxVectorDistance: 0.65,
           },
         },

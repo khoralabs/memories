@@ -285,7 +285,7 @@ export function createServiceReactMemoriesClient(
             topK,
             maxNeighbors,
             neighbors: true,
-            arms: { lexical: 1, vector: 0 },
+            arms: { lexical: 1, vector: 1 },
             ...(input.maxVectorDistance !== undefined
               ? { maxVectorDistance: input.maxVectorDistance }
               : {}),
