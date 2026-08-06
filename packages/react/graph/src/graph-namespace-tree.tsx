@@ -22,7 +22,11 @@ import { cn } from "@/lib/utils";
 import { AddNamespaceButton } from "./add-namespace-button.js";
 import { GraphRefreshButton, RefreshGraphButton } from "./graph-refresh-button.js";
 import { type MemoriesGraphNamespaceEntry, namespaceEntryLabel } from "./lib/namespace-entries.js";
-import { isNamespaceUnderPath, type NamespaceTreeNode } from "./lib/namespace-tree.js";
+import {
+  buildSearchNamespaceTree,
+  isNamespaceUnderPath,
+  type NamespaceTreeNode,
+} from "./lib/namespace-tree.js";
 import { type GraphScope, useMemoriesNamespaces } from "./memories-namespaces-provider.js";
 
 export type GraphNamespaceTreeProps = {
@@ -35,6 +39,9 @@ type NamespaceTreeItemProps = {
   activeNamespace: string;
   namespaceRoot: string;
   entriesByPath: Map<string, MemoriesGraphNamespaceEntry>;
+  hitPaths: Set<string> | null;
+  hitCounts: Map<string, number> | null;
+  searchMode: boolean;
   onSelect: (path: string, scope: GraphScope) => void;
 };
 
@@ -64,23 +71,37 @@ function NamespaceTreeItem({
   activeNamespace,
   namespaceRoot,
   entriesByPath,
+  hitPaths,
+  hitCounts,
+  searchMode,
   onSelect,
 }: NamespaceTreeItemProps) {
   const isActive = node.path === activeNamespace;
+  const isHit = hitPaths?.has(node.path) ?? false;
   const hasChildren = node.children.length > 0;
   const { label, title } = treeNodeLabel(node, entriesByPath);
+  const hitCount = hitCounts?.get(node.path);
+  const hitAffordance =
+    isHit && hitCount !== undefined ? (
+      <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+        {hitCount}
+      </span>
+    ) : null;
+
+  const defaultOpen = searchMode ? true : isNamespaceUnderPath(activeNamespace, node.path);
 
   if (!hasChildren) {
     const scope: GraphScope = node.path === namespaceRoot ? "subtree" : "exact";
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
-          isActive={isActive}
+          isActive={isActive || isHit}
           className="data-[active=true]:bg-transparent"
           title={title}
           onClick={() => onSelect(node.path, scope)}
         >
-          {label}
+          <span className="min-w-0 flex-1 truncate">{label}</span>
+          {hitAffordance}
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -90,17 +111,18 @@ function NamespaceTreeItem({
     <SidebarMenuItem>
       <Collapsible
         className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
-        defaultOpen={isNamespaceUnderPath(activeNamespace, node.path)}
+        defaultOpen={defaultOpen}
       >
         <CollapsibleTrigger asChild>
           <SidebarMenuButton
-            isActive={isActive}
+            isActive={isActive || isHit}
             title={title}
             onClick={() => onSelect(node.path, "subtree")}
           >
             <ChevronRight className="transition-transform" />
             <Folder />
-            {label}
+            <span className="min-w-0 flex-1 truncate">{label}</span>
+            {hitAffordance}
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -112,6 +134,9 @@ function NamespaceTreeItem({
                 activeNamespace={activeNamespace}
                 namespaceRoot={namespaceRoot}
                 entriesByPath={entriesByPath}
+                hitPaths={hitPaths}
+                hitCounts={hitCounts}
+                searchMode={searchMode}
                 onSelect={onSelect}
               />
             ))}
@@ -159,8 +184,19 @@ GraphNamespaceTreeLabel.displayName = "GraphNamespaceTree.Label";
 
 function GraphNamespaceTreeHierarchy({ className }: { className?: string } = {}) {
   useGraphNamespaceTree();
-  const { namespace, focus, namespaceRoot, tree, entries, loading, error } =
-    useMemoriesNamespaces();
+  const {
+    namespace,
+    focus,
+    namespaceRoot,
+    tree,
+    entries,
+    loading,
+    error,
+    searchQuery,
+    searchResults,
+    searchLoading,
+    searchError,
+  } = useMemoriesNamespaces();
 
   const entriesByPath = useMemo(() => {
     const map = new Map<string, MemoriesGraphNamespaceEntry>();
@@ -168,39 +204,76 @@ function GraphNamespaceTreeHierarchy({ className }: { className?: string } = {})
     return map;
   }, [entries]);
 
+  const queryTrimmed = searchQuery.trim();
+  const searchMode = queryTrimmed.length > 0;
+
+  const searchTree = useMemo(
+    () => (searchResults !== null ? buildSearchNamespaceTree(searchResults) : null),
+    [searchResults],
+  );
+
+  const hitPaths = useMemo(() => {
+    if (searchResults === null) return null;
+    return new Set(searchResults.map((r) => r.namespace));
+  }, [searchResults]);
+
+  const hitCounts = useMemo(() => {
+    if (searchResults === null) return null;
+    const map = new Map<string, number>();
+    for (const r of searchResults) map.set(r.namespace, r.hitCount);
+    return map;
+  }, [searchResults]);
+
   const onSelect = (path: string, scope: GraphScope) => {
     focus(path, scope);
   };
 
+  const renderTree = (nodes: NamespaceTreeNode[], mode: boolean) => (
+    <SidebarMenu>
+      {nodes.map((node) => (
+        <NamespaceTreeItem
+          key={node.path}
+          node={node}
+          activeNamespace={namespace}
+          namespaceRoot={namespaceRoot}
+          entriesByPath={entriesByPath}
+          hitPaths={mode ? hitPaths : null}
+          hitCounts={mode ? hitCounts : null}
+          searchMode={mode}
+          onSelect={onSelect}
+        />
+      ))}
+    </SidebarMenu>
+  );
+
   let body: ReactNode;
-  if (loading && tree.length === 0) {
+  if (searchMode) {
+    if (searchError) {
+      body = <p className="px-2 text-xs text-muted-foreground">Could not search: {searchError}</p>;
+    } else if (searchLoading && searchResults === null) {
+      body = <p className="px-2 text-xs text-muted-foreground">Searching namespaces…</p>;
+    } else if (searchResults !== null && searchResults.length === 0) {
+      body = <p className="px-2 text-xs text-muted-foreground">No namespaces matched.</p>;
+    } else if (searchTree !== null && searchTree.length > 0) {
+      body = renderTree(searchTree, true);
+    } else {
+      body = <p className="px-2 text-xs text-muted-foreground">Searching namespaces…</p>;
+    }
+  } else if (loading && tree.length === 0) {
     body = <p className="px-2 text-xs text-muted-foreground">Loading namespaces…</p>;
   } else if (error && tree.length === 0) {
     body = <p className="px-2 text-xs text-muted-foreground">Could not load: {error}</p>;
   } else if (tree.length === 0) {
     body = <p className="px-2 text-xs text-muted-foreground">No namespaces yet.</p>;
   } else {
-    body = (
-      <SidebarMenu>
-        {tree.map((node) => (
-          <NamespaceTreeItem
-            key={node.path}
-            node={node}
-            activeNamespace={namespace}
-            namespaceRoot={namespaceRoot}
-            entriesByPath={entriesByPath}
-            onSelect={onSelect}
-          />
-        ))}
-      </SidebarMenu>
-    );
+    body = renderTree(tree, false);
   }
 
   return <SidebarGroupContent className={className}>{body}</SidebarGroupContent>;
 }
 GraphNamespaceTreeHierarchy.displayName = "GraphNamespaceTree.Hierarchy";
 
-/** Hierarchical namespace tree; reads {@link useMemoriesNamespaces}. */
+/** Hierarchical namespace tree; reads {@link useMemoriesNamespaces} (catalog + search). */
 function GraphNamespaceTreeRoot({ className, children }: GraphNamespaceTreeProps = {}) {
   return (
     <GraphNamespaceTreeContext.Provider value={true}>

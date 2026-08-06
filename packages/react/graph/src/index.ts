@@ -69,10 +69,6 @@ export {
   type GraphNamespaceSearchProps,
 } from "./graph-namespace-search.js";
 export {
-  GraphNamespaceSelector,
-  type GraphNamespaceSelectorProps,
-} from "./graph-namespace-selector.js";
-export {
   GraphNamespaceTree,
   type GraphNamespaceTreeProps,
 } from "./graph-namespace-tree.js";

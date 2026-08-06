@@ -12,8 +12,8 @@ export type GraphNamespaceSearchProps = {
 
 /**
  * Namespace search row; reads {@link useGraphNamespacesSearch}.
- * Mount under {@link MemoriesNamespacesProvider}. Hosts may render
- * `searchResults` elsewhere (picker/tree); this control only drives the query.
+ * Mount under {@link MemoriesNamespacesProvider}. Pair with
+ * {@link GraphNamespaceTree} — Hierarchy filters to ranked `searchResults`.
  */
 export function GraphNamespaceSearch({ className, inputProps }: GraphNamespaceSearchProps = {}) {
   const { searchQuery, setSearchQuery, searchLoading, summary } = useGraphNamespacesSearch();

@@ -17,7 +17,7 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |
 | `GraphProjectionProvider` / `useProjection` | Scene projection + chrome (reads payload/search/focus from memory provider) |
 | `GraphSearch` / `GraphNamespaceSearch` | Memory / namespace search inputs |
-| `GraphNamespaceSelector` / `GraphNamespaceTree` | Namespace picker / tree (read namespaces context) |
+| `GraphNamespaceTree` | Hierarchical namespace browser; Hierarchy filters to ranked search hits |
 | `AddNamespaceButton` / `AddMemoryButton` / `RefreshGraphButton` | Compound chrome buttons (`.Tooltip` + `Button` props) |
 | `GraphPreviewDock` | Selected memory preview panel |
 | `GraphLoading`, `GraphFetchError` | Loading and error states |
@@ -30,7 +30,7 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesMemoryProvider` → `GraphProjectionProvider`.
 3. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
 4. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Search uses the same scope via `useMemoriesMemory` / `GraphSearch`.
-5. Namespace search (`GraphNamespaceSearch`) is arms-driven; tune with `useGraphNamespacesSearch().setSearchArms` (e.g. `{ nodes: 0, lexical: 1 }` for catalog-only).
+5. Namespace search (`GraphNamespaceSearch`) is arms-driven; tune with `useGraphNamespacesSearch().setSearchArms` (e.g. `{ nodes: 0, lexical: 1 }` for catalog-only). Pair with `GraphNamespaceTree` — Hierarchy shows the full catalog when the query is empty, and a score-ordered hit tree while searching.
 
 ```tsx
 import {
@@ -38,6 +38,7 @@ import {
   AddNamespaceButton,
   createServiceReactMemoriesClient,
   GraphNamespaceSearch,
+  GraphNamespaceTree,
   GraphProjectionProvider,
   GraphScene,
   GraphSearch,
@@ -95,6 +96,13 @@ function MemoriesGraphPage() {
             <CreateNamespaceControl />
             <CreateMemoryControl />
             <GraphNamespaceSearch />
+            <GraphNamespaceTree>
+              <GraphNamespaceTree.Label>
+                Namespaces
+                <AddNamespaceButton />
+              </GraphNamespaceTree.Label>
+              <GraphNamespaceTree.Hierarchy />
+            </GraphNamespaceTree>
             <GraphSearch />
             <GraphScene />
           </GraphProjectionProvider>
