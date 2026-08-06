@@ -85,19 +85,12 @@ type ProjectionValue = {
 const ProjectionContext = createContext<ProjectionValue | null>(null);
 
 /**
- * Graph chrome from {@link GraphProjectionProvider}.
- * Namespace catalog: {@link useMemoriesNamespaces}. Memory catalog/search/focus: {@link useMemoriesMemory}.
+ * Graph chrome from {@link GraphProjectionProvider} (load / refresh / Esc).
+ * Memory search: {@link useGraphMemoriesSearch}. Namespace catalog: {@link useMemoriesNamespaces}.
  * Mount {@link MemoriesClientProvider} → {@link MemoriesNamespacesProvider} →
  * {@link MemoriesMemoryProvider} → this provider.
  */
 export type MemoriesGraphChromeBaseValue = {
-  searchQuery: string;
-  setSearchQuery: (q: string) => void;
-  graphSearch: GraphSearchState | null;
-  /** When set, replaces the debounced `graphSearch` driving subgraph activation and tooltips. */
-  graphSearchOverride: GraphSearchState | null;
-  setGraphSearchOverride: (s: GraphSearchState | null) => void;
-  searchLoading: boolean;
   graphLoading: boolean;
   graphError: string | null;
   reloadGraph: () => Promise<void>;
@@ -127,6 +120,10 @@ const DEFAULT_INTERACTION_SLICE: MemoriesGraphChromeInteractionSlice = {
   dismissPersistentGraphFocus: () => {},
 };
 
+/**
+ * Load / refresh / Esc chrome under {@link GraphProjectionProvider}.
+ * For memory search box state, use {@link useGraphMemoriesSearch}.
+ */
 export function useMemoriesGraphChrome(): MemoriesGraphChromeValue {
   const base = useContext(MemoriesGraphChromeBaseContext);
   const interaction = useContext(MemoriesGraphChromeInteractionContext);
@@ -582,9 +579,7 @@ export function GraphProjectionProvider({
     reload: reloadGraph,
     searchQuery,
     setSearchQuery,
-    graphSearchOverride,
     setGraphSearchOverride,
-    searchLoading,
     effectiveGraphSearch,
   } = useMemoriesMemory();
 
@@ -605,31 +600,13 @@ export function GraphProjectionProvider({
 
   const chromeValue = useMemo(
     (): MemoriesGraphChromeBaseValue => ({
-      searchQuery,
-      setSearchQuery,
-      graphSearch: effectiveGraphSearch,
-      graphSearchOverride,
-      setGraphSearchOverride,
-      searchLoading,
       graphLoading,
       graphError,
       reloadGraph,
       graphSummary,
       refreshAll,
     }),
-    [
-      searchQuery,
-      setSearchQuery,
-      effectiveGraphSearch,
-      graphSearchOverride,
-      setGraphSearchOverride,
-      searchLoading,
-      graphLoading,
-      graphError,
-      reloadGraph,
-      graphSummary,
-      refreshAll,
-    ],
+    [graphLoading, graphError, reloadGraph, graphSummary, refreshAll],
   );
 
   const effectiveData = useMemo((): GraphPayload => {

@@ -11,11 +11,11 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | `MemoriesClientProvider` / `useMemoriesClient` / `useMemoriesDatabase` | Client + database focus + resolved ontology |
 | `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, CRUD/suppress, arms-driven search |
 | `MemoriesMemoryProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove |
-| `useGraphMemoriesSearch` / `useGraphNamespacesSearch` | Thin chrome slices of provider search state |
+| `useGraphMemoriesSearch` / `useGraphNamespacesSearch` | Thin chrome slices of provider search state (not `useMemoriesGraphChrome`) |
 | `createServiceReactMemoriesClient` / `ReactMemoriesClient` | Service HTTP client + interface |
 | `DEFAULT_SEARCH_DEBOUNCE_MS` | Shared default debounce for namespace + memory search |
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |
-| `GraphProjectionProvider` / `useProjection` | Scene projection + chrome (reads payload/search/focus from memory provider) |
+| `GraphProjectionProvider` / `useProjection` / `useMemoriesGraphChrome` | Scene projection; chrome = load/refresh/Esc (search is via search hooks) |
 | `GraphSearch` / `GraphNamespaceSearch` | Memory / namespace search inputs |
 | `GraphNamespaceTree` | Hierarchical namespace browser; Hierarchy filters to ranked search hits |
 | `AddNamespaceButton` / `AddMemoryButton` / `RefreshGraphButton` | Compound chrome buttons (`.Tooltip` + `Button` props) |
@@ -30,7 +30,7 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesMemoryProvider` → `GraphProjectionProvider`.
 3. **Namespace root is host-owned** (no package default). Prefer `listNamespaces.namespaceRoot` (catalog wins); else provider `namespaceRoot` prop. With `createServiceReactMemoriesClient`, pass `namespaceRoot` on the client (stamped onto `listNamespaces`) and/or on the provider — bare service catalog has no root field. Omitting focus `namespace` lands on that root with `subtree` once known.
 4. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
-5. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Search uses the same scope via `useMemoriesMemory` / `GraphSearch`.
+5. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Memory search UI uses `useGraphMemoriesSearch` / `GraphSearch` (not `useMemoriesGraphChrome`).
 6. Namespace search (`GraphNamespaceSearch`) is arms-driven; tune with `useGraphNamespacesSearch().setSearchArms` (e.g. `{ nodes: 0, lexical: 1 }` for catalog-only). Pair with `GraphNamespaceTree` — Hierarchy shows the full catalog when the query is empty, and a score-ordered hit tree while searching.
 
 ```tsx
