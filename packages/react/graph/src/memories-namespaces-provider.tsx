@@ -76,6 +76,8 @@ export type MemoriesNamespacesValue = {
     namespace: string;
     recursive?: boolean;
   }) => Promise<{ namespaces: string[]; deletedMemories: number }>;
+  suppress: (input: { namespace: string }) => Promise<void>;
+  unsuppress: (input: { namespace: string }) => Promise<void>;
 
   validateSegment: typeof validateNamespaceSegment;
   validatePath: typeof validateNamespacePath;
@@ -269,6 +271,26 @@ export function MemoriesNamespacesProvider({
     [client, namespaceRoot, reload],
   );
 
+  const suppress = useCallback(
+    async (input: { namespace: string }) => {
+      const path = input.namespace.trim();
+      if (!path) throw new Error("suppress requires a non-empty namespace");
+      await client.suppressNamespace({ namespace: path });
+      await reload();
+    },
+    [client, reload],
+  );
+
+  const unsuppress = useCallback(
+    async (input: { namespace: string }) => {
+      const path = input.namespace.trim();
+      if (!path) throw new Error("unsuppress requires a non-empty namespace");
+      await client.unsuppressNamespace({ namespace: path });
+      await reload();
+    },
+    [client, reload],
+  );
+
   const value = useMemo(
     (): MemoriesNamespacesValue => ({
       namespace,
@@ -288,6 +310,8 @@ export function MemoriesNamespacesProvider({
       rename,
       updateMetadata,
       remove,
+      suppress,
+      unsuppress,
       validateSegment: validateNamespaceSegment,
       validatePath: validateNamespacePath,
       joinPath: joinNamespacePath,
@@ -310,6 +334,8 @@ export function MemoriesNamespacesProvider({
       rename,
       updateMetadata,
       remove,
+      suppress,
+      unsuppress,
     ],
   );
 

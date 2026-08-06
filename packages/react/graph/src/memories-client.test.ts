@@ -397,6 +397,31 @@ describe("createServiceReactMemoriesClient", () => {
     expect(deleteNamespace).toHaveBeenCalledWith({ namespace: "a", recursive: true });
   });
 
+  test("suppressNamespace and unsuppressNamespace post service routes", async () => {
+    const postJson = mock(async (path: string, body: unknown) => {
+      if (path === "/databases/suppress-namespace") {
+        expect(body).toEqual({ database, namespace: "ns", intentSnapshotId: "snap" });
+        return { ok: true };
+      }
+      if (path === "/databases/unsuppress-namespace") {
+        expect(body).toEqual({ database, namespace: "ns" });
+        return { ok: true };
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+    await expect(
+      client.suppressNamespace({ namespace: "ns", intentSnapshotId: "snap" }),
+    ).resolves.toBeUndefined();
+    await expect(client.unsuppressNamespace({ namespace: "ns" })).resolves.toBeUndefined();
+    expect(postJson).toHaveBeenCalledTimes(2);
+  });
+
   test("mergeMemory posts /databases/merge", async () => {
     const postJson = mock(async (path: string, body: unknown) => {
       expect(path).toBe("/databases/merge");

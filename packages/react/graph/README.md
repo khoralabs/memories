@@ -9,7 +9,7 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | Export | Role |
 |--------|------|
 | `MemoriesClientProvider` / `useMemoriesClient` / `useMemoriesDatabase` | Client + database focus + resolved ontology |
-| `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, create/rename/metadata/delete |
+| `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, create/rename/metadata/delete/suppress |
 | `MemoriesMemoryProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove |
 | `createServiceReactMemoriesClient` / `ReactMemoriesClient` | Service HTTP client + interface |
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |

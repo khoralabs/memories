@@ -96,6 +96,18 @@ export type ReactMemoriesClient = {
     signal?: AbortSignal;
   }): Promise<{ namespaces: string[]; deletedMemories: number }>;
 
+  suppressNamespace(input: {
+    namespace: string;
+    intentSnapshotId?: string;
+    signal?: AbortSignal;
+  }): Promise<void>;
+
+  unsuppressNamespace(input: {
+    namespace: string;
+    intentSnapshotId?: string;
+    signal?: AbortSignal;
+  }): Promise<void>;
+
   mergeMemory(input: {
     params: Record<string, unknown>;
     intentSnapshotId?: string;
@@ -343,6 +355,26 @@ export function createServiceReactMemoriesClient(
       return reads.deleteNamespace({
         namespace: input.namespace,
         ...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
+      });
+    },
+
+    async suppressNamespace(input) {
+      await service.postJson("/databases/suppress-namespace", {
+        database,
+        namespace: input.namespace,
+        ...(input.intentSnapshotId !== undefined
+          ? { intentSnapshotId: input.intentSnapshotId }
+          : {}),
+      });
+    },
+
+    async unsuppressNamespace(input) {
+      await service.postJson("/databases/unsuppress-namespace", {
+        database,
+        namespace: input.namespace,
+        ...(input.intentSnapshotId !== undefined
+          ? { intentSnapshotId: input.intentSnapshotId }
+          : {}),
       });
     },
 
