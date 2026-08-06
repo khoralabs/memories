@@ -13,17 +13,25 @@ import { useMemoriesClient, useMemoriesDatabase } from "./memories-client-provid
 import { useMemoriesNamespaces } from "./memories-namespaces-provider.js";
 import type { GraphPayload, GraphSearchState } from "./projection-types.js";
 
+/**
+ * Focused memory identity for feature R/W and scene selection.
+ * Scene clicks should call {@link MemoriesMemoryValue.focusNode} /
+ * {@link MemoriesMemoryValue.focusEdge}; projection derives selected/pinned from this.
+ */
 export type FocusedMemory = { kind: "node"; key: string } | { kind: "edge"; edgeId: string };
 
+/** Catalog row derived from the current scope’s graph payload (node or edge memory). */
 export type CatalogMemory =
   | {
       kind: "node";
+      /** Memory key within the focused namespace (may be qualified under subtree scope). */
       key: string;
       labels: GraphPayload["nodes"][number]["labels"];
       degree: GraphPayload["nodes"][number]["degree"];
     }
   | {
       kind: "edge";
+      /** Same as `edgeId` — edge memories are keyed by graph edge id. */
       key: string;
       edgeId: string;
       fromKey: string;
@@ -32,36 +40,52 @@ export type CatalogMemory =
       directed?: boolean;
     };
 
+/** Wire-friendly content arm for merge/create/updateFeatures. */
 export type MemoryContentArm = {
+  /** Source-map / content arm key (e.g. `"body"`). */
   key: string;
   text?: string;
   vector?: number[];
 };
 
+/** Wire-friendly label instance for merge/create/updateFeatures. */
 export type MemoryLabelArm = {
   kind: string;
   props: Record<string, unknown>;
 };
 
+/**
+ * Input for {@link MemoriesMemoryValue.create}.
+ * `namespace` defaults to the focused namespaces path when omitted.
+ */
 export type CreateMemoryInput =
   | {
       kind: "node";
+      /** Memory key to create/upsert within the namespace. */
       key: string;
+      /** Defaults to current {@link useMemoriesNamespaces} focus. */
       namespace?: string;
       content?: MemoryContentArm[];
       labels?: MemoryLabelArm[];
     }
   | {
       kind: "edge";
+      /** Edge id / memory key. */
       key: string;
       from_key: string;
       to_key: string;
+      /** Defaults to current {@link useMemoriesNamespaces} focus. */
       namespace?: string;
       content?: MemoryContentArm[];
       labels?: MemoryLabelArm[];
       directed?: boolean;
     };
 
+/**
+ * Patch for {@link MemoriesMemoryValue.updateFeatures}.
+ * Omit arms you are not changing when possible; hosts may also pass full replacements.
+ * For edges, `from_key` / `to_key` default from the current payload edge when omitted.
+ */
 export type UpdateMemoryFeaturesInput = {
   content?: MemoryContentArm[];
   labels?: MemoryLabelArm[];
@@ -70,6 +94,7 @@ export type UpdateMemoryFeaturesInput = {
   directed?: boolean;
 };
 
+/** Unified feature preview for the focused memory (node or edge). */
 export type MemoryFeatures = {
   labels: MemoryLabelArm[];
   content?: Array<{ sourceKey: string; text: string | null }>;
@@ -102,44 +127,95 @@ function catalogFromPayload(payload: GraphPayload): CatalogMemory[] {
   return [...nodes, ...edges];
 }
 
+/**
+ * Graph catalog (scope-sensitive), search, memory focus, and merge/delete mutations.
+ *
+ * Mount under {@link MemoriesNamespacesProvider}. Catalog/`payload` follow the
+ * focused namespace + scope (`exact` vs `subtree`); do not assume exact-only.
+ * {@link GraphProjectionProvider} should consume `payload` / search / focus from here
+ * (no second `getGraph` fetch).
+ */
 export type MemoriesMemoryValue = {
+  /** Latest `getGraph` layout for the focused namespace + scope. */
   payload: GraphPayload;
+  /** Flattened node + edge catalog rows from `payload`. */
   memories: CatalogMemory[];
   loading: boolean;
   error: string | null;
+  /** Refetch graph layout for the current namespace/scope. */
   reload: () => Promise<void>;
 
+  /** Live search box text (debounced into `graphSearch`). */
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  /** Debounced search hits for the current namespace/scope, or `null` when empty/idle. */
   graphSearch: GraphSearchState | null;
+  /**
+   * Host/investigator override; when set, replaces debounced `graphSearch` for
+   * subgraph activation (see `effectiveGraphSearch`).
+   */
   graphSearchOverride: GraphSearchState | null;
   setGraphSearchOverride: (s: GraphSearchState | null) => void;
   searchLoading: boolean;
-  /** Effective search: override ?? debounced fetch. */
+  /** `graphSearchOverride ?? graphSearch`. */
   effectiveGraphSearch: GraphSearchState | null;
 
+  /** Source of truth for scene selection / feature edit target. */
   focused: FocusedMemory | null;
+  /** Focus a node memory by key (clears edge focus). */
   focusNode: (key: string) => void;
+  /** Focus an edge memory by `edgeId` (clears node focus). */
   focusEdge: (edgeId: string) => void;
   clearFocus: () => void;
 
+  /**
+   * Merge-create a node or edge, reload the catalog, then focus the created key.
+   * @see CreateMemoryInput
+   */
   create: (input: CreateMemoryInput) => Promise<void>;
+  /**
+   * Delete a memory by key (or the focused memory when `key` is omitted), then reload.
+   * Clears focus when the deleted key was focused.
+   * @param input.key - Memory key or edge id; defaults to focused identity
+   */
   remove: (input?: { key?: string }) => Promise<void>;
+  /**
+   * Upsert features on the focused memory via `mergeMemory`, then reload (keeps focus).
+   * Overload with an explicit key/edgeId for non-focused edits.
+   * Throws if nothing is focused and no key is passed.
+   */
   updateFeatures: {
     (patch: UpdateMemoryFeaturesInput): Promise<void>;
     (keyOrEdgeId: string, patch: UpdateMemoryFeaturesInput): Promise<void>;
   };
 
+  /**
+   * Edges incident to a node key (or focused node). For a focused edge, returns that
+   * edge plus parallels sharing the same endpoints.
+   * @param key - Node key; defaults to focused node when focused kind is `node`
+   */
   linkedEdges: (key?: string) => GraphPayload["edges"];
+  /**
+   * Load feature preview for the focused memory
+   * (node → `getMemoryPreview`, edge → `getEdgePreview`).
+   * Throws if nothing is focused.
+   */
   features: () => Promise<MemoryFeatures>;
+  /** Lookup a node in the current payload. */
   getMemory: (key: string) => GraphPayload["nodes"][number] | undefined;
+  /** Lookup an edge in the current payload by `edgeId`. */
   getEdge: (edgeId: string) => GraphPayload["edges"][number] | undefined;
 };
 
 const MemoriesMemoryContext = createContext<MemoriesMemoryValue | null>(null);
 
+/** Props for {@link MemoriesMemoryProvider} (children only; scope comes from namespaces). */
 export type MemoriesMemoryProviderProps = PropsWithChildren;
 
+/**
+ * Owns graph payload, search, and memory focus/mutations for the current namespace scope.
+ * Requires {@link MemoriesClientProvider} and {@link MemoriesNamespacesProvider} above.
+ */
 export function MemoriesMemoryProvider({ children }: MemoriesMemoryProviderProps) {
   const client = useMemoriesClient();
   const { database } = useMemoriesDatabase();
@@ -484,6 +560,7 @@ export function MemoriesMemoryProvider({ children }: MemoriesMemoryProviderProps
   return <MemoriesMemoryContext.Provider value={value}>{children}</MemoriesMemoryContext.Provider>;
 }
 
+/** Access {@link MemoriesMemoryValue}; must be under {@link MemoriesMemoryProvider}. */
 export function useMemoriesMemory(): MemoriesMemoryValue {
   const ctx = useContext(MemoriesMemoryContext);
   if (ctx == null) {

@@ -3,9 +3,12 @@
  * `DatabaseNamespaceMetadata` without depending on memories-service).
  */
 export type MemoriesGraphNamespaceEntry = {
+  /** Full slash-separated path identity (not the display label). */
   namespace: string;
+  /** Human-readable label for findability; prefer over renaming the path. */
   alias: string | null;
   description: string;
+  /** When true, this exact path is suppressed from discovery. */
   suppressed?: boolean;
 };
 

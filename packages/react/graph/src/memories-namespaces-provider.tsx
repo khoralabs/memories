@@ -20,75 +20,168 @@ import {
 import { buildNamespaceTree, type NamespaceTreeNode } from "./lib/namespace-tree.js";
 import { useMemoriesClient, useMemoriesDatabase } from "./memories-client-provider.js";
 
+/**
+ * How graph/search/catalog queries interpret the focused namespace path.
+ * - `exact` — only that path
+ * - `subtree` — that path and all descendants under the prefix
+ */
 export type GraphScope = "exact" | "subtree";
 
+/** Fallback focus path when none is provided. */
 export const DEFAULT_MEMORIES_NAMESPACE = "_global_";
+/** Default catalog root used for focus defaults and delete fallback. */
 export const DEFAULT_NAMESPACE_ROOT = "global";
 
+/** Optional profile ↔ namespace index row from the host catalog payload. */
 export type MemoriesGraphProfileEntry = {
   profileId: string;
   username?: string;
+  /** Namespace path this profile is indexed under. */
   namespace: string;
   indexed: boolean;
 };
 
+/**
+ * Input for {@link MemoriesNamespacesValue.create}.
+ *
+ * Prefer `{ parent, name }` so hosts can validate a single segment with
+ * {@link MemoriesNamespacesValue.validateSegment}, then join under a parent path.
+ * Or pass a full `{ namespace }` path (already joined).
+ *
+ * `alias` is a human-readable label for findability; it does not change the path.
+ */
 export type CreateNamespaceInput =
   | {
+      /** Parent path (e.g. `"global/team"`). Omit or empty for a root-level segment. */
       parent?: string;
+      /** New path segment (not a full path). Validated with `validateSegment`. */
       name: string;
+      /** Optional display label; prefer this over renaming for findability. */
       alias?: string | null;
       description?: string;
     }
   | {
+      /** Full namespace path to create (e.g. `"global/team/notes"`). */
       namespace: string;
+      /** Optional display label; prefer this over renaming for findability. */
       alias?: string | null;
       description?: string;
     };
 
+/**
+ * Namespace catalog, focus, and mutations for the graph chrome.
+ *
+ * Mount under {@link MemoriesClientProvider}. Downstream memory/projection providers
+ * reload when `namespace` / `scope` (or the focused database) change.
+ */
 export type MemoriesNamespacesValue = {
+  /** Focused namespace path (slash-separated identity, not the alias). */
   namespace: string;
+  /** Whether catalog/search cover only `namespace` or its subtree. */
   scope: GraphScope;
+  /** Catalog root path used when deleting the focused branch and for default scopes. */
   namespaceRoot: string;
+  /**
+   * Set focus to `path`. When `scope` is omitted, uses `subtree` at `namespaceRoot`
+   * and `exact` elsewhere.
+   * @param path - Full namespace path to focus
+   * @param scope - Optional override for exact vs subtree
+   */
   focus: (path: string, scope?: GraphScope) => void;
+  /** Change exact vs subtree without changing the focused path. */
   setScope: (scope: GraphScope) => void;
 
+  /** Catalog rows (path + alias + description + optional `suppressed`). */
   entries: MemoriesGraphNamespaceEntry[];
+  /** Paths derived from `entries`. */
   paths: string[];
+  /** Optional profile index rows from the catalog payload. */
   profiles: MemoriesGraphProfileEntry[];
+  /** Tree built from `paths` for pickers. */
   tree: NamespaceTreeNode[];
+  /** Lookup a catalog row by full path. */
   getEntry: (path: string) => MemoriesGraphNamespaceEntry | undefined;
   loading: boolean;
   error: string | null;
+  /** Refetch the namespace catalog from the client. */
   reload: () => Promise<void>;
 
+  /**
+   * Create (upsert) a namespace path, reload the catalog, and focus the new path.
+   * @see CreateNamespaceInput
+   */
   create: (input: CreateNamespaceInput) => Promise<MemoriesGraphNamespaceEntry>;
+  /**
+   * Physically rematerialize memories from one path onto another.
+   *
+   * **Prefer {@link updateMetadata} with `alias` for findability.** Renaming is
+   * destructive and expensive: it remaps deterministic ids under the new path(s),
+   * can fail on key collisions at the destination, and scales with memory count
+   * (and descendants when recursive). Use rename only when the path identity itself
+   * must change (e.g. structural reorganization), not for display naming.
+   *
+   * @param input.from - Existing full path (e.g. `"global/old-name"`)
+   * @param input.to - Destination full path (e.g. `"global/new-name"`)
+   * @param input.recursive - When true (default), also remaps `from/…` → `to/…`
+   * @returns Each remapped path pair plus how many memories moved
+   */
   rename: (input: {
     from: string;
     to: string;
     recursive?: boolean;
   }) => Promise<{ namespaces: Array<{ from: string; to: string }>; renamedMemories: number }>;
+  /**
+   * Update alias and/or description for an existing path without moving memories.
+   * Prefer setting `alias` over {@link rename} when hosts only need a friendlier label.
+   *
+   * @param input.namespace - Full path of the row to update (identity; not renamed)
+   * @param input.alias - Display label (`null` clears). Does not change the path.
+   * @param input.description - Optional description text
+   */
   updateMetadata: (input: {
     namespace: string;
     alias?: string | null;
     description?: string;
   }) => Promise<MemoriesGraphNamespaceEntry>;
+  /**
+   * Delete a namespace path (and optionally descendants) and its memories.
+   * If focus was on or under `namespace`, focus returns to `namespaceRoot`.
+   *
+   * @param input.namespace - Full path to delete
+   * @param input.recursive - When true, delete descendants as well (service semantics)
+   */
   remove: (input: {
     namespace: string;
     recursive?: boolean;
   }) => Promise<{ namespaces: string[]; deletedMemories: number }>;
+  /**
+   * Mark a path suppressed so it (and descendants) are hidden from discovery.
+   * Writes may still target the path. Idempotent if already suppressed.
+   * @param input.namespace - Full path to suppress
+   */
   suppress: (input: { namespace: string }) => Promise<void>;
+  /**
+   * Clear exact-path suppression for `namespace` (does not clear child flags).
+   * @param input.namespace - Full path to unsuppress
+   */
   unsuppress: (input: { namespace: string }) => Promise<void>;
 
+  /** Validate a single path segment; returns an error message or `null`. */
   validateSegment: typeof validateNamespaceSegment;
+  /** Validate a full path (segments + max depth); returns an error message or `null`. */
   validatePath: typeof validateNamespacePath;
+  /** Join `parent` + `segment` into a full path. */
   joinPath: typeof joinNamespacePath;
 };
 
 const MemoriesNamespacesContext = createContext<MemoriesNamespacesValue | null>(null);
 
 export type MemoriesNamespacesProviderProps = PropsWithChildren<{
+  /** Initial (and controlled) focused path. */
   namespace?: string;
+  /** Initial (and controlled) exact vs subtree scope. */
   scope?: GraphScope;
+  /** Catalog root path for default scopes and delete fallback. */
   namespaceRoot?: string;
 }>;
 
@@ -118,6 +211,11 @@ function isUnderOrEqual(path: string, ancestor: string): boolean {
   return path === ancestor || path.startsWith(`${ancestor}/`);
 }
 
+/**
+ * Owns namespace catalog, focus (`namespace` / `scope`), and mutations.
+ * Requires {@link MemoriesClientProvider} above. Prefer {@link MemoriesNamespacesValue.updateMetadata}
+ * (`alias`) for findability; {@link MemoriesNamespacesValue.rename} is a costly path rematerialization.
+ */
 export function MemoriesNamespacesProvider({
   children,
   namespace: namespaceProp = DEFAULT_MEMORIES_NAMESPACE,
@@ -346,6 +444,7 @@ export function MemoriesNamespacesProvider({
   );
 }
 
+/** Access {@link MemoriesNamespacesValue}; must be under {@link MemoriesNamespacesProvider}. */
 export function useMemoriesNamespaces(): MemoriesNamespacesValue {
   const ctx = useContext(MemoriesNamespacesContext);
   if (ctx == null) {

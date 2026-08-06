@@ -22,13 +22,26 @@ import {
 import type { ReactMemoriesClient } from "./memories-client.js";
 
 export type MemoriesClientValue = {
+  /** Graph backend client for the focused database. */
   client: ReactMemoriesClient;
+  /** Focused database id. Downstream namespaces/memory providers reload when this changes. */
   database: MemoriesDatabaseId;
+  /**
+   * Switch the focused database: optionally `openDatabase`, rebuild the client when a
+   * `createClient` factory was provided, then reload linked ontology.
+   * @param id - Database to focus
+   */
   focusDatabase: (id: MemoriesDatabaseId) => Promise<void>;
+  /**
+   * Resolved linked ontology schema for `database`, or `null` when unlinked / unavailable.
+   * Hosts may use this to validate create/update forms; this package does not ship forms.
+   */
   ontology: StoredOntologyJsonSchema | null;
+  /** Hash of the current ontology link, or `null` when unlinked. */
   ontologyHash: string | null;
   ontologyLoading: boolean;
   ontologyError: string | null;
+  /** Re-fetch `getCurrentLink` → `getOntology` for the focused database. */
   reloadOntology: () => Promise<void>;
 };
 
@@ -39,12 +52,15 @@ function databaseKey(id: MemoriesDatabaseId): string {
 }
 
 type SharedOntologyProps = {
+  /** Optional prebuilt service client (else constructed from `baseUrl` / `auth` / `fetch`). */
   serviceClient?: MemoriesServiceClient;
+  /** Optional prebuilt ontology client (else derived from `serviceClient`). */
   ontologyClient?: MemoriesOntologyClient;
+  /** Service base URL used to construct clients when `serviceClient` is omitted. */
   baseUrl?: string;
   auth?: MemoriesServiceClientAuthProvider;
   fetch?: MemoriesServiceFetch;
-  /** When true (default), call openDatabase on focus when a service client is available. */
+  /** When true (default), call `openDatabase` on focus when a service client is available. */
   openOnFocus?: boolean;
 };
 
@@ -54,12 +70,14 @@ export type MemoriesClientProviderProps = PropsWithChildren<
       | {
           /** Preferred: rebuild client when database focus changes. */
           createClient: (database: MemoriesDatabaseId) => ReactMemoriesClient;
+          /** Seed (and controlled) focused database. */
           database: MemoriesDatabaseId;
           client?: never;
         }
       | {
           /** Legacy: fixed client; optional database id for ontology resolution. */
           client: ReactMemoriesClient;
+          /** Optional id used for ontology resolution when not switching clients. */
           database?: MemoriesDatabaseId;
           createClient?: never;
         }
@@ -68,7 +86,11 @@ export type MemoriesClientProviderProps = PropsWithChildren<
 
 const UNSET_DATABASE: MemoriesDatabaseId = { kind: "account", ownerKey: "_unset_" };
 
-/** Mount high in the tree; owns focused database + resolved ontology + ReactMemoriesClient. */
+/**
+ * Root provider: focused database, resolved linked ontology, and {@link ReactMemoriesClient}.
+ * Mount above {@link MemoriesNamespacesProvider}. Prefer `createClient` + `database` so
+ * {@link MemoriesClientValue.focusDatabase} can retarget the client.
+ */
 export function MemoriesClientProvider(props: MemoriesClientProviderProps) {
   const { children, openOnFocus = true } = props;
 
