@@ -19,7 +19,7 @@
     },
     "packages/agents": {
       "name": "@khoralabs/memories-agents",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "@ai-sdk/provider-utils": "^5.0.2",
         "@khoralabs/agent-capabilities": "^0.2.0",
@@ -38,7 +38,7 @@
     },
     "packages/node": {
       "name": "@khoralabs/memories-node",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "@ai-sdk/provider-utils": "^5.0.2",
         "@khoralabs/sourcemaps": "^0.1.0",
@@ -85,7 +85,7 @@
     },
     "packages/otel": {
       "name": "@khoralabs/memories-otel",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "@khoralabs/memories-node": "workspace:*",
         "@opentelemetry/api": "^1.9.0",
@@ -107,7 +107,7 @@
     },
     "packages/react/graph": {
       "name": "@khoralabs/memories-react-graph",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "@chenglou/pretext": "^0.0.6",
         "@khoralabs/memories-service": "workspace:*",
@@ -145,7 +145,7 @@
     },
     "packages/service": {
       "name": "@khoralabs/memories-service",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "@khoralabs/memories-node": "workspace:*",
         "ajv": "^8",
@@ -165,11 +165,11 @@
     },
     "packages/spec": {
       "name": "@khoralabs/memories-spec",
-      "version": "0.7.0",
+      "version": "0.7.1",
     },
   },
   "packages": {
-    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.43", "", { "dependencies": { "@ai-sdk/provider": "4.0.6", "@ai-sdk/provider-utils": "5.0.23", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-7KqJR7+8zKwxuZY7/G12QWRV8MDUMgrAUmR/Al99zN6OGB3KQe1Q9i2lAB8uyTBsxgdZjB07vH+ky+RG5m1aiA=="],
+    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.44", "", { "dependencies": { "@ai-sdk/provider": "4.0.6", "@ai-sdk/provider-utils": "5.0.23", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-dQ/AHH1do1iEpWEXdAge37FtpXV17fsj7NkL9w+xuzVgvmI7+dQFeDerul+F2I5czmxe61Lq+TnUREjU92UXYg=="],
 
     "@ai-sdk/provider": ["@ai-sdk/provider@4.0.6", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-YYXjvs8F3q/BdEn9tBDoDuQACotfR7c5foGw/ADsM6iAVC1JabqEjQSkwHv/Kg2vNIr1c2AVHcQb+JYsYk76Qw=="],
 
@@ -697,29 +697,29 @@
 
     "@webgpu/types": ["@webgpu/types@0.1.71", "", {}, "sha512-mMy8/ODcKhab808co15eW+yN+HgXoQxRQHTiBV9Mrvl1r0ufnid7YOcI+gi4eUWSWl9ezD6TW2KXccrL8HCh2A=="],
 
-    "@workflow/astro": ["@workflow/astro@4.0.15", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.5", "@workflow/rollup": "4.0.15", "@workflow/swc-plugin": "4.1.2", "@workflow/vite": "4.0.15", "exsolve": "^1.0.8", "pathe": "^2.0.3" } }, "sha512-SI07J10espfpVWlcwEZ8Wnc4D96nkwvKVRC6FshASkBM2iyWc58R+nRRHwuymgXRld3brP5Mt7avW5ta8BWPOQ=="],
+    "@workflow/astro": ["@workflow/astro@4.0.16", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.6", "@workflow/rollup": "4.0.16", "@workflow/swc-plugin": "4.1.2", "@workflow/vite": "4.0.16", "exsolve": "^1.0.8", "pathe": "^2.0.3" } }, "sha512-nXYpCoaCu9Xrom8wV69hWLrRp220JdZiJ72jgCzZMo8lv4yl6Ql9eLHzOKh7L/JhfLPDyHqInnfbnrN2WFdHzw=="],
 
-    "@workflow/builders": ["@workflow/builders@4.1.5", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/core": "4.8.0", "@workflow/errors": "4.2.1", "@workflow/swc-plugin": "4.1.2", "@workflow/utils": "4.1.4", "builtin-modules": "5.0.0", "chalk": "5.6.2", "enhanced-resolve": "5.19.0", "esbuild": "^0.28.1", "find-up": "7.0.0", "json5": "2.2.3", "tinyglobby": "0.2.17" } }, "sha512-1rI2kBjpF3kMJu4RX53ZQ5erV9239CnXETuRKR6XV9e7y5vjLFobDkPSplnH4jlbERcPKNhx+zfW1wzMpZCwSA=="],
+    "@workflow/builders": ["@workflow/builders@4.1.6", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/core": "4.8.1", "@workflow/errors": "4.2.1", "@workflow/swc-plugin": "4.1.2", "@workflow/utils": "4.1.4", "builtin-modules": "5.0.0", "chalk": "5.6.2", "enhanced-resolve": "5.19.0", "esbuild": "^0.28.1", "find-up": "7.0.0", "json5": "2.2.3", "tinyglobby": "0.2.17" } }, "sha512-cho5QsiclvE868dbjCodtpEsxovnub5K7/P5BX3PvWYz9an1sx3hZ9VZo7P3ZvLmeRTdWSi/qW11Hgxmyd34Dg=="],
 
-    "@workflow/cli": ["@workflow/cli@4.3.4", "", { "dependencies": { "@oclif/core": "4.11.4", "@oclif/plugin-help": "6.2.37", "@swc/core": "1.15.3", "@vercel/cli-auth": "0.0.1", "@workflow/builders": "4.1.5", "@workflow/core": "4.8.0", "@workflow/errors": "4.2.1", "@workflow/swc-plugin": "4.1.2", "@workflow/utils": "4.1.4", "@workflow/web": "4.1.16", "@workflow/world": "4.3.1", "@workflow/world-local": "4.2.4", "@workflow/world-vercel": "4.6.1", "boxen": "8.0.1", "builtin-modules": "5.0.0", "chalk": "5.6.2", "chokidar": "4.0.3", "date-fns": "4.1.0", "dotenv": "^17.3.1", "easy-table": "1.2.0", "enhanced-resolve": "5.19.0", "esbuild": "^0.28.1", "find-up": "7.0.0", "mixpart": "0.0.4", "open": "10.2.0", "ora": "8.2.0", "terminal-link": "5.0.0", "tinyglobby": "0.2.17", "xdg-app-paths": "5.1.0", "zod": "~4.3.6" }, "bin": { "wf": "bin/run.js", "workflow": "bin/run.js" } }, "sha512-tHJ6H3/X9JGP3E+28GioVZWsjagh17aig6yOH3OKR2kBTpUqThWaADr6gK/HJ6/ZHTVCWwGBE3zCTCKbwaHV+g=="],
+    "@workflow/cli": ["@workflow/cli@4.3.5", "", { "dependencies": { "@oclif/core": "4.11.4", "@oclif/plugin-help": "6.2.37", "@swc/core": "1.15.3", "@vercel/cli-auth": "0.0.1", "@workflow/builders": "4.1.6", "@workflow/core": "4.8.1", "@workflow/errors": "4.2.1", "@workflow/swc-plugin": "4.1.2", "@workflow/utils": "4.1.4", "@workflow/web": "4.1.17", "@workflow/world": "4.3.1", "@workflow/world-local": "4.2.4", "@workflow/world-vercel": "4.6.2", "boxen": "8.0.1", "builtin-modules": "5.0.0", "chalk": "5.6.2", "chokidar": "4.0.3", "date-fns": "4.1.0", "dotenv": "^17.3.1", "easy-table": "1.2.0", "enhanced-resolve": "5.19.0", "esbuild": "^0.28.1", "find-up": "7.0.0", "mixpart": "0.0.4", "open": "10.2.0", "ora": "8.2.0", "terminal-link": "5.0.0", "tinyglobby": "0.2.17", "xdg-app-paths": "5.1.0", "zod": "~4.3.6" }, "bin": { "workflow": "bin/run.js", "wf": "bin/run.js" } }, "sha512-pe2FXcx62u7DlFIP1K51JXiCTSjo08FZCXayz9GSTj2/5G7D5IxF6bxUnTBG0rMmXDSvP/VJ2laA21IvUQIWGw=="],
 
-    "@workflow/core": ["@workflow/core@4.8.0", "", { "dependencies": { "@aws-sdk/credential-provider-web-identity": "3.972.49", "@jridgewell/trace-mapping": "0.3.31", "@standard-schema/spec": "1.0.0", "@types/ms": "2.1.0", "@vercel/functions": "^3.4.3", "@workflow/errors": "4.2.1", "@workflow/serde": "4.1.2", "@workflow/utils": "4.1.4", "@workflow/world": "4.3.1", "@workflow/world-local": "4.2.4", "@workflow/world-vercel": "4.6.1", "debug": "4.4.3", "devalue": "5.8.1", "ms": "2.1.3", "nanoid": "5.1.6", "seedrandom": "3.0.5", "semver": "7.7.4", "ulid": "~3.0.1", "zod": "~4.3.6" }, "peerDependencies": { "@opentelemetry/api": "1" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-VKSaKVNszi5mtrgwp7orS6o1SXeAWSoVE1d+yH2RMKBxV0Pl/D1tL0r3ChDEgbM6RhmsDZABCkIz+HrVs1INlw=="],
+    "@workflow/core": ["@workflow/core@4.8.1", "", { "dependencies": { "@aws-sdk/credential-provider-web-identity": "3.972.49", "@jridgewell/trace-mapping": "0.3.31", "@standard-schema/spec": "1.0.0", "@types/ms": "2.1.0", "@vercel/functions": "^3.4.3", "@workflow/errors": "4.2.1", "@workflow/serde": "4.1.2", "@workflow/utils": "4.1.4", "@workflow/world": "4.3.1", "@workflow/world-local": "4.2.4", "@workflow/world-vercel": "4.6.2", "debug": "4.4.3", "devalue": "5.8.1", "ms": "2.1.3", "nanoid": "5.1.6", "seedrandom": "3.0.5", "semver": "7.7.4", "ulid": "~3.0.1", "zod": "~4.3.6" }, "peerDependencies": { "@opentelemetry/api": "1" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-w/vJps6UyKzqXJyTs930iq+YTQdjw9U4l9UykCTPaS9zbACESiDKPniNZyVrIlixYgqevrOrjo9eLpUqd6CZAw=="],
 
     "@workflow/errors": ["@workflow/errors@4.2.1", "", { "dependencies": { "@workflow/utils": "4.1.4", "ms": "2.1.3" } }, "sha512-gIe3vf2POUw2DV4Mi6BGiYGQdUZ4YMcWhDahVT9xI1W1NSsqifX73Hvk/68x/haPnDOr7/VnWN8/YAgeEVYE4A=="],
 
-    "@workflow/nest": ["@workflow/nest@4.0.16", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.5", "@workflow/swc-plugin": "4.1.2", "pathe": "2.0.3" }, "peerDependencies": { "@nestjs/common": ">=10.0.0", "@nestjs/core": ">=10.0.0", "@swc/cli": ">=0.4.0" }, "bin": { "workflow-nest": "dist/cli.js" } }, "sha512-8DKAbMPDT/dWi/EnmvaBGM3+Buy+ulkKIPb/kgJ13lYaYidSbmE+CQzSfD0ryg953O2kNnMvbFpnDPlXT3HpOQ=="],
+    "@workflow/nest": ["@workflow/nest@4.0.17", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.6", "@workflow/swc-plugin": "4.1.2", "pathe": "2.0.3" }, "peerDependencies": { "@nestjs/common": ">=10.0.0", "@nestjs/core": ">=10.0.0", "@swc/cli": ">=0.4.0" }, "bin": { "workflow-nest": "dist/cli.js" } }, "sha512-y9wGsnMXbKGanyrBqq5+fBJNS5l57n4+rJ1zo/zB/jp1h53Z3DYu4QFNstSvFx+ygfdWQrWnm3y/U9fWOpqraQ=="],
 
-    "@workflow/next": ["@workflow/next@4.1.4", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.5", "@workflow/core": "4.8.0", "@workflow/swc-plugin": "4.1.2", "semver": "7.7.4", "watchpack": "2.5.1" }, "peerDependencies": { "next": ">13" }, "optionalPeers": ["next"] }, "sha512-uRp+oGpU9WedkEv5lJqK90eXhFSUPQI93xODcro6IAoDOuZT44OOH8pj1vcvluJ/cgIE4GFRR3xPDlQySaKrig=="],
+    "@workflow/next": ["@workflow/next@4.1.5", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.6", "@workflow/core": "4.8.1", "@workflow/swc-plugin": "4.1.2", "semver": "7.7.4", "watchpack": "2.5.1" }, "peerDependencies": { "next": ">13" }, "optionalPeers": ["next"] }, "sha512-siOO1M5fCL/klSOvesYQghjBbN+e4I0dfknglT4W+sknoaHHNNAaTWz1w/7YUcjMSw46Z+0N/GXyGo+lgJ826g=="],
 
-    "@workflow/nitro": ["@workflow/nitro@4.1.6", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.5", "@workflow/core": "4.8.0", "@workflow/rollup": "4.0.15", "@workflow/swc-plugin": "4.1.2", "@workflow/vite": "4.0.15", "@workflow/web": "4.1.16", "exsolve": "1.0.8", "pathe": "2.0.3" } }, "sha512-RwV75yJilTz3CbI6oGUsmZ+kjIEzogk/JQmFWCPBeKupqxoS2QapWNNG0mFUtb88MFFDzZ/U6shhnzFunXx1zA=="],
+    "@workflow/nitro": ["@workflow/nitro@4.1.7", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.6", "@workflow/core": "4.8.1", "@workflow/rollup": "4.0.16", "@workflow/swc-plugin": "4.1.2", "@workflow/vite": "4.0.16", "@workflow/web": "4.1.17", "exsolve": "1.0.8", "pathe": "2.0.3" } }, "sha512-+5IJrQy8uoQMGblj/LxHKgjW2x2hAv345Mwunrq2ElnCXL9vBqqNntN7khGIBe1cHwMuckOcw3mYBjJfvFysqA=="],
 
-    "@workflow/nuxt": ["@workflow/nuxt@4.0.16", "", { "dependencies": { "@nuxt/kit": "4.4.8", "@workflow/nitro": "4.1.6" } }, "sha512-/8ZCm8MbpiD0bxopICewXVmRkhuN147m4fP09Csly5CRhIEFKqRwFMRqLtg/t2uLLo+SqAykX86cjaTMwlmMVA=="],
+    "@workflow/nuxt": ["@workflow/nuxt@4.0.17", "", { "dependencies": { "@nuxt/kit": "4.4.8", "@workflow/nitro": "4.1.7" } }, "sha512-psi9xeUzEZxtrY1Ggv7QSAzHtdUIscKsSfSFLv8DoJviUdhcn4nIDplrJE5KzN8VcCpvBkegN+0wUwMJFN3CiQ=="],
 
-    "@workflow/rollup": ["@workflow/rollup@4.0.15", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.5", "@workflow/swc-plugin": "4.1.2", "exsolve": "1.0.7" } }, "sha512-dssflZeWYWe3jq9m6hI1t15PaFd4sJt2XQ332+m29GM1uyL0HGsLigoyLbNs76JpQdcO0wdHTllzOZkslCEkow=="],
+    "@workflow/rollup": ["@workflow/rollup@4.0.16", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.6", "@workflow/swc-plugin": "4.1.2", "exsolve": "1.0.7" } }, "sha512-iBnRnkkaIXySBH4oz2NrNJTVQwsFqmnZk/ElYav59hGHlMRGv/mN8lIX0yk9qB8ITcVJC4DCVIYAJ+JereY8Ww=="],
 
     "@workflow/serde": ["@workflow/serde@4.1.0", "", {}, "sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ=="],
 
-    "@workflow/sveltekit": ["@workflow/sveltekit@4.0.15", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.5", "@workflow/rollup": "4.0.15", "@workflow/swc-plugin": "4.1.2", "@workflow/vite": "4.0.15", "exsolve": "^1.0.8", "fs-extra": "^11.3.2", "pathe": "^2.0.3" } }, "sha512-292/PjhCeECrTLfD9xMb+hqN0gO3ht5hPFuYfas4bLt06YevpyL1DUgiM+18UM0W+jj0vHsfswhMl+dqvDq2pQ=="],
+    "@workflow/sveltekit": ["@workflow/sveltekit@4.0.16", "", { "dependencies": { "@swc/core": "1.15.3", "@workflow/builders": "4.1.6", "@workflow/rollup": "4.0.16", "@workflow/swc-plugin": "4.1.2", "@workflow/vite": "4.0.16", "exsolve": "^1.0.8", "fs-extra": "^11.3.2", "pathe": "^2.0.3" } }, "sha512-BY7lB4pch1WAMa8dwcEmQlnNaB5fpOLyCfg7u4cfVMV300UFCsXbrlkfInmy7nE4jmbNQFzD2qwPGA3LZzypjg=="],
 
     "@workflow/swc-plugin": ["@workflow/swc-plugin@4.1.2", "", { "peerDependencies": { "@swc/core": "1.15.3" } }, "sha512-oSd+fSXtcrHMJ82OwEqyfhYpqr1EsSQY5IEpntkKSlzzkdTFV4hcAj0vlafgIfI3WfhqxrXUoHfp/S1XE49jcA=="],
 
@@ -727,17 +727,17 @@
 
     "@workflow/utils": ["@workflow/utils@4.1.4", "", { "dependencies": { "ms": "2.1.3" } }, "sha512-2zGTa0vCJJczErE8oI7JPKpGmXNbhgnGW7JWcz3qTTs5TKibtaAxha5DLq3WTTbwsgvuuxcnvtWqQ5hFxhWATg=="],
 
-    "@workflow/vite": ["@workflow/vite@4.0.15", "", { "dependencies": { "@workflow/builders": "4.1.5" } }, "sha512-xDyyXsKYr+k2L1opaD5ITCiUNEohUH0tANUSGEkiVUDiGfE5Esi2v6trKqfmkyGhgAv03I/4kkPTUb6TBYJ3RQ=="],
+    "@workflow/vite": ["@workflow/vite@4.0.16", "", { "dependencies": { "@workflow/builders": "4.1.6" } }, "sha512-conV22HD0YAR+B91nUyt8+uD99LbbcRGLjjusoPoCt+v5oypJYDFgJPV2qNXD3zSMpTemR6vXZJl/gbpUA6MIQ=="],
 
-    "@workflow/vitest": ["@workflow/vitest@4.0.16", "", { "dependencies": { "@workflow/builders": "4.1.5", "@workflow/core": "4.8.0", "@workflow/rollup": "4.0.15", "@workflow/world": "4.3.1", "@workflow/world-local": "4.2.4" }, "peerDependencies": { "vite": ">=6.0.0", "vitest": ">=3.1.0" }, "optionalPeers": ["vite"] }, "sha512-VLbwlQU3P8SEak6srkFJejB0MvpcW0zakgsXXT9ridEsRhFnp+/cyfzkcklcma4etNTb7z9gq0ozbKjR2c4RcQ=="],
+    "@workflow/vitest": ["@workflow/vitest@4.0.17", "", { "dependencies": { "@workflow/builders": "4.1.6", "@workflow/core": "4.8.1", "@workflow/rollup": "4.0.16", "@workflow/world": "4.3.1", "@workflow/world-local": "4.2.4" }, "peerDependencies": { "vite": ">=6.0.0", "vitest": ">=3.1.0" }, "optionalPeers": ["vite"] }, "sha512-sgAoAWYPgrPYlhGBfrH1qv2/UaVAfxTQf00VUMnBzKDBWp+L2ZD0eKqKn4BS8ETW+4nuMhLTcg8WCCQcKhnxfg=="],
 
-    "@workflow/web": ["@workflow/web@4.1.16", "", { "dependencies": { "express": "^5.2.1" } }, "sha512-TgXV6ryqJWlBqiifV+tX/vIuU2cY6z0DojKbJWIqpx2JWdxsRkkZuvF9AvWd90OkCSDfqs8iLVRMvs1yHg9HeA=="],
+    "@workflow/web": ["@workflow/web@4.1.17", "", { "dependencies": { "express": "^5.2.1" } }, "sha512-6wn8SUqqTmTmaoG8+KqN0vWYHAITbnmptv5Cw7p7Ca1kPKtFqmQdeVrCKbmMekexkM/LA8tmOYD+oYDT4U6VKg=="],
 
     "@workflow/world": ["@workflow/world@4.3.1", "", { "dependencies": { "ulid": "~3.0.1", "zod": "~4.3.6" } }, "sha512-gT67yCzMsm6SS5+2ho+b6dSd8qknTlDkfHvKnuWWt9fwkvpRr0WLWFOPvzILj3IY/mptDj3pFNDS9a6RWxEqQQ=="],
 
     "@workflow/world-local": ["@workflow/world-local@4.2.4", "", { "dependencies": { "@vercel/queue": "0.3.1", "@workflow/errors": "4.2.1", "@workflow/utils": "4.1.4", "@workflow/world": "4.3.1", "async-sema": "3.1.1", "ulid": "~3.0.1", "undici": "7.28.0", "zod": "~4.3.6" }, "peerDependencies": { "@opentelemetry/api": "1" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-MCsoTTNyPp6cTV8z3wqniTaJUdwlcggMjKRMadU4jHjX5UOhEFrUE9EeOBnJY2eFUyEGW//Z/WpRFm2b982lcg=="],
 
-    "@workflow/world-vercel": ["@workflow/world-vercel@4.6.1", "", { "dependencies": { "@vercel/oidc": "3.2.0", "@vercel/queue": "0.3.1", "@workflow/errors": "4.2.1", "@workflow/world": "4.3.1", "cbor-x": "1.6.0", "undici": "7.28.0", "zod": "~4.3.6" }, "peerDependencies": { "@opentelemetry/api": "1" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-xBV/bdAlT6XL+ufzhjZM5e75Q+i/li7BoIFnZe1ARyS/8XPZ68ILjxEavyQp8j3vrxKklo2l6R4gUykMVnxECw=="],
+    "@workflow/world-vercel": ["@workflow/world-vercel@4.6.2", "", { "dependencies": { "@vercel/oidc": "3.2.0", "@vercel/queue": "0.3.1", "@workflow/errors": "4.2.1", "@workflow/world": "4.3.1", "cbor-x": "1.6.0", "undici": "7.28.0", "zod": "~4.3.6" }, "peerDependencies": { "@opentelemetry/api": "1" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-wkhYRgR8SOyYHNFt6Ns4MN9pWQFugDpV0GFIMcbzD9lkPx5rh7qgUWJNnHdNKVmmS4p25uWDBcLu8h6t42Yp3g=="],
 
     "@xhmikosr/archive-type": ["@xhmikosr/archive-type@8.1.0", "", { "dependencies": { "file-type": "^21.3.4" } }, "sha512-EXOjEbnZFE5c/nFMf4FOrEURVanzHpnkPYmnmr78u02/8hAhE0FMq8p9TK1IM0/bFr5VcyBUY0gfLm8f7dKy+Q=="],
 
@@ -763,7 +763,7 @@
 
     "acorn": ["acorn@8.18.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ=="],
 
-    "ai": ["ai@7.0.55", "", { "dependencies": { "@ai-sdk/gateway": "4.0.43", "@ai-sdk/provider": "4.0.6", "@ai-sdk/provider-utils": "5.0.23" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-B+oZTUFjrR7eV0mF9DUuaIaWvEoJM28yVvcnbUioqcyYYkvae4eY+KvvRkfti+UojsoKrwKiWHeNk0w+nUyvVg=="],
+    "ai": ["ai@7.0.56", "", { "dependencies": { "@ai-sdk/gateway": "4.0.44", "@ai-sdk/provider": "4.0.6", "@ai-sdk/provider-utils": "5.0.23" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-Lp7q9tZFl/TGOpBBNgt2wZ85SoCvJJVlHQksMkqrgiFUnIGOw+L2FWJ0gXuNEngLQTp9+t32k8QuIB7Jc5uKRA=="],
 
     "ajv": ["ajv@8.20.0", "", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
 
@@ -1585,7 +1585,7 @@
 
     "wordwrap": ["wordwrap@1.0.0", "", {}, "sha512-gvVzJFlPycKc5dZN4yPkP8w7Dc37BtP1yczEneOb4uq34pXZcvrtRTmWV8W+Ume+XCxKgbjM+nevkyFPMybd4Q=="],
 
-    "workflow": ["workflow@4.8.0", "", { "dependencies": { "@workflow/astro": "4.0.15", "@workflow/cli": "4.3.4", "@workflow/core": "4.8.0", "@workflow/errors": "4.2.1", "@workflow/nest": "4.0.16", "@workflow/next": "4.1.4", "@workflow/nitro": "4.1.6", "@workflow/nuxt": "4.0.16", "@workflow/rollup": "4.0.15", "@workflow/sveltekit": "4.0.15", "@workflow/typescript-plugin": "4.0.3", "@workflow/utils": "4.1.4", "ms": "2.1.3" }, "peerDependencies": { "@opentelemetry/api": "1" }, "optionalPeers": ["@opentelemetry/api"], "bin": { "wf": "bin/run.js", "workflow": "bin/run.js" } }, "sha512-6JGHlgyuoxjw/m+T2DNx33lPHvPjPWUP418cvr4AzMhKmiRDaJV8Vy8dXCMHn7CZ62ixswNrnhKZtyZjgmOvGg=="],
+    "workflow": ["workflow@4.8.1", "", { "dependencies": { "@workflow/astro": "4.0.16", "@workflow/cli": "4.3.5", "@workflow/core": "4.8.1", "@workflow/errors": "4.2.1", "@workflow/nest": "4.0.17", "@workflow/next": "4.1.5", "@workflow/nitro": "4.1.7", "@workflow/nuxt": "4.0.17", "@workflow/rollup": "4.0.16", "@workflow/sveltekit": "4.0.16", "@workflow/typescript-plugin": "4.0.3", "@workflow/utils": "4.1.4", "ms": "2.1.3" }, "peerDependencies": { "@opentelemetry/api": "1" }, "optionalPeers": ["@opentelemetry/api"], "bin": { "workflow": "bin/run.js", "wf": "bin/run.js" } }, "sha512-iBNbykkuK3+qXlP+Kgac7MS4OhGl3SRyZRBYs9TkXPmf8WisUd4DPDn5+0NivgFPgETZS4LZY7U9in5YR9Bh5A=="],
 
     "wrap-ansi": ["wrap-ansi@7.0.0", "", { "dependencies": { "ansi-styles": "^4.0.0", "string-width": "^4.1.0", "strip-ansi": "^6.0.0" } }, "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q=="],
 
