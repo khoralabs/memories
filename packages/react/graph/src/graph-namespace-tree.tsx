@@ -27,6 +27,10 @@ import {
   isNamespaceUnderPath,
   type NamespaceTreeNode,
 } from "./lib/namespace-tree.js";
+import {
+  marksNamespaceTreeLabelAction,
+  NAMESPACE_TREE_LABEL_ACTION,
+} from "./lib/namespace-tree-label-action.js";
 import { type GraphScope, useMemoriesNamespaces } from "./memories-namespaces-provider.js";
 
 export type GraphNamespaceTreeProps = {
@@ -148,12 +152,26 @@ function NamespaceTreeItem({
   );
 }
 
+function GraphNamespaceTreeLabelActions({ children }: { children?: ReactNode }) {
+  return <>{children}</>;
+}
+GraphNamespaceTreeLabelActions.displayName = "GraphNamespaceTree.LabelActions";
+(
+  GraphNamespaceTreeLabelActions as { namespaceTreeLabelAction?: boolean }
+).namespaceTreeLabelAction = true;
+
 function isLabelAction(child: ReactElement): boolean {
-  return (
+  if (
     child.type === AddNamespaceButton ||
     child.type === RefreshGraphButton ||
-    child.type === GraphRefreshButton
-  );
+    child.type === GraphRefreshButton ||
+    child.type === GraphNamespaceTreeLabelActions
+  ) {
+    return true;
+  }
+  if (marksNamespaceTreeLabelAction(child.type)) return true;
+  const slot = (child.props as { "data-slot"?: unknown })["data-slot"];
+  return slot === NAMESPACE_TREE_LABEL_ACTION;
 }
 
 function GraphNamespaceTreeLabel({
@@ -166,6 +184,13 @@ function GraphNamespaceTreeLabel({
   const actions: ReactNode[] = [];
   Children.forEach(children, (child) => {
     if (isValidElement(child) && isLabelAction(child)) {
+      // LabelActions is a marker — hoist its children into the actions row.
+      if (child.type === GraphNamespaceTreeLabelActions) {
+        Children.forEach((child.props as { children?: ReactNode }).children, (actionChild) => {
+          if (actionChild != null && actionChild !== false) actions.push(actionChild);
+        });
+        return;
+      }
       actions.push(child);
       return;
     }
@@ -285,5 +310,6 @@ function GraphNamespaceTreeRoot({ className, children }: GraphNamespaceTreeProps
 
 export const GraphNamespaceTree = Object.assign(GraphNamespaceTreeRoot, {
   Label: GraphNamespaceTreeLabel,
+  LabelActions: GraphNamespaceTreeLabelActions,
   Hierarchy: GraphNamespaceTreeHierarchy,
 });

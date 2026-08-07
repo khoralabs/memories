@@ -1,13 +1,3 @@
-import type {
-  MemoriesDatabaseId,
-  StoredOntologyJsonSchema,
-} from "@khoralabs/memories-service/client";
-import {
-  MemoriesOntologyClient,
-  MemoriesServiceClient,
-  type MemoriesServiceClientAuthProvider,
-  type MemoriesServiceFetch,
-} from "@khoralabs/memories-service/client";
 import {
   createContext,
   type PropsWithChildren,
@@ -20,6 +10,21 @@ import {
 } from "react";
 
 import type { ReactMemoriesClient } from "./memories-client.js";
+import { type MemoriesDatabaseId, memoriesDatabaseKey } from "./memories-database-id.js";
+
+/** Linked ontology document (opaque to the UI package — hosts validate forms). */
+export type MemoriesOntologySchema = Record<string, unknown>;
+
+/** Duck-typed open/focus helper; typically a memories-service client. */
+export type MemoriesOpenDatabaseClient = {
+  openDatabase(id: MemoriesDatabaseId): Promise<void>;
+};
+
+/** Duck-typed ontology registry client. */
+export type MemoriesOntologyLinkClient = {
+  getCurrentLink(database: MemoriesDatabaseId): Promise<{ hash: string } | undefined | null>;
+  getOntology(hash: string): Promise<{ hash: string; schema: MemoriesOntologySchema }>;
+};
 
 export type MemoriesClientValue = {
   /** Graph backend client for the focused database. */
@@ -36,7 +41,7 @@ export type MemoriesClientValue = {
    * Resolved linked ontology schema for `database`, or `null` when unlinked / unavailable.
    * Hosts may use this to validate create/update forms; this package does not ship forms.
    */
-  ontology: StoredOntologyJsonSchema | null;
+  ontology: MemoriesOntologySchema | null;
   /** Hash of the current ontology link, or `null` when unlinked. */
   ontologyHash: string | null;
   ontologyLoading: boolean;
@@ -47,19 +52,11 @@ export type MemoriesClientValue = {
 
 const MemoriesClientContext = createContext<MemoriesClientValue | null>(null);
 
-function databaseKey(id: MemoriesDatabaseId): string {
-  return `${id.kind}:${id.ownerKey}`;
-}
-
 type SharedOntologyProps = {
-  /** Optional prebuilt service client (else constructed from `baseUrl` / `auth` / `fetch`). */
-  serviceClient?: MemoriesServiceClient;
-  /** Optional prebuilt ontology client (else derived from `serviceClient`). */
-  ontologyClient?: MemoriesOntologyClient;
-  /** Service base URL used to construct clients when `serviceClient` is omitted. */
-  baseUrl?: string;
-  auth?: MemoriesServiceClientAuthProvider;
-  fetch?: MemoriesServiceFetch;
+  /** Optional prebuilt service client for `openOnFocus` (inject from host; no Node import here). */
+  serviceClient?: MemoriesOpenDatabaseClient;
+  /** Optional ontology client (inject from host). */
+  ontologyClient?: MemoriesOntologyLinkClient;
   /** When true (default), call `openDatabase` on focus when a service client is available. */
   openOnFocus?: boolean;
 };
@@ -90,9 +87,12 @@ const UNSET_DATABASE: MemoriesDatabaseId = { kind: "account", ownerKey: "_unset_
  * Root provider: focused database, resolved linked ontology, and {@link ReactMemoriesClient}.
  * Mount above {@link MemoriesNamespacesProvider}. Prefer `createClient` + `database` so
  * {@link MemoriesClientValue.focusDatabase} can retarget the client.
+ *
+ * This module is browser-safe: it does not import `@khoralabs/memories-service`. Pass
+ * `serviceClient` / `ontologyClient` when you need open-on-focus or ontology resolution.
  */
 export function MemoriesClientProvider(props: MemoriesClientProviderProps) {
-  const { children, openOnFocus = true } = props;
+  const { children, openOnFocus = true, serviceClient = null, ontologyClient = null } = props;
 
   const seedDatabase = props.database !== undefined ? props.database : UNSET_DATABASE;
 
@@ -104,29 +104,16 @@ export function MemoriesClientProvider(props: MemoriesClientProviderProps) {
   const createClientRef = useRef(props.createClient);
   createClientRef.current = props.createClient;
 
-  const serviceClient = useMemo(() => {
-    if (props.serviceClient !== undefined) return props.serviceClient;
-    if (props.baseUrl === undefined) return null;
-    return new MemoriesServiceClient({
-      baseUrl: props.baseUrl,
-      ...(props.auth !== undefined ? { auth: props.auth } : {}),
-      ...(props.fetch !== undefined ? { fetch: props.fetch } : {}),
-    });
-  }, [props.serviceClient, props.baseUrl, props.auth, props.fetch]);
-
-  const ontologyClient = useMemo(() => {
-    if (props.ontologyClient !== undefined) return props.ontologyClient;
-    if (serviceClient === null) return null;
-    return new MemoriesOntologyClient({ serviceClient });
-  }, [props.ontologyClient, serviceClient]);
-
-  const [ontology, setOntology] = useState<StoredOntologyJsonSchema | null>(null);
+  const [ontology, setOntology] = useState<MemoriesOntologySchema | null>(null);
   const [ontologyHash, setOntologyHash] = useState<string | null>(null);
   const [ontologyLoading, setOntologyLoading] = useState(false);
   const [ontologyError, setOntologyError] = useState<string | null>(null);
 
   const reloadOntology = useCallback(async () => {
-    if (ontologyClient === null || databaseKey(database) === databaseKey(UNSET_DATABASE)) {
+    if (
+      ontologyClient === null ||
+      memoriesDatabaseKey(database) === memoriesDatabaseKey(UNSET_DATABASE)
+    ) {
       setOntology(null);
       setOntologyHash(null);
       setOntologyError(null);
@@ -137,7 +124,7 @@ export function MemoriesClientProvider(props: MemoriesClientProviderProps) {
     setOntologyError(null);
     try {
       const link = await ontologyClient.getCurrentLink(database);
-      if (link === undefined) {
+      if (link == null) {
         setOntology(null);
         setOntologyHash(null);
         return;
@@ -167,7 +154,7 @@ export function MemoriesClientProvider(props: MemoriesClientProviderProps) {
 
   const focusDatabase = useCallback(
     async (id: MemoriesDatabaseId) => {
-      if (databaseKey(id) === databaseKey(database)) return;
+      if (memoriesDatabaseKey(id) === memoriesDatabaseKey(database)) return;
       if (serviceClient !== null && openOnFocus) {
         await serviceClient.openDatabase(id);
       }
@@ -183,7 +170,7 @@ export function MemoriesClientProvider(props: MemoriesClientProviderProps) {
   // Host seed database prop change → focus.
   useEffect(() => {
     if (props.database === undefined) return;
-    if (databaseKey(props.database) === databaseKey(database)) return;
+    if (memoriesDatabaseKey(props.database) === memoriesDatabaseKey(database)) return;
     void focusDatabase(props.database);
   }, [props.database, database, focusDatabase]);
 

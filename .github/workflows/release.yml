@@ -59,6 +59,9 @@ jobs:
       - name: Assert storage entry isolation
         run: bun run assert:storage-entry-isolation
 
+      - name: Assert react-graph browser entry isolation
+        run: bun run assert:react-graph-browser-entry
+
       - name: Typecheck
         run: bun run typecheck
 
@@ -67,6 +70,9 @@ jobs:
 
       - name: Assert storage entry isolation (built dist)
         run: bun run assert:storage-entry-isolation
+
+      - name: Assert react-graph browser entry isolation (built dist)
+        run: bun run assert:react-graph-browser-entry
 
       - name: Bump package versions
         run: bun run release:bump "${{ steps.ver.outputs.version }}"

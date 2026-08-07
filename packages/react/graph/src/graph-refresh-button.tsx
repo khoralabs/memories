@@ -73,6 +73,7 @@ function RefreshGraphButtonRoot({
 
 export const RefreshGraphButton = Object.assign(RefreshGraphButtonRoot, {
   Tooltip: RefreshGraphButtonTooltip,
+  namespaceTreeLabelAction: true as const,
 });
 
 /** @deprecated Prefer {@link RefreshGraphButton}. */

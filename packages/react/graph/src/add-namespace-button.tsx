@@ -67,4 +67,5 @@ function AddNamespaceButtonRoot({
 
 export const AddNamespaceButton = Object.assign(AddNamespaceButtonRoot, {
   Tooltip: AddNamespaceButtonTooltip,
+  namespaceTreeLabelAction: true as const,
 });

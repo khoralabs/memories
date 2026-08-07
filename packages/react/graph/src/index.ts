@@ -118,20 +118,22 @@ export {
   installBenignResizeObserverErrorSuppression,
   isBenignResizeObserverError,
 } from "./lib/suppress-benign-resize-observer-errors.js";
-export {
-  type CreateServiceReactMemoriesClientOptions,
-  createServiceReactMemoriesClient,
-  type EdgePreviewJson,
-  type GraphSearchResult,
-  type NamespaceSearchArms,
-  type NamespaceSearchClientResult,
-  type NamespaceSearchHitResult,
-  type ReactMemoriesClient,
+export type {
+  EdgePreviewJson,
+  GraphSearchResult,
+  MemoriesDatabaseId,
+  NamespaceSearchArms,
+  NamespaceSearchClientResult,
+  NamespaceSearchHitResult,
+  ReactMemoriesClient,
 } from "./memories-client.js";
 export {
   MemoriesClientProvider,
   type MemoriesClientProviderProps,
   type MemoriesClientValue,
+  type MemoriesOntologyLinkClient,
+  type MemoriesOntologySchema,
+  type MemoriesOpenDatabaseClient,
   useMemoriesClient,
   useMemoriesDatabase,
 } from "./memories-client-provider.js";

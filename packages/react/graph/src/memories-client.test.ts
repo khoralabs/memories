@@ -6,7 +6,7 @@ import type {
   RemoteMemoriesReadClient,
 } from "@khoralabs/memories-service/client";
 
-import { createServiceReactMemoriesClient } from "./memories-client.ts";
+import { createServiceReactMemoriesClient } from "./service.ts";
 
 const database: MemoriesDatabaseId = { kind: "account", ownerKey: "test-owner" };
 

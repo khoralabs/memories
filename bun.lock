@@ -110,7 +110,6 @@
       "version": "0.7.2",
       "dependencies": {
         "@chenglou/pretext": "^0.0.6",
-        "@khoralabs/memories-service": "workspace:*",
         "@radix-ui/react-slot": "^1.2.3",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -119,6 +118,7 @@
         "tailwind-merge": "^3.3.1",
       },
       "devDependencies": {
+        "@khoralabs/memories-service": "workspace:*",
         "@react-three/drei": "^10",
         "@react-three/fiber": "^9",
         "@react-three/postprocessing": "^3",
@@ -134,6 +134,7 @@
         "three": "^0.183",
       },
       "peerDependencies": {
+        "@khoralabs/memories-service": "workspace:*",
         "@react-three/drei": "^10",
         "@react-three/fiber": "^9",
         "@react-three/postprocessing": "^3",
@@ -142,6 +143,9 @@
         "three": "^0.183",
         "typescript": "^5",
       },
+      "optionalPeers": [
+        "@khoralabs/memories-service",
+      ],
     },
     "packages/service": {
       "name": "@khoralabs/memories-service",

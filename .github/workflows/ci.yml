@@ -12,5 +12,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run assert:no-bun-sqlite-leak
       - run: bun run assert:storage-entry-isolation
+      - run: bun run assert:react-graph-browser-entry
       - run: bun run typecheck
       - run: bun test

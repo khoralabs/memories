@@ -23,6 +23,11 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./service": {
+      "types": "./src/service.ts",
+      "import": "./src/service.ts",
+      "default": "./src/service.ts"
     }
   },
   "scripts": {
@@ -31,7 +36,6 @@
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.6",
-    "@khoralabs/memories-service": "workspace:*",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -39,7 +43,23 @@
     "radix-ui": "^1.4.3",
     "tailwind-merge": "^3.3.1"
   },
+  "peerDependencies": {
+    "@khoralabs/memories-service": "workspace:*",
+    "@react-three/drei": "^10",
+    "@react-three/fiber": "^9",
+    "@react-three/postprocessing": "^3",
+    "react": "^19",
+    "react-dom": "^19",
+    "three": "^0.183",
+    "typescript": "^5"
+  },
+  "peerDependenciesMeta": {
+    "@khoralabs/memories-service": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@khoralabs/memories-service": "workspace:*",
     "@react-three/drei": "^10",
     "@react-three/fiber": "^9",
     "@react-three/postprocessing": "^3",
@@ -53,14 +73,5 @@
     "react": "^19",
     "react-dom": "^19",
     "three": "^0.183"
-  },
-  "peerDependencies": {
-    "@react-three/drei": "^10",
-    "@react-three/fiber": "^9",
-    "@react-three/postprocessing": "^3",
-    "react": "^19",
-    "react-dom": "^19",
-    "three": "^0.183",
-    "typescript": "^5"
   }
 }

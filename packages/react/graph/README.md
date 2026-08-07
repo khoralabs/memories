@@ -8,11 +8,13 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 
 | Export | Role |
 |--------|------|
+| `@khoralabs/memories-react-graph` | Browser UI: providers, graph chrome, hooks, `ReactMemoriesClient` **type** |
+| `@khoralabs/memories-react-graph/service` | `createServiceReactMemoriesClient` (Node/server or hosts that intentionally pull memories-service) |
 | `MemoriesClientProvider` / `useMemoriesClient` / `useMemoriesDatabase` | Client + database focus + resolved ontology |
 | `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, CRUD/suppress, arms-driven search |
 | `MemoriesNamespaceMemoriesProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove (`MemoriesMemoryProvider` is a deprecated alias) |
 | `useGraphMemoriesSearch` / `useGraphNamespacesSearch` | Thin chrome slices of provider search state (not `useMemoriesGraphChrome`) |
-| `createServiceReactMemoriesClient` / `ReactMemoriesClient` | Service HTTP client + interface |
+| `ReactMemoriesClient` | Host backend interface (implement over a BFF, or use `/service`) |
 | `DEFAULT_SEARCH_DEBOUNCE_MS` | Shared default debounce for namespace + memory search |
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |
 | `GraphProjectionProvider` / `useProjection` / `useMemoriesGraphChrome` | Scene projection; chrome = load/refresh/Esc (search is via search hooks) |
@@ -22,11 +24,11 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | `GraphPreviewDock` | Selected memory preview panel |
 | `GraphLoading`, `GraphFetchError` | Loading and error states |
 
-Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing` (used when `fog.blur` is enabled for screen-space edge softening).
+Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing` (used when `fog.blur` is enabled for screen-space edge softening). Optional peer: `@khoralabs/memories-service` (only for `/service`).
 
 ## Host integration
 
-1. Point at memories-service (`createServiceReactMemoriesClient`) or implement `ReactMemoriesClient`.
+1. Implement `ReactMemoriesClient` (browser BFF) **or** import `createServiceReactMemoriesClient` from `@khoralabs/memories-react-graph/service` (do **not** import `/service` into a Vite/Bun HTML client bundle that only needs UI).
 2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesNamespaceMemoriesProvider` → `GraphProjectionProvider`.
 3. **Namespace root is host-owned** (no package default). Prefer `listNamespaces.namespaceRoot` (catalog wins); else provider `namespaceRoot` prop. With `createServiceReactMemoriesClient`, pass `namespaceRoot` on the client (stamped onto `listNamespaces`) and/or on the provider — bare service catalog has no root field. Omitting focus `namespace` lands on that root with `subtree` once known.
 4. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
@@ -37,7 +39,6 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 import {
   AddMemoryButton,
   AddNamespaceButton,
-  createServiceReactMemoriesClient,
   GraphNamespaceSearch,
   GraphNamespaceTree,
   GraphProjectionProvider,
@@ -49,6 +50,7 @@ import {
   useMemoriesMemory,
   useMemoriesNamespaces,
 } from "@khoralabs/memories-react-graph";
+import { createServiceReactMemoriesClient } from "@khoralabs/memories-react-graph/service";
 
 const database = { kind: "account" as const, ownerKey: "user-1" };
 const createClient = (db: typeof database) =>
@@ -101,7 +103,10 @@ function MemoriesGraphPage() {
             <GraphNamespaceTree>
               <GraphNamespaceTree.Label>
                 Namespaces
-                <AddNamespaceButton />
+                {/* Wrappers must use LabelActions (direct AddNamespaceButton also works) */}
+                <GraphNamespaceTree.LabelActions>
+                  <CreateNamespaceControl />
+                </GraphNamespaceTree.LabelActions>
               </GraphNamespaceTree.Label>
               <GraphNamespaceTree.Hierarchy />
             </GraphNamespaceTree>
@@ -120,8 +125,7 @@ Hosts can still drive subgraph highlighting via `useGraphMemoriesSearch().setGra
 ## Development
 
 ```bash
-bun run typecheck   # from this package
-bun test            # client, helpers, providers, search chrome
+bun install
+bun test packages/react/graph
+bun run --filter @khoralabs/memories-react-graph typecheck
 ```
-
-Included in the root `bun run typecheck` workspace script.
