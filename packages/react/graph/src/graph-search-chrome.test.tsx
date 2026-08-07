@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { GraphNamespaceSearch } from "./graph-namespace-search.js";
 import { GraphSearch } from "./graph-search.js";
 import { MemoriesClientProvider } from "./memories-client-provider.js";
-import { MemoriesMemoryProvider } from "./memories-memory-provider.js";
+import { MemoriesNamespaceMemoriesProvider } from "./memories-memory-provider.js";
 import { MemoriesNamespacesProvider } from "./memories-namespaces-provider.js";
 import { ensureDom } from "./test/ensure-dom.js";
 import { createMockReactClient, TEST_DATABASE } from "./test/mock-client.js";
@@ -21,7 +21,9 @@ function wrap(child: ReactNode) {
   return (
     <MemoriesClientProvider client={client} database={TEST_DATABASE}>
       <MemoriesNamespacesProvider namespaceRoot="acme" searchDebounceMs={0}>
-        <MemoriesMemoryProvider searchDebounceMs={0}>{child}</MemoriesMemoryProvider>
+        <MemoriesNamespaceMemoriesProvider searchDebounceMs={0}>
+          {child}
+        </MemoriesNamespaceMemoriesProvider>
       </MemoriesNamespacesProvider>
     </MemoriesClientProvider>
   );

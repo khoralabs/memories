@@ -12,7 +12,7 @@ export type GraphSearchProps = {
 
 /**
  * Memory search row; reads {@link useGraphMemoriesSearch}.
- * Mount under {@link MemoriesMemoryProvider}.
+ * Mount under {@link MemoriesNamespaceMemoriesProvider}.
  */
 export function GraphSearch({ className, inputProps }: GraphSearchProps = {}) {
   const { searchQuery, setSearchQuery, searchLoading, summary } = useGraphMemoriesSearch();

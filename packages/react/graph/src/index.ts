@@ -142,6 +142,8 @@ export {
   MemoriesMemoryProvider,
   type MemoriesMemoryProviderProps,
   type MemoriesMemoryValue,
+  MemoriesNamespaceMemoriesProvider,
+  type MemoriesNamespaceMemoriesProviderProps,
   type MemoryContentArm,
   type MemoryFeatures,
   type MemoryLabelArm,

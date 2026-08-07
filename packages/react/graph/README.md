@@ -2,7 +2,7 @@
 
 React components for exploring a memories knowledge graph in 3D: hybrid search, namespace selection, and memory preview.
 
-Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database by itself — mount `MemoriesClientProvider` with a `ReactMemoriesClient` (or `createClient` factory for database switching), then namespaces + memory providers for catalog/focus/CRUD.
+Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database by itself — mount `MemoriesClientProvider` with a `ReactMemoriesClient` (or `createClient` factory for database switching), then namespaces + namespace-memories providers for catalog/focus/CRUD.
 
 ## Exports
 
@@ -10,7 +10,7 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 |--------|------|
 | `MemoriesClientProvider` / `useMemoriesClient` / `useMemoriesDatabase` | Client + database focus + resolved ontology |
 | `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, CRUD/suppress, arms-driven search |
-| `MemoriesMemoryProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove |
+| `MemoriesNamespaceMemoriesProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove (`MemoriesMemoryProvider` is a deprecated alias) |
 | `useGraphMemoriesSearch` / `useGraphNamespacesSearch` | Thin chrome slices of provider search state (not `useMemoriesGraphChrome`) |
 | `createServiceReactMemoriesClient` / `ReactMemoriesClient` | Service HTTP client + interface |
 | `DEFAULT_SEARCH_DEBOUNCE_MS` | Shared default debounce for namespace + memory search |
@@ -27,7 +27,7 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 ## Host integration
 
 1. Point at memories-service (`createServiceReactMemoriesClient`) or implement `ReactMemoriesClient`.
-2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesMemoryProvider` → `GraphProjectionProvider`.
+2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesNamespaceMemoriesProvider` → `GraphProjectionProvider`.
 3. **Namespace root is host-owned** (no package default). Prefer `listNamespaces.namespaceRoot` (catalog wins); else provider `namespaceRoot` prop. With `createServiceReactMemoriesClient`, pass `namespaceRoot` on the client (stamped onto `listNamespaces`) and/or on the provider — bare service catalog has no root field. Omitting focus `namespace` lands on that root with `subtree` once known.
 4. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
 5. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Memory search UI uses `useGraphMemoriesSearch` / `GraphSearch` (not `useMemoriesGraphChrome`).
@@ -44,7 +44,7 @@ import {
   GraphScene,
   GraphSearch,
   MemoriesClientProvider,
-  MemoriesMemoryProvider,
+  MemoriesNamespaceMemoriesProvider,
   MemoriesNamespacesProvider,
   useMemoriesMemory,
   useMemoriesNamespaces,
@@ -93,7 +93,7 @@ function MemoriesGraphPage() {
   return (
     <MemoriesClientProvider createClient={createClient} database={database}>
       <MemoriesNamespacesProvider>
-        <MemoriesMemoryProvider>
+        <MemoriesNamespaceMemoriesProvider>
           <GraphProjectionProvider>
             <CreateNamespaceControl />
             <CreateMemoryControl />
@@ -108,7 +108,7 @@ function MemoriesGraphPage() {
             <GraphSearch />
             <GraphScene />
           </GraphProjectionProvider>
-        </MemoriesMemoryProvider>
+        </MemoriesNamespaceMemoriesProvider>
       </MemoriesNamespacesProvider>
     </MemoriesClientProvider>
   );

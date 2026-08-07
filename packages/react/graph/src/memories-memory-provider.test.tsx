@@ -3,7 +3,10 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { type ReactNode, useEffect } from "react";
 
 import { MemoriesClientProvider } from "./memories-client-provider.js";
-import { MemoriesMemoryProvider, useMemoriesMemory } from "./memories-memory-provider.js";
+import {
+  MemoriesNamespaceMemoriesProvider,
+  useMemoriesMemory,
+} from "./memories-memory-provider.js";
 import { MemoriesNamespacesProvider } from "./memories-namespaces-provider.js";
 import type { GraphSearchState } from "./projection-types.js";
 import { ensureDom } from "./test/ensure-dom.js";
@@ -36,13 +39,15 @@ function mount(client: ReturnType<typeof createMockReactClient>, child: ReactNod
   return render(
     <MemoriesClientProvider client={client} database={TEST_DATABASE}>
       <MemoriesNamespacesProvider namespaceRoot="acme" namespace="acme" scope="subtree">
-        <MemoriesMemoryProvider searchDebounceMs={0}>{child}</MemoriesMemoryProvider>
+        <MemoriesNamespaceMemoriesProvider searchDebounceMs={0}>
+          {child}
+        </MemoriesNamespaceMemoriesProvider>
       </MemoriesNamespacesProvider>
     </MemoriesClientProvider>,
   );
 }
 
-describe("MemoriesMemoryProvider", () => {
+describe("MemoriesNamespaceMemoriesProvider", () => {
   test("loads graph for focused namespace", async () => {
     const getGraph = mock(async (input: { namespace: string }) => ({
       ...emptyGraph(input.namespace),

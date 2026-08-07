@@ -133,7 +133,7 @@ function catalogFromPayload(payload: GraphPayload): CatalogMemory[] {
  * Mount under {@link MemoriesNamespacesProvider}. Catalog/`payload` follow the
  * focused namespace + scope (`exact` vs `subtree`); do not assume exact-only.
  * {@link GraphProjectionProvider} should consume `payload` / search / focus from here
- * (no second `getGraph` fetch).
+ * (no second `getGraph` fetch). Mount via {@link MemoriesNamespaceMemoriesProvider}.
  */
 export type MemoriesMemoryValue = {
   /** Latest `getGraph` layout for the focused namespace + scope. */
@@ -209,8 +209,8 @@ export type MemoriesMemoryValue = {
 
 const MemoriesMemoryContext = createContext<MemoriesMemoryValue | null>(null);
 
-/** Props for {@link MemoriesMemoryProvider} (scope comes from namespaces). */
-export type MemoriesMemoryProviderProps = PropsWithChildren<{
+/** Props for {@link MemoriesNamespaceMemoriesProvider} (scope comes from namespaces). */
+export type MemoriesNamespaceMemoriesProviderProps = PropsWithChildren<{
   /**
    * Debounce for graph search queries in ms.
    * @default DEFAULT_SEARCH_DEBOUNCE_MS
@@ -222,10 +222,10 @@ export type MemoriesMemoryProviderProps = PropsWithChildren<{
  * Owns graph payload, search, and memory focus/mutations for the current namespace scope.
  * Requires {@link MemoriesClientProvider} and {@link MemoriesNamespacesProvider} above.
  */
-export function MemoriesMemoryProvider({
+export function MemoriesNamespaceMemoriesProvider({
   children,
   searchDebounceMs = DEFAULT_SEARCH_DEBOUNCE_MS,
-}: MemoriesMemoryProviderProps) {
+}: MemoriesNamespaceMemoriesProviderProps) {
   const client = useMemoriesClient();
   const { database } = useMemoriesDatabase();
   const { namespace, scope } = useMemoriesNamespaces();
@@ -569,11 +569,21 @@ export function MemoriesMemoryProvider({
   return <MemoriesMemoryContext.Provider value={value}>{children}</MemoriesMemoryContext.Provider>;
 }
 
-/** Access {@link MemoriesMemoryValue}; must be under {@link MemoriesMemoryProvider}. */
+/**
+ * @deprecated Use {@link MemoriesNamespaceMemoriesProvider}.
+ */
+export const MemoriesMemoryProvider = MemoriesNamespaceMemoriesProvider;
+
+/**
+ * @deprecated Use {@link MemoriesNamespaceMemoriesProviderProps}.
+ */
+export type MemoriesMemoryProviderProps = MemoriesNamespaceMemoriesProviderProps;
+
+/** Access {@link MemoriesMemoryValue}; must be under {@link MemoriesNamespaceMemoriesProvider}. */
 export function useMemoriesMemory(): MemoriesMemoryValue {
   const ctx = useContext(MemoriesMemoryContext);
   if (ctx == null) {
-    throw new Error("useMemoriesMemory must be used within MemoriesMemoryProvider");
+    throw new Error("useMemoriesMemory must be used within MemoriesNamespaceMemoriesProvider");
   }
   return ctx;
 }

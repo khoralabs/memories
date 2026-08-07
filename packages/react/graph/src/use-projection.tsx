@@ -88,7 +88,7 @@ const ProjectionContext = createContext<ProjectionValue | null>(null);
  * Graph chrome from {@link GraphProjectionProvider} (load / refresh / Esc).
  * Memory search: {@link useGraphMemoriesSearch}. Namespace catalog: {@link useMemoriesNamespaces}.
  * Mount {@link MemoriesClientProvider} → {@link MemoriesNamespacesProvider} →
- * {@link MemoriesMemoryProvider} → this provider.
+ * {@link MemoriesNamespaceMemoriesProvider} → this provider.
  */
 export type MemoriesGraphChromeBaseValue = {
   graphLoading: boolean;
@@ -258,8 +258,23 @@ type ProjectionProviderInnerProps = PropsWithChildren<{
   unFocusDelay?: number;
 }>;
 
+/**
+ * Props for {@link GraphProjectionProvider}.
+ *
+ * Scene/interaction layer only: does not fetch catalogs, run search, or perform CRUD.
+ * Those live on {@link MemoriesNamespacesProvider} and {@link MemoriesNamespaceMemoriesProvider}.
+ */
 export type GraphProjectionProviderProps = PropsWithChildren<{
+  /**
+   * Milliseconds before live pointer hover becomes debounced hover.
+   * Debounced hover drives subgraph dimming and the bottom-right preview dock (`useProjection().graphPreview`).
+   * @default DEFAULT_GRAPH_FOCUS_DELAY_MS
+   */
   focusDelay?: number;
+  /**
+   * Milliseconds after pointer leave before clearing live hover (node or edge).
+   * @default DEFAULT_GRAPH_UNFOCUS_DELAY_MS
+   */
   unFocusDelay?: number;
 }>;
 
@@ -566,6 +581,23 @@ function ProjectionProviderInner({
   );
 }
 
+/**
+ * Projects namespace-scoped memory catalog data into 3D scene state and pointer interaction.
+ *
+ * @remarks
+ * Mount order (required):
+ * {@link MemoriesClientProvider} → {@link MemoriesNamespacesProvider} →
+ * {@link MemoriesNamespaceMemoriesProvider} → {@link GraphProjectionProvider}.
+ *
+ * Consumes `payload`, search, and memory focus from {@link useMemoriesMemory}
+ * (no second `getGraph`). Owns points/sceneEdges, hover/pin, subgraph focus sets,
+ * preview dock selection, and load/refresh/Esc chrome via {@link useMemoriesGraphChrome}.
+ *
+ * Memory search UI should use {@link useGraphMemoriesSearch} / {@link GraphSearch},
+ * not the chrome hook.
+ *
+ * @param props - Timing delays for hover debounce / unfocus; children are scene + chrome
+ */
 export function GraphProjectionProvider({
   children,
   focusDelay = DEFAULT_GRAPH_FOCUS_DELAY_MS,
