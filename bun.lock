@@ -19,7 +19,7 @@
     },
     "packages/agents": {
       "name": "@khoralabs/memories-agents",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "dependencies": {
         "@ai-sdk/provider-utils": "^5.0.2",
         "@khoralabs/agent-capabilities": "^0.2.0",
@@ -38,7 +38,7 @@
     },
     "packages/node": {
       "name": "@khoralabs/memories-node",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "dependencies": {
         "@ai-sdk/provider-utils": "^5.0.2",
         "@khoralabs/sourcemaps": "^0.1.0",
@@ -85,7 +85,7 @@
     },
     "packages/otel": {
       "name": "@khoralabs/memories-otel",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "dependencies": {
         "@khoralabs/memories-node": "workspace:*",
         "@opentelemetry/api": "^1.9.0",
@@ -107,7 +107,7 @@
     },
     "packages/react/graph": {
       "name": "@khoralabs/memories-react-graph",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "dependencies": {
         "@chenglou/pretext": "^0.0.6",
         "@radix-ui/react-slot": "^1.2.3",
@@ -149,7 +149,7 @@
     },
     "packages/service": {
       "name": "@khoralabs/memories-service",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "dependencies": {
         "@khoralabs/memories-node": "workspace:*",
         "ajv": "^8",
@@ -169,7 +169,7 @@
     },
     "packages/spec": {
       "name": "@khoralabs/memories-spec",
-      "version": "0.7.3",
+      "version": "0.7.4",
     },
   },
   "packages": {
@@ -679,7 +679,7 @@
 
     "@vercel/cli-exec": ["@vercel/cli-exec@1.0.1", "", { "dependencies": { "execa": "5.1.1" } }, "sha512-g9XerViJ/paZujufXYcu5XYI2vU2rtB4sgdpjUHde5RnOkdmpu0ngH46LCFGHoPXO/C+qDPSczIHIRN+8Q2YKQ=="],
 
-    "@vercel/functions": ["@vercel/functions@3.8.0", "", { "dependencies": { "@vercel/oidc": "3.8.2" }, "peerDependencies": { "@aws-sdk/credential-provider-web-identity": "*", "ws": ">=8" }, "optionalPeers": ["@aws-sdk/credential-provider-web-identity", "ws"] }, "sha512-2vvvf544KWqZBR6ZqqpnpKV9DRT6pb69YgSa0BMZ619L/HO0hblHGkpoqlmTE/L0R28op46vgk9EDAT3D932Vw=="],
+    "@vercel/functions": ["@vercel/functions@3.9.0", "", { "dependencies": { "@vercel/oidc": "3.8.2" }, "peerDependencies": { "@aws-sdk/credential-provider-web-identity": "*", "ws": ">=8" }, "optionalPeers": ["@aws-sdk/credential-provider-web-identity", "ws"] }, "sha512-oljr4La9qptN9pmTG82D6L80ZwKMUz2LYQ/TO7Wn01DoGyCaXM77bHsCgxTAOrz7mCCj+dr7EzDQB8e2YjMI7w=="],
 
     "@vercel/oidc": ["@vercel/oidc@3.2.0", "", {}, "sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug=="],
 
