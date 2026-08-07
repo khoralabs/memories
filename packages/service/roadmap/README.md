@@ -44,7 +44,7 @@ type MemoriesDatabaseBackendStrategy =
   | { kind: string; capabilities?: ...; [key: string]: unknown };
 ```
 
-`createLocalSqliteServiceStack` (`@khoralabs/memories-service/storage/sqlite`) wires a composite factory for `sqlite`, `libsql`, and `turso-serverless`. Turso supports `open` / `exists` / `delete` / `close`; snapshot and list raise unsupported-storage-feature.
+`createLocalSqliteServiceStack` (`@khoralabs/memories-service/storage/sqlite`) defaults to a **sqlite-only** backend factory (safe for `bun build --compile`). Register `libsql` / `turso-serverless` via an explicit `backendFactory` (`createCompositeBackendFactory`) when the host has those optional deps available. Turso supports `open` / `exists` / `delete` / `close`; snapshot and list raise unsupported-storage-feature.
 
 Placement is programmatic: `MemoriesDatabasePlacementStore` (`getDefaultStrategy`, `setDefaultStrategy`, `getStrategy`, `setStrategy`, `removeStrategy`, `listOverrides`) with SQLite registry at `{dataDir}/registry/placements.db`.
 

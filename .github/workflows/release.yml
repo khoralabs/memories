@@ -56,11 +56,17 @@ jobs:
       - name: Assert no bun:sqlite leaks
         run: bun run assert:no-bun-sqlite-leak
 
+      - name: Assert storage entry isolation
+        run: bun run assert:storage-entry-isolation
+
       - name: Typecheck
         run: bun run typecheck
 
       - name: Build packages
         run: bun run build
+
+      - name: Assert storage entry isolation (built dist)
+        run: bun run assert:storage-entry-isolation
 
       - name: Bump package versions
         run: bun run release:bump "${{ steps.ver.outputs.version }}"

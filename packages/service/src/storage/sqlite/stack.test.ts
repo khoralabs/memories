@@ -109,7 +109,33 @@ describe("createLocalSqliteServiceStack", () => {
     expect(tursoFactory.strategies[0]?.kind).toBe("turso-serverless");
   });
 
-  test("routes libsql placement overrides without UnknownBackendStrategyError", async () => {
+  test("routes libsql placement overrides when libsql factory is registered", async () => {
+    const { createLocalLibsqlBackendFactory } = await import("../libsql/index");
+    const dataDir = makeTempDataDir();
+    const libsqlDataDir = makeTempDataDir();
+    const { service, placement } = createStack({
+      dataDir,
+      sqlCipherKey: TEST_SQLCIPHER_KEY,
+      backendFactory: createCompositeBackendFactory({
+        sqlite: createLocalSqliteBackendFactory(),
+        libsql: createLocalLibsqlBackendFactory(),
+      }),
+    });
+
+    const libsqlId = { kind: "account", ownerKey: "libsql-user" };
+    await placement.setStrategy(libsqlId, {
+      kind: "libsql",
+      dataDir: libsqlDataDir,
+      encryptionKey: "test-libsql-key",
+    });
+
+    await service.open(libsqlId);
+    expect(await service.exists(libsqlId)).toBe(true);
+    await service.close(libsqlId);
+  });
+
+  test("default stack rejects libsql placement without a registered factory", async () => {
+    const { UnknownBackendStrategyError } = await import("../../service/backend-factory");
     const dataDir = makeTempDataDir();
     const libsqlDataDir = makeTempDataDir();
     const { service, placement } = createStack({
@@ -124,9 +150,7 @@ describe("createLocalSqliteServiceStack", () => {
       encryptionKey: "test-libsql-key",
     });
 
-    await service.open(libsqlId);
-    expect(await service.exists(libsqlId)).toBe(true);
-    await service.close(libsqlId);
+    await expect(service.exists(libsqlId)).rejects.toBeInstanceOf(UnknownBackendStrategyError);
   });
 
   test("placement store accepts turso-serverless strategies and persists them", async () => {

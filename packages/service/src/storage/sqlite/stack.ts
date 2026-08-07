@@ -14,8 +14,6 @@ import type {
   MemoriesDatabasePlacementStore,
   SqliteBackendStrategy,
 } from "../../storage/core/index";
-import { createLocalLibsqlBackendFactory } from "../libsql/index";
-import { createTursoServerlessBackendFactory } from "../turso-serverless/index";
 import { createSqliteDatabaseCatalogStore } from "./database-catalog-registry";
 import { createLocalSqliteBackendFactory } from "./local-sqlite-backend";
 import { createSqliteOntologyStore } from "./ontology-registry";
@@ -28,7 +26,14 @@ export type CreateLocalSqliteServiceStackOptions = {
   registryPath?: string;
   ontologyRegistryPath?: string;
   databaseCatalogRegistryPath?: string;
-  /** Override the node backend factory; defaults to the local SQLite node backend. */
+  /**
+   * Override the node backend factory; defaults to **sqlite only**.
+   *
+   * Do not statically import `./storage/libsql` or `./storage/turso-serverless` from hosts that
+   * `bun build --compile` — `@libsql/client` native bindings are not embeddable. Pass an explicit
+   * {@link createCompositeBackendFactory} that includes those factories only when the runtime has
+   * `node_modules` (or you have staged the platform packages).
+   */
   backendFactory?: MemoriesDatabaseBackendFactory;
   maxCached?: number;
   /** Structured telemetry for database lifecycle and HTTP node ops. */
@@ -84,8 +89,6 @@ export function createLocalSqliteServiceStack(
     opts.backendFactory ??
     createCompositeBackendFactory({
       sqlite: createLocalSqliteBackendFactory(),
-      libsql: createLocalLibsqlBackendFactory(),
-      "turso-serverless": createTursoServerlessBackendFactory(),
     });
   const resolver = createBackendResolver({ placement, factory });
   const service = createMemoriesDatabaseService({
