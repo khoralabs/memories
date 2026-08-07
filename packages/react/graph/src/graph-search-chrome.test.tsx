@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { ScanSearchIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { GraphNamespaceSearch } from "./graph-namespace-search.js";
@@ -46,5 +47,52 @@ describe("search chrome", () => {
     await waitFor(() => {
       expect((input as HTMLInputElement).value).toBe("team");
     });
+  });
+
+  test("GraphSearch compound Input / Addon / Loading wires query and status", async () => {
+    const view = render(
+      wrap(
+        <GraphSearch>
+          <GraphSearch.Input />
+          <GraphSearch.Addon>
+            <ScanSearchIcon aria-hidden data-testid="custom-icon" />
+          </GraphSearch.Addon>
+          <GraphSearch.Addon align="inline-end" data-testid="status-addon">
+            <GraphSearch.Loading />
+          </GraphSearch.Addon>
+        </GraphSearch>,
+      ),
+    );
+    expect(view.getByTestId("custom-icon")).toBeTruthy();
+    const input = await view.findByLabelText("Search memories");
+    fireEvent.change(input, { target: { value: "alpha" } });
+    await waitFor(() => {
+      expect((input as HTMLInputElement).value).toBe("alpha");
+    });
+    // After debounce, summary or ellipsis appears in the status addon.
+    await waitFor(() => {
+      const status = view.getByTestId("status-addon");
+      expect(status.textContent?.length ?? 0).toBeGreaterThan(0);
+    });
+  });
+
+  test("GraphNamespaceSearch compound Loading lives in host Addon", async () => {
+    const view = render(
+      wrap(
+        <GraphNamespaceSearch>
+          <GraphNamespaceSearch.Input placeholder="Find ns…" />
+          <GraphNamespaceSearch.Addon align="inline-end" data-testid="ns-status">
+            <GraphNamespaceSearch.Loading />
+          </GraphNamespaceSearch.Addon>
+        </GraphNamespaceSearch>,
+      ),
+    );
+    const input = await view.findByLabelText("Search namespaces");
+    expect((input as HTMLInputElement).placeholder).toBe("Find ns…");
+    fireEvent.change(input, { target: { value: "ops" } });
+    await waitFor(() => {
+      expect((input as HTMLInputElement).value).toBe("ops");
+    });
+    expect(view.getByTestId("ns-status")).toBeTruthy();
   });
 });

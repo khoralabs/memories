@@ -18,7 +18,7 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | `DEFAULT_SEARCH_DEBOUNCE_MS` | Shared default debounce for namespace + memory search |
 | `GraphScene` | 3D graph canvas with nodes, edges, focus/hover |
 | `GraphProjectionProvider` / `useProjection` / `useMemoriesGraphChrome` | Scene projection; chrome = load/refresh/Esc (search is via search hooks) |
-| `GraphSearch` / `GraphNamespaceSearch` | Memory / namespace search inputs |
+| `GraphSearch` / `GraphNamespaceSearch` | Memory / namespace search (`Input` / `Addon` / `Loading` compounds; bare `<GraphSearch />` keeps defaults) |
 | `GraphNamespaceTree` | Hierarchical namespace browser; Hierarchy filters to ranked search hits |
 | `AddNamespaceButton` / `AddMemoryButton` / `RefreshGraphButton` | Compound chrome buttons (`.Tooltip` + `Button` props) |
 | `GraphPreviewDock` | Selected memory preview panel |
@@ -32,7 +32,7 @@ Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-
 2. Mount `MemoriesClientProvider` → `MemoriesNamespacesProvider` → `MemoriesNamespaceMemoriesProvider` → `GraphProjectionProvider`.
 3. **Namespace root is host-owned** (no package default). Prefer `listNamespaces.namespaceRoot` (catalog wins); else provider `namespaceRoot` prop. With `createServiceReactMemoriesClient`, pass `namespaceRoot` on the client (stamped onto `listNamespaces`) and/or on the provider — bare service catalog has no root field. Omitting focus `namespace` lands on that root with `subtree` once known.
 4. Hosts own create forms; call `useMemoriesNamespaces().create` / `useMemoriesMemory().create`. Use `AddNamespaceButton` / `AddMemoryButton` as chrome triggers only (wire `onClick`).
-5. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Memory search UI uses `useGraphMemoriesSearch` / `GraphSearch` (not `useMemoriesGraphChrome`).
+5. The memory catalog follows namespaces `scope` (`exact` vs `subtree`). Memory search UI uses `useGraphMemoriesSearch` / `GraphSearch` (not `useMemoriesGraphChrome`). Bare `<GraphSearch />` / `<GraphNamespaceSearch />` keep the default input + icon + status chrome; compose `.Input` / `.Addon` / `.Loading` to add or reorder addons.
 6. Namespace search (`GraphNamespaceSearch`) is arms-driven; tune with `useGraphNamespacesSearch().setSearchArms` (e.g. `{ nodes: 0, lexical: 1 }` for catalog-only). Pair with `GraphNamespaceTree` — Hierarchy shows the full catalog when the query is empty, and a score-ordered hit tree while searching.
 
 ```tsx
@@ -121,6 +121,18 @@ function MemoriesGraphPage() {
 ```
 
 Hosts can still drive subgraph highlighting via `useGraphMemoriesSearch().setGraphSearchOverride` (e.g. after calling `@khoralabs/memories-agents` or a host investigate route).
+
+Compose search chrome when you need extra addons (`.Loading` is the status spinner / summary):
+
+```tsx
+<GraphSearch>
+  <GraphSearch.Input />
+  <GraphSearch.Addon>…</GraphSearch.Addon>
+  <GraphSearch.Addon align="inline-end">
+    <GraphSearch.Loading />
+  </GraphSearch.Addon>
+</GraphSearch>
+```
 
 ## Development
 
