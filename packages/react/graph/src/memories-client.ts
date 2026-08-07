@@ -92,6 +92,8 @@ export type ReactMemoriesClient = {
     limit?: number;
     nodeTopK?: number;
     arms?: NamespaceSearchArms;
+    /** Optional query embedding (512–3072 floats); required when arms.vector > 0. */
+    vector?: number[];
     signal?: AbortSignal;
   }): Promise<NamespaceSearchClientResult>;
 

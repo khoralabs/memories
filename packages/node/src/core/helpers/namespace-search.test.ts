@@ -513,4 +513,38 @@ describe("searchNamespaces", () => {
       ),
     ).rejects.toThrow(/arms\.nodes or arms\.lexical/);
   });
+
+  test("uses content.vector without embeddingModel when arms.vector > 0", async () => {
+    let seen: { vector?: number[] } | undefined;
+    const client = mockClient({
+      search: (params) => {
+        seen = params.content as { vector?: number[] };
+        return { hits: [mockHit({ namespace: "ns", key: "k1", score: 0.5 })] };
+      },
+    });
+    const vector = Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));
+    await searchNamespaces(
+      client,
+      { namespace: "_root_" },
+      {
+        content: { text: "hello", vector },
+        arms: { nodes: 1, lexical: 0, vector: 1 },
+      },
+    );
+    expect(seen?.vector).toEqual(vector);
+  });
+
+  test("rejects invalid content.vector length when arms.vector > 0", async () => {
+    const client = mockClient({ search: () => ({ hits: [] }) });
+    await expect(
+      searchNamespaces(
+        client,
+        { namespace: "_root_" },
+        {
+          content: { text: "hello", vector: [1, 2, 3] },
+          arms: { nodes: 1, lexical: 0, vector: 1 },
+        },
+      ),
+    ).rejects.toThrow();
+  });
 });

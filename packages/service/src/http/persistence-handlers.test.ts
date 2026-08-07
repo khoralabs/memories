@@ -217,6 +217,124 @@ describe("memories service persistence http handlers", () => {
     expect(dimsRes.status).toBe(200);
   });
 
+  test("search-namespaces arms: omit / partial / vector>0", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-search-ns-arms" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    new MemoriesClient(sync.syncPersistence, testOntology).mergeMemory({
+      kind: "node",
+      key: "n1",
+      namespace: "ns/a",
+      content: [{ key: "text", text: "graph node" }],
+      labels: [],
+    });
+
+    const partialArmsRes = await postJson(
+      "http://localhost/databases/search-namespaces",
+      { database, query: "graph", arms: { nodes: 1, lexical: 1 } },
+      stack,
+    );
+    expect(partialArmsRes.status).toBe(200);
+
+    const omittedArmsRes = await postJson(
+      "http://localhost/databases/search-namespaces",
+      { database, query: "graph" },
+      stack,
+    );
+    expect(omittedArmsRes.status).toBe(200);
+
+    const vectorArmRes = await postJson(
+      "http://localhost/databases/search-namespaces",
+      { database, query: "graph", arms: { vector: 1 } },
+      stack,
+    );
+    expect(vectorArmRes.status).toBe(400);
+    const vectorArmBody = (await vectorArmRes.json()) as { error?: string };
+    expect(vectorArmBody.error).toContain("vector arm");
+
+    const validVec = Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));
+    const withVectorRes = await postJson(
+      "http://localhost/databases/search-namespaces",
+      {
+        database,
+        query: "graph",
+        arms: { nodes: 1, lexical: 1, vector: 1 },
+        vector: validVec,
+      },
+      stack,
+    );
+    expect(withVectorRes.status).toBe(200);
+
+    const emptyVecRes = await postJson(
+      "http://localhost/databases/search-namespaces",
+      { database, query: "graph", vector: [] },
+      stack,
+    );
+    expect(emptyVecRes.status).toBe(400);
+
+    const oversizedRes = await postJson(
+      "http://localhost/databases/search-namespaces",
+      { database, query: "graph", vector: Array.from({ length: 4000 }, () => 0) },
+      stack,
+    );
+    expect(oversizedRes.status).toBe(400);
+  }, 15_000);
+
+  test("search and merge reject invalid vector payloads", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-vector-validate" };
+    await stack.service.open(database);
+
+    const badSearch = await postJson(
+      "http://localhost/databases/search",
+      {
+        database,
+        params: {
+          namespace: "_global_",
+          content: { text: "x", vector: [1] },
+        },
+      },
+      stack,
+    );
+    expect(badSearch.status).toBe(400);
+    const badSearchBody = (await badSearch.json()) as { error?: string };
+    expect(badSearchBody.error).toContain("params.content.vector");
+
+    const goodVec = Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));
+    const goodSearch = await postJson(
+      "http://localhost/databases/search",
+      {
+        database,
+        params: {
+          namespace: "_global_",
+          content: { text: "x", vector: goodVec },
+        },
+      },
+      stack,
+    );
+    expect(goodSearch.status).toBe(200);
+
+    const badMerge = await postJson(
+      "http://localhost/databases/merge",
+      {
+        database,
+        params: {
+          kind: "node",
+          key: "bad-vec",
+          namespace: "user/a",
+          content: [{ key: "text", text: "hi", vector: Array.from({ length: 4000 }, () => 0) }],
+          labels: [],
+        },
+      },
+      stack,
+    );
+    expect(badMerge.status).toBe(400);
+    const badMergeBody = (await badMerge.json()) as { error?: string };
+    expect(badMergeBody.error).toContain("params.content[0].vector");
+  }, 15_000);
+
   test("merge endpoint ignores client-supplied attribution while service attribution is deferred", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-no-spoof" };

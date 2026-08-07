@@ -5,6 +5,7 @@ import {
   namespacePath,
   namespaceSegments,
 } from "../../persistence/core";
+import { zVectorPayload } from "../../persistence/core/persistence";
 import type { SearchContent, SearchHit, SearchParams } from "../api/search.js";
 import { fuseRrf, type RrfArm } from "../rrf/index.js";
 import { embedTextChunks } from "./embedding-model.js";
@@ -94,7 +95,11 @@ export type NamespaceSearchContext = {
 };
 
 export type NamespaceSearchInput = {
-  content: { text: string };
+  /**
+   * Query text plus optional precomputed embedding.
+   * When `arms.vector > 0`, either `vector` or `context.embeddingModel` is required.
+   */
+  content: { text: string; vector?: number[] };
   /** Optional path filter after aggregation */
   under?: string;
   /** Namespaces to return (default 10, max 32) */
@@ -109,7 +114,7 @@ export type NamespaceSearchInput = {
    * - `nodes` — unscoped memory/node search (default `1` when omitted; `0` skips memory search)
    * - `lexical` — memory content FTS when `nodes > 0`; also ranks catalog alias/description/path.
    *   When both `nodes` and `lexical` are &gt; 0, namespace lists are fused with {@link fuseRrf}.
-   * - `vector` — memory content vector arm when `nodes > 0` (needs embeddingModel)
+   * - `vector` — memory content vector arm when `nodes > 0` (needs `content.vector` or embeddingModel)
    *
    * Lexical-only: `{ nodes: 0, lexical: 1 }`. Nodes without metadata: `{ nodes: 1, lexical: 0, vector: 1 }`.
    */
@@ -450,24 +455,32 @@ export async function searchNamespaces(
   const embedStart = performance.now();
 
   if (vectorWeight > 0) {
-    const model = embeddingModel;
-    if (model === undefined) {
-      throw new Error("searchNamespaces: embeddingModel is required when arms.vector is > 0");
-    }
-    const cacheKey = namespaceSearchEmbeddingCacheKey(primaryNamespace, query);
-    const cache = context.embeddingCache;
-    let vector: number[] | undefined = cache?.get(cacheKey);
-    if (!vector) {
-      const embeddings = await embedTextChunks(model, [query]);
-      vector = embeddings[0];
-      if (!vector) {
-        throw new Error("searchNamespaces: embedding pipeline returned no vector for query text");
-      }
-      cache?.set(cacheKey, vector);
+    let vector: number[] | undefined;
+    if (input.content.vector !== undefined) {
+      vector = zVectorPayload.parse(input.content.vector);
+      embedMs = performance.now() - embedStart;
     } else {
-      embedCacheHit = true;
+      const model = embeddingModel;
+      if (model === undefined) {
+        throw new Error(
+          "searchNamespaces: embeddingModel or content.vector is required when arms.vector is > 0",
+        );
+      }
+      const cacheKey = namespaceSearchEmbeddingCacheKey(primaryNamespace, query);
+      const cache = context.embeddingCache;
+      vector = cache?.get(cacheKey);
+      if (!vector) {
+        const embeddings = await embedTextChunks(model, [query]);
+        vector = embeddings[0];
+        if (!vector) {
+          throw new Error("searchNamespaces: embedding pipeline returned no vector for query text");
+        }
+        cache?.set(cacheKey, vector);
+      } else {
+        embedCacheHit = true;
+      }
+      embedMs = performance.now() - embedStart;
     }
-    embedMs = performance.now() - embedStart;
     content = lexicalWeight > 0 ? { text: query, vector } : { vector };
   } else {
     content = { text: query };

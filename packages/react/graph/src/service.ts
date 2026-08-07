@@ -229,6 +229,7 @@ export function createServiceReactMemoriesClient(
         ...(input.limit !== undefined ? { limit: input.limit } : {}),
         ...(input.nodeTopK !== undefined ? { nodeTopK: input.nodeTopK } : {}),
         ...(input.arms !== undefined ? { arms: input.arms } : {}),
+        ...(input.vector !== undefined ? { vector: input.vector } : {}),
       });
       return {
         query: response.query,

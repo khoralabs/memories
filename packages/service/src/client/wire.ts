@@ -121,7 +121,15 @@ export type DatabaseSearchNamespacesRequest = DatabaseScopedBody<{
   under?: string;
   limit?: number;
   nodeTopK?: number;
+  /**
+   * Arm weights for nodes / catalog lexical ranking.
+   * This endpoint is embedding-agnostic: omitted `arms.vector` is treated as `0`
+   * (unless `vector` is supplied and `arms` is omitted, then vector arm defaults to `1`).
+   * `arms.vector > 0` requires a client-supplied `vector` (512–3072 float32).
+   */
   arms?: { nodes?: number; lexical?: number; vector?: number };
+  /** Optional query embedding (512–3072 floats); required when arms.vector > 0. */
+  vector?: number[];
 }>;
 export type DatabaseSearchNamespacesResponse = {
   query: string;

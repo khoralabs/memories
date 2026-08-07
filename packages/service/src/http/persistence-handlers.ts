@@ -55,6 +55,7 @@ import type { StoredOntologyJsonSchema } from "../storage/core/index";
 
 import { HttpError, type MemoriesServiceHttpOptions, parseDatabaseIdBody } from "./handlers";
 import { labelMapsFromStoredOntology } from "./stored-ontology-label-schema";
+import { assertHttpVectorPayload } from "./vector-payload";
 
 const GLOBAL_ROOT = "_global_";
 
@@ -236,10 +237,14 @@ export async function handleDatabaseSearch(
   body: unknown,
 ): Promise<Response> {
   const scoped = body as DatabaseSearchRequest;
-  const { database, handle } = await getHandle(service, scoped);
   if (scoped.params === undefined) {
     throw new HttpError("params is required", 400);
   }
+  const content = scoped.params.content as { vector?: unknown } | undefined;
+  if (content !== undefined && "vector" in content && content.vector !== undefined) {
+    assertHttpVectorPayload(content.vector, "params.content.vector");
+  }
+  const { database, handle } = await getHandle(service, scoped);
   const result = await searchAsync(
     { persistence: handle.persistence, telemetry: handle.telemetry },
     scoped.params as unknown as SearchParams,
@@ -282,15 +287,18 @@ export async function handleDatabaseSearchNamespaces(
           telemetry: handle.telemetry,
         });
 
+  const queryVector =
+    scoped.vector !== undefined ? assertHttpVectorPayload(scoped.vector, "vector") : undefined;
+  const arms = resolveHttpSearchNamespacesArms(scoped.arms, queryVector !== undefined);
   const result = await searchNamespaces(
     client,
     { namespace },
     {
-      content: { text: query },
+      content: queryVector !== undefined ? { text: query, vector: queryVector } : { text: query },
+      arms,
       ...(under !== undefined ? { under } : {}),
       ...(scoped.limit !== undefined ? { limit: scoped.limit } : {}),
       ...(scoped.nodeTopK !== undefined ? { nodeTopK: scoped.nodeTopK } : {}),
-      ...(scoped.arms !== undefined ? { arms: scoped.arms } : {}),
     },
   );
 
@@ -302,11 +310,59 @@ export async function handleDatabaseSearchNamespaces(
   });
 }
 
+/**
+ * This HTTP route is embedding-agnostic. Never let omitted `arms.vector` default to 1
+ * inside {@link searchNamespaces} without a client-supplied query vector.
+ */
+function resolveHttpSearchNamespacesArms(
+  arms: DatabaseSearchNamespacesRequest["arms"],
+  hasQueryVector: boolean,
+): { nodes: number; lexical: number; vector: number } {
+  if (arms === undefined) {
+    return {
+      nodes: 1,
+      lexical: 1,
+      vector: hasQueryVector ? 1 : 0,
+    };
+  }
+  const vectorWeight = arms.vector !== undefined ? Math.max(0, arms.vector) : 0;
+  if (vectorWeight > 0 && !hasQueryVector) {
+    throw new HttpError(
+      "search-namespaces does not support vector arm without a client-supplied query vector; set arms.vector to 0 or omit it",
+      400,
+    );
+  }
+  return {
+    nodes: arms.nodes !== undefined ? Math.max(0, arms.nodes) : 1,
+    lexical: arms.lexical !== undefined ? Math.max(0, arms.lexical) : 1,
+    vector: vectorWeight,
+  };
+}
+
 function stripRemoteAttribution<T extends object>(params: T): Omit<T, "attribution"> {
   const { attribution: _clientSuppliedAttribution, ...safeParams } = params as T & {
     attribution?: unknown;
   };
   return safeParams;
+}
+
+function assertMergeVectorPayloads(params: Record<string, unknown>): void {
+  const content = params.content;
+  if (Array.isArray(content)) {
+    for (let i = 0; i < content.length; i++) {
+      const item = content[i];
+      if (item !== null && typeof item === "object" && "vector" in item) {
+        const vector = (item as { vector?: unknown }).vector;
+        if (vector !== undefined) {
+          assertHttpVectorPayload(vector, `params.content[${i}].vector`);
+        }
+      }
+    }
+  }
+  const searchMetaVector = params.searchMetaVector;
+  if (searchMetaVector !== undefined) {
+    assertHttpVectorPayload(searchMetaVector, "params.searchMetaVector");
+  }
 }
 
 export async function handleDatabaseMerge(
@@ -317,10 +373,11 @@ export async function handleDatabaseMerge(
   maxNamespaces?: number,
 ): Promise<Response> {
   const scoped = body as DatabaseMergeRequest & { intentSnapshotId?: string };
-  const { database, handle } = await getHandle(service, scoped);
   if (scoped.params === undefined || typeof scoped.params !== "object") {
     throw new HttpError("params is required", 400);
   }
+  assertMergeVectorPayloads(scoped.params);
+  const { database, handle } = await getHandle(service, scoped);
   const safeParams = stripRemoteAttribution(
     scoped.params as MergeMemoryParams,
   ) as MergeMemoryParams;

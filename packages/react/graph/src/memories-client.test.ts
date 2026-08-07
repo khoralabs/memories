@@ -495,6 +495,32 @@ describe("createServiceReactMemoriesClient", () => {
     });
   });
 
+  test("searchNamespaces forwards optional query vector", async () => {
+    const vector = Array.from({ length: 512 }, (_, i) => (i === 0 ? 1 : 0));
+    const postJson = mock(async (path: string, body: unknown) => {
+      expect(path).toBe("/databases/search-namespaces");
+      expect(body).toEqual({
+        database,
+        query: "inbox",
+        arms: { nodes: 1, lexical: 1, vector: 1 },
+        vector,
+      });
+      return { query: "inbox", under: null, namespaces: [] };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+    await client.searchNamespaces({
+      query: "inbox",
+      arms: { nodes: 1, lexical: 1, vector: 1 },
+      vector,
+    });
+    expect(postJson).toHaveBeenCalled();
+  });
+
   test("searchNamespaces returns empty for blank query without calling service", async () => {
     const postJson = mock(async () => {
       throw new Error("should not be called");

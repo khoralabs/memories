@@ -301,14 +301,14 @@ export async function handleMemoriesServiceHttpRequest(
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
-      return handleDatabaseSearch(opts.service, body);
+      return await handleDatabaseSearch(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/search-namespaces") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
-      return handleDatabaseSearchNamespaces(opts.service, body);
+      return await handleDatabaseSearchNamespaces(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/merge") {
