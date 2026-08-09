@@ -212,6 +212,21 @@ export type DatabaseNamespaceMetadata = {
 };
 export type DatabaseNamespacesResponse = { namespaces: DatabaseNamespaceMetadata[] };
 
+/** Path-boundary prefix (`= prefix` or nested under `prefix/`). */
+export type DatabaseNamespacesUnderPrefixRequest = DatabaseScopedBody<{
+  prefix: string;
+  includeSuppressed?: boolean;
+}>;
+export type DatabaseNamespacesUnderPrefixResponse = {
+  namespaces: DatabaseNamespaceMetadata[];
+};
+
+export type DatabaseNamespaceExistsUnderPrefixRequest = DatabaseScopedBody<{
+  prefix: string;
+  includeSuppressed?: boolean;
+}>;
+export type DatabaseNamespaceExistsUnderPrefixResponse = { exists: boolean };
+
 export type DatabaseNamespaceGetRequest = DatabaseScopedBody<{ namespace: string }>;
 export type DatabaseNamespaceGetResponse = {
   namespace: DatabaseNamespaceMetadata | null;

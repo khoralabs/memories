@@ -105,6 +105,14 @@ export function scopeFromNamespaceMutation(body: unknown): AuthorizeScope {
   return { kind: "namespace", namespace, mode: "exact" };
 }
 
+/** Catalog under-prefix / exists-under-prefix: authorize the prefix as a subtree root. */
+export function scopeFromPrefixBody(body: unknown): AuthorizeScope {
+  const record = asRecord(body);
+  const prefix = stringField(record, "prefix");
+  if (prefix === undefined) return scopeDatabase();
+  return { kind: "namespace", namespace: prefix, mode: "subtree" };
+}
+
 /** Namespace delete: `recursive !== false` → `subtree` (matches persistence default). */
 export function scopeFromNamespaceDelete(body: unknown): AuthorizeScope {
   const record = asRecord(body);

@@ -66,6 +66,8 @@ import {
   isNamespaceSuppressed as isNamespaceSuppressedQuery,
   listMemoryKeysInNamespace as listMemoryKeysInNamespaceQuery,
   listNamespacesWithMetadata as listNamespacesWithMetadataQuery,
+  listNamespacesWithMetadataUnderPrefix as listNamespacesWithMetadataUnderPrefixQuery,
+  namespaceExistsUnderPrefix as namespaceExistsUnderPrefixQuery,
   setNamespaceSuppressed as setNamespaceSuppressedQuery,
   upsertNamespaceMetadata as upsertNamespaceMetadataQuery,
 } from "./models/namespace-metadata";
@@ -499,6 +501,17 @@ export class MemoriesPersistence implements IMemoriesPersistence {
 
   listNamespacesWithMetadata(opts?: { includeSuppressed?: boolean }): NamespaceMetadataInfo[] {
     return listNamespacesWithMetadataQuery(this.db, opts);
+  }
+
+  listNamespacesWithMetadataUnderPrefix(
+    prefix: string,
+    opts?: { includeSuppressed?: boolean },
+  ): NamespaceMetadataInfo[] {
+    return listNamespacesWithMetadataUnderPrefixQuery(this.db, prefix, opts);
+  }
+
+  namespaceExistsUnderPrefix(prefix: string, opts?: { includeSuppressed?: boolean }): boolean {
+    return namespaceExistsUnderPrefixQuery(this.db, prefix, opts);
   }
 
   getNamespaceMetadata(namespace: string): NamespaceMetadataInfo | undefined {

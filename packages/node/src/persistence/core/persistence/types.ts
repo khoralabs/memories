@@ -549,6 +549,21 @@ export interface MemoriesPersistenceReads {
    */
   listNamespacesWithMetadata(opts?: IncludeSuppressedOpts): NamespaceMetadataInfo[];
 
+  /**
+   * Catalog rows under a path-boundary prefix (`= prefix` or nested under `prefix/`).
+   * Same row shape and suppression rules as {@link listNamespacesWithMetadata}.
+   */
+  listNamespacesWithMetadataUnderPrefix(
+    prefix: NamespacePath,
+    opts?: IncludeSuppressedOpts,
+  ): NamespaceMetadataInfo[];
+
+  /**
+   * True when at least one catalog path exists under the path-boundary prefix
+   * (after the same suppression filter as {@link listNamespacesWithMetadata}).
+   */
+  namespaceExistsUnderPrefix(prefix: NamespacePath, opts?: IncludeSuppressedOpts): boolean;
+
   /** Metadata row for one namespace, or `undefined` if none. */
   getNamespaceMetadata(namespace: NamespacePath): NamespaceMetadataInfo | undefined;
 

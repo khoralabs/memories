@@ -311,6 +311,96 @@ describe("memories service persistence http handlers", () => {
     expect(previewBody.suppressed).toBe(true);
   }, 15_000);
 
+  test("namespaces under-prefix list + exists", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-ns-under-prefix" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const client = new MemoriesClient(sync.syncPersistence, testOntology);
+    const parent = "under/root";
+    const child = "under/root/child";
+    const outsider = "under/other";
+
+    client.mergeMemory({
+      kind: "node",
+      key: "p",
+      namespace: parent,
+      content: [{ key: "text", text: "parent" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "c",
+      namespace: child,
+      content: [{ key: "text", text: "child" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "o",
+      namespace: outsider,
+      content: [{ key: "text", text: "other" }],
+      labels: [],
+    });
+
+    const listed = await postJson(
+      "http://localhost/databases/namespaces/under-prefix",
+      { database, prefix: parent },
+      stack,
+    );
+    expect(listed.status).toBe(200);
+    const listedBody = (await listed.json()) as {
+      namespaces: Array<{ namespace: string; suppressed: boolean }>;
+    };
+    expect(listedBody.namespaces.map((n) => n.namespace).sort()).toEqual([parent, child]);
+    expect(listedBody.namespaces.every((n) => typeof n.suppressed === "boolean")).toBe(true);
+
+    const exists = await postJson(
+      "http://localhost/databases/namespaces/exists-under-prefix",
+      { database, prefix: parent },
+      stack,
+    );
+    expect(exists.status).toBe(200);
+    expect(await exists.json()).toMatchObject({ exists: true });
+
+    const missing = await postJson(
+      "http://localhost/databases/namespaces/exists-under-prefix",
+      { database, prefix: "under/missing" },
+      stack,
+    );
+    expect(missing.status).toBe(200);
+    expect(await missing.json()).toMatchObject({ exists: false });
+
+    client.suppressNamespace({ namespace: parent });
+    const hidden = await postJson(
+      "http://localhost/databases/namespaces/exists-under-prefix",
+      { database, prefix: parent },
+      stack,
+    );
+    expect(hidden.status).toBe(200);
+    expect(await hidden.json()).toMatchObject({ exists: false });
+
+    const included = await postJson(
+      "http://localhost/databases/namespaces/exists-under-prefix",
+      { database, prefix: parent, includeSuppressed: true },
+      stack,
+    );
+    expect(included.status).toBe(200);
+    expect(await included.json()).toMatchObject({ exists: true });
+
+    const includedList = await postJson(
+      "http://localhost/databases/namespaces/under-prefix",
+      { database, prefix: parent, includeSuppressed: true },
+      stack,
+    );
+    expect(includedList.status).toBe(200);
+    const includedListBody = (await includedList.json()) as {
+      namespaces: Array<{ namespace: string }>;
+    };
+    expect(includedListBody.namespaces.map((n) => n.namespace)).toContain(child);
+  }, 15_000);
+
   test("effective-suppression: namespace ancestor/self and memory cases", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-effective-suppression" };

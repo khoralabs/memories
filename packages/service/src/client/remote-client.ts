@@ -30,8 +30,10 @@ import {
   type DatabaseEffectiveSuppressionResponse,
   type DatabaseGraphLayoutRequest,
   type DatabaseMergeRequest,
+  type DatabaseNamespaceExistsUnderPrefixResponse,
   type DatabaseNamespaceMetadata,
   type DatabaseNamespacesResponse,
+  type DatabaseNamespacesUnderPrefixResponse,
   type DatabaseProjectionInputRequest,
   type DatabaseProvenanceHeadResponse,
   type DatabaseProvenanceTimestampResponse,
@@ -84,7 +86,14 @@ function createRemotePersistence(
       const namespaces = await reads.listNamespaces();
       return namespaces.map((entry) => entry.namespace);
     },
-    listNamespacesWithMetadata: async () => reads.listNamespaces(),
+    listNamespacesWithMetadata: async (opts?: { includeSuppressed?: boolean }) =>
+      reads.listNamespaces(opts),
+    listNamespacesWithMetadataUnderPrefix: async (
+      prefix: string,
+      opts?: { includeSuppressed?: boolean },
+    ) => reads.listNamespacesUnderPrefix(prefix, opts),
+    namespaceExistsUnderPrefix: async (prefix: string, opts?: { includeSuppressed?: boolean }) =>
+      reads.namespaceExistsUnderPrefix(prefix, opts),
     getNamespaceMetadata: async (namespace: string) => {
       const row = await reads.getNamespaceMetadata(namespace);
       return row ?? undefined;
@@ -360,6 +369,38 @@ export class RemoteMemoriesReadClient {
       },
     );
     return response.namespaces;
+  }
+
+  /** Catalog rows under a path-boundary prefix (`= prefix` or nested under `prefix/`). */
+  async listNamespacesUnderPrefix(
+    prefix: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<DatabaseNamespaceMetadata[]> {
+    const response = await this.#client.postJson<DatabaseNamespacesUnderPrefixResponse>(
+      "/databases/namespaces/under-prefix",
+      {
+        database: this.#database,
+        prefix,
+        ...(opts?.includeSuppressed === true ? { includeSuppressed: true } : {}),
+      },
+    );
+    return response.namespaces;
+  }
+
+  /** True when at least one catalog path exists under the path-boundary prefix. */
+  async namespaceExistsUnderPrefix(
+    prefix: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<boolean> {
+    const response = await this.#client.postJson<DatabaseNamespaceExistsUnderPrefixResponse>(
+      "/databases/namespaces/exists-under-prefix",
+      {
+        database: this.#database,
+        prefix,
+        ...(opts?.includeSuppressed === true ? { includeSuppressed: true } : {}),
+      },
+    );
+    return response.exists;
   }
 
   async getNamespaceMetadata(namespace: string): Promise<DatabaseNamespaceMetadata | null> {

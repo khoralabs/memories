@@ -126,6 +126,69 @@ export function listNamespacesWithMetadata(
   return [...byKey.values()].sort((a, b) => a.namespace.localeCompare(b.namespace));
 }
 
+/**
+ * Catalog rows under a path-boundary prefix (`= prefix` or nested under `prefix/`).
+ * Same row shape and suppression rules as {@link listNamespacesWithMetadata}.
+ */
+export function listNamespacesWithMetadataUnderPrefix(
+  db: Database,
+  prefix: string,
+  opts?: { includeSuppressed?: boolean },
+): NamespaceMetadataInfo[] {
+  const root = namespacePath(prefix);
+  const include = opts?.includeSuppressed === true;
+  const byKey = new Map<string, NamespaceMetadataInfo>();
+  for (const { namespace } of db
+    .query<{ namespace: string }, [string, string]>(
+      `SELECT DISTINCT namespace FROM memories
+       WHERE namespace = ? OR namespace LIKE ? || '/%'`,
+    )
+    .all(root, root)) {
+    if (!include && isNamespaceSuppressed(db, namespace)) continue;
+    byKey.set(namespace, { namespace, alias: null, description: "", suppressed: false });
+  }
+  for (const row of db
+    .query<NamespaceMetadataRow & { suppressed: number }, [string, string]>(
+      `SELECT _id AS id, display_name AS alias, description, suppressed FROM namespace_metadata
+       WHERE _id = ? OR _id LIKE ? || '/%'`,
+    )
+    .all(root, root)) {
+    if (!include && isNamespaceSuppressed(db, row.id)) continue;
+    byKey.set(row.id, rowToInfo(row));
+  }
+  return [...byKey.values()].sort((a, b) => a.namespace.localeCompare(b.namespace));
+}
+
+/**
+ * True when at least one catalog path exists under the path-boundary prefix
+ * (after the same suppression filter as {@link listNamespacesWithMetadata}).
+ */
+export function namespaceExistsUnderPrefix(
+  db: Database,
+  prefix: string,
+  opts?: { includeSuppressed?: boolean },
+): boolean {
+  const root = namespacePath(prefix);
+  const include = opts?.includeSuppressed === true;
+  for (const { namespace } of db
+    .query<{ namespace: string }, [string, string]>(
+      `SELECT DISTINCT namespace FROM memories
+       WHERE namespace = ? OR namespace LIKE ? || '/%'`,
+    )
+    .all(root, root)) {
+    if (include || !isNamespaceSuppressed(db, namespace)) return true;
+  }
+  for (const { id } of db
+    .query<{ id: string }, [string, string]>(
+      `SELECT _id AS id FROM namespace_metadata
+       WHERE _id = ? OR _id LIKE ? || '/%'`,
+    )
+    .all(root, root)) {
+    if (include || !isNamespaceSuppressed(db, id)) return true;
+  }
+  return false;
+}
+
 /** Upsert display metadata for a namespace path. */
 export function upsertNamespaceMetadata(
   db: Database,

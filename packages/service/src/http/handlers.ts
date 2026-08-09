@@ -25,6 +25,7 @@ import {
   scopeFromMemoryBody,
   scopeFromNamespaceDelete,
   scopeFromNamespaceMutation,
+  scopeFromPrefixBody,
   scopeFromRename,
 } from "./authorize-scope";
 import {
@@ -48,9 +49,11 @@ import {
   handleDatabaseMemoryPreview,
   handleDatabaseMerge,
   handleDatabaseNamespaceDelete,
+  handleDatabaseNamespaceExistsUnderPrefix,
   handleDatabaseNamespaceGet,
   handleDatabaseNamespaceRename,
   handleDatabaseNamespaces,
+  handleDatabaseNamespacesUnderPrefix,
   handleDatabaseNamespaceUpsert,
   handleDatabaseProjectionInput,
   handleDatabaseProvenanceHead,
@@ -410,6 +413,20 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseNamespaces(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/namespaces/under-prefix") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromPrefixBody(body));
+      return await handleDatabaseNamespacesUnderPrefix(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/namespaces/exists-under-prefix") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromPrefixBody(body));
+      return await handleDatabaseNamespaceExistsUnderPrefix(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces/get") {

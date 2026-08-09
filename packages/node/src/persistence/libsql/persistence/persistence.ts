@@ -603,6 +603,74 @@ export class MemoriesLibsqlPersistence {
     return [...byKey.values()].sort((a, b) => a.namespace.localeCompare(b.namespace));
   }
 
+  async listNamespacesWithMetadataUnderPrefix(
+    prefix: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<NamespaceMetadataInfo[]> {
+    const root = namespacePath(prefix);
+    const include = opts?.includeSuppressed === true;
+    const byKey = new Map<string, NamespaceMetadataInfo>();
+    for (const row of await queryAll<{ namespace: string }>(
+      this.db.client,
+      `SELECT DISTINCT namespace FROM memories
+       WHERE namespace = ? OR namespace LIKE ? || '/%'`,
+      [root, root],
+    )) {
+      if (!include && (await isNamespaceSuppressedQuery(this.db, row.namespace))) continue;
+      byKey.set(row.namespace, {
+        namespace: row.namespace,
+        alias: null,
+        description: "",
+        suppressed: false,
+      });
+    }
+    for (const row of await queryAll<{
+      id: string;
+      alias: string | null;
+      description: string;
+      suppressed: number;
+    }>(
+      this.db.client,
+      `SELECT _id AS id, display_name AS alias, description, suppressed FROM namespace_metadata
+       WHERE _id = ? OR _id LIKE ? || '/%'`,
+      [root, root],
+    )) {
+      if (!include && (await isNamespaceSuppressedQuery(this.db, row.id))) continue;
+      byKey.set(row.id, {
+        namespace: row.id,
+        alias: row.alias,
+        description: row.description,
+        suppressed: row.suppressed !== 0,
+      });
+    }
+    return [...byKey.values()].sort((a, b) => a.namespace.localeCompare(b.namespace));
+  }
+
+  async namespaceExistsUnderPrefix(
+    prefix: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<boolean> {
+    const root = namespacePath(prefix);
+    const include = opts?.includeSuppressed === true;
+    for (const row of await queryAll<{ namespace: string }>(
+      this.db.client,
+      `SELECT DISTINCT namespace FROM memories
+       WHERE namespace = ? OR namespace LIKE ? || '/%'`,
+      [root, root],
+    )) {
+      if (include || !(await isNamespaceSuppressedQuery(this.db, row.namespace))) return true;
+    }
+    for (const row of await queryAll<{ id: string }>(
+      this.db.client,
+      `SELECT _id AS id FROM namespace_metadata
+       WHERE _id = ? OR _id LIKE ? || '/%'`,
+      [root, root],
+    )) {
+      if (include || !(await isNamespaceSuppressedQuery(this.db, row.id))) return true;
+    }
+    return false;
+  }
+
   async getNamespaceMetadata(namespace: string): Promise<NamespaceMetadataInfo | undefined> {
     const ns = namespacePath(namespace);
     const row = await queryOne<{

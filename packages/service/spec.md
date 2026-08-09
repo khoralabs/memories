@@ -260,6 +260,8 @@ Suppression: discovery endpoints exclude suppressed memories/namespaces by defau
 | Method | Path | Action | Auth action |
 |--------|------|--------|-------------|
 | `POST` | `/databases/namespaces` | Primary catalog list (`alias`, `description`, optional `suppressed`); path-only helpers are client-side projections | `read` |
+| `POST` | `/databases/namespaces/under-prefix` | Catalog list under a path-boundary prefix (`= prefix` or nested under `prefix/`) | `read` |
+| `POST` | `/databases/namespaces/exists-under-prefix` | Whether any catalog path exists under a path-boundary prefix | `read` |
 | `POST` | `/databases/namespaces/get` | Get one namespace metadata row | `read` |
 | `POST` | `/databases/namespaces/upsert` | Upsert namespace alias/description (soft rename) | `write` |
 | `POST` | `/databases/namespaces/delete` | Delete namespace (default recursive subtree) | `write` |

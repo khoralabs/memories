@@ -34,7 +34,9 @@ import {
   type DatabaseGraphLayoutRequest,
   type DatabaseMemoryPreviewRequest,
   type DatabaseMergeRequest,
+  type DatabaseNamespaceExistsUnderPrefixRequest,
   type DatabaseNamespacesRequest,
+  type DatabaseNamespacesUnderPrefixRequest,
   type DatabaseProjectionInputRequest,
   type DatabaseSearchNamespacesRequest,
   type DatabaseSearchRequest,
@@ -681,6 +683,52 @@ export async function handleDatabaseNamespaces(
     )
   ).map(toNamespaceWire);
   return Response.json({ namespaces, database });
+}
+
+export async function handleDatabaseNamespacesUnderPrefix(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as DatabaseNamespacesUnderPrefixRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.prefix !== "string" || scoped.prefix.trim().length === 0) {
+    throw new HttpError("prefix is required", 400);
+  }
+  let prefix: string;
+  try {
+    prefix = assertNamespacePath(scoped.prefix.trim());
+  } catch (error) {
+    mapNamespaceConstraint(error);
+  }
+  const namespaces = (
+    await handle.persistence.listNamespacesWithMetadataUnderPrefix(
+      prefix,
+      scoped.includeSuppressed === true ? { includeSuppressed: true } : undefined,
+    )
+  ).map(toNamespaceWire);
+  return Response.json({ namespaces, database });
+}
+
+export async function handleDatabaseNamespaceExistsUnderPrefix(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as DatabaseNamespaceExistsUnderPrefixRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.prefix !== "string" || scoped.prefix.trim().length === 0) {
+    throw new HttpError("prefix is required", 400);
+  }
+  let prefix: string;
+  try {
+    prefix = assertNamespacePath(scoped.prefix.trim());
+  } catch (error) {
+    mapNamespaceConstraint(error);
+  }
+  const exists = await handle.persistence.namespaceExistsUnderPrefix(
+    prefix,
+    scoped.includeSuppressed === true ? { includeSuppressed: true } : undefined,
+  );
+  return Response.json({ exists, database });
 }
 
 export async function handleDatabaseNamespaceGet(
