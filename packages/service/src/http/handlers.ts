@@ -40,6 +40,7 @@ import {
   handleDatabaseCapabilities,
   handleDatabaseDeleteMemory,
   handleDatabaseEdgePreview,
+  handleDatabaseEffectiveSuppression,
   handleDatabaseEnsureScopeChain,
   handleDatabaseFindMemoryId,
   handleDatabaseGraphLayout,
@@ -497,6 +498,22 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseFindMemoryId(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/effective-suppression") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      const record = body as { key?: unknown };
+      await authorize(
+        opts.auth,
+        req,
+        "read",
+        id,
+        typeof record.key === "string"
+          ? scopeFromMemoryBody(body)
+          : scopeFromNamespaceMutation(body),
+      );
+      return await handleDatabaseEffectiveSuppression(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/load-memory-namespace-key") {

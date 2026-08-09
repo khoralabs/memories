@@ -61,6 +61,7 @@ import {
 import { clearMemorySubtree } from "./models/memory-subtree";
 import {
   deleteNamespaceMetadata as deleteNamespaceMetadataQuery,
+  findClosestSuppressedNamespace as findClosestSuppressedNamespaceQuery,
   getNamespaceMetadata as getNamespaceMetadataQuery,
   isNamespaceSuppressed as isNamespaceSuppressedQuery,
   listMemoryKeysInNamespace as listMemoryKeysInNamespaceQuery,
@@ -421,6 +422,10 @@ export class MemoriesPersistence implements IMemoriesPersistence {
 
   isNamespaceSuppressed(namespace: string): boolean {
     return isNamespaceSuppressedQuery(this.db, namespace);
+  }
+
+  findClosestSuppressedNamespace(namespace: string): string | null {
+    return findClosestSuppressedNamespaceQuery(this.db, namespace);
   }
 
   setNamespaceSuppressed(

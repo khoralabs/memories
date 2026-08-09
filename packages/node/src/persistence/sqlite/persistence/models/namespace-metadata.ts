@@ -20,18 +20,27 @@ function rowToInfo(row: NamespaceMetadataRow & { suppressed?: number }): Namespa
   };
 }
 
-/** True when `namespace` equals a suppressed path or is a descendant of one. */
-export function isNamespaceSuppressed(db: Database, namespace: string): boolean {
+/**
+ * Closest covering suppressed namespace (self or ancestor): longest matching `_id`.
+ * `null` when none apply.
+ */
+export function findClosestSuppressedNamespace(db: Database, namespace: string): string | null {
   const ns = namespacePath(namespace);
   const row = db
-    .query<{ ok: number }, [string, string]>(
-      `SELECT 1 AS ok FROM namespace_metadata
+    .query<{ namespace: string }, [string, string]>(
+      `SELECT _id AS namespace FROM namespace_metadata
        WHERE suppressed != 0
          AND (_id = ? OR ? LIKE _id || '/%')
+       ORDER BY length(_id) DESC
        LIMIT 1`,
     )
     .get(ns, ns);
-  return row != null;
+  return row?.namespace ?? null;
+}
+
+/** True when `namespace` equals a suppressed path or is a descendant of one. */
+export function isNamespaceSuppressed(db: Database, namespace: string): boolean {
+  return findClosestSuppressedNamespace(db, namespace) != null;
 }
 
 /**

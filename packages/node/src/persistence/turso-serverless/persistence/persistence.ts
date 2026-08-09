@@ -69,6 +69,7 @@ import {
 } from "./models/memory-search-meta";
 import { clearMemorySubtree } from "./models/memory-subtree";
 import {
+  findClosestSuppressedNamespace as findClosestSuppressedNamespaceQuery,
   isNamespaceSuppressed as isNamespaceSuppressedQuery,
   setNamespaceSuppressed as setNamespaceSuppressedQuery,
 } from "./models/namespace-suppress";
@@ -478,6 +479,10 @@ export class MemoriesTursoServerlessPersistence {
 
   async isNamespaceSuppressed(namespace: string): Promise<boolean> {
     return isNamespaceSuppressedQuery(this.db, namespace);
+  }
+
+  async findClosestSuppressedNamespace(namespace: string): Promise<string | null> {
+    return findClosestSuppressedNamespaceQuery(this.db, namespace);
   }
 
   async setNamespaceSuppressed(

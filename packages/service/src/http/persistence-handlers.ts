@@ -30,6 +30,7 @@ import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
+  type DatabaseEffectiveSuppressionRequest,
   type DatabaseGraphLayoutRequest,
   type DatabaseMemoryPreviewRequest,
   type DatabaseMergeRequest,
@@ -1102,6 +1103,51 @@ export async function handleDatabaseFindMemoryId(
   }
   const suppressed = await handle.persistence.isMemorySuppressed(memoryId);
   return Response.json({ memoryId, suppressed, database });
+}
+
+export async function handleDatabaseEffectiveSuppression(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as DatabaseEffectiveSuppressionRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
+    throw new HttpError("namespace is required", 400);
+  }
+  const namespace = scoped.namespace.trim();
+  const hasKey = scoped.key !== undefined;
+  if (hasKey && (typeof scoped.key !== "string" || scoped.key.trim().length === 0)) {
+    throw new HttpError("key must be a non-empty string when provided", 400);
+  }
+
+  const suppressedBy = await handle.persistence.findClosestSuppressedNamespace(namespace);
+
+  if (!hasKey) {
+    const meta = await handle.persistence.getNamespaceMetadata(namespace);
+    const exactSuppressed = meta?.suppressed === true;
+    return Response.json({
+      namespace,
+      effectivelySuppressed: suppressedBy != null,
+      suppressedBy,
+      exactSuppressed,
+      database,
+    });
+  }
+
+  const key = (scoped.key as string).trim();
+  const memoryId = await handle.persistence.findMemoryIdByKey(namespace, key);
+  if (memoryId === undefined) {
+    throw new HttpError("memory not found", 404);
+  }
+  const exactSuppressed = await handle.persistence.isMemorySuppressed(memoryId);
+  return Response.json({
+    namespace,
+    key,
+    effectivelySuppressed: exactSuppressed || suppressedBy != null,
+    suppressedBy,
+    exactSuppressed,
+    database,
+  });
 }
 
 export async function handleDatabaseLoadMemoryNamespaceKey(

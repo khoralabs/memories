@@ -253,7 +253,7 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 
 Client-supplied embeddings on `search`, `search-namespaces` (`vector`), and `merge` (`content[].vector`, `searchMetaVector`) must be **512–3072** float32 values.
 
-Suppression: discovery endpoints exclude suppressed memories/namespaces by default. Pass `includeSuppressed: true` (on the body, or `params.options.includeSuppressed` for search) to include them. Responses that return namespaces or memories always include exact-path `suppressed: boolean` (`namespace_metadata.suppressed` / `memories.suppressed`, not ancestor-inferred).
+Suppression: discovery endpoints exclude suppressed memories/namespaces by default. Pass `includeSuppressed: true` (on the body, or `params.options.includeSuppressed` for search) to include them. Responses that return namespaces or memories always include exact-path `suppressed: boolean` (`namespace_metadata.suppressed` / `memories.suppressed`, not ancestor-inferred). Use `POST /databases/effective-suppression` for ancestor-aware status (`effectivelySuppressed`, closest `suppressedBy` namespace).
 
 ### SQLite read endpoints
 
@@ -273,6 +273,7 @@ Suppression: discovery endpoints exclude suppressed memories/namespaces by defau
 | `POST` | `/databases/graph-layout` | Ready graph layout JSON (projection-input → layout on server) | `read` |
 | `POST` | `/databases/ensure-scope-chain` | Ensure scope chain paths | `write` |
 | `POST` | `/databases/find-memory-id` | Resolve memory id by key | `read` |
+| `POST` | `/databases/effective-suppression` | Ancestor-aware suppression status (`suppressedBy` closest covering namespace) | `read` |
 | `POST` | `/databases/load-memory-namespace-key` | Load namespace/key by memory id | `read` |
 
 ### Ontology registry

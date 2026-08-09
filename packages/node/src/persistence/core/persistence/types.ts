@@ -304,6 +304,12 @@ export interface MemoriesMutationCore {
   isNamespaceSuppressed(namespace: NamespacePath): boolean;
 
   /**
+   * Closest covering suppressed namespace for `namespace` (self or ancestor).
+   * Longest matching suppressed `namespace_metadata._id`, or `null` when none.
+   */
+  findClosestSuppressedNamespace(namespace: NamespacePath): string | null;
+
+  /**
    * Ensure a metadata row exists and set/clear its exact-path suppression flag
    * (does not append provenance; does not fan out to children).
    */

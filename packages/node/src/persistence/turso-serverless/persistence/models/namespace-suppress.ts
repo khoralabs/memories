@@ -4,21 +4,33 @@ import type { DbCtx } from "../context";
 import type { TursoDatabase } from "../db";
 import { ctxExec, ctxQueryOne, readQueryOne } from "../db";
 
+/**
+ * Closest covering suppressed namespace (self or ancestor): longest matching `_id`.
+ * `null` when none apply.
+ */
+export async function findClosestSuppressedNamespace(
+  db: TursoDatabase,
+  namespace: string,
+): Promise<string | null> {
+  const ns = namespacePath(namespace);
+  const row = await readQueryOne<{ namespace: string }>(
+    db,
+    `SELECT _id AS namespace FROM namespace_metadata
+     WHERE suppressed != 0
+       AND (_id = ? OR ? LIKE _id || '/%')
+     ORDER BY length(_id) DESC
+     LIMIT 1`,
+    [ns, ns],
+  );
+  return row?.namespace ?? null;
+}
+
 /** True when `namespace` equals a suppressed path or is a descendant of one. */
 export async function isNamespaceSuppressed(
   db: TursoDatabase,
   namespace: string,
 ): Promise<boolean> {
-  const ns = namespacePath(namespace);
-  const row = await readQueryOne<{ ok: number }>(
-    db,
-    `SELECT 1 AS ok FROM namespace_metadata
-     WHERE suppressed != 0
-       AND (_id = ? OR ? LIKE _id || '/%')
-     LIMIT 1`,
-    [ns, ns],
-  );
-  return row != null;
+  return (await findClosestSuppressedNamespace(db, namespace)) != null;
 }
 
 export async function setNamespaceSuppressed(

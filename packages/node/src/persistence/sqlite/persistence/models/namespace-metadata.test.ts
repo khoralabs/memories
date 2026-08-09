@@ -1,6 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import { createMemoriesPersistence, openTestMemoriesDatabase } from "../index";
 
+describe("findClosestSuppressedNamespace", () => {
+  test("parent suppress → child returns parent; self → self; none → null", () => {
+    const db = openTestMemoriesDatabase();
+    const p = createMemoriesPersistence(db);
+    const now = { now: Date.now() };
+    const parent = "ns/closest/parent";
+    const child = "ns/closest/parent/child";
+
+    expect(p.findClosestSuppressedNamespace(child)).toBeNull();
+
+    p.withTransaction(() => {
+      p.setNamespaceSuppressed(now, { namespace: parent, suppressed: true });
+    });
+    expect(p.findClosestSuppressedNamespace(parent)).toBe(parent);
+    expect(p.findClosestSuppressedNamespace(child)).toBe(parent);
+
+    p.withTransaction(() => {
+      p.setNamespaceSuppressed(now, { namespace: child, suppressed: true });
+    });
+    expect(p.findClosestSuppressedNamespace(child)).toBe(child);
+  });
+});
+
 describe("namespace metadata", () => {
   test("upsert, get, and list union with memory-only keys", () => {
     const db = openTestMemoriesDatabase();

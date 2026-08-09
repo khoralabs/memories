@@ -35,6 +35,8 @@ export {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
+  type DatabaseEffectiveSuppressionRequest,
+  type DatabaseEffectiveSuppressionResponse,
   type DatabaseGraphLayoutRequest,
   type DatabaseHashRequest,
   type DatabaseHashResponse,

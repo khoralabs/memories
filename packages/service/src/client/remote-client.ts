@@ -27,6 +27,7 @@ import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewResponse,
+  type DatabaseEffectiveSuppressionResponse,
   type DatabaseGraphLayoutRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespaceMetadata,
@@ -369,6 +370,21 @@ export class RemoteMemoriesReadClient {
       namespace,
     });
     return response.namespace;
+  }
+
+  /** Ancestor-aware suppression status (discovery visibility). Omit `key` for namespace targets. */
+  async getEffectiveSuppression(input: {
+    namespace: string;
+    key?: string;
+  }): Promise<DatabaseEffectiveSuppressionResponse> {
+    return this.#client.postJson<DatabaseEffectiveSuppressionResponse>(
+      "/databases/effective-suppression",
+      {
+        database: this.#database,
+        namespace: input.namespace,
+        ...(input.key !== undefined ? { key: input.key } : {}),
+      },
+    );
   }
 
   async upsertNamespaceMetadata(input: {

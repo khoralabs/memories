@@ -327,6 +327,26 @@ export type DatabaseFindMemoryIdResponse = {
   suppressed?: boolean;
 };
 
+/**
+ * Ancestor-aware suppression status (discovery visibility).
+ * Omit `key` for a namespace target; include `key` for a memory target.
+ */
+export type DatabaseEffectiveSuppressionRequest = DatabaseScopedBody<{
+  namespace: string;
+  key?: string;
+}>;
+export type DatabaseEffectiveSuppressionResponse = {
+  namespace: string;
+  /** Present for memory targets. */
+  key?: string;
+  /** True when discovery would hide this target (memory flag and/or covering namespace). */
+  effectivelySuppressed: boolean;
+  /** Closest covering suppressed namespace (self or ancestor); null when none. */
+  suppressedBy: string | null;
+  /** Exact-path flag for the target (`namespace_metadata` / `memories`). */
+  exactSuppressed: boolean;
+};
+
 export type DatabaseLoadMemoryNamespaceKeyRequest = DatabaseScopedBody<{ memoryId: string }>;
 export type DatabaseLoadMemoryNamespaceKeyResponse = {
   namespace: string;

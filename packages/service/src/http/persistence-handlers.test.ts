@@ -311,6 +311,95 @@ describe("memories service persistence http handlers", () => {
     expect(previewBody.suppressed).toBe(true);
   }, 15_000);
 
+  test("effective-suppression: namespace ancestor/self and memory cases", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-effective-suppression" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const client = new MemoriesClient(sync.syncPersistence, testOntology);
+    const parent = "eff/parent";
+    const child = "eff/parent/child";
+
+    client.mergeMemory({
+      kind: "node",
+      key: "under_parent",
+      namespace: child,
+      content: [{ key: "text", text: "child mem" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "exact_only",
+      namespace: "eff/other",
+      content: [{ key: "text", text: "other mem" }],
+      labels: [],
+    });
+    client.suppressNamespace({ namespace: parent });
+    client.suppressMemory({ namespace: "eff/other", key: "exact_only" });
+
+    const childNs = await postJson(
+      "http://localhost/databases/effective-suppression",
+      { database, namespace: child },
+      stack,
+    );
+    expect(childNs.status).toBe(200);
+    expect(await childNs.json()).toMatchObject({
+      namespace: child,
+      effectivelySuppressed: true,
+      suppressedBy: parent,
+      exactSuppressed: false,
+    });
+
+    const selfNs = await postJson(
+      "http://localhost/databases/effective-suppression",
+      { database, namespace: parent },
+      stack,
+    );
+    expect(selfNs.status).toBe(200);
+    expect(await selfNs.json()).toMatchObject({
+      namespace: parent,
+      effectivelySuppressed: true,
+      suppressedBy: parent,
+      exactSuppressed: true,
+    });
+
+    const memUnderNs = await postJson(
+      "http://localhost/databases/effective-suppression",
+      { database, namespace: child, key: "under_parent" },
+      stack,
+    );
+    expect(memUnderNs.status).toBe(200);
+    expect(await memUnderNs.json()).toMatchObject({
+      namespace: child,
+      key: "under_parent",
+      effectivelySuppressed: true,
+      suppressedBy: parent,
+      exactSuppressed: false,
+    });
+
+    const memExact = await postJson(
+      "http://localhost/databases/effective-suppression",
+      { database, namespace: "eff/other", key: "exact_only" },
+      stack,
+    );
+    expect(memExact.status).toBe(200);
+    expect(await memExact.json()).toMatchObject({
+      namespace: "eff/other",
+      key: "exact_only",
+      effectivelySuppressed: true,
+      suppressedBy: null,
+      exactSuppressed: true,
+    });
+
+    const missing = await postJson(
+      "http://localhost/databases/effective-suppression",
+      { database, namespace: child, key: "nope" },
+      stack,
+    );
+    expect(missing.status).toBe(404);
+  }, 15_000);
+
   test("search-namespaces arms: omit / partial / vector>0", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-search-ns-arms" };
