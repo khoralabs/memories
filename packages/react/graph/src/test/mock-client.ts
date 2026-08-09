@@ -37,6 +37,7 @@ export function createMockReactClient(
       namespace: input.namespace,
       alias: input.alias ?? null,
       description: input.description ?? "",
+      suppressed: false,
     })),
     getNamespaceMetadata: mock(async () => null),
     renameNamespace: mock(async () => ({ namespaces: [], renamedMemories: 0 })),
@@ -50,6 +51,7 @@ export function createMockReactClient(
       namespace: "",
       labels: [],
       content: [],
+      suppressed: false,
     })),
     ...overrides,
   };

@@ -253,6 +253,8 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 
 Client-supplied embeddings on `search`, `search-namespaces` (`vector`), and `merge` (`content[].vector`, `searchMetaVector`) must be **512–3072** float32 values.
 
+Suppression: discovery endpoints exclude suppressed memories/namespaces by default. Pass `includeSuppressed: true` (on the body, or `params.options.includeSuppressed` for search) to include them. Responses that return namespaces or memories always include exact-path `suppressed: boolean` (`namespace_metadata.suppressed` / `memories.suppressed`, not ancestor-inferred).
+
 ### SQLite read endpoints
 
 | Method | Path | Action | Auth action |

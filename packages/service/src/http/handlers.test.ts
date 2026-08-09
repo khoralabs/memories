@@ -182,6 +182,7 @@ describe("memories service http handlers", () => {
         namespace: "user/inbox",
         alias: "Inbox",
         description: "Primary inbox",
+        suppressed: false,
       },
     });
 
@@ -195,12 +196,18 @@ describe("memories service http handlers", () => {
     );
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as {
-      namespaces: Array<{ namespace: string; alias: string | null; description: string }>;
+      namespaces: Array<{
+        namespace: string;
+        alias: string | null;
+        description: string;
+        suppressed: boolean;
+      }>;
     };
     expect(listBody.namespaces).toContainEqual({
       namespace: "user/inbox",
       alias: "Inbox",
       description: "Primary inbox",
+      suppressed: false,
     });
   });
 

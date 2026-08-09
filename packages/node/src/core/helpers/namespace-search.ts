@@ -38,6 +38,8 @@ export type NamespaceSearchHit = {
   scoreMax: number;
   /** Up to N highest-scoring node hits in this namespace */
   topHits: NamespaceSearchTopHit[];
+  /** Exact-path catalog flag (`namespace_metadata.suppressed`). */
+  suppressed: boolean;
 };
 
 export type NamespaceSearchResult = {
@@ -58,6 +60,8 @@ export type NamespaceMetadataForRank = {
   namespace: string;
   alias: string | null;
   description: string;
+  /** Exact-path catalog flag. */
+  suppressed: boolean;
 };
 
 export type RankNamespacesOptions = {
@@ -119,6 +123,8 @@ export type NamespaceSearchInput = {
    * Lexical-only: `{ nodes: 0, lexical: 1 }`. Nodes without metadata: `{ nodes: 1, lexical: 0, vector: 1 }`.
    */
   arms?: { nodes?: number; lexical?: number; vector?: number };
+  /** When true, include suppressed namespaces/memories in discovery. Default excludes. */
+  includeSuppressed?: boolean;
 };
 
 const DEFAULT_LIMIT = 10;
@@ -223,12 +229,15 @@ export function rankNamespacesFromHits(
     }
     const hitCount = nsHits.length;
     let score = scoreSum * (1 + Math.log1p(hitCount));
+    let suppressed = false;
     if (metaByNs !== undefined) {
       const meta = metaByNs.get(ns) ?? {
         namespace: ns,
         alias: null,
         description: "",
+        suppressed: false,
       };
+      suppressed = meta.suppressed;
       const metaScore = namespaceMetadataLexicalScore(query, meta);
       score = score * (1 + metadataBoost * metaScore);
     }
@@ -250,6 +259,7 @@ export function rankNamespacesFromHits(
       scoreSum,
       scoreMax: Number.isFinite(scoreMax) ? scoreMax : 0,
       topHits,
+      suppressed,
     });
   }
 
@@ -327,6 +337,7 @@ function rankNamespacesFromMetadataOnly(
       scoreSum: score,
       scoreMax: score,
       topHits: [],
+      suppressed: meta.suppressed,
     });
   }
 
@@ -379,6 +390,7 @@ export function fuseNamespaceNodeAndLexicalArms(
       scoreSum: fromNodes?.scoreSum ?? fromLexical?.scoreSum ?? 0,
       scoreMax: fromNodes?.scoreMax ?? fromLexical?.scoreMax ?? 0,
       topHits: fromNodes?.topHits ?? [],
+      suppressed: fromNodes?.suppressed === true || fromLexical?.suppressed === true,
     };
   });
 }
@@ -425,13 +437,30 @@ export async function searchNamespaces(
     throw new Error("searchNamespaces: at least one of arms.nodes or arms.lexical must be > 0");
   }
 
+  const includeSuppressed = input.includeSuppressed === true;
+  const includeSpread = includeSuppressed ? { includeSuppressed: true as const } : {};
+
   const loadMetadata = async (): Promise<NamespaceMetadataForRank[]> => {
-    const listed = await Promise.resolve(client.persistence.listNamespacesWithMetadata());
+    const listed = await Promise.resolve(
+      client.persistence.listNamespacesWithMetadata(includeSpread),
+    );
     return listed.map((m) => ({
       namespace: m.namespace,
       alias: m.alias,
       description: m.description,
+      suppressed: m.suppressed === true,
     }));
+  };
+
+  const annotateSuppressed = async (
+    namespaces: NamespaceSearchHit[],
+  ): Promise<NamespaceSearchHit[]> => {
+    return Promise.all(
+      namespaces.map(async (n) => {
+        const meta = await Promise.resolve(client.persistence.getNamespaceMetadata(n.namespace));
+        return { ...n, suppressed: meta?.suppressed === true };
+      }),
+    );
   };
 
   // Lexical-only: catalog metadata ranking, no unscoped memory search.
@@ -500,6 +529,7 @@ export async function searchNamespaces(
       topK: nodeTopK,
       neighbors: neighborOptionForSearch("off"),
       ...(contentArms !== undefined ? { arms: contentArms } : {}),
+      ...includeSpread,
     },
   };
 
@@ -539,7 +569,11 @@ export async function searchNamespaces(
   });
 
   if (lexicalWeight <= 0) {
-    return { query, under, namespaces: nodesRanked.slice(0, limit) };
+    return {
+      query,
+      under,
+      namespaces: await annotateSuppressed(nodesRanked.slice(0, limit)),
+    };
   }
 
   // Both arms: RRF-fuse nodes ranking with catalog metadata ranking.
@@ -554,5 +588,9 @@ export async function searchNamespaces(
     limit,
   });
 
-  return { query, under, namespaces };
+  return {
+    query,
+    under,
+    namespaces: await annotateSuppressed(namespaces),
+  };
 }

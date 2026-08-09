@@ -217,6 +217,100 @@ describe("memories service persistence http handlers", () => {
     expect(dimsRes.status).toBe(200);
   });
 
+  test("namespaces and search includeSuppressed + suppressed flags", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-include-suppressed-http" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const client = new MemoriesClient(sync.syncPersistence, testOntology);
+    client.mergeMemory({
+      kind: "node",
+      key: "visible",
+      namespace: "ns/a",
+      content: [{ key: "text", text: "hello visible" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "hidden",
+      namespace: "ns/a",
+      content: [{ key: "text", text: "hello hidden" }],
+      labels: [],
+    });
+    client.suppressMemory({ namespace: "ns/a", key: "hidden" });
+    client.suppressNamespace({ namespace: "ns/b" });
+
+    const excludedNs = await postJson("http://localhost/databases/namespaces", { database }, stack);
+    expect(excludedNs.status).toBe(200);
+    const excludedNsBody = (await excludedNs.json()) as {
+      namespaces: Array<{ namespace: string; suppressed: boolean }>;
+    };
+    expect(excludedNsBody.namespaces.every((n) => typeof n.suppressed === "boolean")).toBe(true);
+    expect(excludedNsBody.namespaces.some((n) => n.namespace === "ns/b")).toBe(false);
+
+    const includedNs = await postJson(
+      "http://localhost/databases/namespaces",
+      { database, includeSuppressed: true },
+      stack,
+    );
+    expect(includedNs.status).toBe(200);
+    const includedNsBody = (await includedNs.json()) as {
+      namespaces: Array<{ namespace: string; suppressed: boolean }>;
+    };
+    const b = includedNsBody.namespaces.find((n) => n.namespace === "ns/b");
+    expect(b?.suppressed).toBe(true);
+
+    const excludedSearch = await postJson(
+      "http://localhost/databases/search",
+      {
+        database,
+        params: {
+          namespace: "ns/a",
+          content: { text: "hello" },
+          options: { arms: { lexical: 1, vector: 0 } },
+        },
+      },
+      stack,
+    );
+    expect(excludedSearch.status).toBe(200);
+    const excludedSearchBody = (await excludedSearch.json()) as {
+      hits: Array<{ memory: { key: string; suppressed: boolean } }>;
+    };
+    expect(excludedSearchBody.hits.every((h) => typeof h.memory.suppressed === "boolean")).toBe(
+      true,
+    );
+    expect(excludedSearchBody.hits.some((h) => h.memory.key === "hidden")).toBe(false);
+
+    const includedSearch = await postJson(
+      "http://localhost/databases/search",
+      {
+        database,
+        params: {
+          namespace: "ns/a",
+          content: { text: "hello" },
+          options: { arms: { lexical: 1, vector: 0 }, includeSuppressed: true },
+        },
+      },
+      stack,
+    );
+    expect(includedSearch.status).toBe(200);
+    const includedSearchBody = (await includedSearch.json()) as {
+      hits: Array<{ memory: { key: string; suppressed: boolean } }>;
+    };
+    const hiddenHit = includedSearchBody.hits.find((h) => h.memory.key === "hidden");
+    expect(hiddenHit?.memory.suppressed).toBe(true);
+
+    const preview = await postJson(
+      "http://localhost/databases/memory-preview",
+      { database, namespace: "ns/a", key: "hidden" },
+      stack,
+    );
+    expect(preview.status).toBe(200);
+    const previewBody = (await preview.json()) as { suppressed: boolean };
+    expect(previewBody.suppressed).toBe(true);
+  }, 15_000);
+
   test("search-namespaces arms: omit / partial / vector>0", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-search-ns-arms" };

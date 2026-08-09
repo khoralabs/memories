@@ -59,6 +59,7 @@ describe("MemoriesNamespaceMemoriesProvider", () => {
           z: 0,
           labels: [],
           degree: { count: 0, centrality: 0 },
+          suppressed: false,
         },
       ],
     }));

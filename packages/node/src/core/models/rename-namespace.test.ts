@@ -44,6 +44,7 @@ describe("renameNamespace", () => {
         namespace: "new/path",
         alias: "Inbox",
         description: "d",
+        suppressed: false,
       });
       expect(persistence.getNamespaceMetadata("old/path")).toBeUndefined();
 

@@ -28,8 +28,8 @@ export type NamespaceMetadataInfo = {
   namespace: NamespacePath;
   alias: string | null;
   description: string;
-  /** Present when the metadata row marks this path suppressed (exact; not ancestor-inferred). */
-  suppressed?: boolean;
+  /** Exact-path flag from `namespace_metadata.suppressed` (not ancestor-inferred). */
+  suppressed: boolean;
 };
 
 /** Options for graph / projection loaders that can surface suppressed memories. */
@@ -477,6 +477,8 @@ export interface MemoriesRetrieval {
     memoryIds?: string[];
     /** Bounds on `memories._ts_created` (backend-dependent). */
     asOf?: SearchAsOf;
+    /** When true, include suppressed memories/namespaces in discovery. Default excludes. */
+    includeSuppressed?: boolean;
   }): string[];
 
   searchVectorSourceMapIds(input: {
@@ -490,6 +492,8 @@ export interface MemoriesRetrieval {
     asOf?: SearchAsOf;
     /** Resolved method from core; unsupported → empty `sourceMapIds`. */
     method: VectorSearchMethod;
+    /** When true, include suppressed memories/namespaces in discovery. Default excludes. */
+    includeSuppressed?: boolean;
   }): SearchVectorSourceMapIdsResult;
 
   hydrateSourceMapHits(sourceMapIds: readonly string[]): HydratedSourceMapHit[];
@@ -504,6 +508,8 @@ export interface MemoriesNeighborIndex {
     namespace: NamespacePath;
     key: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    /** When true, include suppressed neighbor memories/edges. Default excludes. */
+    includeSuppressed?: boolean;
   }): HydratedNeighbor[];
 
   /** Endpoint node memories for a graph edge (for neighbor expansion when the search root is an edge memory). */
@@ -514,6 +520,8 @@ export interface MemoriesNeighborIndex {
     namespace: NamespacePath;
     edgeId: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    /** When true, include suppressed neighbor memories/edges. Default excludes. */
+    includeSuppressed?: boolean;
   }): HydratedNeighbor[];
 }
 

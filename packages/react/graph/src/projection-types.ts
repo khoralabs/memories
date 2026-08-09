@@ -22,6 +22,8 @@ export type GraphPayload = {
     z: number;
     labels: GraphLabelInstance[];
     degree: GraphNodeDegree;
+    /** Exact-path memory suppressed flag. */
+    suppressed: boolean;
   }>;
   edges: Array<{
     edgeId: string;
@@ -30,6 +32,8 @@ export type GraphPayload = {
     labels: GraphLabelInstance[];
     /** When true, dashes animate from `fromKey` toward `toKey`; omit/false = undirected (static dashes). */
     directed?: boolean;
+    /** Exact-path edge-memory suppressed flag. */
+    suppressed: boolean;
   }>;
 };
 

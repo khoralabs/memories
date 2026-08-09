@@ -8,12 +8,20 @@ export type MemoriesGraphNamespaceEntry = {
   /** Human-readable label for findability; prefer over renaming the path. */
   alias: string | null;
   description: string;
-  /** When true, this exact path is suppressed from discovery. */
-  suppressed?: boolean;
+  /** Exact-path catalog flag (`namespace_metadata.suppressed`). */
+  suppressed: boolean;
 };
 
+/**
+ * Host catalog input before {@link normalizeNamespaceEntries}.
+ * Legacy string paths and rows omitting `suppressed` are accepted; output always has a boolean.
+ */
+export type MemoriesGraphNamespaceEntryInput =
+  | string
+  | (Omit<MemoriesGraphNamespaceEntry, "suppressed"> & { suppressed?: boolean });
+
 export type MemoriesGraphNamespacesPayload = {
-  namespaces?: Array<string | MemoriesGraphNamespaceEntry>;
+  namespaces?: Array<MemoriesGraphNamespaceEntryInput>;
   profiles?: Array<{
     profileId: string;
     username?: string;
@@ -26,7 +34,7 @@ export type MemoriesGraphNamespacesPayload = {
 
 /** Coerce host `namespaces` (legacy strings or metadata rows) into catalog entries. */
 export function normalizeNamespaceEntries(
-  namespaces: readonly (string | MemoriesGraphNamespaceEntry)[] | undefined,
+  namespaces: readonly MemoriesGraphNamespaceEntryInput[] | undefined,
 ): MemoriesGraphNamespaceEntry[] {
   if (namespaces === undefined) return [];
   const out: MemoriesGraphNamespaceEntry[] = [];
@@ -34,7 +42,7 @@ export function normalizeNamespaceEntries(
     if (typeof entry === "string") {
       const namespace = entry.trim();
       if (namespace.length === 0) continue;
-      out.push({ namespace, alias: null, description: "" });
+      out.push({ namespace, alias: null, description: "", suppressed: false });
       continue;
     }
     if (entry === null || typeof entry !== "object") continue;
@@ -44,7 +52,7 @@ export function normalizeNamespaceEntries(
       namespace,
       alias: typeof entry.alias === "string" ? entry.alias : null,
       description: typeof entry.description === "string" ? entry.description : "",
-      ...(entry.suppressed === true ? { suppressed: true } : {}),
+      suppressed: entry.suppressed === true,
     });
   }
   return out;

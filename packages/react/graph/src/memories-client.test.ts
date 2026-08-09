@@ -26,7 +26,7 @@ function createMockReads(
   return {
     listNamespaces:
       overrides.listNamespaces ??
-      (async () => [{ namespace: "global", alias: null, description: "" }]),
+      (async () => [{ namespace: "global", alias: null, description: "", suppressed: false }]),
     getGraphLayout:
       overrides.getGraphLayout ??
       (async () => ({
@@ -39,6 +39,7 @@ function createMockReads(
             z: 0,
             labels: [],
             degree: { count: 0, centrality: 0 },
+            suppressed: false,
           },
         ],
         edges: [],
@@ -51,6 +52,7 @@ function createMockReads(
         toKey: "b",
         labels: [],
         properties: null,
+        suppressed: false,
       })),
     getMemoryPreview:
       overrides.getMemoryPreview ??
@@ -59,6 +61,7 @@ function createMockReads(
         namespace: "ns",
         labels: [{ kind: "Person", props: {} }],
         content: [{ sourceKey: "body", text: "hello" }],
+        suppressed: false,
       })),
     upsertNamespaceMetadata:
       overrides.upsertNamespaceMetadata ??
@@ -66,10 +69,11 @@ function createMockReads(
         namespace: input.namespace,
         alias: input.alias ?? null,
         description: input.description ?? "",
+        suppressed: false,
       })),
     getNamespaceMetadata:
       overrides.getNamespaceMetadata ??
-      (async () => ({ namespace: "ns", alias: null, description: "" })),
+      (async () => ({ namespace: "ns", alias: null, description: "", suppressed: false })),
     renameNamespace:
       overrides.renameNamespace ?? (async () => ({ namespaces: [], renamedMemories: 0 })),
     deleteNamespace:
@@ -162,6 +166,7 @@ describe("createServiceReactMemoriesClient", () => {
           z: 3,
           labels: [{ kind: "Thing", props: {} }],
           degree: { count: 1, centrality: 1 },
+          suppressed: false,
         },
       ],
       edges: [
@@ -171,6 +176,7 @@ describe("createServiceReactMemoriesClient", () => {
           toKey: "n2",
           labels: [],
           directed: true,
+          suppressed: false,
         },
       ],
     });
@@ -202,7 +208,7 @@ describe("createServiceReactMemoriesClient", () => {
             memoryId: "m1",
             sourceKey: "text",
             score: 1,
-            memory: { namespace: "ns/child", key: "a", kind: "node" },
+            memory: { namespace: "ns/child", key: "a", kind: "node", suppressed: false },
             labels: [],
             graph: { kind: "node" },
             neighbors: [
@@ -211,6 +217,7 @@ describe("createServiceReactMemoriesClient", () => {
                 key: "b",
                 kind: "node",
                 labels: [],
+                suppressed: false,
                 edge: {
                   from_node_id: "x",
                   to_node_id: "y",
@@ -224,7 +231,7 @@ describe("createServiceReactMemoriesClient", () => {
             memoryId: "m2",
             sourceKey: "text",
             score: 0.5,
-            memory: { namespace: "ns/child", key: "e1", kind: "edge" },
+            memory: { namespace: "ns/child", key: "e1", kind: "edge", suppressed: false },
             labels: [],
             graph: {
               kind: "edge",
@@ -314,7 +321,14 @@ describe("createServiceReactMemoriesClient", () => {
     const getEdgePreview = mock(async (namespace: string, edgeId: string) => {
       expect(namespace).toBe("n/s");
       expect(edgeId).toBe("e/1");
-      return { edgeId: "e/1", fromKey: "a", toKey: "b", labels: [], properties: null };
+      return {
+        edgeId: "e/1",
+        fromKey: "a",
+        toKey: "b",
+        labels: [],
+        properties: null,
+        suppressed: false,
+      };
     });
     const client = createServiceReactMemoriesClient({
       baseUrl: "http://localhost",
@@ -328,6 +342,7 @@ describe("createServiceReactMemoriesClient", () => {
       toKey: "b",
       labels: [],
       properties: null,
+      suppressed: false,
     });
   });
 
@@ -461,6 +476,7 @@ describe("createServiceReactMemoriesClient", () => {
             scoreSum: 1,
             scoreMax: 1,
             topHits: [],
+            suppressed: false,
           },
         ],
       };
@@ -490,6 +506,7 @@ describe("createServiceReactMemoriesClient", () => {
           scoreSum: 1,
           scoreMax: 1,
           topHits: [],
+          suppressed: false,
         },
       ],
     });
@@ -587,6 +604,7 @@ describe("createServiceReactMemoriesClient", () => {
           namespace: "ns",
           labels: [],
           content: [{ sourceKey: "body", text: "hi" }],
+          suppressed: false,
         };
       },
     );
@@ -603,6 +621,7 @@ describe("createServiceReactMemoriesClient", () => {
       namespace: "ns",
       labels: [],
       content: [{ sourceKey: "body", text: "hi" }],
+      suppressed: false,
     });
   });
 });

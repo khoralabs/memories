@@ -86,6 +86,7 @@ export async function searchLexicalSourceMapIds(
     limit: number;
     memoryIds?: string[];
     asOf?: SearchAsOf;
+    includeSuppressed?: boolean;
   },
 ): Promise<string[]> {
   if (input.text.length === 0) return [];
@@ -99,6 +100,7 @@ export async function searchLexicalSourceMapIds(
     input.memoryIds,
     input.asOf,
     "tf",
+    input.includeSuppressed,
   );
 
   const params: unknown[] = [matchExpr, ...memBindings, matchExpr, input.limit];
@@ -126,6 +128,7 @@ export async function searchVectorSourceMapIds(
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
     method: "knn" | "ann";
+    includeSuppressed?: boolean;
   },
 ): Promise<{ sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" }> {
   if (input.memoryIds !== undefined && input.memoryIds.length === 0) return { sourceMapIds: [] };
@@ -154,6 +157,7 @@ async function searchVectorScoped(
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
+    includeSuppressed?: boolean;
   },
 ): Promise<string[]> {
   const vectorJson = vector32Json(input.vector);
@@ -164,6 +168,7 @@ async function searchVectorScoped(
     input.memoryIds,
     input.asOf,
     "vf",
+    input.includeSuppressed,
   );
 
   const maxD = input.maxVectorDistance;
@@ -200,6 +205,7 @@ async function searchVectorAnn(
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
+    includeSuppressed?: boolean;
   },
 ): Promise<string[]> {
   const { sql: memFilter, bindings: memBindings } = memoryIdSubqueryFromScope(
@@ -207,6 +213,7 @@ async function searchVectorAnn(
     input.memoryIds,
     input.asOf,
     "vf",
+    input.includeSuppressed,
   );
   const maxD = input.maxVectorDistance;
   const distClause = maxD !== undefined && Number.isFinite(maxD) ? "AND top.distance <= ?" : "";
@@ -242,6 +249,7 @@ export async function hydrateSourceMapHits(
     key: string;
     memoryKind: string | null;
     memoryEdgeId: string | null;
+    memorySuppressed: number | null;
   }>(
     ctx,
     `SELECT
@@ -253,7 +261,8 @@ export async function hydrateSourceMapHits(
        m.namespace AS namespace,
        m.key AS key,
        m.kind AS memoryKind,
-       m.edge_id AS memoryEdgeId
+       m.edge_id AS memoryEdgeId,
+       m.suppressed AS memorySuppressed
      FROM source_maps sm
      JOIN memories m ON m._id = sm.memory_id
      WHERE sm._id IN (${placeholders(sourceMapIds.length)})`,
@@ -280,6 +289,8 @@ export async function hydrateSourceMapHits(
         key: row.key,
         kind: mk === "edge" ? "edge" : "node",
         ...(mk === "edge" && row.memoryEdgeId ? { edge_id: row.memoryEdgeId } : {}),
+        suppressed:
+          row.memorySuppressed !== null && row.memorySuppressed !== 0 ? (1 as const) : (0 as const),
       };
       return [
         row.sourceMapId,
@@ -399,9 +410,22 @@ export async function listNeighborsForMemory<
     namespace: string;
     key: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    includeSuppressed?: boolean;
   },
 ): Promise<HydratedNeighbor[]> {
   const nodeId = ids.node(input.namespace, input.key);
+  const include = input.includeSuppressed === true;
+  const visibilitySql = include
+    ? ""
+    : `AND m.suppressed = 0
+       AND NOT EXISTS (
+         SELECT 1 FROM namespace_metadata nm
+         WHERE nm.suppressed != 0
+           AND (m.namespace = nm._id OR m.namespace LIKE nm._id || '/%')
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
+       )`;
   const rows = await ctxQueryAll<{
     edgeId: string;
     edgeCreated: number;
@@ -414,6 +438,7 @@ export async function listNeighborsForMemory<
     memoryCreated: number;
     namespace: string;
     key: string;
+    memorySuppressed: number | null;
   }>(
     ctx,
     `SELECT
@@ -427,7 +452,8 @@ export async function listNeighborsForMemory<
        m._id AS memoryId,
        m._ts_created AS memoryCreated,
        m.namespace AS namespace,
-       m.key AS key
+       m.key AS key,
+       m.suppressed AS memorySuppressed
      FROM edges e
      JOIN edge_label_assignments ela ON ela.edge_id = e._id
      JOIN edge_labels el ON el._id = ela.label_id
@@ -437,15 +463,7 @@ export async function listNeighborsForMemory<
      END
      JOIN memories m ON m._id = n.memory_id
      WHERE (e.from_node_id = ? OR e.to_node_id = ?)
-       AND m.suppressed = 0
-       AND NOT EXISTS (
-         SELECT 1 FROM namespace_metadata nm
-         WHERE nm.suppressed != 0
-           AND (m.namespace = nm._id OR m.namespace LIKE nm._id || '/%')
-       )
-       AND NOT EXISTS (
-         SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
-       )
+       ${visibilitySql}
      ORDER BY e._id ASC, el.kind ASC`,
     [nodeId, nodeId, nodeId],
   );
@@ -477,6 +495,8 @@ export async function listNeighborsForMemory<
         namespace: namespacePath(row.namespace),
         key: row.key,
         kind: "node",
+        suppressed:
+          row.memorySuppressed !== null && row.memorySuppressed !== 0 ? (1 as const) : (0 as const),
       },
       edge: {
         _id: row.edgeId,

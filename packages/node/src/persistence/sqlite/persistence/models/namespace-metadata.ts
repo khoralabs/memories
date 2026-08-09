@@ -16,7 +16,7 @@ function rowToInfo(row: NamespaceMetadataRow & { suppressed?: number }): Namespa
     namespace: row.id,
     alias: row.alias,
     description: row.description,
-    ...(row.suppressed !== undefined && row.suppressed !== 0 ? { suppressed: true } : {}),
+    suppressed: row.suppressed !== undefined && row.suppressed !== 0,
   };
 }
 
@@ -104,7 +104,7 @@ export function listNamespacesWithMetadata(
     .query<{ namespace: string }, []>(`SELECT DISTINCT namespace FROM memories`)
     .all()) {
     if (!include && isNamespaceSuppressed(db, namespace)) continue;
-    byKey.set(namespace, { namespace, alias: null, description: "" });
+    byKey.set(namespace, { namespace, alias: null, description: "", suppressed: false });
   }
   for (const row of db
     .query<NamespaceMetadataRow & { suppressed: number }, []>(

@@ -91,6 +91,11 @@ export interface SearchParams<
      * Unsupported selection is a noop for the vector arm.
      */
     vectorSearchMethod?: VectorSearchMethod;
+    /**
+     * When true, include suppressed memories/namespaces in discovery and neighbor expansion.
+     * Default excludes them. Exact-path `memory.suppressed` is still populated on hits.
+     */
+    includeSuppressed?: boolean;
   };
   /**
    * Bounds on `memories._ts_created` (`gt` / `gte` / `lt` / `lte`).
@@ -228,10 +233,13 @@ function rankSourceMapIdsForContent(
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
     vectorSearchMethod?: VectorSearchMethod;
+    includeSuppressed?: boolean;
   },
 ): { fused: Array<{ id: string; score: number }>; vectorSearchMethod?: VectorSearchMethod } {
   const { scope } = input;
   const asOfSpread = input.asOf !== undefined ? { asOf: input.asOf } : {};
+  const includeSpread =
+    input.includeSuppressed === true ? { includeSuppressed: true as const } : {};
   const resolvedMethod = resolveVectorSearchMethod(input.vectorSearchMethod, caps);
   let usedMethod: VectorSearchMethod | undefined;
 
@@ -264,6 +272,7 @@ function rankSourceMapIdsForContent(
         ? { maxVectorDistance: input.maxVectorDistance }
         : {}),
       ...asOfSpread,
+      ...includeSpread,
     });
     if (result.vectorSearchMethod !== undefined) {
       usedMethod = result.vectorSearchMethod;
@@ -287,6 +296,7 @@ function rankSourceMapIdsForContent(
           limit: input.retrievalLimit,
           memoryIds: input.memoryIds,
           ...asOfSpread,
+          ...includeSpread,
         });
         if (ranked.length > 0) {
           arms.push({ armId: `lexical:${ns}`, ranked, weight: input.lexicalWeight });
@@ -312,6 +322,7 @@ function rankSourceMapIdsForContent(
       limit: input.retrievalLimit,
       memoryIds: input.memoryIds,
       ...asOfSpread,
+      ...includeSpread,
     });
     if (ranked.length > 0) {
       arms.push({ armId: "lexical", ranked, weight: input.lexicalWeight });
@@ -344,20 +355,25 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
     vectorSearchMethod?: VectorSearchMethod;
+    includeSuppressed?: boolean;
   },
 ): SearchNeighborHit<NODE_LABELS, EDGE_LABELS>[] {
   if (!caps.neighborIndex) return [];
+  const includeSpread =
+    input.includeSuppressed === true ? { includeSuppressed: true as const } : {};
   const graphNeighbors =
     input.rootGraph.kind === "edge"
       ? persistence.listNeighborsForEdgeMemory<EDGE_LABELS, NODE_LABELS>({
           namespace: input.namespace,
           edgeId: input.rootGraph.edge.edgeId,
           filters: input.neighborFilters,
+          ...includeSpread,
         })
       : persistence.listNeighborsForMemory<EDGE_LABELS, NODE_LABELS>({
           namespace: input.namespace,
           key: input.rootMemoryKey,
           filters: input.neighborFilters,
+          ...includeSpread,
         });
 
   const byMemoryId = new Map<string, HydratedNeighbor>();
@@ -392,6 +408,7 @@ function expandNeighborsWithSubSearch<NODE_LABELS extends string, EDGE_LABELS ex
     ...(input.vectorSearchMethod !== undefined
       ? { vectorSearchMethod: input.vectorSearchMethod }
       : {}),
+    ...includeSpread,
   });
   const fused = fusedResult.fused;
 
@@ -483,6 +500,7 @@ function searchInner<NODE_LABELS extends string = string, EDGE_LABELS extends st
   const vectorWeight = params.options?.arms?.vector ?? 1;
   const maxVectorDistance = params.options?.maxVectorDistance;
   const vectorSearchMethod = params.options?.vectorSearchMethod;
+  const includeSuppressed = params.options?.includeSuppressed === true;
 
   const { fused, vectorSearchMethod: usedMethod } = rankSourceMapIdsForContent(persistence, caps, {
     scope,
@@ -494,6 +512,7 @@ function searchInner<NODE_LABELS extends string = string, EDGE_LABELS extends st
     ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
     ...(asOf !== undefined ? { asOf } : {}),
     ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
+    ...(includeSuppressed ? { includeSuppressed: true } : {}),
   });
   if (fused.length === 0) {
     return usedMethod !== undefined ? { hits: [], vectorSearchMethod: usedMethod } : { hits: [] };
@@ -543,6 +562,7 @@ function searchInner<NODE_LABELS extends string = string, EDGE_LABELS extends st
       ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
       ...(asOf !== undefined ? { asOf } : {}),
       ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
+      ...(includeSuppressed ? { includeSuppressed: true } : {}),
     }),
   }));
   return usedMethod !== undefined

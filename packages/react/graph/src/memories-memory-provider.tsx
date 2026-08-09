@@ -216,6 +216,11 @@ export type MemoriesNamespaceMemoriesProviderProps = PropsWithChildren<{
    * @default DEFAULT_SEARCH_DEBOUNCE_MS
    */
   searchDebounceMs?: number;
+  /**
+   * When true, graph layout and memory search include suppressed entities.
+   * @default false
+   */
+  includeSuppressed?: boolean;
 }>;
 
 /**
@@ -225,6 +230,7 @@ export type MemoriesNamespaceMemoriesProviderProps = PropsWithChildren<{
 export function MemoriesNamespaceMemoriesProvider({
   children,
   searchDebounceMs = DEFAULT_SEARCH_DEBOUNCE_MS,
+  includeSuppressed = false,
 }: MemoriesNamespaceMemoriesProviderProps) {
   const client = useMemoriesClient();
   const { database } = useMemoriesDatabase();
@@ -252,6 +258,7 @@ export function MemoriesNamespaceMemoriesProvider({
       const next = await client.getGraph({
         namespace: ns,
         ...(scope === "subtree" ? { scope: "subtree" } : {}),
+        ...(includeSuppressed ? { includeSuppressed: true } : {}),
       });
       if (loadSeq !== loadSeqRef.current) return;
       requestAnimationFrame(() => {
@@ -268,7 +275,7 @@ export function MemoriesNamespaceMemoriesProvider({
       setError(e instanceof Error ? e.message : String(e));
       setLoading(false);
     }
-  }, [client, namespace, scope]);
+  }, [client, namespace, scope, includeSuppressed]);
 
   useEffect(() => {
     void reload();
@@ -305,6 +312,7 @@ export function MemoriesNamespaceMemoriesProvider({
             maxVectorDistance: GRAPH_SEARCH_MAX_VECTOR_DISTANCE,
             signal: ac.signal,
             ...(scope === "subtree" ? { scope: "subtree" } : { scope: "exact" }),
+            ...(includeSuppressed ? { includeSuppressed: true } : {}),
           });
           if (ac.signal.aborted) return;
           const hitSnippetByKey = new Map<string, string>();
@@ -336,7 +344,7 @@ export function MemoriesNamespaceMemoriesProvider({
       window.clearTimeout(id);
       ac.abort();
     };
-  }, [client, searchQuery, namespace, scope, searchDebounceMs]);
+  }, [client, searchQuery, namespace, scope, searchDebounceMs, includeSuppressed]);
 
   const memories = useMemo(() => catalogFromPayload(payload), [payload]);
   const effectiveGraphSearch = graphSearchOverride ?? graphSearch;

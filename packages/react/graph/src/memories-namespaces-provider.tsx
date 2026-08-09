@@ -223,6 +223,11 @@ export type MemoriesNamespacesProviderProps = PropsWithChildren<{
    * @default DEFAULT_SEARCH_DEBOUNCE_MS
    */
   searchDebounceMs?: number;
+  /**
+   * When true, catalog list and namespace search include suppressed paths.
+   * @default false
+   */
+  includeSuppressed?: boolean;
 }>;
 
 function resolveNamespaceRootProp(prop: string | undefined): string | null {
@@ -276,6 +281,7 @@ export function MemoriesNamespacesProvider({
   scope: scopeProp,
   namespaceRoot: namespaceRootProp,
   searchDebounceMs = DEFAULT_SEARCH_DEBOUNCE_MS,
+  includeSuppressed = false,
 }: MemoriesNamespacesProviderProps) {
   const client = useMemoriesClient();
   const { database } = useMemoriesDatabase();
@@ -378,7 +384,9 @@ export function MemoriesNamespacesProvider({
     setLoading(true);
     setError(null);
     try {
-      const json = await client.listNamespaces();
+      const json = await client.listNamespaces(
+        includeSuppressed ? { includeSuppressed: true } : undefined,
+      );
       setEntries(normalizeNamespaceEntries(json.namespaces));
       setProfiles(json.profiles ?? []);
       const fromCatalog = json.namespaceRoot?.trim();
@@ -390,7 +398,7 @@ export function MemoriesNamespacesProvider({
     } finally {
       setLoading(false);
     }
-  }, [client]);
+  }, [client, includeSuppressed]);
 
   useEffect(() => {
     void reload();
@@ -416,6 +424,7 @@ export function MemoriesNamespacesProvider({
             signal: ac.signal,
             ...(searchUnder !== null ? { under: searchUnder } : {}),
             arms: searchArms,
+            ...(includeSuppressed ? { includeSuppressed: true } : {}),
           });
           if (ac.signal.aborted) return;
           setSearchResults(result.namespaces);
@@ -432,7 +441,15 @@ export function MemoriesNamespacesProvider({
       window.clearTimeout(id);
       ac.abort();
     };
-  }, [client, searchQuery, searchArms, searchUnder, namespace, searchDebounceMs]);
+  }, [
+    client,
+    searchQuery,
+    searchArms,
+    searchUnder,
+    namespace,
+    searchDebounceMs,
+    includeSuppressed,
+  ]);
 
   const create = useCallback(
     async (input: CreateNamespaceInput) => {

@@ -25,6 +25,7 @@ describe("namespace metadata", () => {
       namespace: "user/meta-only",
       alias: "Meta Only",
       description: "no memories yet",
+      suppressed: false,
     });
     expect(p.getNamespaceMetadata("user/mem-only")).toBeUndefined();
 
@@ -34,6 +35,7 @@ describe("namespace metadata", () => {
       namespace: "user/mem-only",
       alias: null,
       description: "",
+      suppressed: false,
     });
     expect(listed[1]?.alias).toBe("Meta Only");
 

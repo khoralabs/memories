@@ -21,6 +21,8 @@ export type MemoryWire = {
   key: string;
   kind: "node" | "edge";
   edge_id?: string;
+  /** Exact-path `memories.suppressed` flag. */
+  suppressed: boolean;
 };
 
 export type SearchNeighborHitWire = {
@@ -36,6 +38,8 @@ export type SearchNeighborHitWire = {
   };
   neighborScore?: number;
   matchedSourceMapId?: string;
+  /** Exact-path `memories.suppressed` flag. */
+  suppressed: boolean;
 };
 
 export type SearchHitWire = {
@@ -69,6 +73,8 @@ export type SearchParamsWire = {
     arms?: { vector?: number; lexical?: number };
     maxVectorDistance?: number;
     vectorSearchMethod?: "knn" | "ann";
+    /** When true, include suppressed memories/namespaces in discovery. Default excludes. */
+    includeSuppressed?: boolean;
   };
   asOf?: {
     gt?: number;
@@ -130,6 +136,8 @@ export type DatabaseSearchNamespacesRequest = DatabaseScopedBody<{
   arms?: { nodes?: number; lexical?: number; vector?: number };
   /** Optional query embedding (512–3072 floats); required when arms.vector > 0. */
   vector?: number[];
+  /** When true, include suppressed namespaces/memories. Default excludes. */
+  includeSuppressed?: boolean;
 }>;
 export type DatabaseSearchNamespacesResponse = {
   query: string;
@@ -142,6 +150,7 @@ export type DatabaseSearchNamespacesResponse = {
     scoreSum: number;
     scoreMax: number;
     topHits: Array<{ memory_key: string; score: number; kind: "node" | "edge" }>;
+    suppressed: boolean;
   }>;
 };
 
@@ -187,16 +196,19 @@ export type DatabaseCapabilitiesResponse = {
   capabilities: Record<string, boolean | undefined>;
 };
 
-export type DatabaseNamespacesRequest = DatabaseScopedBody<Record<string, never>>;
+export type DatabaseNamespacesRequest = DatabaseScopedBody<{
+  /** When true, include suppressed namespaces (self/ancestor). Default excludes. */
+  includeSuppressed?: boolean;
+}>;
 /**
  * Namespace catalog row on the wire (⊆ node `NamespaceMetadataInfo`).
- * `suppressed` is the exact-path flag when present.
+ * `suppressed` is the exact-path flag.
  */
 export type DatabaseNamespaceMetadata = {
   namespace: string;
   alias: string | null;
   description: string;
-  suppressed?: boolean;
+  suppressed: boolean;
 };
 export type DatabaseNamespacesResponse = { namespaces: DatabaseNamespaceMetadata[] };
 
@@ -252,8 +264,18 @@ export type DatabaseListResponse = { databases: DatabaseListEntry[] };
 export type DatabaseEdgePreviewRequest = DatabaseScopedBody<{
   namespace: string;
   edgeId: string;
+  /** When true, return suppressed edges. Default excludes (404 when suppressed). */
+  includeSuppressed?: boolean;
 }>;
-export type DatabaseEdgePreviewResponse = Record<string, unknown>;
+export type DatabaseEdgePreviewResponse = {
+  edgeId: string;
+  fromKey: string;
+  toKey: string;
+  labels: OntologyLabelWire[];
+  properties: Record<string, unknown> | null;
+  /** Exact-path edge-memory suppressed flag. */
+  suppressed: boolean;
+};
 
 export type DatabaseMemoryPreviewRequest = DatabaseScopedBody<{
   namespace: string;
@@ -265,6 +287,8 @@ export type DatabaseMemoryPreviewResponse = {
   namespace: string;
   labels: OntologyLabelWire[];
   content: Array<{ sourceKey: string; text: string | null }>;
+  /** Exact-path `memories.suppressed` flag. */
+  suppressed: boolean;
 };
 
 export type DatabaseSourceMapTextPreviewRequest = DatabaseScopedBody<{
@@ -297,12 +321,17 @@ export type DatabaseEnsureScopeChainRequest = DatabaseScopedBody<{ scopePaths: s
 export type DatabaseEnsureScopeChainResponse = { ok: true };
 
 export type DatabaseFindMemoryIdRequest = DatabaseScopedBody<{ namespace: string; key: string }>;
-export type DatabaseFindMemoryIdResponse = { memoryId: string | null };
+export type DatabaseFindMemoryIdResponse = {
+  memoryId: string | null;
+  /** Present when `memoryId` is non-null. Exact-path flag. */
+  suppressed?: boolean;
+};
 
 export type DatabaseLoadMemoryNamespaceKeyRequest = DatabaseScopedBody<{ memoryId: string }>;
 export type DatabaseLoadMemoryNamespaceKeyResponse = {
   namespace: string;
   key: string;
+  suppressed: boolean;
 } | null;
 
 function serializeLabel(label: {
@@ -324,6 +353,7 @@ export function serializeSearchHit(hit: SearchHit): SearchHitWire {
       key: hit.memory.key,
       kind: hit.memory.kind,
       ...(hit.memory.edge_id !== undefined ? { edge_id: hit.memory.edge_id } : {}),
+      suppressed: hit.memory.suppressed === 1,
     },
     labels: hit.labels.map(serializeLabel),
     graph:
@@ -355,6 +385,7 @@ export function serializeSearchHit(hit: SearchHit): SearchHitWire {
       },
       ...(n.neighborScore !== undefined ? { neighborScore: n.neighborScore } : {}),
       ...(n.matchedSourceMapId !== undefined ? { matchedSourceMapId: n.matchedSourceMapId } : {}),
+      suppressed: n.suppressed === 1,
     }));
   }
   return wire;
@@ -371,6 +402,7 @@ export function deserializeSearchHit(wire: SearchHitWire): Record<string, unknow
       key: wire.memory.key,
       kind: wire.memory.kind,
       ...(wire.memory.edge_id !== undefined ? { edge_id: wire.memory.edge_id } : {}),
+      suppressed: wire.memory.suppressed === true ? (1 as const) : (0 as const),
     },
     labels: wire.labels.map((l) => ({ kind: l.kind, props: l.props ?? {} })),
     graph:
@@ -409,6 +441,7 @@ export function deserializeSearchHit(wire: SearchHitWire): Record<string, unknow
             ...(n.matchedSourceMapId !== undefined
               ? { matchedSourceMapId: n.matchedSourceMapId }
               : {}),
+            suppressed: n.suppressed === true ? (1 as const) : (0 as const),
           })),
         }
       : {}),

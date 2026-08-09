@@ -60,6 +60,7 @@ describe("graphNamespaceSearchSummaryLine", () => {
           scoreSum: 0,
           scoreMax: 0,
           topHits: [],
+          suppressed: false,
         },
       ]),
     ).toBe("1 namespace");

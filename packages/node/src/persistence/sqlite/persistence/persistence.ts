@@ -436,6 +436,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     limit: number;
     memoryIds?: string[];
     asOf?: SearchAsOf;
+    includeSuppressed?: boolean;
   }): string[] {
     return searchLexicalSourceMapIds(this.readCtx(), input);
   }
@@ -448,6 +449,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
     method: "knn" | "ann";
+    includeSuppressed?: boolean;
   }): { sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" } {
     if (input.method === "ann" && !this.capabilities.vectorAnnSearch) {
       return { sourceMapIds: [] };
@@ -469,6 +471,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     namespace: string;
     key: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    includeSuppressed?: boolean;
   }): HydratedNeighbor[] {
     return listNeighborsForMemory<EDGE_LABEL, NODE_LABEL>(this.readCtx(), input);
   }
@@ -480,6 +483,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     namespace: string;
     edgeId: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    includeSuppressed?: boolean;
   }): HydratedNeighbor[] {
     return listNeighborsForEdgeMemory<EDGE_LABEL, NODE_LABEL>(this.readCtx(), input);
   }

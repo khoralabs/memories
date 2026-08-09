@@ -9,8 +9,8 @@ describe("normalizeNamespaceEntries", () => {
   test("accepts legacy string[]", () => {
     const entries = normalizeNamespaceEntries(["user/a", " user/b "]);
     expect(entries).toEqual([
-      { namespace: "user/a", alias: null, description: "" },
-      { namespace: "user/b", alias: null, description: "" },
+      { namespace: "user/a", alias: null, description: "", suppressed: false },
+      { namespace: "user/b", alias: null, description: "", suppressed: false },
     ]);
     expect(namespacePathsFromEntries(entries)).toEqual(["user/a", "user/b"]);
   });
@@ -22,7 +22,7 @@ describe("normalizeNamespaceEntries", () => {
     ]);
     expect(entries).toEqual([
       { namespace: "user/a", alias: "Alpha", description: "desc", suppressed: true },
-      { namespace: "user/b", alias: null, description: "" },
+      { namespace: "user/b", alias: null, description: "", suppressed: false },
     ]);
   });
 

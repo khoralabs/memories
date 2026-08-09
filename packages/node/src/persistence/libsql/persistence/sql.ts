@@ -111,9 +111,10 @@ export function memoriesWhereClauseFromScope(
   memoryIds: string[] | undefined,
   asOf?: SearchAsOf,
   tableAlias?: string,
+  includeSuppressed?: boolean,
 ): { sql: string; bindings: unknown[] } {
   const col = (name: string) => (tableAlias ? `${tableAlias}.${name}` : name);
-  const visible = ` AND ${memoryDiscoveryVisibleSql(tableAlias)}`;
+  const visible = includeSuppressed === true ? "" : ` AND ${memoryDiscoveryVisibleSql(tableAlias)}`;
   const { sql: asOfClause, bindings: asOfBind } = asOfSqlClause(asOf, col("_ts_created"));
 
   const idClause =
@@ -173,12 +174,14 @@ export function memoryIdSubqueryFromScope(
   memoryIds: string[] | undefined,
   asOf?: SearchAsOf,
   featureAlias?: string,
+  includeSuppressed?: boolean,
 ): { sql: string; bindings: unknown[] } {
   const { sql: innerSql, bindings } = memoriesWhereClauseFromScope(
     scope,
     memoryIds,
     asOf,
     "memories",
+    includeSuppressed,
   );
   const memoryCol = featureAlias ? `${featureAlias}.memory_id` : "memory_id";
   return {

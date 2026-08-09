@@ -13,6 +13,7 @@ export type EdgePreviewJson = {
   toKey?: string;
   labels?: Array<{ kind: string; props: Record<string, unknown> }>;
   properties?: Record<string, unknown> | null;
+  suppressed?: boolean;
   error?: string;
 };
 
@@ -47,6 +48,7 @@ export type NamespaceSearchHitResult = {
   scoreSum: number;
   scoreMax: number;
   topHits: Array<{ memory_key: string; score: number; kind: "node" | "edge" }>;
+  suppressed: boolean;
 };
 
 /** Result from {@link ReactMemoriesClient.searchNamespaces}. */
@@ -63,11 +65,15 @@ export type NamespaceSearchClientResult = {
  * {@link createServiceReactMemoriesClient} from `@khoralabs/memories-react-graph/service`.
  */
 export type ReactMemoriesClient = {
-  listNamespaces(opts?: { signal?: AbortSignal }): Promise<MemoriesGraphNamespacesPayload>;
+  listNamespaces(opts?: {
+    signal?: AbortSignal;
+    includeSuppressed?: boolean;
+  }): Promise<MemoriesGraphNamespacesPayload>;
 
   getGraph(input: {
     namespace: string;
     scope?: "exact" | "subtree";
+    includeSuppressed?: boolean;
     signal?: AbortSignal;
   }): Promise<GraphPayload>;
 
@@ -78,6 +84,7 @@ export type ReactMemoriesClient = {
     maxNeighbors?: number;
     maxVectorDistance?: number;
     scope?: "exact" | "subtree";
+    includeSuppressed?: boolean;
     signal?: AbortSignal;
   }): Promise<GraphSearchResult>;
 
@@ -94,12 +101,14 @@ export type ReactMemoriesClient = {
     arms?: NamespaceSearchArms;
     /** Optional query embedding (512–3072 floats); required when arms.vector > 0. */
     vector?: number[];
+    includeSuppressed?: boolean;
     signal?: AbortSignal;
   }): Promise<NamespaceSearchClientResult>;
 
   getEdgePreview(input: {
     namespace: string;
     edgeId: string;
+    includeSuppressed?: boolean;
     signal?: AbortSignal;
   }): Promise<EdgePreviewJson>;
 
@@ -158,5 +167,7 @@ export type ReactMemoriesClient = {
     namespace: string;
     labels: Array<{ kind: string; props: Record<string, unknown> }>;
     content: Array<{ sourceKey: string; text: string | null }>;
+    /** Exact-path `memories.suppressed` flag. */
+    suppressed: boolean;
   }>;
 };

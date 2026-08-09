@@ -37,7 +37,7 @@ describe("MemoriesNamespacesProvider", () => {
   test("catalog namespaceRoot wins; omitted namespace focuses root with subtree", async () => {
     const client = createMockReactClient({
       listNamespaces: mock(async () => ({
-        namespaces: [{ namespace: "acme", alias: null, description: "" }],
+        namespaces: [{ namespace: "acme", alias: null, description: "", suppressed: false }],
         namespaceRoot: "acme",
       })),
     });
@@ -65,7 +65,7 @@ describe("MemoriesNamespacesProvider", () => {
   test("provider namespaceRoot seeds when catalog omits root", async () => {
     const client = createMockReactClient({
       listNamespaces: mock(async () => ({
-        namespaces: [{ namespace: "host-root", alias: null, description: "" }],
+        namespaces: [{ namespace: "host-root", alias: null, description: "", suppressed: false }],
       })),
     });
     let latest: ReturnType<typeof useMemoriesNamespaces> | null = null;
@@ -123,6 +123,7 @@ describe("MemoriesNamespacesProvider", () => {
           scoreSum: 2,
           scoreMax: 1,
           topHits: [],
+          suppressed: false,
         },
       ],
     }));

@@ -493,6 +493,7 @@ export class MemoriesTursoServerlessPersistence {
     limit: number;
     memoryIds?: string[];
     asOf?: SearchAsOf;
+    includeSuppressed?: boolean;
   }): Promise<string[]> {
     return searchLexicalSourceMapIds(this.readDbCtx(), input);
   }
@@ -505,6 +506,7 @@ export class MemoriesTursoServerlessPersistence {
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
     method: "knn" | "ann";
+    includeSuppressed?: boolean;
   }): Promise<{ sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" }> {
     if (input.method === "ann" && !this.capabilities.vectorAnnSearch) {
       return { sourceMapIds: [] };
@@ -526,6 +528,7 @@ export class MemoriesTursoServerlessPersistence {
     namespace: string;
     key: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    includeSuppressed?: boolean;
   }): Promise<HydratedNeighbor[]> {
     return listNeighborsForMemory<EDGE_LABEL, NODE_LABEL>(this.readDbCtx(), input);
   }
@@ -537,6 +540,7 @@ export class MemoriesTursoServerlessPersistence {
     namespace: string;
     edgeId: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    includeSuppressed?: boolean;
   }): Promise<HydratedNeighbor[]> {
     return listNeighborsForEdgeMemory<EDGE_LABEL, NODE_LABEL>(this.readDbCtx(), input);
   }
@@ -568,6 +572,7 @@ export class MemoriesTursoServerlessPersistence {
         namespace: row.namespace,
         alias: null,
         description: "",
+        suppressed: false,
       });
     }
     for (const row of await queryAll<{
@@ -584,7 +589,7 @@ export class MemoriesTursoServerlessPersistence {
         namespace: row.id,
         alias: row.alias,
         description: row.description,
-        ...(row.suppressed !== 0 ? { suppressed: true } : {}),
+        suppressed: row.suppressed !== 0,
       });
     }
     return [...byKey.values()].sort((a, b) => a.namespace.localeCompare(b.namespace));
@@ -607,7 +612,7 @@ export class MemoriesTursoServerlessPersistence {
           namespace: row.id,
           alias: row.alias,
           description: row.description,
-          ...(row.suppressed !== 0 ? { suppressed: true } : {}),
+          suppressed: row.suppressed !== 0,
         }
       : undefined;
   }

@@ -169,8 +169,9 @@ function memoriesWhereClauseFromScope(
   scope: SearchNamespaceScope,
   memoryIds: string[] | undefined,
   asOf?: SearchAsOf,
+  includeSuppressed?: boolean,
 ): { sql: string; bindings: SQLQueryBindings[] } {
-  const visible = ` AND ${memoryDiscoveryVisibleSql()}`;
+  const visible = includeSuppressed === true ? "" : ` AND ${memoryDiscoveryVisibleSql()}`;
   const { sql: asOfClause, bindings: asOfBind } = asOfSqlClause(asOf, "_ts_created");
 
   const idClause = memoryIds === undefined ? "" : ` AND _id IN (${placeholders(memoryIds.length)})`;
@@ -229,8 +230,14 @@ function memoryIdSubqueryFromScope(
   scope: SearchNamespaceScope,
   memoryIds: string[] | undefined,
   asOf?: SearchAsOf,
+  includeSuppressed?: boolean,
 ): { sql: string; bindings: SQLQueryBindings[] } {
-  const { sql: innerSql, bindings } = memoriesWhereClauseFromScope(scope, memoryIds, asOf);
+  const { sql: innerSql, bindings } = memoriesWhereClauseFromScope(
+    scope,
+    memoryIds,
+    asOf,
+    includeSuppressed,
+  );
   return {
     sql: `memory_id IN (SELECT memories._id FROM memories WHERE ${innerSql})`,
     bindings,
@@ -245,6 +252,7 @@ export function searchLexicalSourceMapIds(
     limit: number;
     memoryIds?: string[];
     asOf?: SearchAsOf;
+    includeSuppressed?: boolean;
   },
 ): string[] {
   if (input.text.length === 0) return [];
@@ -257,6 +265,7 @@ export function searchLexicalSourceMapIds(
     input.scope,
     input.memoryIds,
     input.asOf,
+    input.includeSuppressed,
   );
 
   const params: SQLQueryBindings[] = [matchExpr, ...memBindings, input.limit];
@@ -285,6 +294,7 @@ export function searchVectorSourceMapIds(
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
     method: "knn" | "ann";
+    includeSuppressed?: boolean;
   },
 ): { sourceMapIds: string[]; vectorSearchMethod?: "knn" | "ann" } {
   if (input.method !== "knn" && input.method !== "ann") return { sourceMapIds: [] };
@@ -312,6 +322,7 @@ function searchVectorAnn(
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
+    includeSuppressed?: boolean;
   },
 ): string[] {
   const tableName = vectorVecTableName(input.vector.length);
@@ -329,6 +340,7 @@ function searchVectorAnn(
     input.scope,
     input.memoryIds,
     input.asOf,
+    input.includeSuppressed,
   );
 
   const params: SQLQueryBindings[] = [JSON.stringify(input.vector), input.limit];
@@ -377,6 +389,7 @@ function searchVectorKnn(
     memoryIds?: string[];
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
+    includeSuppressed?: boolean;
   },
 ): string[] {
   const queryVec = vectorToBlob(new Float32Array(input.vector));
@@ -386,6 +399,7 @@ function searchVectorKnn(
     input.scope,
     input.memoryIds,
     input.asOf,
+    input.includeSuppressed,
   );
 
   const maxD = input.maxVectorDistance;
@@ -431,6 +445,7 @@ export function hydrateSourceMapHits(
         key: string;
         memoryKind: string | null;
         memoryEdgeId: string | null;
+        memorySuppressed: number | null;
       },
       string[]
     >(
@@ -443,7 +458,8 @@ export function hydrateSourceMapHits(
          m.namespace AS namespace,
          m.key AS key,
          m.kind AS memoryKind,
-         m.edge_id AS memoryEdgeId
+         m.edge_id AS memoryEdgeId,
+         m.suppressed AS memorySuppressed
        FROM source_maps sm
        JOIN memories m ON m._id = sm.memory_id
        WHERE sm._id IN (${placeholders(sourceMapIds.length)})`,
@@ -470,6 +486,9 @@ export function hydrateSourceMapHits(
         key: row.key,
         kind: mk === "edge" ? "edge" : "node",
         ...(mk === "edge" && row.memoryEdgeId ? { edge_id: row.memoryEdgeId } : {}),
+        ...(row.memorySuppressed !== null && row.memorySuppressed !== 0
+          ? { suppressed: 1 as const }
+          : { suppressed: 0 as const }),
       };
       return [
         row.sourceMapId,
@@ -586,9 +605,22 @@ export function listNeighborsForMemory<
     namespace: string;
     key: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    includeSuppressed?: boolean;
   },
 ): HydratedNeighbor[] {
   const nodeId = ids.node(input.namespace, input.key);
+  const include = input.includeSuppressed === true;
+  const visibilitySql = include
+    ? ""
+    : `AND m.suppressed = 0
+         AND NOT EXISTS (
+           SELECT 1 FROM namespace_metadata nm
+           WHERE nm.suppressed != 0
+             AND (m.namespace = nm._id OR m.namespace LIKE nm._id || '/%')
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
+         )`;
   const rows = ctx.db
     .query<
       {
@@ -603,6 +635,7 @@ export function listNeighborsForMemory<
         memoryCreated: number;
         namespace: string;
         key: string;
+        memorySuppressed: number | null;
       },
       [string, string, string]
     >(
@@ -617,7 +650,8 @@ export function listNeighborsForMemory<
          m._id AS memoryId,
          m._ts_created AS memoryCreated,
          m.namespace AS namespace,
-         m.key AS key
+         m.key AS key,
+         m.suppressed AS memorySuppressed
        FROM edges e
        JOIN edge_label_assignments ela ON ela.edge_id = e._id
        JOIN edge_labels el ON el._id = ela.label_id
@@ -627,15 +661,7 @@ export function listNeighborsForMemory<
        END
        JOIN memories m ON m._id = n.memory_id
        WHERE (e.from_node_id = ? OR e.to_node_id = ?)
-         AND m.suppressed = 0
-         AND NOT EXISTS (
-           SELECT 1 FROM namespace_metadata nm
-           WHERE nm.suppressed != 0
-             AND (m.namespace = nm._id OR m.namespace LIKE nm._id || '/%')
-         )
-         AND NOT EXISTS (
-           SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
-         )
+         ${visibilitySql}
        ORDER BY e._id ASC, el.kind ASC`,
     )
     .all(nodeId, nodeId, nodeId);
@@ -667,6 +693,8 @@ export function listNeighborsForMemory<
         namespace: namespacePath(row.namespace),
         key: row.key,
         kind: "node",
+        suppressed:
+          row.memorySuppressed !== null && row.memorySuppressed !== 0 ? (1 as const) : (0 as const),
       },
       edge: {
         _id: row.edgeId,
@@ -767,6 +795,7 @@ export function listNeighborsForEdgeMemory<
     namespace: string;
     edgeId: string;
     filters?: NeighborFilter<EDGE_LABEL, NODE_LABEL>;
+    includeSuppressed?: boolean;
   },
 ): HydratedNeighbor[] {
   const link = loadGraphEdge(ctx.db, input.namespace, input.edgeId);
@@ -775,11 +804,13 @@ export function listNeighborsForEdgeMemory<
     namespace: input.namespace,
     key: link.fromKey,
     filters: input.filters,
+    ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
   });
   const toN = listNeighborsForMemory<EDGE_LABEL, NODE_LABEL>(ctx, {
     namespace: input.namespace,
     key: link.toKey,
     filters: input.filters,
+    ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
   });
   return [
     ...fromN.filter((n) => n.edge._id === input.edgeId),

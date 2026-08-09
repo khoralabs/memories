@@ -26,6 +26,7 @@ import { MemoriesServiceClient, type MemoriesServiceClientOptions } from "./clie
 import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
+  type DatabaseEdgePreviewResponse,
   type DatabaseGraphLayoutRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespaceMetadata,
@@ -347,11 +348,14 @@ export class RemoteMemoriesReadClient {
   }
 
   /** Primary remote catalog list (alias/description); same rows as persistence `listNamespacesWithMetadata`. */
-  async listNamespaces(): Promise<DatabaseNamespaceMetadata[]> {
+  async listNamespaces(opts?: {
+    includeSuppressed?: boolean;
+  }): Promise<DatabaseNamespaceMetadata[]> {
     const response = await this.#client.postJson<DatabaseNamespacesResponse>(
       "/databases/namespaces",
       {
         database: this.#database,
+        ...(opts?.includeSuppressed === true ? { includeSuppressed: true } : {}),
       },
     );
     return response.namespaces;
@@ -404,11 +408,16 @@ export class RemoteMemoriesReadClient {
     });
   }
 
-  async getEdgePreview(namespace: string, edgeId: string): Promise<Record<string, unknown>> {
+  async getEdgePreview(
+    namespace: string,
+    edgeId: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<DatabaseEdgePreviewResponse> {
     return this.#client.postJson("/databases/edge-preview", {
       database: this.#database,
       namespace,
       edgeId,
+      ...(opts?.includeSuppressed === true ? { includeSuppressed: true } : {}),
     });
   }
 
@@ -417,6 +426,7 @@ export class RemoteMemoriesReadClient {
     namespace: string;
     labels: Array<{ kind: string; props: Record<string, unknown> }>;
     content: Array<{ sourceKey: string; text: string | null }>;
+    suppressed: boolean;
   }> {
     return this.#client.postJson("/databases/memory-preview", {
       database: this.#database,

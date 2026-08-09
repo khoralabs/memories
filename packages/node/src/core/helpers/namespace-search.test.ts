@@ -117,8 +117,8 @@ describe("rankNamespacesFromHits", () => {
     const withMeta = rankNamespacesFromHits(hits, {
       query: "inbox",
       metadata: [
-        { namespace: "ops/a", alias: "Primary Inbox", description: "" },
-        { namespace: "ops/b", alias: null, description: "misc notes" },
+        { namespace: "ops/a", alias: "Primary Inbox", description: "", suppressed: false },
+        { namespace: "ops/b", alias: null, description: "misc notes", suppressed: false },
       ],
       metadataBoost: 0.5,
     });
@@ -128,6 +128,7 @@ describe("rankNamespacesFromHits", () => {
       namespace: "ops/a",
       alias: "Primary Inbox",
       description: "",
+      suppressed: false,
     });
     expect(withMeta[0]?.score).toBeCloseTo(baseA * (1 + 0.5 * metaScore));
   });
@@ -139,7 +140,9 @@ describe("rankNamespacesFromHits", () => {
     ];
     const ranked = rankNamespacesFromHits(hits, {
       query: "inbox",
-      metadata: [{ namespace: "ops/a", alias: "Primary Inbox", description: "" }],
+      metadata: [
+        { namespace: "ops/a", alias: "Primary Inbox", description: "", suppressed: false },
+      ],
       metadataBoost: 0,
     });
     expect(ranked[0]?.namespace).toBe("ops/b");
@@ -157,6 +160,7 @@ describe("fuseNamespaceNodeAndLexicalArms", () => {
         scoreSum: 0.9,
         scoreMax: 0.9,
         topHits: [{ memory_key: "x", score: 0.9, kind: "node" }],
+        suppressed: false,
       },
     ];
     const lexical: NamespaceSearchHit[] = [
@@ -168,6 +172,7 @@ describe("fuseNamespaceNodeAndLexicalArms", () => {
         scoreSum: 1,
         scoreMax: 1,
         topHits: [],
+        suppressed: false,
       },
       {
         namespace: "ops/b",
@@ -177,6 +182,7 @@ describe("fuseNamespaceNodeAndLexicalArms", () => {
         scoreSum: 0.2,
         scoreMax: 0.2,
         topHits: [],
+        suppressed: false,
       },
     ];
     const fused = fuseNamespaceNodeAndLexicalArms(nodes, lexical, {
@@ -203,6 +209,7 @@ describe("fuseNamespaceNodeAndLexicalArms", () => {
         scoreSum: 1,
         scoreMax: 1,
         topHits: [],
+        suppressed: false,
       },
       {
         namespace: "ns/weak",
@@ -212,6 +219,7 @@ describe("fuseNamespaceNodeAndLexicalArms", () => {
         scoreSum: 0.5,
         scoreMax: 0.5,
         topHits: [],
+        suppressed: false,
       },
     ];
     const lexical: NamespaceSearchHit[] = [
@@ -223,6 +231,7 @@ describe("fuseNamespaceNodeAndLexicalArms", () => {
         scoreSum: 1,
         scoreMax: 1,
         topHits: [],
+        suppressed: false,
       },
       {
         namespace: "ns/strong",
@@ -232,6 +241,7 @@ describe("fuseNamespaceNodeAndLexicalArms", () => {
         scoreSum: 0.1,
         scoreMax: 0.1,
         topHits: [],
+        suppressed: false,
       },
     ];
     const fused = fuseNamespaceNodeAndLexicalArms(nodes, lexical, {
@@ -250,6 +260,7 @@ describe("namespaceMetadataLexicalScore", () => {
         namespace: "ops/mail",
         alias: "Primary Inbox",
         description: "",
+        suppressed: false,
       }),
     ).toBe(1);
   });
@@ -260,6 +271,7 @@ describe("namespaceMetadataLexicalScore", () => {
         namespace: "ops/mail",
         alias: "Inbox",
         description: "",
+        suppressed: false,
       }),
     ).toBeCloseTo(0.5);
   });
@@ -307,11 +319,22 @@ function mockClient(opts: {
     namespace: string;
     alias: string | null;
     description: string;
+    suppressed?: boolean;
   }>;
+  getNamespaceMetadata?: (namespace: string) =>
+    | {
+        namespace: string;
+        alias: string | null;
+        description: string;
+        suppressed: boolean;
+      }
+    | undefined;
 }): HybridMemorySearchClient {
   return {
     persistence: {
       listNamespacesWithMetadata: opts.listNamespacesWithMetadata ?? (() => [] as const),
+      // Annotate path; default does not call listNamespacesWithMetadata (keeps list-tracking tests honest).
+      getNamespaceMetadata: opts.getNamespaceMetadata ?? (() => undefined),
     },
     search: opts.search,
   } as unknown as HybridMemorySearchClient;
@@ -512,6 +535,29 @@ describe("searchNamespaces", () => {
         { content: { text: "x" }, arms: { nodes: 0, lexical: 0, vector: 1 } },
       ),
     ).rejects.toThrow(/arms\.nodes or arms\.lexical/);
+  });
+
+  test("includeSuppressed annotates exact-path catalog flag", async () => {
+    const client = mockClient({
+      search: () => ({
+        hits: [mockHit({ namespace: "ops/hidden", key: "k1", score: 0.5 })],
+      }),
+      getNamespaceMetadata: (namespace) =>
+        namespace === "ops/hidden"
+          ? { namespace, alias: null, description: "", suppressed: true }
+          : undefined,
+    });
+    const result = await searchNamespaces(
+      client,
+      { namespace: "_root_" },
+      {
+        content: { text: "hidden" },
+        arms: { nodes: 1, lexical: 1, vector: 0 },
+        includeSuppressed: true,
+      },
+    );
+    expect(result.namespaces[0]?.namespace).toBe("ops/hidden");
+    expect(result.namespaces[0]?.suppressed).toBe(true);
   });
 
   test("uses content.vector without embeddingModel when arms.vector > 0", async () => {

@@ -15,14 +15,16 @@ describe("memories service client wire", () => {
       memory_id: "mem-1",
       source_key: "src-1",
       score: 0.9,
-      memory: { namespace: "ns/a", key: "k1", kind: "node" },
+      memory: { namespace: "ns/a", key: "k1", kind: "node", suppressed: 0 },
       labels: [{ kind: "memory", props: { features: [] } }],
       graph: { kind: "node" },
     } as never);
+    expect(wire.memory.suppressed).toBe(false);
     const roundTrip = deserializeSearchHit(wire);
     expect(roundTrip._id).toBe("sm-1");
     expect(roundTrip.memory_id).toBe("mem-1");
     expect(roundTrip.source_key).toBe("src-1");
+    expect((roundTrip.memory as { suppressed: number }).suppressed).toBe(0);
   });
 
   test("exports ontology type for remote clients", () => {

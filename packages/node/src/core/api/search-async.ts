@@ -74,6 +74,7 @@ async function rankSourceMapIdsForContentAsync(
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
     vectorSearchMethod?: VectorSearchMethod;
+    includeSuppressed?: boolean;
   },
 ): Promise<{
   fused: Array<{ id: string; score: number }>;
@@ -81,6 +82,8 @@ async function rankSourceMapIdsForContentAsync(
 }> {
   const { scope } = input;
   const asOfSpread = input.asOf !== undefined ? { asOf: input.asOf } : {};
+  const includeSpread =
+    input.includeSuppressed === true ? { includeSuppressed: true as const } : {};
   const resolvedMethod = resolveVectorSearchMethod(input.vectorSearchMethod, caps);
   let usedMethod: VectorSearchMethod | undefined;
 
@@ -113,6 +116,7 @@ async function rankSourceMapIdsForContentAsync(
         ? { maxVectorDistance: input.maxVectorDistance }
         : {}),
       ...asOfSpread,
+      ...includeSpread,
     });
     if (result.vectorSearchMethod !== undefined) {
       usedMethod = result.vectorSearchMethod;
@@ -136,6 +140,7 @@ async function rankSourceMapIdsForContentAsync(
           limit: input.retrievalLimit,
           memoryIds: input.memoryIds,
           ...asOfSpread,
+          ...includeSpread,
         });
         if (ranked.length > 0) {
           arms.push({ armId: `lexical:${ns}`, ranked, weight: input.lexicalWeight });
@@ -161,6 +166,7 @@ async function rankSourceMapIdsForContentAsync(
       limit: input.retrievalLimit,
       memoryIds: input.memoryIds,
       ...asOfSpread,
+      ...includeSpread,
     });
     if (ranked.length > 0) {
       arms.push({ armId: "lexical", ranked, weight: input.lexicalWeight });
@@ -195,13 +201,17 @@ async function expandNeighborsWithSubSearchAsync<
     maxVectorDistance?: number;
     asOf?: SearchAsOf;
     vectorSearchMethod?: VectorSearchMethod;
+    includeSuppressed?: boolean;
   },
 ): Promise<SearchNeighborHit<NODE_LABELS, EDGE_LABELS>[]> {
   if (!caps.neighborIndex) return [];
+  const includeSpread =
+    input.includeSuppressed === true ? { includeSuppressed: true as const } : {};
   const graphNeighbors = await persistence.listNeighborsForMemory<EDGE_LABELS, NODE_LABELS>({
     namespace: input.namespace,
     key: input.rootMemoryKey,
     filters: input.neighborFilters,
+    ...includeSpread,
   });
 
   const byMemoryId = new Map<string, HydratedNeighbor>();
@@ -236,6 +246,7 @@ async function expandNeighborsWithSubSearchAsync<
     ...(input.vectorSearchMethod !== undefined
       ? { vectorSearchMethod: input.vectorSearchMethod }
       : {}),
+    ...includeSpread,
   });
   const fused = fusedResult.fused;
 
@@ -333,6 +344,7 @@ async function searchAsyncInner<
   const vectorWeight = params.options?.arms?.vector ?? 1;
   const maxVectorDistance = params.options?.maxVectorDistance;
   const vectorSearchMethod = params.options?.vectorSearchMethod;
+  const includeSuppressed = params.options?.includeSuppressed === true;
 
   const { fused, vectorSearchMethod: usedMethod } = await rankSourceMapIdsForContentAsync(
     persistence,
@@ -347,6 +359,7 @@ async function searchAsyncInner<
       ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
       ...(asOf !== undefined ? { asOf } : {}),
       ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
+      ...(includeSuppressed ? { includeSuppressed: true } : {}),
     },
   );
   if (fused.length === 0) {
@@ -400,6 +413,7 @@ async function searchAsyncInner<
           ...(maxVectorDistance !== undefined ? { maxVectorDistance } : {}),
           ...(asOf !== undefined ? { asOf } : {}),
           ...(vectorSearchMethod !== undefined ? { vectorSearchMethod } : {}),
+          ...(includeSuppressed ? { includeSuppressed: true } : {}),
         },
       ),
     })),

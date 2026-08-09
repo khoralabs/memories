@@ -299,6 +299,7 @@ export async function handleDatabaseSearchNamespaces(
       ...(under !== undefined ? { under } : {}),
       ...(scoped.limit !== undefined ? { limit: scoped.limit } : {}),
       ...(scoped.nodeTopK !== undefined ? { nodeTopK: scoped.nodeTopK } : {}),
+      ...(scoped.includeSuppressed === true ? { includeSuppressed: true } : {}),
     },
   );
 
@@ -653,13 +654,31 @@ export async function handleDatabaseCapabilities(
   return Response.json({ ...response, database });
 }
 
+function toNamespaceWire(row: {
+  namespace: string;
+  alias: string | null;
+  description: string;
+  suppressed?: boolean;
+}): { namespace: string; alias: string | null; description: string; suppressed: boolean } {
+  return {
+    namespace: row.namespace,
+    alias: row.alias,
+    description: row.description,
+    suppressed: row.suppressed === true,
+  };
+}
+
 export async function handleDatabaseNamespaces(
   service: MemoriesDatabaseService,
   body: unknown,
 ): Promise<Response> {
   const scoped = body as DatabaseNamespacesRequest;
   const { database, handle } = await getHandle(service, scoped);
-  const namespaces = await handle.persistence.listNamespacesWithMetadata();
+  const namespaces = (
+    await handle.persistence.listNamespacesWithMetadata(
+      scoped.includeSuppressed === true ? { includeSuppressed: true } : undefined,
+    )
+  ).map(toNamespaceWire);
   return Response.json({ namespaces, database });
 }
 
@@ -673,7 +692,10 @@ export async function handleDatabaseNamespaceGet(
     throw new HttpError("namespace is required", 400);
   }
   const namespace = await handle.persistence.getNamespaceMetadata(scoped.namespace.trim());
-  return Response.json({ namespace: namespace ?? null, database });
+  return Response.json({
+    namespace: namespace === undefined ? null : toNamespaceWire(namespace),
+    database,
+  });
 }
 
 export async function handleDatabaseNamespaceUpsert(
@@ -749,7 +771,7 @@ export async function handleDatabaseNamespaceUpsert(
   if (meta === undefined) {
     throw new HttpError("namespace metadata missing after upsert", 500);
   }
-  return Response.json({ namespace: meta, database });
+  return Response.json({ namespace: toNamespaceWire(meta), database });
 }
 
 export async function handleDatabaseNamespaceDelete(
@@ -885,6 +907,7 @@ export async function handleDatabaseEdgePreview(
   const link = await handle.persistence.loadGraphEdge(
     scoped.namespace.trim(),
     scoped.edgeId.trim(),
+    scoped.includeSuppressed === true ? { includeSuppressed: true } : undefined,
   );
   if (link === null) {
     throw new HttpError("edge not found in namespace", 404);
@@ -895,6 +918,7 @@ export async function handleDatabaseEdgePreview(
     toKey: link.toKey,
     labels: link.labels,
     properties: link.properties ?? null,
+    suppressed: link.suppressed === true,
     database,
   });
 }
@@ -929,11 +953,13 @@ export async function handleDatabaseMemoryPreview(
       };
     }),
   );
+  const suppressed = await handle.persistence.isMemorySuppressed(memoryId);
   return Response.json({
     key,
     namespace,
     labels,
     content,
+    suppressed,
     database,
   });
 }
@@ -1071,7 +1097,11 @@ export async function handleDatabaseFindMemoryId(
     scoped.namespace.trim(),
     scoped.key.trim(),
   );
-  return Response.json({ memoryId: memoryId ?? null, database });
+  if (memoryId === undefined) {
+    return Response.json({ memoryId: null, database });
+  }
+  const suppressed = await handle.persistence.isMemorySuppressed(memoryId);
+  return Response.json({ memoryId, suppressed, database });
 }
 
 export async function handleDatabaseLoadMemoryNamespaceKey(
@@ -1083,6 +1113,14 @@ export async function handleDatabaseLoadMemoryNamespaceKey(
   if (typeof scoped.memoryId !== "string" || scoped.memoryId.trim().length === 0) {
     throw new HttpError("memoryId is required", 400);
   }
-  const loaded = await handle.persistence.loadMemoryNamespaceKey(scoped.memoryId.trim());
-  return Response.json({ record: loaded ?? null, database });
+  const memoryId = scoped.memoryId.trim();
+  const loaded = await handle.persistence.loadMemoryNamespaceKey(memoryId);
+  if (loaded === undefined) {
+    return Response.json({ record: null, database });
+  }
+  const suppressed = await handle.persistence.isMemorySuppressed(memoryId);
+  return Response.json({
+    record: { namespace: loaded.namespace, key: loaded.key, suppressed },
+    database,
+  });
 }

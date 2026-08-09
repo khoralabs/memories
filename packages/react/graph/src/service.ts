@@ -80,8 +80,10 @@ export function createServiceReactMemoriesClient(
   const database = options.database;
 
   const client: ReactMemoriesClient = {
-    async listNamespaces() {
-      const namespaces = await reads.listNamespaces();
+    async listNamespaces(opts) {
+      const namespaces = await reads.listNamespaces(
+        opts?.includeSuppressed === true ? { includeSuppressed: true } : undefined,
+      );
       const root = options.namespaceRoot?.trim();
       return root ? { namespaces, namespaceRoot: root } : { namespaces };
     },
@@ -90,6 +92,7 @@ export function createServiceReactMemoriesClient(
       const layout = await reads.getGraphLayout({
         namespace: input.namespace,
         ...(input.scope !== undefined ? { scope: input.scope } : {}),
+        ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
       });
       return {
         namespace: layout.namespace,
@@ -100,6 +103,7 @@ export function createServiceReactMemoriesClient(
           z: n.z,
           labels: n.labels,
           degree: n.degree,
+          suppressed: n.suppressed === true,
         })),
         edges: layout.edges.map((e) => ({
           edgeId: e.edgeId,
@@ -107,6 +111,7 @@ export function createServiceReactMemoriesClient(
           toKey: e.toKey,
           labels: e.labels,
           ...(e.directed !== undefined ? { directed: e.directed } : {}),
+          suppressed: e.suppressed === true,
         })),
       };
     },
@@ -141,6 +146,7 @@ export function createServiceReactMemoriesClient(
             ...(input.maxVectorDistance !== undefined
               ? { maxVectorDistance: input.maxVectorDistance }
               : {}),
+            ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
           },
         },
       });
@@ -230,6 +236,7 @@ export function createServiceReactMemoriesClient(
         ...(input.nodeTopK !== undefined ? { nodeTopK: input.nodeTopK } : {}),
         ...(input.arms !== undefined ? { arms: input.arms } : {}),
         ...(input.vector !== undefined ? { vector: input.vector } : {}),
+        ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
       });
       return {
         query: response.query,
@@ -239,7 +246,11 @@ export function createServiceReactMemoriesClient(
     },
 
     async getEdgePreview(input) {
-      const preview = await reads.getEdgePreview(input.namespace, input.edgeId);
+      const preview = await reads.getEdgePreview(
+        input.namespace,
+        input.edgeId,
+        input.includeSuppressed === true ? { includeSuppressed: true } : undefined,
+      );
       return preview as EdgePreviewJson;
     },
 
@@ -253,7 +264,7 @@ export function createServiceReactMemoriesClient(
         namespace: row.namespace,
         alias: row.alias,
         description: row.description,
-        ...(row.suppressed === true ? { suppressed: true } : {}),
+        suppressed: row.suppressed === true,
       };
     },
 
@@ -264,7 +275,7 @@ export function createServiceReactMemoriesClient(
         namespace: row.namespace,
         alias: row.alias,
         description: row.description,
-        ...(row.suppressed === true ? { suppressed: true } : {}),
+        suppressed: row.suppressed === true,
       };
     },
 
