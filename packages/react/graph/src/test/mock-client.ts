@@ -19,6 +19,21 @@ export function createMockReactClient(
       namespaceRoot: "acme",
     })),
     getGraph: mock(async (input) => emptyGraph(input.namespace)),
+    getGraphCounts: mock(async (input) => ({
+      namespace: input.namespace,
+      scope: input.scope ?? "exact",
+      nodeCount: 0,
+      edgeCount: 0,
+    })),
+    getGraphStats: mock(async (input) => ({
+      namespace: input.namespace,
+      scope: input.scope ?? "exact",
+      nodeCount: 0,
+      edgeCount: 0,
+      suppressedNodeCount: 0,
+      suppressedEdgeCount: 0,
+      labelKinds: { nodes: {}, edges: {} },
+    })),
     search: mock(async () => ({
       hitCount: 0,
       hitKeys: [],

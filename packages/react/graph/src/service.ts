@@ -116,6 +116,22 @@ export function createServiceReactMemoriesClient(
       };
     },
 
+    async getGraphCounts(input) {
+      return reads.getGraphCounts({
+        namespace: input.namespace,
+        ...(input.scope !== undefined ? { scope: input.scope } : {}),
+        ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
+      });
+    },
+
+    async getGraphStats(input) {
+      return reads.getGraphStats({
+        namespace: input.namespace,
+        ...(input.scope !== undefined ? { scope: input.scope } : {}),
+        ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
+      });
+    },
+
     async search(input) {
       const query = input.query.trim();
       const scope = input.scope === "exact" ? "exact" : "subtree";

@@ -28,7 +28,11 @@ import {
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewResponse,
   type DatabaseEffectiveSuppressionResponse,
+  type DatabaseGraphCountsRequest,
+  type DatabaseGraphCountsResponse,
   type DatabaseGraphLayoutRequest,
+  type DatabaseGraphStatsRequest,
+  type DatabaseGraphStatsResponse,
   type DatabaseMergeRequest,
   type DatabaseNamespaceExistsUnderPrefixResponse,
   type DatabaseNamespaceMetadata,
@@ -560,6 +564,55 @@ export class RemoteMemoriesReadClient {
       database: MemoriesDatabaseId;
     }>("/databases/graph-layout", body);
     return response.layout;
+  }
+
+  /** Node/edge totals for a namespace (`POST /databases/graph-counts`). */
+  async getGraphCounts(input: {
+    namespace: string;
+    scope?: "exact" | "subtree";
+    includeSuppressed?: boolean;
+  }): Promise<Omit<DatabaseGraphCountsResponse, never>> {
+    const body: DatabaseGraphCountsRequest = {
+      database: this.#database,
+      namespace: input.namespace,
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
+      ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
+    };
+    const response = await this.#client.postJson<
+      DatabaseGraphCountsResponse & { database: MemoriesDatabaseId }
+    >("/databases/graph-counts", body);
+    return {
+      namespace: response.namespace,
+      scope: response.scope,
+      nodeCount: response.nodeCount,
+      edgeCount: response.edgeCount,
+    };
+  }
+
+  /** Graph profiling stats (`POST /databases/graph-stats`). */
+  async getGraphStats(input: {
+    namespace: string;
+    scope?: "exact" | "subtree";
+    includeSuppressed?: boolean;
+  }): Promise<Omit<DatabaseGraphStatsResponse, never>> {
+    const body: DatabaseGraphStatsRequest = {
+      database: this.#database,
+      namespace: input.namespace,
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
+      ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
+    };
+    const response = await this.#client.postJson<
+      DatabaseGraphStatsResponse & { database: MemoriesDatabaseId }
+    >("/databases/graph-stats", body);
+    return {
+      namespace: response.namespace,
+      scope: response.scope,
+      nodeCount: response.nodeCount,
+      edgeCount: response.edgeCount,
+      suppressedNodeCount: response.suppressedNodeCount,
+      suppressedEdgeCount: response.suppressedEdgeCount,
+      labelKinds: response.labelKinds,
+    };
   }
 
   /** @deprecated Use fetchProjectionInput */

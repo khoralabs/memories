@@ -1,6 +1,8 @@
 import type { Database } from "bun:sqlite";
 import type {
   GraphEdgeLink,
+  GraphNamespaceCounts,
+  GraphNamespaceStats,
   GraphNode,
   IncludeSuppressedOpts,
   OntologyLabelInstance,
@@ -431,4 +433,134 @@ export function loadNodeLabelsForNamespace(
     }
   }
   return map;
+}
+
+function countDistinctEdges(db: Database, namespace: string, includeSuppressed: boolean): number {
+  const nsSuppressed = isNamespaceSuppressed(db, namespace);
+  if (!includeSuppressed && nsSuppressed) return 0;
+  const filter = includeSuppressed ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
+  const row = db
+    .query<{ c: number }, [string, string]>(
+      `SELECT COUNT(DISTINCT e._id) AS c
+       FROM edges e
+       JOIN nodes nf ON nf._id = e.from_node_id
+       JOIN nodes nt ON nt._id = e.to_node_id
+       JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
+       JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
+       WHERE 1 = 1${filter}`,
+    )
+    .get(namespace, namespace);
+  return row?.c ?? 0;
+}
+
+function countNodes(db: Database, namespace: string, includeSuppressed: boolean): number {
+  if (!includeSuppressed && isNamespaceSuppressed(db, namespace)) return 0;
+  const row = db
+    .query<{ c: number }, [string]>(
+      includeSuppressed
+        ? `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node'`
+        : `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`,
+    )
+    .get(namespace);
+  return row?.c ?? 0;
+}
+
+function countSuppressedNodes(db: Database, namespace: string): number {
+  if (isNamespaceSuppressed(db, namespace)) {
+    return countNodes(db, namespace, true);
+  }
+  const row = db
+    .query<{ c: number }, [string]>(
+      `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed != 0`,
+    )
+    .get(namespace);
+  return row?.c ?? 0;
+}
+
+function countSuppressedEdges(db: Database, namespace: string): number {
+  const all = countDistinctEdges(db, namespace, true);
+  if (isNamespaceSuppressed(db, namespace)) return all;
+  const visible = countDistinctEdges(db, namespace, false);
+  return Math.max(0, all - visible);
+}
+
+function nodeLabelKindHistogram(
+  db: Database,
+  namespace: string,
+  includeSuppressed: boolean,
+): Record<string, number> {
+  if (!includeSuppressed && isNamespaceSuppressed(db, namespace)) return {};
+  const keys = db.query<{ key: string }, [string]>(nodeKeysSql(includeSuppressed)).all(namespace);
+  if (keys.length === 0) return {};
+  const nodeIds = keys.map((k) => ids.node(namespace, k.key));
+  const ph = nodeIds.map(() => "?").join(",");
+  const rows = db
+    .query<{ kind: string; c: number }, string[]>(
+      `SELECT nl.kind AS kind, COUNT(*) AS c
+       FROM node_label_assignments nla
+       JOIN node_labels nl ON nl._id = nla.label_id
+       WHERE nla.node_id IN (${ph})
+       GROUP BY nl.kind`,
+    )
+    .all(...nodeIds);
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.kind] = r.c;
+  return out;
+}
+
+function edgeLabelKindHistogram(
+  db: Database,
+  namespace: string,
+  includeSuppressed: boolean,
+): Record<string, number> {
+  const nsSuppressed = isNamespaceSuppressed(db, namespace);
+  if (!includeSuppressed && nsSuppressed) return {};
+  const filter = includeSuppressed ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
+  const rows = db
+    .query<{ kind: string; c: number }, [string, string]>(
+      `SELECT el.kind AS kind, COUNT(DISTINCT e._id) AS c
+       FROM edges e
+       JOIN nodes nf ON nf._id = e.from_node_id
+       JOIN nodes nt ON nt._id = e.to_node_id
+       JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
+       JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
+       JOIN edge_label_assignments ela ON ela.edge_id = e._id
+       JOIN edge_labels el ON el._id = ela.label_id
+       WHERE 1 = 1${filter}
+       GROUP BY el.kind`,
+    )
+    .all(namespace, namespace);
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.kind] = r.c;
+  return out;
+}
+
+export function countGraphForNamespace(
+  db: Database,
+  namespace: string,
+  opts?: IncludeSuppressedOpts,
+): GraphNamespaceCounts {
+  const include = opts?.includeSuppressed === true;
+  return {
+    nodeCount: countNodes(db, namespace, include),
+    edgeCount: countDistinctEdges(db, namespace, include),
+  };
+}
+
+export function statsGraphForNamespace(
+  db: Database,
+  namespace: string,
+  opts?: IncludeSuppressedOpts,
+): GraphNamespaceStats {
+  const include = opts?.includeSuppressed === true;
+  const counts = countGraphForNamespace(db, namespace, opts);
+  return {
+    ...counts,
+    suppressedNodeCount: countSuppressedNodes(db, namespace),
+    suppressedEdgeCount: countSuppressedEdges(db, namespace),
+    labelKinds: {
+      nodes: nodeLabelKindHistogram(db, namespace, include),
+      edges: edgeLabelKindHistogram(db, namespace, include),
+    },
+  };
 }

@@ -151,7 +151,9 @@ export {
 } from "./lib/suppress-benign-resize-observer-errors.js";
 export type {
   EdgePreviewJson,
+  GraphCountsResult,
   GraphSearchResult,
+  GraphStatsResult,
   MemoriesDatabaseId,
   MemoryPreviewJson,
   NamespaceSearchArms,

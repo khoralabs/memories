@@ -14,6 +14,8 @@ function createMockReads(
   overrides: Partial<{
     listNamespaces: RemoteMemoriesReadClient["listNamespaces"];
     getGraphLayout: RemoteMemoriesReadClient["getGraphLayout"];
+    getGraphCounts: RemoteMemoriesReadClient["getGraphCounts"];
+    getGraphStats: RemoteMemoriesReadClient["getGraphStats"];
     getEdgePreview: RemoteMemoriesReadClient["getEdgePreview"];
     getMemoryPreview: RemoteMemoriesReadClient["getMemoryPreview"];
     upsertNamespaceMetadata: RemoteMemoriesReadClient["upsertNamespaceMetadata"];
@@ -43,6 +45,25 @@ function createMockReads(
           },
         ],
         edges: [],
+      })),
+    getGraphCounts:
+      overrides.getGraphCounts ??
+      (async (input) => ({
+        namespace: input.namespace,
+        scope: input.scope ?? "exact",
+        nodeCount: 0,
+        edgeCount: 0,
+      })),
+    getGraphStats:
+      overrides.getGraphStats ??
+      (async (input) => ({
+        namespace: input.namespace,
+        scope: input.scope ?? "exact",
+        nodeCount: 0,
+        edgeCount: 0,
+        suppressedNodeCount: 0,
+        suppressedEdgeCount: 0,
+        labelKinds: { nodes: {}, edges: {} },
       })),
     getEdgePreview:
       overrides.getEdgePreview ??
@@ -180,6 +201,46 @@ describe("createServiceReactMemoriesClient", () => {
           suppressed: false,
         },
       ],
+    });
+  });
+
+  test("getGraphCounts and getGraphStats delegate to reads", async () => {
+    const getGraphCounts = mock(async (input: { namespace: string; scope?: string }) => {
+      expect(input).toEqual({ namespace: "ns", scope: "subtree" });
+      return { namespace: "ns", scope: "subtree" as const, nodeCount: 2, edgeCount: 1 };
+    });
+    const getGraphStats = mock(async (input: { namespace: string }) => {
+      expect(input).toEqual({ namespace: "ns" });
+      return {
+        namespace: "ns",
+        scope: "exact" as const,
+        nodeCount: 2,
+        edgeCount: 1,
+        suppressedNodeCount: 0,
+        suppressedEdgeCount: 0,
+        labelKinds: { nodes: { person: 2 }, edges: { references: 1 } },
+      };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads({ getGraphCounts, getGraphStats }),
+      service: createMockService(),
+    });
+    await expect(client.getGraphCounts({ namespace: "ns", scope: "subtree" })).resolves.toEqual({
+      namespace: "ns",
+      scope: "subtree",
+      nodeCount: 2,
+      edgeCount: 1,
+    });
+    await expect(client.getGraphStats({ namespace: "ns" })).resolves.toEqual({
+      namespace: "ns",
+      scope: "exact",
+      nodeCount: 2,
+      edgeCount: 1,
+      suppressedNodeCount: 0,
+      suppressedEdgeCount: 0,
+      labelKinds: { nodes: { person: 2 }, edges: { references: 1 } },
     });
   });
 

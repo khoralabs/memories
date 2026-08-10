@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { MemoriesClient } from "@khoralabs/memories-node";
+import { ids, MemoriesClient, mergeMemory } from "@khoralabs/memories-node";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import {
   decodeProjectionInput,
@@ -1165,6 +1165,132 @@ describe("memories service persistence http handlers", () => {
     expect(body.layout.namespace).toBe("ns/a");
     expect(body.layout.nodes.some((n) => n.key === "n1")).toBe(true);
     expect(Array.isArray(body.layout.edges)).toBe(true);
+  }, 20_000);
+
+  test("graph-counts and graph-stats exact, suppressed, and subtree", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-graph-counts" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const client = new MemoriesClient(sync.syncPersistence, testOntology);
+    const parent = "graph/counts";
+    const child = "graph/counts/child";
+
+    client.mergeMemory({
+      kind: "node",
+      key: "a",
+      namespace: parent,
+      content: [{ key: "text", text: "a" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "b",
+      namespace: parent,
+      content: [{ key: "text", text: "b" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "hidden",
+      namespace: parent,
+      content: [{ key: "text", text: "hidden" }],
+      labels: [],
+    });
+    client.suppressMemory({ namespace: parent, key: "hidden" });
+
+    mergeMemory(
+      { persistence: sync.syncPersistence },
+      {
+        kind: "edge",
+        key: "e_ab",
+        namespace: parent,
+        content: [{ key: "text", text: "edge ab" }],
+        edge: {
+          from_memory_id: ids.memory(parent, "a"),
+          to_memory_id: ids.memory(parent, "b"),
+          label: { kind: "references", props: {} },
+        },
+      },
+    );
+
+    client.mergeMemory({
+      kind: "node",
+      key: "c",
+      namespace: child,
+      content: [{ key: "text", text: "c" }],
+      labels: [],
+    });
+
+    const exact = await postJson(
+      "http://localhost/databases/graph-counts",
+      { database, namespace: parent },
+      stack,
+    );
+    expect(exact.status).toBe(200);
+    const exactBody = (await exact.json()) as {
+      nodeCount: number;
+      edgeCount: number;
+      scope: string;
+      namespace: string;
+    };
+    expect(exactBody).toMatchObject({
+      namespace: parent,
+      scope: "exact",
+      nodeCount: 2,
+      edgeCount: 1,
+    });
+
+    const exactInc = await postJson(
+      "http://localhost/databases/graph-counts",
+      { database, namespace: parent, includeSuppressed: true },
+      stack,
+    );
+    expect(exactInc.status).toBe(200);
+    expect(await exactInc.json()).toMatchObject({
+      nodeCount: 3,
+      edgeCount: 1,
+    });
+
+    const empty = await postJson(
+      "http://localhost/databases/graph-counts",
+      { database, namespace: "graph/counts/missing" },
+      stack,
+    );
+    expect(empty.status).toBe(200);
+    expect(await empty.json()).toMatchObject({ nodeCount: 0, edgeCount: 0 });
+
+    const subtree = await postJson(
+      "http://localhost/databases/graph-counts",
+      { database, namespace: parent, scope: "subtree" },
+      stack,
+    );
+    expect(subtree.status).toBe(200);
+    expect(await subtree.json()).toMatchObject({
+      scope: "subtree",
+      nodeCount: 3,
+      edgeCount: 1,
+    });
+
+    const stats = await postJson(
+      "http://localhost/databases/graph-stats",
+      { database, namespace: parent },
+      stack,
+    );
+    expect(stats.status).toBe(200);
+    const statsBody = (await stats.json()) as {
+      nodeCount: number;
+      edgeCount: number;
+      suppressedNodeCount: number;
+      suppressedEdgeCount: number;
+      labelKinds: { nodes: Record<string, number>; edges: Record<string, number> };
+    };
+    expect(statsBody.nodeCount).toBe(2);
+    expect(statsBody.edgeCount).toBe(1);
+    expect(statsBody.suppressedNodeCount).toBe(1);
+    expect(statsBody.suppressedEdgeCount).toBe(0);
+    expect(statsBody.labelKinds.edges.references).toBe(1);
   }, 20_000);
 });
 

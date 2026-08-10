@@ -69,6 +69,24 @@ export type NamespaceSearchClientResult = {
   namespaces: NamespaceSearchHitResult[];
 };
 
+/** Wire result from {@link ReactMemoriesClient.getGraphCounts}. */
+export type GraphCountsResult = {
+  namespace: string;
+  scope: "exact" | "subtree";
+  nodeCount: number;
+  edgeCount: number;
+};
+
+/** Wire result from {@link ReactMemoriesClient.getGraphStats}. */
+export type GraphStatsResult = GraphCountsResult & {
+  suppressedNodeCount: number;
+  suppressedEdgeCount: number;
+  labelKinds: {
+    nodes: Record<string, number>;
+    edges: Record<string, number>;
+  };
+};
+
 /**
  * Host graph backend contract for React graph UI.
  *
@@ -87,6 +105,20 @@ export type ReactMemoriesClient = {
     includeSuppressed?: boolean;
     signal?: AbortSignal;
   }): Promise<GraphPayload>;
+
+  getGraphCounts(input: {
+    namespace: string;
+    scope?: "exact" | "subtree";
+    includeSuppressed?: boolean;
+    signal?: AbortSignal;
+  }): Promise<GraphCountsResult>;
+
+  getGraphStats(input: {
+    namespace: string;
+    scope?: "exact" | "subtree";
+    includeSuppressed?: boolean;
+    signal?: AbortSignal;
+  }): Promise<GraphStatsResult>;
 
   search(input: {
     namespace: string;

@@ -44,7 +44,9 @@ import {
   handleDatabaseEffectiveSuppression,
   handleDatabaseEnsureScopeChain,
   handleDatabaseFindMemoryId,
+  handleDatabaseGraphCounts,
   handleDatabaseGraphLayout,
+  handleDatabaseGraphStats,
   handleDatabaseLoadMemoryNamespaceKey,
   handleDatabaseMemoryPreview,
   handleDatabaseMerge,
@@ -490,6 +492,20 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseGraphLayout(opts.service, opts.projectionSource, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/graph-counts") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseGraphCounts(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/graph-stats") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseGraphStats(opts.service, body);
     }
 
     if (

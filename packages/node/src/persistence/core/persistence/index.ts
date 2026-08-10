@@ -35,6 +35,8 @@ export type {
   EdgePreviewPayload,
   GraphEdgeLink,
   GraphMemoryEmbedding,
+  GraphNamespaceCounts,
+  GraphNamespaceStats,
   GraphNode,
   IncludeSuppressedOpts,
   MemoriesBackendCapabilities,

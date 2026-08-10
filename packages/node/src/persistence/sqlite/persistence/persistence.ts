@@ -1,6 +1,8 @@
 import type { Database } from "bun:sqlite";
 import type {
   GraphEdgeLink,
+  GraphNamespaceCounts,
+  GraphNamespaceStats,
   GraphNode,
   MemoriesPersistence as IMemoriesPersistence,
   LabelPropsSearchFormatter,
@@ -25,6 +27,7 @@ import { insertEdgeLabelAssignment } from "./models/edge-label-assignments";
 import { ensureEdgeLabel } from "./models/edge-labels";
 import { insertEdge } from "./models/edges";
 import {
+  countGraphForNamespace as countGraphForNamespaceQuery,
   listIncidentGraphEdgesForMemory as listIncidentGraphEdgesQuery,
   listSuppressedNodeKeysForNamespace as listSuppressedNodeKeysForNamespaceQuery,
   loadGraphEdge as loadGraphEdgeQuery,
@@ -34,6 +37,7 @@ import {
   loadNodeLabelsForNamespace as loadNodeLabelsQuery,
   loadNodePropertiesForMemory as loadNodePropertiesForMemoryQuery,
   loadNodePropertiesForNamespace as loadNodePropertiesQuery,
+  statsGraphForNamespace as statsGraphForNamespaceQuery,
 } from "./models/graph-index";
 import { syncLabelPropsSearchFeatures as syncLabelPropsSearchFeaturesImpl } from "./models/label-props-search";
 import { listMemoryNamespaces as listMemoryNamespacesQuery } from "./models/list-memory-namespaces";
@@ -613,6 +617,30 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   listSuppressedNodeKeysForNamespace(namespace: string): string[] {
     if (!this.capabilities.graphIndex) return [];
     return listSuppressedNodeKeysForNamespaceQuery(this.db, namespace);
+  }
+
+  countGraphForNamespace(
+    namespace: string,
+    opts?: { includeSuppressed?: boolean },
+  ): GraphNamespaceCounts {
+    if (!this.capabilities.graphIndex) return { nodeCount: 0, edgeCount: 0 };
+    return countGraphForNamespaceQuery(this.db, namespace, opts);
+  }
+
+  statsGraphForNamespace(
+    namespace: string,
+    opts?: { includeSuppressed?: boolean },
+  ): GraphNamespaceStats {
+    if (!this.capabilities.graphIndex) {
+      return {
+        nodeCount: 0,
+        edgeCount: 0,
+        suppressedNodeCount: 0,
+        suppressedEdgeCount: 0,
+        labelKinds: { nodes: {}, edges: {} },
+      };
+    }
+    return statsGraphForNamespaceQuery(this.db, namespace, opts);
   }
 
   /** Underlying Bun SQLite handle (host-owned; do not close from callers). */

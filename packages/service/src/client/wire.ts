@@ -334,6 +334,32 @@ export type DatabaseGraphLayoutRequest = DatabaseScopedBody<{
   includeSuppressed?: boolean;
 }>;
 
+export type DatabaseGraphCountsRequest = DatabaseScopedBody<{
+  namespace: string;
+  scope?: "exact" | "subtree";
+  includeSuppressed?: boolean;
+}>;
+export type DatabaseGraphCountsResponse = {
+  namespace: string;
+  scope: "exact" | "subtree";
+  nodeCount: number;
+  edgeCount: number;
+};
+
+export type DatabaseGraphStatsRequest = DatabaseScopedBody<{
+  namespace: string;
+  scope?: "exact" | "subtree";
+  includeSuppressed?: boolean;
+}>;
+export type DatabaseGraphStatsResponse = DatabaseGraphCountsResponse & {
+  suppressedNodeCount: number;
+  suppressedEdgeCount: number;
+  labelKinds: {
+    nodes: Record<string, number>;
+    edges: Record<string, number>;
+  };
+};
+
 export type DatabaseEnsureScopeChainRequest = DatabaseScopedBody<{ scopePaths: string[] }>;
 export type DatabaseEnsureScopeChainResponse = { ok: true };
 

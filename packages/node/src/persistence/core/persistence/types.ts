@@ -33,6 +33,26 @@ export type NamespaceMetadataInfo = {
 };
 
 /** Options for graph / projection loaders that can surface suppressed memories. */
+/** Node/edge totals for one primary namespace (graph-index counts). */
+export type GraphNamespaceCounts = {
+  nodeCount: number;
+  edgeCount: number;
+};
+
+/**
+ * Graph profiling stats for one primary namespace.
+ * `labelKinds` histograms use the same visibility set as {@link GraphNamespaceCounts}
+ * under `includeSuppressed`. Suppressed breakdown counts the suppressed subset in scope.
+ */
+export type GraphNamespaceStats = GraphNamespaceCounts & {
+  suppressedNodeCount: number;
+  suppressedEdgeCount: number;
+  labelKinds: {
+    nodes: Record<string, number>;
+    edges: Record<string, number>;
+  };
+};
+
 export type IncludeSuppressedOpts = {
   /**
    * When true, include suppressed memories and namespaces (and mark them).
@@ -648,6 +668,24 @@ export interface MemoriesGraphIndex {
 
   /** Node memory keys in `namespace` that are currently suppressed. */
   listSuppressedNodeKeysForNamespace(namespace: NamespacePath): string[];
+
+  /**
+   * Efficient node/edge totals for one primary namespace (not subtree).
+   * Visibility matches {@link loadGraphEdgesForNamespace} / node loaders.
+   */
+  countGraphForNamespace(
+    namespace: NamespacePath,
+    opts?: IncludeSuppressedOpts,
+  ): GraphNamespaceCounts;
+
+  /**
+   * Counts plus suppressed breakdown and ontology label-kind histograms
+   * for one primary namespace (not subtree).
+   */
+  statsGraphForNamespace(
+    namespace: NamespacePath,
+    opts?: IncludeSuppressedOpts,
+  ): GraphNamespaceStats;
 }
 
 /** Graph topology reads + graph writes ({@link MemoriesGraphIndex} & {@link MemoriesGraphMutation}). */

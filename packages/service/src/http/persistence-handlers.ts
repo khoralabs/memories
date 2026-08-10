@@ -31,7 +31,9 @@ import {
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
   type DatabaseEffectiveSuppressionRequest,
+  type DatabaseGraphCountsRequest,
   type DatabaseGraphLayoutRequest,
+  type DatabaseGraphStatsRequest,
   type DatabaseMemoryPreviewRequest,
   type DatabaseMergeRequest,
   type DatabaseNamespaceExistsUnderPrefixRequest,
@@ -1116,6 +1118,103 @@ export async function handleDatabaseGraphLayout(
     ...(scoped.includeSuppressed === true ? { includeSuppressed: true } : {}),
   });
   return Response.json({ layout, database });
+}
+
+function mergeLabelKindMaps(into: Record<string, number>, from: Record<string, number>): void {
+  for (const [kind, count] of Object.entries(from)) {
+    into[kind] = (into[kind] ?? 0) + count;
+  }
+}
+
+async function resolveGraphScopeNamespaces(
+  handle: MemoriesDatabaseHandle,
+  namespace: string,
+  scope: ProjectionInputScope,
+  includeOpts: { includeSuppressed: true } | undefined,
+): Promise<string[]> {
+  if (scope === "exact") return [namespace];
+  const rows = await handle.persistence.listNamespacesWithMetadataUnderPrefix(
+    namespace,
+    includeOpts,
+  );
+  return rows.map((r) => r.namespace);
+}
+
+/** Efficient node/edge counts for a namespace (exact or subtree). */
+export async function handleDatabaseGraphCounts(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as DatabaseGraphCountsRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
+    throw new HttpError("namespace is required", 400);
+  }
+  const namespace = scoped.namespace.trim();
+  const scope = parseProjectionInputScope(scoped.scope);
+  const includeOpts =
+    scoped.includeSuppressed === true ? { includeSuppressed: true as const } : undefined;
+  const namespaces = await resolveGraphScopeNamespaces(handle, namespace, scope, includeOpts);
+
+  let nodeCount = 0;
+  let edgeCount = 0;
+  for (const ns of namespaces) {
+    const part = await handle.persistence.countGraphForNamespace(ns, includeOpts);
+    nodeCount += part.nodeCount;
+    edgeCount += part.edgeCount;
+  }
+
+  return Response.json({
+    database,
+    namespace,
+    scope,
+    nodeCount,
+    edgeCount,
+  });
+}
+
+/** Graph profiling stats (counts, suppressed breakdown, label-kind histograms). */
+export async function handleDatabaseGraphStats(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as DatabaseGraphStatsRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
+    throw new HttpError("namespace is required", 400);
+  }
+  const namespace = scoped.namespace.trim();
+  const scope = parseProjectionInputScope(scoped.scope);
+  const includeOpts =
+    scoped.includeSuppressed === true ? { includeSuppressed: true as const } : undefined;
+  const namespaces = await resolveGraphScopeNamespaces(handle, namespace, scope, includeOpts);
+
+  let nodeCount = 0;
+  let edgeCount = 0;
+  let suppressedNodeCount = 0;
+  let suppressedEdgeCount = 0;
+  const labelKinds = { nodes: {} as Record<string, number>, edges: {} as Record<string, number> };
+
+  for (const ns of namespaces) {
+    const part = await handle.persistence.statsGraphForNamespace(ns, includeOpts);
+    nodeCount += part.nodeCount;
+    edgeCount += part.edgeCount;
+    suppressedNodeCount += part.suppressedNodeCount;
+    suppressedEdgeCount += part.suppressedEdgeCount;
+    mergeLabelKindMaps(labelKinds.nodes, part.labelKinds.nodes);
+    mergeLabelKindMaps(labelKinds.edges, part.labelKinds.edges);
+  }
+
+  return Response.json({
+    database,
+    namespace,
+    scope,
+    nodeCount,
+    edgeCount,
+    suppressedNodeCount,
+    suppressedEdgeCount,
+    labelKinds,
+  });
 }
 
 /** @deprecated Use handleDatabaseProjectionInput */

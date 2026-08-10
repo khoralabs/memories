@@ -1,5 +1,7 @@
 import type {
   GraphEdgeLink,
+  GraphNamespaceCounts,
+  GraphNamespaceStats,
   GraphNode,
   HydratedNeighbor,
   HydratedSourceMapHit,
@@ -35,6 +37,7 @@ import { insertEdgeLabelAssignment } from "./models/edge-label-assignments";
 import { ensureEdgeLabel } from "./models/edge-labels";
 import { insertEdge } from "./models/edges";
 import {
+  countGraphForNamespace as countGraphForNamespaceQuery,
   listIncidentGraphEdgesForMemory as listIncidentGraphEdgesQuery,
   listSuppressedNodeKeysForNamespace as listSuppressedNodeKeysForNamespaceQuery,
   loadGraphEdge as loadGraphEdgeQuery,
@@ -44,6 +47,7 @@ import {
   loadNodeLabelsForNamespace as loadNodeLabelsQuery,
   loadNodePropertiesForMemory as loadNodePropertiesForMemoryQuery,
   loadNodePropertiesForNamespace as loadNodePropertiesQuery,
+  statsGraphForNamespace as statsGraphForNamespaceQuery,
 } from "./models/graph-index";
 import { syncLabelPropsSearchFeatures as syncLabelPropsSearchFeaturesImpl } from "./models/label-props-search";
 import { listSourceMapsForMemory as listSourceMapsForMemoryQuery } from "./models/list-source-maps-for-memory";
@@ -794,6 +798,30 @@ export class MemoriesTursoServerlessPersistence {
   async listSuppressedNodeKeysForNamespace(namespace: string): Promise<string[]> {
     if (!this.capabilities.graphIndex) return [];
     return listSuppressedNodeKeysForNamespaceQuery(this.db, namespace);
+  }
+
+  async countGraphForNamespace(
+    namespace: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<GraphNamespaceCounts> {
+    if (!this.capabilities.graphIndex) return { nodeCount: 0, edgeCount: 0 };
+    return countGraphForNamespaceQuery(this.db, namespace, opts);
+  }
+
+  async statsGraphForNamespace(
+    namespace: string,
+    opts?: { includeSuppressed?: boolean },
+  ): Promise<GraphNamespaceStats> {
+    if (!this.capabilities.graphIndex) {
+      return {
+        nodeCount: 0,
+        edgeCount: 0,
+        suppressedNodeCount: 0,
+        suppressedEdgeCount: 0,
+        labelKinds: { nodes: {}, edges: {} },
+      };
+    }
+    return statsGraphForNamespaceQuery(this.db, namespace, opts);
   }
 }
 
