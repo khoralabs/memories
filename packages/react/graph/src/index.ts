@@ -6,6 +6,12 @@ export {
   AddNamespaceButton,
   type AddNamespaceButtonProps,
 } from "./add-namespace-button.js";
+export { Badge, badgeVariants } from "./components/ui/badge.js";
+export {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "./components/ui/hover-card.js";
 export {
   InputGroup,
   InputGroupAddon,
@@ -57,6 +63,12 @@ export {
   EdgePreviewCard,
   useEdgeBillboard,
 } from "./edge-billboard.js";
+export {
+  GraphEdgeBillboardMetadata,
+  GraphEdgeBillboardOntology,
+  GraphNodeBillboardMetadata,
+  GraphNodeBillboardOntology,
+} from "./graph-billboard-compounds.js";
 export {
   GraphCameraChrome,
   GraphCameraChromeProvider,
@@ -114,6 +126,20 @@ export type {
   GraphSceneNodeRender,
 } from "./graph-scene-slots.js";
 export { GraphSearch, type GraphSearchProps } from "./graph-search.js";
+export {
+  contentArmsToMergeItems,
+  ensureMergeContent,
+  isReservedContentSourceKey,
+  type PreviewContentArm,
+  type PreviewLabel,
+  userContentArms,
+} from "./lib/memory-merge.js";
+export { resolveMemoryPathIdentity } from "./lib/memory-path.js";
+export {
+  entriesToProperties,
+  type PropertyEntry,
+  propertiesToEntries,
+} from "./lib/memory-properties.js";
 export type {
   MemoriesGraphNamespaceEntry,
   MemoriesGraphNamespaceEntryInput,
@@ -166,6 +192,24 @@ export {
   useMemoriesNamespaces,
 } from "./memories-namespaces-provider.js";
 export {
+  formatEdgeLabelKind,
+  formatNodeLabelKind,
+  formatOntologyLabelChain,
+  formatOntologyLabelKind,
+  MemoryDetailOntology,
+  type MemoryLabel,
+} from "./memory-detail-ontology.js";
+export {
+  MemoryMetadata,
+  type MemoryMetadataKind,
+  type MemoryMetadataProps,
+} from "./memory-metadata.js";
+export {
+  firstContentExcerpt,
+  MemoryEdgeHoverCard,
+  MemoryNodeHoverCard,
+} from "./memory-relation-hovers.js";
+export {
   NodeBillboard,
   NodeBillboardHeader,
   type NodeBillboardHeaderProps,
@@ -182,6 +226,13 @@ export {
   useNodeBillboard,
 } from "./node-billboard.js";
 export * from "./projection-types.js";
+export {
+  RelationChain,
+  RelationEdgeBadge,
+  relationEdgeSegmentText,
+  relationNodeSegmentText,
+  truncateRelationKey,
+} from "./relation-chain.js";
 export type {
   GraphEdgeRenderMode,
   GraphSceneOverlayOptions,

@@ -170,6 +170,36 @@ Billboards are compounds:
 
 `useNodeBillboard()` / `useEdgeBillboard()` expose `properties`, `loading`, and preview `detail` so hosts need not re-fetch `getMemoryPreview` / `getEdgePreview` for the dock.
 
+### Promoted detail helpers
+
+Prefer richer ontology formatting and metadata (`MemoryDetailOntology`, `MemoryMetadata`) via the billboard compounds:
+
+- `GraphNodeBillboardOntology` / `GraphEdgeBillboardOntology` — place under `Labels` or as billboard children
+- `GraphNodeBillboardMetadata` / `GraphEdgeBillboardMetadata` — place under `Metadata` or as billboard children (reads `properties` from billboard context; no extra preview fetch)
+
+Also exported: merge/path/properties helpers, `RelationChain`, `MemoryNodeHoverCard` / `MemoryEdgeHoverCard` (optional `navigate` for SPA routing).
+
+```tsx
+<GraphPreviewDock>
+  {(content) =>
+    content.kind === "node" ? (
+      <NodeBillboard point={content.point} open>
+        <NodeBillboard.Header />
+        <GraphNodeBillboardOntology />
+        <GraphNodeBillboardMetadata />
+      </NodeBillboard>
+    ) : (
+      <EdgeBillboard edge={content.edge} open>
+        <EdgeBillboard.Header />
+        <EdgeBillboard.Loading />
+        <GraphEdgeBillboardOntology />
+        <GraphEdgeBillboardMetadata />
+      </EdgeBillboard>
+    )
+  }
+</GraphPreviewDock>
+```
+
 ## Development
 
 ```bash
