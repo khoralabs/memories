@@ -483,6 +483,7 @@ export class RemoteMemoriesReadClient {
     namespace: string;
     labels: Array<{ kind: string; props: Record<string, unknown> }>;
     content: Array<{ sourceKey: string; text: string | null }>;
+    properties: Record<string, unknown> | null;
     suppressed: boolean;
   }> {
     return this.#client.postJson("/databases/memory-preview", {

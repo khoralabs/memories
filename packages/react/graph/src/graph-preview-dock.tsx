@@ -12,8 +12,8 @@ export type GraphPreviewDockContent =
 
 export type GraphPreviewDockProps = {
   /**
-   * Optional render prop for the preview body. When omitted, the built-in
-   * {@link NodeBillboard} / {@link EdgeBillboard} are used.
+   * Optional render prop for the preview body. When provided, **fully replaces** the
+   * built-in {@link NodeBillboard} / {@link EdgeBillboard} (no default composition).
    */
   children?: (content: GraphPreviewDockContent) => ReactNode;
 };
@@ -21,6 +21,11 @@ export type GraphPreviewDockProps = {
 /**
  * Fixed bottom-right preview (node / edge properties) scoped to the graph viewport.
  * Preview target: debounced hover over node/edge (see `focusDelay` on the provider), else pin.
+ *
+ * When `children` is provided it **fully replaces** the default {@link NodeBillboard} /
+ * {@link EdgeBillboard} (nothing else is rendered in the dock body).
+ *
+ * Ontology label `props` are not freeform node/edge `properties` — see billboard `Labels` vs `Metadata`.
  *
  * @example Default (same as today)
  * ```tsx

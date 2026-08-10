@@ -267,7 +267,7 @@ Suppression: discovery endpoints exclude suppressed memories/namespaces by defau
 | `POST` | `/databases/namespaces/delete` | Delete namespace (default recursive subtree) | `write` |
 | `POST` | `/databases/namespaces/rename` | Literal path rename (bulk id rewrite) | `write` |
 | `POST` | `/databases/edge-preview` | Edge preview | `read` |
-| `POST` | `/databases/memory-preview` | Memory labels + source-map text previews | `read` |
+| `POST` | `/databases/memory-preview` | Memory labels + source-map text + freeform `properties` | `read` |
 | `POST` | `/databases/source-map/text-preview` | Source map text preview | `read` |
 | `POST` | `/databases/vector-dimensions` | Vector index dimensions | `read` |
 | `POST` | `/databases/projections/projection-input` | Compressed projection input rows for external layout workers | `read` |

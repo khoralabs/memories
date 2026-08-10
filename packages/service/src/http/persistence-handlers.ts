@@ -1003,11 +1003,13 @@ export async function handleDatabaseMemoryPreview(
     }),
   );
   const suppressed = await handle.persistence.isMemorySuppressed(memoryId);
+  const properties = await handle.persistence.loadNodePropertiesForMemory(namespace, key);
   return Response.json({
     key,
     namespace,
     labels,
     content,
+    properties: properties ?? null,
     suppressed,
     database,
   });

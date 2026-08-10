@@ -302,6 +302,8 @@ export type DatabaseMemoryPreviewResponse = {
   namespace: string;
   labels: OntologyLabelWire[];
   content: Array<{ sourceKey: string; text: string | null }>;
+  /** Freeform JSON from `nodes.properties` (not ontology label props). */
+  properties: Record<string, unknown> | null;
   /** Exact-path `memories.suppressed` flag. */
   suppressed: boolean;
 };

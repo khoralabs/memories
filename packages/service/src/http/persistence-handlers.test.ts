@@ -307,8 +307,53 @@ describe("memories service persistence http handlers", () => {
       stack,
     );
     expect(preview.status).toBe(200);
-    const previewBody = (await preview.json()) as { suppressed: boolean };
+    const previewBody = (await preview.json()) as { suppressed: boolean; properties: unknown };
     expect(previewBody.suppressed).toBe(true);
+    expect(previewBody.properties).toBeNull();
+  }, 15_000);
+
+  test("memory-preview returns freeform node properties", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-memory-preview-props" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const client = new MemoriesClient(sync.syncPersistence, testOntology);
+    client.mergeMemory({
+      kind: "node",
+      key: "with_props",
+      namespace: "ns/props",
+      content: [{ key: "text", text: "hello" }],
+      labels: [],
+      properties: { title: "Note", count: 2 },
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "no_props",
+      namespace: "ns/props",
+      content: [{ key: "text", text: "plain" }],
+      labels: [],
+    });
+
+    const withProps = await postJson(
+      "http://localhost/databases/memory-preview",
+      { database, namespace: "ns/props", key: "with_props" },
+      stack,
+    );
+    expect(withProps.status).toBe(200);
+    expect(await withProps.json()).toMatchObject({
+      key: "with_props",
+      namespace: "ns/props",
+      properties: { title: "Note", count: 2 },
+    });
+
+    const without = await postJson(
+      "http://localhost/databases/memory-preview",
+      { database, namespace: "ns/props", key: "no_props" },
+      stack,
+    );
+    expect(without.status).toBe(200);
+    expect(await without.json()).toMatchObject({ properties: null });
   }, 15_000);
 
   test("namespaces under-prefix list + exists", async () => {

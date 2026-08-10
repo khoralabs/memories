@@ -1,14 +1,29 @@
-import { type ComponentProps, createContext, type ReactNode, useContext } from "react";
+import {
+  type ComponentProps,
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { cn } from "@/lib/utils";
+import type { MemoryPreviewJson } from "./memories-client.js";
+import { useMemoriesClient } from "./memories-client-provider.js";
 import {
   type GraphOntologyLabelMap,
   graphLabelFingerprint,
+  type TypedGraphLabelInstance,
   type TypedProjectionPoint,
 } from "./projection-types.js";
 import { useProjection } from "./use-projection.js";
 
 type NodeBillboardContextValue = {
   point: TypedProjectionPoint;
+  loading: boolean;
+  detail: MemoryPreviewJson | null;
+  ontologyLabels: TypedGraphLabelInstance<GraphOntologyLabelMap>[];
+  properties: Record<string, unknown> | null;
   namespace: string;
 };
 
@@ -16,31 +31,115 @@ const NodeBillboardContext = createContext<NodeBillboardContextValue | null>(nul
 
 export function useNodeBillboard<TNode extends GraphOntologyLabelMap = GraphOntologyLabelMap>(): {
   point: TypedProjectionPoint<TNode>;
+  loading: boolean;
+  detail: MemoryPreviewJson | null;
+  ontologyLabels: TypedGraphLabelInstance<TNode>[];
+  properties: Record<string, unknown> | null;
   namespace: string;
 } {
   const ctx = useContext(NodeBillboardContext);
   if (ctx == null) {
     throw new Error("useNodeBillboard must be used within NodeBillboard");
   }
-  return ctx as { point: TypedProjectionPoint<TNode>; namespace: string };
+  return ctx as {
+    point: TypedProjectionPoint<TNode>;
+    loading: boolean;
+    detail: MemoryPreviewJson | null;
+    ontologyLabels: TypedGraphLabelInstance<TNode>[];
+    properties: Record<string, unknown> | null;
+    namespace: string;
+  };
 }
 
 export type NodeBillboardProps<TNode extends GraphOntologyLabelMap = GraphOntologyLabelMap> = {
   point: TypedProjectionPoint<TNode>;
   open: boolean;
   className?: string;
+  /**
+   * When set, skip preview fetch and use these freeform node properties
+   * (`nodes.properties`). Pass `null` for “loaded, empty”.
+   */
+  properties?: Record<string, unknown> | null;
   children?: ReactNode | ((node: TypedProjectionPoint<TNode>) => ReactNode);
 };
 
+/**
+ * Compound node preview. Default Labels render ontology **kinds only**;
+ * freeform `nodes.properties` belong in {@link NodeBillboard.Metadata}
+ * (not ontology label `props`).
+ */
 function NodeBillboardRoot<TNode extends GraphOntologyLabelMap = GraphOntologyLabelMap>({
   point,
   open,
   className,
+  properties: propertiesProp,
   children,
 }: NodeBillboardProps<TNode>) {
   const { namespace, onMemoryPreviewPointerEnter, onMemoryPreviewPointerLeave } = useProjection();
+  const client = useMemoriesClient();
+  const injectProperties = propertiesProp !== undefined;
+
+  const [detail, setDetail] = useState<MemoryPreviewJson | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || injectProperties) {
+      setDetail(null);
+      setLoading(false);
+      return;
+    }
+    const ac = new AbortController();
+    setLoading(true);
+    setDetail(null);
+    void client
+      .getMemoryPreview({
+        namespace,
+        key: point.key,
+        signal: ac.signal,
+      })
+      .then((json) => {
+        if (!ac.signal.aborted) setDetail(json);
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) setDetail(null);
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setLoading(false);
+      });
+    return () => ac.abort();
+  }, [open, injectProperties, client, namespace, point.key]);
+
+  const ontologyLabels = useMemo(() => {
+    const m = new Map<string, TypedGraphLabelInstance<GraphOntologyLabelMap>>();
+    for (const lb of point.labels) {
+      m.set(graphLabelFingerprint(lb), lb);
+    }
+    if (detail?.labels) {
+      for (const lb of detail.labels) {
+        m.set(graphLabelFingerprint(lb), lb);
+      }
+    }
+    return [...m.values()].sort((a, b) => a.kind.localeCompare(b.kind));
+  }, [point.labels, detail?.labels]);
 
   if (!open) return null;
+
+  const fetchedProperties =
+    detail?.properties && Object.keys(detail.properties).length > 0 ? detail.properties : null;
+  const properties = injectProperties
+    ? propertiesProp && Object.keys(propertiesProp).length > 0
+      ? propertiesProp
+      : null
+    : fetchedProperties;
+
+  const value: NodeBillboardContextValue = {
+    point,
+    loading: injectProperties ? false : loading,
+    detail,
+    ontologyLabels,
+    properties,
+    namespace,
+  };
 
   const body =
     typeof children === "function"
@@ -48,14 +147,16 @@ function NodeBillboardRoot<TNode extends GraphOntologyLabelMap = GraphOntologyLa
       : (children ?? (
           <>
             <NodeBillboardHeader />
-            <div className="max-h-[min(28vh,240px)] overflow-y-auto">
+            <div className="max-h-[min(28vh,240px)] space-y-3 overflow-y-auto">
+              <NodeBillboardLoading />
               <NodeBillboardLabels />
+              <NodeBillboardMetadata />
             </div>
           </>
         ));
 
   return (
-    <NodeBillboardContext.Provider value={{ point, namespace }}>
+    <NodeBillboardContext.Provider value={value}>
       <section
         aria-label="Memory preview"
         className={cn("flex max-h-[min(50vh,420px)] w-full flex-col gap-2 text-left", className)}
@@ -90,10 +191,48 @@ export function NodeBillboardHeader({ className, children, ...props }: NodeBillb
   );
 }
 
-export type NodeBillboardLabelsProps = ComponentProps<"ul">;
+export type NodeBillboardLoadingProps = ComponentProps<"span">;
+
+export function NodeBillboardLoading({ className, children, ...props }: NodeBillboardLoadingProps) {
+  const { loading } = useNodeBillboard();
+  if (!loading) return null;
+  return (
+    <span className={cn("font-mono text-[10px] text-muted-foreground", className)} {...props}>
+      {children ?? "Loading memory detail…"}
+    </span>
+  );
+}
+
+export type NodeBillboardLabelsCtx = {
+  labels: TypedGraphLabelInstance<GraphOntologyLabelMap>[];
+  loading: boolean;
+};
+
+export type NodeBillboardLabelsProps = Omit<ComponentProps<"ul">, "children"> & {
+  /**
+   * Default: ontology **kinds only**. Function children receive full label objects
+   * (including ontology `props`) for custom rows; still wrapped in `<ul>`.
+   */
+  children?: ReactNode | ((ctx: NodeBillboardLabelsCtx) => ReactNode);
+};
 
 export function NodeBillboardLabels({ className, children, ...props }: NodeBillboardLabelsProps) {
-  const { point } = useNodeBillboard();
+  const { ontologyLabels, loading } = useNodeBillboard();
+  const ctx: NodeBillboardLabelsCtx = { labels: ontologyLabels, loading };
+
+  if (typeof children === "function") {
+    return (
+      <ul
+        className={cn(
+          "list-inside list-disc space-y-1 font-mono text-xs text-foreground",
+          className,
+        )}
+        {...props}
+      >
+        {children(ctx)}
+      </ul>
+    );
+  }
 
   if (children !== undefined) {
     return (
@@ -109,30 +248,90 @@ export function NodeBillboardLabels({ className, children, ...props }: NodeBillb
     );
   }
 
-  if (point.labels.length === 0) {
-    return <span className="text-muted-foreground text-xs">No ontology labels on this node.</span>;
+  if (ontologyLabels.length > 0) {
+    return (
+      <ul
+        className={cn(
+          "list-inside list-disc space-y-1 font-mono text-xs text-foreground",
+          className,
+        )}
+        {...props}
+      >
+        {ontologyLabels.map((lb) => (
+          <li key={graphLabelFingerprint(lb)} className="break-words">
+            <span className="font-medium">{lb.kind}</span>
+          </li>
+        ))}
+      </ul>
+    );
   }
 
+  if (loading) return null;
+  return <span className="text-muted-foreground text-xs">No ontology labels on this node.</span>;
+}
+
+export type NodeBillboardMetadataCtx = {
+  properties: Record<string, unknown> | null;
+  loading: boolean;
+};
+
+export type NodeBillboardMetadataProps = Omit<ComponentProps<"div">, "children"> & {
+  /** Freeform `nodes.properties` (not ontology label props). */
+  children?: ReactNode | ((ctx: NodeBillboardMetadataCtx) => ReactNode);
+};
+
+export function NodeBillboardMetadata({
+  className,
+  children,
+  ...props
+}: NodeBillboardMetadataProps) {
+  const { properties, loading } = useNodeBillboard();
+  const ctx: NodeBillboardMetadataCtx = { properties, loading };
+
+  if (typeof children === "function") {
+    return (
+      <div className={cn("space-y-1 border-t border-border/60 pt-2", className)} {...props}>
+        {children(ctx)}
+      </div>
+    );
+  }
+
+  if (children !== undefined) {
+    return (
+      <div className={cn("space-y-1 border-t border-border/60 pt-2", className)} {...props}>
+        {children}
+      </div>
+    );
+  }
+
+  if (properties == null) return null;
+
+  const propsEntries = Object.entries(properties);
+
   return (
-    <ul
-      className={cn("list-inside list-disc space-y-1 font-mono text-xs text-foreground", className)}
-      {...props}
-    >
-      {point.labels.map((lb) => (
-        <li key={graphLabelFingerprint(lb)} className="break-words">
-          <span className="font-medium">{lb.kind}</span>
-          {Object.keys(lb.props).length > 0 ? (
-            <span className="text-muted-foreground"> {JSON.stringify(lb.props)}</span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+    <div className={cn("space-y-1 border-t border-border/60 pt-2", className)} {...props}>
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        Node metadata
+      </div>
+      <dl className="space-y-1 font-mono text-[11px] text-foreground">
+        {propsEntries.map(([k, v]) => (
+          <div key={k} className="grid gap-0.5">
+            <dt className="text-muted-foreground">{k}</dt>
+            <dd className="break-all pl-1">
+              {typeof v === "object" ? JSON.stringify(v) : String(v)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
 export const NodeBillboard = Object.assign(NodeBillboardRoot, {
   Header: NodeBillboardHeader,
   Labels: NodeBillboardLabels,
+  Metadata: NodeBillboardMetadata,
+  Loading: NodeBillboardLoading,
 });
 
 /** @deprecated Prefer {@link NodeBillboard}. */

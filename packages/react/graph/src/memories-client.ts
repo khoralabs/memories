@@ -17,6 +17,17 @@ export type EdgePreviewJson = {
   error?: string;
 };
 
+/** Wire result from {@link ReactMemoriesClient.getMemoryPreview}. */
+export type MemoryPreviewJson = {
+  key: string;
+  namespace: string;
+  labels: Array<{ kind: string; props: Record<string, unknown> }>;
+  content: Array<{ sourceKey: string; text: string | null }>;
+  /** Freeform JSON from `nodes.properties` (not ontology label props). */
+  properties: Record<string, unknown> | null;
+  suppressed: boolean;
+};
+
 /** Wire result from {@link ReactMemoriesClient.search} (before chrome maps to search state). */
 export type GraphSearchResult = {
   hitCount: number;
@@ -162,12 +173,5 @@ export type ReactMemoriesClient = {
     key: string;
     maxChars?: number;
     signal?: AbortSignal;
-  }): Promise<{
-    key: string;
-    namespace: string;
-    labels: Array<{ kind: string; props: Record<string, unknown> }>;
-    content: Array<{ sourceKey: string; text: string | null }>;
-    /** Exact-path `memories.suppressed` flag. */
-    suppressed: boolean;
-  }>;
+  }): Promise<MemoryPreviewJson>;
 };

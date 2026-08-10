@@ -61,6 +61,7 @@ function createMockReads(
         namespace: "ns",
         labels: [{ kind: "Person", props: {} }],
         content: [{ sourceKey: "body", text: "hello" }],
+        properties: null,
         suppressed: false,
       })),
     upsertNamespaceMetadata:
@@ -604,6 +605,7 @@ describe("createServiceReactMemoriesClient", () => {
           namespace: "ns",
           labels: [],
           content: [{ sourceKey: "body", text: "hi" }],
+          properties: { note: "x" },
           suppressed: false,
         };
       },
@@ -621,6 +623,7 @@ describe("createServiceReactMemoriesClient", () => {
       namespace: "ns",
       labels: [],
       content: [{ sourceKey: "body", text: "hi" }],
+      properties: { note: "x" },
       suppressed: false,
     });
   });

@@ -51,6 +51,7 @@ export function createMockReactClient(
       namespace: "",
       labels: [],
       content: [],
+      properties: null,
       suppressed: false,
     })),
     ...overrides,

@@ -58,6 +58,11 @@ export type EdgeBillboardProps<TEdge extends GraphOntologyLabelMap = GraphOntolo
   children?: ReactNode | ((edge: TypedSceneEdge<TEdge>) => ReactNode);
 };
 
+/**
+ * Compound edge preview. Default Labels render ontology **kinds only**;
+ * freeform edge `properties` belong in {@link EdgeBillboard.Metadata}
+ * (not ontology label `props`).
+ */
 function EdgeBillboardRoot<TEdge extends GraphOntologyLabelMap = GraphOntologyLabelMap>({
   edge,
   open,
@@ -187,10 +192,36 @@ export function EdgeBillboardLoading({ className, children, ...props }: EdgeBill
   );
 }
 
-export type EdgeBillboardLabelsProps = ComponentProps<"ul">;
+export type EdgeBillboardLabelsCtx = {
+  labels: TypedGraphLabelInstance<GraphOntologyLabelMap>[];
+  loading: boolean;
+};
+
+export type EdgeBillboardLabelsProps = Omit<ComponentProps<"ul">, "children"> & {
+  /**
+   * Default: ontology **kinds only**. Function children receive full label objects
+   * (including ontology `props`) for custom rows; still wrapped in `<ul>`.
+   */
+  children?: ReactNode | ((ctx: EdgeBillboardLabelsCtx) => ReactNode);
+};
 
 export function EdgeBillboardLabels({ className, children, ...props }: EdgeBillboardLabelsProps) {
   const { ontologyLabels, loading } = useEdgeBillboard();
+  const ctx: EdgeBillboardLabelsCtx = { labels: ontologyLabels, loading };
+
+  if (typeof children === "function") {
+    return (
+      <ul
+        className={cn(
+          "list-inside list-disc space-y-1 font-mono text-xs text-foreground",
+          className,
+        )}
+        {...props}
+      >
+        {children(ctx)}
+      </ul>
+    );
+  }
 
   if (children !== undefined) {
     return (
@@ -218,9 +249,6 @@ export function EdgeBillboardLabels({ className, children, ...props }: EdgeBillb
         {ontologyLabels.map((lb) => (
           <li key={graphLabelFingerprint(lb)} className="break-words">
             <span className="font-medium">{lb.kind}</span>
-            {Object.keys(lb.props).length > 0 ? (
-              <span className="text-muted-foreground"> {JSON.stringify(lb.props)}</span>
-            ) : null}
           </li>
         ))}
       </ul>
@@ -231,37 +259,59 @@ export function EdgeBillboardLabels({ className, children, ...props }: EdgeBillb
   return <span className="text-muted-foreground text-xs">No ontology labels on this edge.</span>;
 }
 
-export type EdgeBillboardMetadataProps = ComponentProps<"div">;
+export type EdgeBillboardMetadataCtx = {
+  properties: Record<string, unknown> | null;
+  loading: boolean;
+};
+
+export type EdgeBillboardMetadataProps = Omit<ComponentProps<"div">, "children"> & {
+  /** Freeform edge properties (not ontology label props). */
+  children?: ReactNode | ((ctx: EdgeBillboardMetadataCtx) => ReactNode);
+};
 
 export function EdgeBillboardMetadata({
   className,
   children,
   ...props
 }: EdgeBillboardMetadataProps) {
-  const { properties } = useEdgeBillboard();
+  const { properties, loading } = useEdgeBillboard();
+  const ctx: EdgeBillboardMetadataCtx = { properties, loading };
+
+  if (typeof children === "function") {
+    return (
+      <div className={cn("space-y-1 border-t border-border/60 pt-2", className)} {...props}>
+        {children(ctx)}
+      </div>
+    );
+  }
+
+  if (children !== undefined) {
+    return (
+      <div className={cn("space-y-1 border-t border-border/60 pt-2", className)} {...props}>
+        {children}
+      </div>
+    );
+  }
+
   if (properties == null) return null;
 
   const propsEntries = Object.entries(properties);
 
   return (
     <div className={cn("space-y-1 border-t border-border/60 pt-2", className)} {...props}>
-      {children ?? (
-        <>
-          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Edge metadata
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        Edge metadata
+      </div>
+      <dl className="space-y-1 font-mono text-[11px] text-foreground">
+        {propsEntries.map(([k, v]) => (
+          <div key={k} className="grid gap-0.5">
+            <dt className="text-muted-foreground">{k}</dt>
+            <dd className="break-all pl-1">
+              {typeof v === "object" ? JSON.stringify(v) : String(v)}
+            </dd>
           </div>
-          <dl className="space-y-1 font-mono text-[11px] text-foreground">
-            {propsEntries.map(([k, v]) => (
-              <div key={k} className="grid gap-0.5">
-                <dt className="text-muted-foreground">{k}</dt>
-                <dd className="break-all pl-1">
-                  {typeof v === "object" ? JSON.stringify(v) : String(v)}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </>
-      )}
+        ))}
+      </dl>
     </div>
   );
 }

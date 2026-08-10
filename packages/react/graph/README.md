@@ -21,7 +21,8 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | `GraphSearch` / `GraphNamespaceSearch` | Memory / namespace search (`Input` / `Addon` / `Loading` compounds; bare `<GraphSearch />` keeps defaults) |
 | `GraphNamespaceTree` | Hierarchical namespace browser; Hierarchy filters to ranked search hits |
 | `AddNamespaceButton` / `AddMemoryButton` / `RefreshGraphButton` | Compound chrome buttons (`.Tooltip` + `Button` props) |
-| `GraphPreviewDock` | Selected memory preview panel |
+| `GraphPreviewDock` | Selected memory preview panel (`children` fully replaces default billboard) |
+| `NodeBillboard` / `EdgeBillboard` | Compound preview cards (`Header` / `Loading` / `Labels` / `Metadata`) |
 | `GraphLoading`, `GraphFetchError` | Loading and error states |
 
 Peer dependencies: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing` (used when `fog.blur` is enabled for screen-space edge softening). Optional peer: `@khoralabs/memories-service` (only for `/service`).
@@ -133,6 +134,41 @@ Compose search chrome when you need extra addons (`.Loading` is the status spinn
   </GraphSearch.Addon>
 </GraphSearch>
 ```
+
+## Preview / billboards
+
+`GraphPreviewDock` mounts the default `NodeBillboard` / `EdgeBillboard` for the active preview target. Passing **`children` fully replaces** that default (no built-in billboard is composed underneath).
+
+Billboards are compounds:
+
+- **`Labels`** — ontology label **kinds** by default (not JSON of label `props`). Use a render prop `((ctx) => …)` for custom rows; `ctx.labels` still includes ontology `props`.
+- **`Metadata`** — freeform memory/edge **`properties`** (`nodes.properties` / edge JSON blob). Empty when none.
+- **`Loading`** — shown while preview fetch is in flight.
+- Ontology label **`props` ≠ freeform `properties`**: the former are typed schema fields on a label kind; the latter are the unstructured property bag on the node/edge row. Do not stringify label props into Labels.
+
+```tsx
+<GraphPreviewDock>
+  {(content) =>
+    content.kind === "node" ? (
+      <NodeBillboard point={content.point} open>
+        <NodeBillboard.Header />
+        <NodeBillboard.Labels>
+          {(ctx) =>
+            ctx.labels.map((lb) => (
+              <li key={lb.kind}>{lb.kind}</li>
+            ))
+          }
+        </NodeBillboard.Labels>
+        <NodeBillboard.Metadata />
+      </NodeBillboard>
+    ) : (
+      <EdgeBillboard edge={content.edge} open />
+    )
+  }
+</GraphPreviewDock>
+```
+
+`useNodeBillboard()` / `useEdgeBillboard()` expose `properties`, `loading`, and preview `detail` so hosts need not re-fetch `getMemoryPreview` / `getEdgePreview` for the dock.
 
 ## Development
 
