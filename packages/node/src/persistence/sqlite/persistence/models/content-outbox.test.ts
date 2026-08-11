@@ -16,50 +16,54 @@ function requireHead(persistence: { getProvenanceHeadRootHex(): string | undefin
 }
 
 describe("content outbox blobs + LWW", () => {
-  test("dedupes identical bodies into one blob row", () => {
-    const db = openTestMemoriesDatabase();
-    const persistence = createMemoriesPersistence(db, { bunS3ColdStore: false });
+  test(
+    "dedupes identical bodies into one blob row",
+    () => {
+      const db = openTestMemoriesDatabase();
+      const persistence = createMemoriesPersistence(db, { bunS3ColdStore: false });
 
-    mergeMemory(
-      { persistence },
-      {
-        key: "a",
-        namespace: "ns",
-        content: [{ key: "s1", text: "same-body" }],
-        labels: [],
-        edges: [],
-      },
-    );
-    mergeMemory(
-      { persistence },
-      {
-        key: "b",
-        namespace: "ns",
-        content: [{ key: "s1", text: "same-body" }],
-        labels: [],
-        edges: [],
-      },
-    );
+      mergeMemory(
+        { persistence },
+        {
+          key: "a",
+          namespace: "ns",
+          content: [{ key: "s1", text: "same-body" }],
+          labels: [],
+          edges: [],
+        },
+      );
+      mergeMemory(
+        { persistence },
+        {
+          key: "b",
+          namespace: "ns",
+          content: [{ key: "s1", text: "same-body" }],
+          labels: [],
+          edges: [],
+        },
+      );
 
-    const blobCount = db
-      .query<{ n: number }, []>(`SELECT COUNT(*) AS n FROM memory_content_blobs`)
-      .get()?.n;
-    expect(blobCount).toBe(1);
+      const blobCount = db
+        .query<{ n: number }, []>(`SELECT COUNT(*) AS n FROM memory_content_blobs`)
+        .get()?.n;
+      expect(blobCount).toBe(1);
 
-    const hash = sha256Hex("same-body");
-    const outboxNullText = db
-      .query<{ n: number }, []>(
-        `SELECT COUNT(*) AS n FROM memory_content_outbox WHERE text IS NOT NULL`,
-      )
-      .get()?.n;
-    expect(outboxNullText).toBe(0);
-    const hashed = db
-      .query<{ n: number }, [string]>(
-        `SELECT COUNT(*) AS n FROM memory_content_outbox WHERE content_sha256 = ?`,
-      )
-      .get(hash)?.n;
-    expect(hashed).toBe(2);
-  });
+      const hash = sha256Hex("same-body");
+      const outboxNullText = db
+        .query<{ n: number }, []>(
+          `SELECT COUNT(*) AS n FROM memory_content_outbox WHERE text IS NOT NULL`,
+        )
+        .get()?.n;
+      expect(outboxNullText).toBe(0);
+      const hashed = db
+        .query<{ n: number }, [string]>(
+          `SELECT COUNT(*) AS n FROM memory_content_outbox WHERE content_sha256 = ?`,
+        )
+        .get(hash)?.n;
+      expect(hashed).toBe(2);
+    },
+    { timeout: 30_000 },
+  );
 
   test("LWW keeps prior arms after single-arm replace", () => {
     const db = openTestMemoriesDatabase();

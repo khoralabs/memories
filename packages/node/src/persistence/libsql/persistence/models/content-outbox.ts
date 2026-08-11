@@ -281,6 +281,30 @@ export async function evacuateContentBlobsOutsideHotWindow(
     coldStore?: ContentBlobColdStore;
   },
 ): Promise<void> {
+  try {
+    await evacuateContentBlobsOutsideHotWindowInner(db, opts);
+  } catch (err) {
+    if (isClosedDatabaseError(err)) return;
+    throw err;
+  }
+}
+
+function isClosedDatabaseError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    /closed database|database has been closed|cannot use a closed database|connection.*(closed|reset)|CLIENT_CLOSED|HsDisconnected/i.test(
+      err.message,
+    )
+  );
+}
+
+async function evacuateContentBlobsOutsideHotWindowInner(
+  db: LibsqlDatabase,
+  opts?: {
+    retentionTips?: number;
+    coldStore?: ContentBlobColdStore;
+  },
+): Promise<void> {
   const retention = opts?.retentionTips ?? DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS;
   if (retention === 0) return;
 

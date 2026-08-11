@@ -126,6 +126,7 @@ export class MemoriesTursoServerlessPersistence {
 
   private readonly inTransaction = { current: false };
   private txCtx: DbCtx | undefined;
+  private pendingContentBlobEvacuate = false;
   private readonly contentOutboxRetentionTips: number;
   private readonly contentBlobColdStore: ContentBlobColdStore | undefined;
 
@@ -163,14 +164,25 @@ export class MemoriesTursoServerlessPersistence {
   }
 
   async withTransaction<T>(fn: () => Promise<T>): Promise<T> {
-    return withWriteTransaction(this.db.write, this.inTransaction, async (tx) => {
-      this.txCtx = writeCtx(this.db, Date.now(), tx);
-      try {
-        return await fn();
-      } finally {
-        this.txCtx = undefined;
+    this.pendingContentBlobEvacuate = false;
+    try {
+      const result = await withWriteTransaction(this.db.write, this.inTransaction, async (tx) => {
+        this.txCtx = writeCtx(this.db, Date.now(), tx);
+        try {
+          return await fn();
+        } finally {
+          this.txCtx = undefined;
+        }
+      });
+      if (this.pendingContentBlobEvacuate) {
+        this.pendingContentBlobEvacuate = false;
+        await this.evacuateContentBlobs();
       }
-    });
+      return result;
+    } catch (err) {
+      this.pendingContentBlobEvacuate = false;
+      throw err;
+    }
   }
 
   private activeCtx(op: MemoryOpContext): DbCtx {
@@ -367,10 +379,11 @@ export class MemoriesTursoServerlessPersistence {
         entries: input.entries,
       });
     }
-    void evacuateContentBlobsOutsideHotWindow(this.db, {
-      retentionTips: this.contentOutboxRetentionTips,
-      coldStore: this.contentBlobColdStore,
-    });
+    if (this.txCtx) {
+      this.pendingContentBlobEvacuate = true;
+    } else {
+      await this.evacuateContentBlobs();
+    }
   }
 
   /**
