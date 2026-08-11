@@ -38,6 +38,11 @@ import {
   mergeMemory,
   zMergeMemoryContentItem,
 } from "./merge-memory";
+import {
+  type ReplaceMemoryFeatureParams,
+  type ReplaceMemoryFeatureResult,
+  replaceMemoryFeature,
+} from "./replace-memory-feature";
 import type { Store } from "./resolve-sourcemap.js";
 import {
   type SearchHit,
@@ -188,6 +193,18 @@ export class MemoriesClient<
     });
     this.syncLexicalExportToStore(params.namespace, mergedKeys);
     return mergedKeys;
+  }
+
+  /**
+   * Upsert one content arm (text and/or vector) without clearing other arms or graph topology.
+   */
+  replaceMemoryFeature(params: ReplaceMemoryFeatureParams): ReplaceMemoryFeatureResult {
+    const result = replaceMemoryFeature(this.mutationCtx, params);
+    const memoryId = this.persistence.findMemoryIdByKey(params.namespace, params.key);
+    if (memoryId !== undefined) {
+      this.syncLexicalExportToStore(params.namespace, [memoryId]);
+    }
+    return result;
   }
 
   /** Deletes the memory and cascaded data; delegates to the package `deleteMemory` function. */

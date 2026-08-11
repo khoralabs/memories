@@ -113,6 +113,12 @@ export {
   zUserSourceKey,
 } from "./merge-memory";
 export * from "./merge-memory-async";
+export type {
+  ReplaceMemoryFeatureParams,
+  ReplaceMemoryFeatureResult,
+} from "./replace-memory-feature";
+export { replaceMemoryFeature } from "./replace-memory-feature";
+export { replaceMemoryFeatureAsync } from "./replace-memory-feature-async";
 export * from "./resolve-sourcemap";
 export type {
   NeighborSearchOption,

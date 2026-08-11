@@ -267,8 +267,10 @@ Suppression: discovery endpoints exclude suppressed memories/namespaces by defau
 | `POST` | `/databases/namespaces/delete` | Delete namespace (default recursive subtree) | `write` |
 | `POST` | `/databases/namespaces/rename` | Literal path rename (bulk id rewrite) | `write` |
 | `POST` | `/databases/edge-preview` | Edge preview | `read` |
-| `POST` | `/databases/memory-preview` | Memory labels + source-map text + freeform `properties` | `read` |
-| `POST` | `/databases/source-map/text-preview` | Source map text preview | `read` |
+| `POST` | `/databases/memory-preview` | Memory labels + source-map inventory (ids, hasText/hasVector, truncated text) + freeform `properties` | `read` |
+| `POST` | `/databases/source-map/text-preview` | Source map truncated text preview | `read` |
+| `POST` | `/databases/source-map/text` | Source map full joined text (no truncation) | `read` |
+| `POST` | `/databases/source-map/replace` | Upsert one content arm (text and/or vector) without clearing other arms | `write` |
 | `POST` | `/databases/vector-dimensions` | Vector index dimensions | `read` |
 | `POST` | `/databases/projections/projection-input` | Compressed projection input rows for external layout workers | `read` |
 | `POST` | `/databases/projections/umap-input` | Deprecated alias of `projection-input` | `read` |

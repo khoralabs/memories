@@ -98,7 +98,15 @@ export type UpdateMemoryFeaturesInput = {
 /** Unified feature preview for the focused memory (node or edge). */
 export type MemoryFeatures = {
   labels: MemoryLabelArm[];
-  content?: Array<{ sourceKey: string; text: string | null }>;
+  content?: Array<{
+    sourceKey: string;
+    sourceMapId: string;
+    text: string | null;
+    hasText: boolean;
+    hasVector: boolean;
+    contentHash?: string;
+    createdAt: number;
+  }>;
   properties?: Record<string, unknown> | null;
 };
 
@@ -188,6 +196,17 @@ export type MemoriesMemoryValue = {
     (patch: UpdateMemoryFeaturesInput): Promise<void>;
     (keyOrEdgeId: string, patch: UpdateMemoryFeaturesInput): Promise<void>;
   };
+
+  /**
+   * Upsert one content arm on the focused memory (or explicit key) without clearing other arms.
+   */
+  replaceFeature: (input: {
+    sourceKey: string;
+    text?: string;
+    vector?: number[];
+    /** Defaults to focused node/edge key. */
+    key?: string;
+  }) => Promise<{ sourceMapId: string; rootHex: string }>;
 
   /**
    * Edges incident to a node key (or focused node). For a focused edge, returns that
@@ -523,6 +542,32 @@ export function MemoriesNamespaceMemoriesProvider({
     [client, focusEdge, focusNode, focused, getEdge, namespace, reload],
   ) as MemoriesMemoryValue["updateFeatures"];
 
+  const replaceFeature = useCallback(
+    async (input: { sourceKey: string; text?: string; vector?: number[]; key?: string }) => {
+      const ns = namespace.trim();
+      const key =
+        input.key ??
+        (focused?.kind === "node"
+          ? focused.key
+          : focused?.kind === "edge"
+            ? focused.edgeId
+            : undefined);
+      if (key === undefined) {
+        throw new Error("replaceFeature requires a focused memory or key");
+      }
+      const result = await client.replaceFeature({
+        namespace: ns,
+        key,
+        sourceKey: input.sourceKey,
+        ...(input.text !== undefined ? { text: input.text } : {}),
+        ...(input.vector !== undefined ? { vector: input.vector } : {}),
+      });
+      await reload();
+      return result;
+    },
+    [client, focused, namespace, reload],
+  );
+
   const value = useMemo(
     (): MemoriesMemoryValue => ({
       payload,
@@ -544,6 +589,7 @@ export function MemoriesNamespaceMemoriesProvider({
       create,
       remove,
       updateFeatures,
+      replaceFeature,
       linkedEdges,
       features,
       getMemory,
@@ -567,6 +613,7 @@ export function MemoriesNamespaceMemoriesProvider({
       create,
       remove,
       updateFeatures,
+      replaceFeature,
       linkedEdges,
       features,
       getMemory,

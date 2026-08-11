@@ -39,6 +39,16 @@ export type GraphNamespaceCounts = {
   edgeCount: number;
 };
 
+/** Feature inventory row for one source map (no text/vector payloads). */
+export type SourceMapInventoryItem = {
+  sourceKey: string;
+  sourceMapId: string;
+  contentHash?: string;
+  createdAt: number;
+  hasText: boolean;
+  hasVector: boolean;
+};
+
 /**
  * Graph profiling stats for one primary namespace.
  * `labelKinds` histograms use the same visibility set as {@link GraphNamespaceCounts}
@@ -220,6 +230,12 @@ export interface MemoriesMutationCore {
       | { memoryKind: "node"; memoryId: string; nodeId: string }
       | { memoryKind: "edge"; memoryId: string; edgeId: string },
   ): void;
+
+  /**
+   * Delete features (text/FTS/vector/vec-index) and the source_maps row for one source map.
+   * Idempotent when the map is already absent. Does not touch other arms or graph topology.
+   */
+  clearSourceMapFeatures(op: MemoryOpContext, sourceMapId: string): void;
 
   /** Upsert root memory row; returns stable ids and creation timestamp field used by validators. */
   upsertMemory(
@@ -593,11 +609,23 @@ export interface MemoriesPersistenceReads {
   /** Source map rows for a memory, newest first, capped at `limit`. */
   listSourceMapsForMemory(memoryId: string, limit: number): SourceMap[];
 
+  /**
+   * Feature inventory for a memory (newest first, capped at `limit`): ids, hashes, and
+   * text/vector presence — no payloads.
+   */
+  listSourceMapInventoryForMemory(memoryId: string, limit: number): SourceMapInventoryItem[];
+
   /** Text lines joined with source keys for JSONL sync and similar export paths. */
   listTextFeatureExportRowsForMemory(memoryId: string): TextFeatureExportRow[];
 
   /** Display text attached to one source map row, truncated to `maxChars` when supplied. */
   getSourceMapTextPreview(sourceMapId: string, maxChars?: number): string | null;
+
+  /**
+   * Full joined text for one source map (all text_features, `\n\n`-joined, no truncation).
+   * Returns `null` when there are no text features.
+   */
+  getSourceMapText(sourceMapId: string): string | null;
 
   /**
    * Distinct embedding widths present in the store's vector indexes (one entry per width in use).

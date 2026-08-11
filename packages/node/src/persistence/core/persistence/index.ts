@@ -54,6 +54,7 @@ export type {
   NamespaceMetadataInfo,
   SearchNamespaceScope,
   SearchVectorSourceMapIdsResult,
+  SourceMapInventoryItem,
   VectorSearchMethod,
 } from "./types";
 export {

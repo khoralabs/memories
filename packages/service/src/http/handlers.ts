@@ -62,6 +62,8 @@ import {
   handleDatabaseProvenanceTimestamp,
   handleDatabaseSearch,
   handleDatabaseSearchNamespaces,
+  handleDatabaseSourceMapReplace,
+  handleDatabaseSourceMapText,
   handleDatabaseSourceMapTextPreview,
   handleDatabaseSuppressMemory,
   handleDatabaseSuppressNamespace,
@@ -494,6 +496,29 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseSourceMapTextPreview(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/source-map/text") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return handleDatabaseSourceMapText(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/source-map/replace") {
+      const { body, bodySha256 } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
+      const attribution =
+        opts.attribution !== undefined
+          ? await buildRequestAttribution(opts.attribution, actor, req, bodySha256)
+          : undefined;
+      return await handleDatabaseSourceMapReplace(
+        opts.service,
+        body,
+        attribution,
+        namespacePathPolicyFromHttpOpts(opts),
+      );
     }
 
     if (req.method === "POST" && url.pathname === "/databases/vector-dimensions") {

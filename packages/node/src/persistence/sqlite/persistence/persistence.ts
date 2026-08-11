@@ -17,6 +17,7 @@ import type {
 import { resolveNamespacePathPolicy } from "../../../persistence/core";
 import type { SourceMap, TextFeatureExportRow } from "../../../persistence/core/persistence";
 import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
+import { clearSourceMapFeatures as clearSourceMapFeaturesQuery } from "./models/clear-source-map-features";
 import {
   appendDeleteOutboxEntry,
   appendMergeOutboxEntries,
@@ -43,6 +44,7 @@ import {
 } from "./models/graph-index";
 import { syncLabelPropsSearchFeatures as syncLabelPropsSearchFeaturesImpl } from "./models/label-props-search";
 import { listMemoryNamespaces as listMemoryNamespacesQuery } from "./models/list-memory-namespaces";
+import { listSourceMapInventoryForMemory as listSourceMapInventoryForMemoryQuery } from "./models/list-source-map-inventory-for-memory";
 import { listSourceMapsForMemory as listSourceMapsForMemoryQuery } from "./models/list-source-maps-for-memory";
 import { listTextFeatureExportRowsForMemory as listTextFeatureExportRowsForMemoryQuery } from "./models/list-text-feature-export-rows";
 import {
@@ -209,6 +211,10 @@ export class MemoriesPersistence implements IMemoriesPersistence {
       | { memoryKind: "edge"; memoryId: string; edgeId: string },
   ): void {
     clearMemorySubtree(this.ctx(op), input);
+  }
+
+  clearSourceMapFeatures(op: MemoryOpContext, sourceMapId: string): void {
+    clearSourceMapFeaturesQuery(this.ctx(op), sourceMapId);
   }
 
   findMemoryAssociation(
@@ -535,11 +541,22 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return listSourceMapsForMemoryQuery(this.readCtx(), memoryId, limit);
   }
 
+  listSourceMapInventoryForMemory(memoryId: string, limit: number) {
+    return listSourceMapInventoryForMemoryQuery(this.readCtx(), memoryId, limit);
+  }
+
   listTextFeatureExportRowsForMemory(memoryId: string): TextFeatureExportRow[] {
     return listTextFeatureExportRowsForMemoryQuery(this.readCtx(), memoryId);
   }
 
   getSourceMapTextPreview(sourceMapId: string, maxChars = 8000): string | null {
+    const joined = this.getSourceMapText(sourceMapId);
+    if (joined === null) return null;
+    if (joined.length <= maxChars) return joined;
+    return `${joined.slice(0, Math.max(0, maxChars - 1))}…`;
+  }
+
+  getSourceMapText(sourceMapId: string): string | null {
     const rows = this.db
       .query<{ text: string }, [string]>(
         `SELECT tf.text AS text
@@ -549,9 +566,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
       )
       .all(sourceMapId);
     if (rows.length === 0) return null;
-    const joined = rows.map((row) => row.text).join("\n\n");
-    if (joined.length <= maxChars) return joined;
-    return `${joined.slice(0, Math.max(0, maxChars - 1))}…`;
+    return rows.map((row) => row.text).join("\n\n");
   }
 
   listVectorEmbeddingIndexDimensions(): number[] {

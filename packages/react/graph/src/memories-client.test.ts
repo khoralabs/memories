@@ -101,6 +101,7 @@ function createMockReads(
     deleteNamespace:
       overrides.deleteNamespace ?? (async () => ({ namespaces: [], deletedMemories: 0 })),
     getSourceMapTextPreview: overrides.getSourceMapTextPreview ?? (async () => "snippet"),
+    getSourceMapText: async () => "full-snippet",
   } as unknown as RemoteMemoriesReadClient;
 }
 
@@ -665,7 +666,16 @@ describe("createServiceReactMemoriesClient", () => {
           key: "k",
           namespace: "ns",
           labels: [],
-          content: [{ sourceKey: "body", text: "hi" }],
+          content: [
+            {
+              sourceKey: "body",
+              sourceMapId: "sm1",
+              text: "hi",
+              hasText: true,
+              hasVector: false,
+              createdAt: 1,
+            },
+          ],
           properties: { note: "x" },
           suppressed: false,
         };
@@ -683,7 +693,16 @@ describe("createServiceReactMemoriesClient", () => {
       key: "k",
       namespace: "ns",
       labels: [],
-      content: [{ sourceKey: "body", text: "hi" }],
+      content: [
+        {
+          sourceKey: "body",
+          sourceMapId: "sm1",
+          text: "hi",
+          hasText: true,
+          hasVector: false,
+          createdAt: 1,
+        },
+      ],
       properties: { note: "x" },
       suppressed: false,
     });

@@ -28,6 +28,11 @@ import {
   mergeMemoryAsync,
   zMergeMemoryContentItem,
 } from "./merge-memory-async";
+import type {
+  ReplaceMemoryFeatureParams,
+  ReplaceMemoryFeatureResult,
+} from "./replace-memory-feature";
+import { replaceMemoryFeatureAsync } from "./replace-memory-feature-async";
 import type { Store } from "./resolve-sourcemap.js";
 import {
   type SearchHit,
@@ -163,6 +168,20 @@ export class MemoriesClientAsync<
     });
     await this.syncLexicalExportToStore(params.namespace, mergedKeys);
     return mergedKeys;
+  }
+
+  /**
+   * Upsert one content arm (text and/or vector) without clearing other arms or graph topology.
+   */
+  async replaceMemoryFeature(
+    params: ReplaceMemoryFeatureParams,
+  ): Promise<ReplaceMemoryFeatureResult> {
+    const result = await replaceMemoryFeatureAsync(this.mutationCtx, params);
+    const memoryId = await this.persistence.findMemoryIdByKey(params.namespace, params.key);
+    if (memoryId !== undefined) {
+      await this.syncLexicalExportToStore(params.namespace, [memoryId]);
+    }
+    return result;
   }
 
   async deleteMemory(params: DeleteMemoryParams): Promise<void> {

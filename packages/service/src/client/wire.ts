@@ -303,7 +303,15 @@ export type DatabaseMemoryPreviewResponse = {
   key: string;
   namespace: string;
   labels: OntologyLabelWire[];
-  content: Array<{ sourceKey: string; text: string | null }>;
+  content: Array<{
+    sourceKey: string;
+    sourceMapId: string;
+    text: string | null;
+    hasText: boolean;
+    hasVector: boolean;
+    contentHash?: string;
+    createdAt: number;
+  }>;
   /** Freeform JSON from `nodes.properties` (not ontology label props). */
   properties: Record<string, unknown> | null;
   /** Exact-path `memories.suppressed` flag. */
@@ -315,6 +323,24 @@ export type DatabaseSourceMapTextPreviewRequest = DatabaseScopedBody<{
   maxChars?: number;
 }>;
 export type DatabaseSourceMapTextPreviewResponse = { text: string | null };
+
+export type DatabaseSourceMapTextRequest = DatabaseScopedBody<{
+  sourceMapId: string;
+}>;
+export type DatabaseSourceMapTextResponse = { text: string | null };
+
+export type DatabaseSourceMapReplaceRequest = DatabaseScopedBody<{
+  namespace: string;
+  key: string;
+  sourceKey: string;
+  text?: string;
+  vector?: number[];
+  intentSnapshotId?: string;
+}>;
+export type DatabaseSourceMapReplaceResponse = {
+  sourceMapId: string;
+  rootHex: string;
+};
 
 export type DatabaseVectorDimensionsRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseVectorDimensionsResponse = { dimensions: number[] };

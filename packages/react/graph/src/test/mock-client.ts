@@ -60,6 +60,7 @@ export function createMockReactClient(
     suppressNamespace: mock(async () => {}),
     unsuppressNamespace: mock(async () => {}),
     mergeMemory: mock(async () => ({ memoryIds: [] })),
+    replaceFeature: mock(async () => ({ sourceMapId: "sm", rootHex: "00" })),
     deleteMemory: mock(async () => {}),
     getMemoryPreview: mock(async () => ({
       key: "",
@@ -69,6 +70,7 @@ export function createMockReactClient(
       properties: null,
       suppressed: false,
     })),
+    getSourceMapText: mock(async () => null),
     ...overrides,
   };
   return client;

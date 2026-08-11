@@ -31,6 +31,7 @@ import type { LibsqlDatabase } from "./db";
 import { ctxExec } from "./db";
 import { VECTOR_FEATURES_ANN_INDEX_SQL } from "./libsql-schema";
 import { migrateMemoriesLibsql } from "./migrations";
+import { clearSourceMapFeatures as clearSourceMapFeaturesQuery } from "./models/clear-source-map-features";
 import {
   appendDeleteOutboxEntry,
   appendMergeOutboxEntries,
@@ -55,6 +56,7 @@ import {
   statsGraphForNamespace as statsGraphForNamespaceQuery,
 } from "./models/graph-index";
 import { syncLabelPropsSearchFeatures as syncLabelPropsSearchFeaturesImpl } from "./models/label-props-search";
+import { listSourceMapInventoryForMemory as listSourceMapInventoryForMemoryQuery } from "./models/list-source-map-inventory-for-memory";
 import { listSourceMapsForMemory as listSourceMapsForMemoryQuery } from "./models/list-source-maps-for-memory";
 import { listTextFeatureExportRowsForMemory as listTextFeatureExportRowsForMemoryQuery } from "./models/list-text-feature-export-rows";
 import {
@@ -268,6 +270,10 @@ export class MemoriesLibsqlPersistence {
       | { memoryKind: "edge"; memoryId: string; edgeId: string },
   ): Promise<void> {
     await clearMemorySubtree(this.activeCtx(op), input);
+  }
+
+  async clearSourceMapFeatures(op: MemoryOpContext, sourceMapId: string): Promise<void> {
+    await clearSourceMapFeaturesQuery(this.activeCtx(op), sourceMapId);
   }
 
   async findMemoryAssociation(
@@ -719,11 +725,22 @@ export class MemoriesLibsqlPersistence {
     return listSourceMapsForMemoryQuery(this.readDbCtx(), memoryId, limit);
   }
 
+  async listSourceMapInventoryForMemory(memoryId: string, limit: number) {
+    return listSourceMapInventoryForMemoryQuery(this.readDbCtx(), memoryId, limit);
+  }
+
   async listTextFeatureExportRowsForMemory(memoryId: string): Promise<TextFeatureExportRow[]> {
     return listTextFeatureExportRowsForMemoryQuery(this.readDbCtx(), memoryId);
   }
 
   async getSourceMapTextPreview(sourceMapId: string, maxChars = 8000): Promise<string | null> {
+    const joined = await this.getSourceMapText(sourceMapId);
+    if (joined === null) return null;
+    if (joined.length <= maxChars) return joined;
+    return `${joined.slice(0, Math.max(0, maxChars - 1))}…`;
+  }
+
+  async getSourceMapText(sourceMapId: string): Promise<string | null> {
     const rows = await queryAll<{ text: string }>(
       this.db.client,
       `SELECT tf.text AS text
@@ -733,9 +750,7 @@ export class MemoriesLibsqlPersistence {
       [sourceMapId],
     );
     if (rows.length === 0) return null;
-    const joined = rows.map((row) => row.text).join("\n\n");
-    if (joined.length <= maxChars) return joined;
-    return `${joined.slice(0, Math.max(0, maxChars - 1))}…`;
+    return rows.map((row) => row.text).join("\n\n");
   }
 
   async listVectorEmbeddingIndexDimensions(): Promise<number[]> {

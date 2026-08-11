@@ -73,7 +73,9 @@ Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../co
 - One **source map** per merge content item `key` (user `source_key`).
 - **Text:** `insertLexicalFeature` ties searchable text to that source map; lexical search returns `source_map` ids.
 - **Vector:** `insertVectorFeature` stores a `Float32Array`; **query vectors in search must use the same dimensionality** as stored vectors for the vector arm to return hits.
-- If `MemoriesBackendCapabilities.vectorSearch` is `false`, the logic layer rejects merge items that include `vector` and skips the vector search arm (see capabilities below).
+- **Inventory:** `listSourceMapInventoryForMemory` returns ids + `hasText` / `hasVector` (no payloads). `getSourceMapText` returns full joined text; `getSourceMapTextPreview` truncates.
+- **Single-arm replace:** `clearSourceMapFeatures` + re-insert for one `sourceMapId` (via core `replaceMemoryFeature`) leaves other arms and graph topology intact. Full merge still uses `clearMemorySubtree`.
+- If `MemoriesBackendCapabilities.vectorSearch` is `false`, the logic layer rejects merge/replace items that include `vector` and skips the vector search arm (see capabilities below).
 
 ## Memory provenance chain + `source_maps.content_hash`
 

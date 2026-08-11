@@ -4,7 +4,6 @@ import {
   assertRenameRespectsMaxNamespaces,
   buildRenameNamespaceMap,
   collectRenameSourceNamespaces,
-  ids,
   MemoriesClient,
   MemoriesClientAsync,
   type MergeMemoryParams,
@@ -45,7 +44,9 @@ import {
   type DatabaseProjectionInputRequest,
   type DatabaseSearchNamespacesRequest,
   type DatabaseSearchRequest,
+  type DatabaseSourceMapReplaceRequest,
   type DatabaseSourceMapTextPreviewRequest,
+  type DatabaseSourceMapTextRequest,
   type DatabaseSuppressMemoryRequest,
   type DatabaseSuppressNamespaceRequest,
   type DatabaseUnsuppressMemoryRequest,
@@ -1020,13 +1021,20 @@ export async function handleDatabaseMemoryPreview(
   }
   const maxChars = scoped.maxChars ?? 2400;
   const labels = await handle.persistence.loadNodeLabelsForMemory(namespace, key);
-  const sourceMaps = await handle.persistence.listSourceMapsForMemory(memoryId, 32);
+  const inventory = await handle.persistence.listSourceMapInventoryForMemory(memoryId, 32);
   const content = await Promise.all(
-    sourceMaps.map(async (sm) => {
-      const sourceMapId = ids.sourceMap(memoryId, sm.source_key);
+    inventory.map(async (item) => {
+      const text = item.hasText
+        ? await handle.persistence.getSourceMapTextPreview(item.sourceMapId, maxChars)
+        : null;
       return {
-        sourceKey: sm.source_key,
-        text: await handle.persistence.getSourceMapTextPreview(sourceMapId, maxChars),
+        sourceKey: item.sourceKey,
+        sourceMapId: item.sourceMapId,
+        text,
+        hasText: item.hasText,
+        hasVector: item.hasVector,
+        ...(item.contentHash !== undefined ? { contentHash: item.contentHash } : {}),
+        createdAt: item.createdAt,
       };
     }),
   );
@@ -1058,6 +1066,101 @@ export async function handleDatabaseSourceMapTextPreview(
     maxChars,
   );
   return Response.json({ text, database });
+}
+
+export async function handleDatabaseSourceMapText(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as DatabaseSourceMapTextRequest;
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.sourceMapId !== "string" || scoped.sourceMapId.trim().length === 0) {
+    throw new HttpError("sourceMapId is required", 400);
+  }
+  const text = await handle.persistence.getSourceMapText(scoped.sourceMapId.trim());
+  return Response.json({ text, database });
+}
+
+export async function handleDatabaseSourceMapReplace(
+  service: MemoriesDatabaseService,
+  body: unknown,
+  serverAttribution?: MemoryMutationAttribution,
+  pathPolicy?: NamespacePathPolicy,
+): Promise<Response> {
+  const scoped = body as DatabaseSourceMapReplaceRequest & { intentSnapshotId?: string };
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.namespace !== "string" || typeof scoped.key !== "string") {
+    throw new HttpError("namespace and key are required", 400);
+  }
+  if (typeof scoped.sourceKey !== "string" || scoped.sourceKey.trim().length === 0) {
+    throw new HttpError("sourceKey is required", 400);
+  }
+  const namespace = scoped.namespace.trim();
+  const key = scoped.key.trim();
+  const sourceKey = scoped.sourceKey.trim();
+  if (namespace.length === 0 || key.length === 0) {
+    throw new HttpError("namespace and key are required", 400);
+  }
+  if (scoped.text === undefined && scoped.vector === undefined) {
+    throw new HttpError("text and/or vector is required", 400);
+  }
+  if (scoped.vector !== undefined) {
+    assertHttpVectorPayload(scoped.vector, "vector");
+  }
+
+  const intentSnapshotId =
+    typeof scoped.intentSnapshotId === "string" ? scoped.intentSnapshotId : undefined;
+  const attribution: MemoryMutationAttribution | undefined =
+    serverAttribution !== undefined || intentSnapshotId !== undefined
+      ? {
+          ...(serverAttribution !== undefined ? serverAttribution : {}),
+          ...(intentSnapshotId !== undefined ? { intentSnapshotId } : {}),
+        }
+      : undefined;
+
+  const policy = pathPolicy ?? resolveNamespacePathPolicy();
+  const emptyOntology = { nodeLabels: {}, edgeLabels: {} } as const;
+  const replaceParams = {
+    namespace,
+    key,
+    sourceKey,
+    ...(scoped.text !== undefined ? { text: scoped.text } : {}),
+    ...(scoped.vector !== undefined ? { vector: scoped.vector } : {}),
+    ...(attribution !== undefined ? { attribution } : {}),
+  };
+
+  try {
+    let result: { sourceMapId: string; rootHex: string };
+    if (handle.sync !== undefined) {
+      const client = new MemoriesClient(handle.sync.syncPersistence, emptyOntology, {
+        telemetry: handle.telemetry,
+        namespacePathPolicy: policy,
+      });
+      result = client.replaceMemoryFeature(replaceParams);
+    } else {
+      const client = new MemoriesClientAsync(handle.persistence, emptyOntology, {
+        telemetry: handle.telemetry,
+        namespacePathPolicy: policy,
+      });
+      result = await client.replaceMemoryFeature(replaceParams);
+    }
+    return Response.json({
+      sourceMapId: result.sourceMapId,
+      rootHex: result.rootHex,
+      database,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/memory not found/i.test(msg)) {
+      throw new HttpError("memory not found", 404);
+    }
+    if (e instanceof NamespaceConstraintError || e instanceof RangeError || e instanceof Error) {
+      if (/reserved|vectorSearch|content item|ZodError|invalid/i.test(msg)) {
+        throw new HttpError(msg, 400);
+      }
+    }
+    throw e;
+  }
 }
 
 export async function handleDatabaseVectorDimensions(

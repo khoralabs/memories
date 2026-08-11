@@ -15,6 +15,7 @@ export const MEMORIES_DATABASE_OWNER_KEY_ATTR = "memories.database.owner_key" as
 
 export type MemoriesOpName =
   | "merge"
+  | "replace_feature"
   | "delete"
   | "suppress"
   | "unsuppress"

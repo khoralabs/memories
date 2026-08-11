@@ -331,13 +331,31 @@ export function createServiceReactMemoriesClient(
     },
 
     async mergeMemory(input) {
-      return service.postJson<{ memoryIds: string[] }>("/databases/merge", {
+      const response = await service.postJson<{ memoryIds: string[] }>("/databases/merge", {
         database,
         params: input.params,
         ...(input.intentSnapshotId !== undefined
           ? { intentSnapshotId: input.intentSnapshotId }
           : {}),
       });
+      return { memoryIds: response.memoryIds };
+    },
+
+    async replaceFeature(input) {
+      return service.postJson<{ sourceMapId: string; rootHex: string }>(
+        "/databases/source-map/replace",
+        {
+          database,
+          namespace: input.namespace,
+          key: input.key,
+          sourceKey: input.sourceKey,
+          ...(input.text !== undefined ? { text: input.text } : {}),
+          ...(input.vector !== undefined ? { vector: input.vector } : {}),
+          ...(input.intentSnapshotId !== undefined
+            ? { intentSnapshotId: input.intentSnapshotId }
+            : {}),
+        },
+      );
     },
 
     async deleteMemory(input) {
@@ -354,6 +372,10 @@ export function createServiceReactMemoriesClient(
         key: input.key,
         ...(input.maxChars !== undefined ? { maxChars: input.maxChars } : {}),
       });
+    },
+
+    async getSourceMapText(input) {
+      return reads.getSourceMapText(input.sourceMapId);
     },
   };
 

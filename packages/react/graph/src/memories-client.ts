@@ -22,7 +22,15 @@ export type MemoryPreviewJson = {
   key: string;
   namespace: string;
   labels: Array<{ kind: string; props: Record<string, unknown> }>;
-  content: Array<{ sourceKey: string; text: string | null }>;
+  content: Array<{
+    sourceKey: string;
+    sourceMapId: string;
+    text: string | null;
+    hasText: boolean;
+    hasVector: boolean;
+    contentHash?: string;
+    createdAt: number;
+  }>;
   /** Freeform JSON from `nodes.properties` (not ontology label props). */
   properties: Record<string, unknown> | null;
   suppressed: boolean;
@@ -198,6 +206,17 @@ export type ReactMemoriesClient = {
     signal?: AbortSignal;
   }): Promise<{ memoryIds: string[] }>;
 
+  /** Upsert one content arm without clearing other arms. */
+  replaceFeature(input: {
+    namespace: string;
+    key: string;
+    sourceKey: string;
+    text?: string;
+    vector?: number[];
+    intentSnapshotId?: string;
+    signal?: AbortSignal;
+  }): Promise<{ sourceMapId: string; rootHex: string }>;
+
   deleteMemory(input: { namespace: string; key: string; signal?: AbortSignal }): Promise<void>;
 
   getMemoryPreview(input: {
@@ -206,4 +225,7 @@ export type ReactMemoriesClient = {
     maxChars?: number;
     signal?: AbortSignal;
   }): Promise<MemoryPreviewJson>;
+
+  /** Full joined text for a source map (no truncation). */
+  getSourceMapText(input: { sourceMapId: string; signal?: AbortSignal }): Promise<string | null>;
 };

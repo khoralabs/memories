@@ -33,6 +33,7 @@ import {
   type DatabaseGraphLayoutRequest,
   type DatabaseGraphStatsRequest,
   type DatabaseGraphStatsResponse,
+  type DatabaseMemoryPreviewResponse,
   type DatabaseMergeRequest,
   type DatabaseNamespaceExistsUnderPrefixResponse,
   type DatabaseNamespaceMetadata,
@@ -104,6 +105,7 @@ function createRemotePersistence(
     },
     getSourceMapTextPreview: async (sourceMapId: string, maxChars?: number) =>
       reads.getSourceMapTextPreview(sourceMapId, maxChars),
+    getSourceMapText: async (sourceMapId: string) => reads.getSourceMapText(sourceMapId),
   } as unknown as MemoriesPersistenceAsync;
 }
 
@@ -152,6 +154,31 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
     };
     const response = await this.#client.postJson<{ memoryIds: string[] }>("/databases/merge", body);
     return response.memoryIds;
+  }
+
+  override async replaceMemoryFeature(
+    params: Parameters<
+      MemoriesClientAsync<LabelSchemaMap, LabelSchemaMap>["replaceMemoryFeature"]
+    >[0],
+  ): Promise<{ sourceMapId: string; rootHex: string }> {
+    const { attribution, ...safeParams } = params as typeof params & {
+      attribution?: { intentSnapshotId?: string };
+    };
+    const body = {
+      database: this.#database,
+      namespace: safeParams.namespace,
+      key: safeParams.key,
+      sourceKey: safeParams.sourceKey,
+      ...(safeParams.text !== undefined ? { text: safeParams.text } : {}),
+      ...(safeParams.vector !== undefined ? { vector: safeParams.vector } : {}),
+      ...(attribution?.intentSnapshotId !== undefined
+        ? { intentSnapshotId: attribution.intentSnapshotId }
+        : {}),
+    };
+    return this.#client.postJson<{ sourceMapId: string; rootHex: string }>(
+      "/databases/source-map/replace",
+      body,
+    );
   }
 
   override async deleteMemory(params: DeleteMemoryParams): Promise<void> {
@@ -482,14 +509,11 @@ export class RemoteMemoriesReadClient {
     });
   }
 
-  async getMemoryPreview(input: { namespace: string; key: string; maxChars?: number }): Promise<{
-    key: string;
+  async getMemoryPreview(input: {
     namespace: string;
-    labels: Array<{ kind: string; props: Record<string, unknown> }>;
-    content: Array<{ sourceKey: string; text: string | null }>;
-    properties: Record<string, unknown> | null;
-    suppressed: boolean;
-  }> {
+    key: string;
+    maxChars?: number;
+  }): Promise<DatabaseMemoryPreviewResponse> {
     return this.#client.postJson("/databases/memory-preview", {
       database: this.#database,
       namespace: input.namespace,
@@ -502,6 +526,14 @@ export class RemoteMemoriesReadClient {
     const response = await this.#client.postJson<{ text: string | null }>(
       "/databases/source-map/text-preview",
       { database: this.#database, sourceMapId, maxChars },
+    );
+    return response.text;
+  }
+
+  async getSourceMapText(sourceMapId: string): Promise<string | null> {
+    const response = await this.#client.postJson<{ text: string | null }>(
+      "/databases/source-map/text",
+      { database: this.#database, sourceMapId },
     );
     return response.text;
   }
