@@ -1,5 +1,5 @@
 import type { MemoryOpContext } from "../../../../persistence/core";
-import { namespacePath } from "../../../../persistence/core/models/namespace-path";
+import { namespacePathFromStored } from "../../../../persistence/core/models/namespace-path";
 import type { DbCtx } from "../context";
 import type { TursoDatabase } from "../db";
 import { ctxExec, ctxQueryOne, readQueryOne } from "../db";
@@ -12,7 +12,7 @@ export async function findClosestSuppressedNamespace(
   db: TursoDatabase,
   namespace: string,
 ): Promise<string | null> {
-  const ns = namespacePath(namespace);
+  const ns = namespacePathFromStored(namespace);
   const row = await readQueryOne<{ namespace: string }>(
     db,
     `SELECT _id AS namespace FROM namespace_metadata
@@ -38,7 +38,7 @@ export async function setNamespaceSuppressed(
   op: MemoryOpContext,
   input: { namespace: string; suppressed: boolean },
 ): Promise<void> {
-  const ns = namespacePath(input.namespace);
+  const ns = namespacePathFromStored(input.namespace);
   const existing = await ctxQueryOne<{ alias: string | null; description: string }>(
     ctx,
     `SELECT display_name AS alias, description FROM namespace_metadata WHERE _id = ?`,

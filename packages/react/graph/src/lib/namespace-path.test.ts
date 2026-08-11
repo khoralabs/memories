@@ -27,8 +27,16 @@ describe("joinNamespacePath", () => {
 });
 
 describe("validateNamespacePath", () => {
-  test("enforces max depth", () => {
+  test("enforces max depth under default policy", () => {
     expect(validateNamespacePath("a/b/c/d/e/f")).toBeNull();
     expect(validateNamespacePath("a/b/c/d/e/f/g")).not.toBeNull();
+  });
+
+  test("accepts deeper paths when policy is raised", () => {
+    expect(validateNamespacePath("a/b/c/d/e/f/g", { maxDepth: 8 })).toBeNull();
+  });
+
+  test("accepts length 129 under default max length", () => {
+    expect(validateNamespacePath("a".repeat(129))).toBeNull();
   });
 });

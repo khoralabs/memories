@@ -9,7 +9,10 @@ import {
   MemoriesClientAsync,
   type MergeMemoryParams,
   NamespaceConstraintError,
+  type NamespacePathPolicy,
+  namespacePathFromStored,
   namespacePathsFromMetadata,
+  resolveNamespacePathPolicy,
   type SearchParams,
   searchAsync,
 } from "@khoralabs/memories-node";
@@ -63,6 +66,18 @@ import { labelMapsFromStoredOntology } from "./stored-ontology-label-schema";
 import { assertHttpVectorPayload } from "./vector-payload";
 
 const GLOBAL_ROOT = "_global_";
+
+export function namespacePathPolicyFromHttpOpts(opts: {
+  maxNamespaceDepth?: number;
+  maxNamespacePathLength?: number;
+}): NamespacePathPolicy {
+  return resolveNamespacePathPolicy({
+    ...(opts.maxNamespaceDepth !== undefined ? { maxDepth: opts.maxNamespaceDepth } : {}),
+    ...(opts.maxNamespacePathLength !== undefined
+      ? { maxLength: opts.maxNamespacePathLength }
+      : {}),
+  });
+}
 
 function mapNamespaceConstraint(error: unknown): never {
   if (error instanceof NamespaceConstraintError) {
@@ -377,6 +392,7 @@ export async function handleDatabaseMerge(
   serverAttribution?: MemoryMutationAttribution,
   ontologyStore?: MemoriesDatabaseOntologyStore,
   maxNamespaces?: number,
+  pathPolicy?: NamespacePathPolicy,
 ): Promise<Response> {
   const scoped = body as DatabaseMergeRequest & { intentSnapshotId?: string };
   if (scoped.params === undefined || typeof scoped.params !== "object") {
@@ -387,8 +403,9 @@ export async function handleDatabaseMerge(
   const safeParams = stripRemoteAttribution(
     scoped.params as MergeMemoryParams,
   ) as MergeMemoryParams;
+  const policy = pathPolicy ?? resolveNamespacePathPolicy();
   try {
-    const namespace = assertNamespacePath(String(safeParams.namespace ?? ""));
+    const namespace = assertNamespacePath(String(safeParams.namespace ?? ""), policy);
     await enforceMaxNamespaces(handle, namespace, maxNamespaces);
   } catch (error) {
     mapNamespaceConstraint(error);
@@ -414,11 +431,13 @@ export async function handleDatabaseMerge(
     if (handle.sync !== undefined) {
       const client = new MemoriesClient(handle.sync.syncPersistence, ontology, {
         telemetry: handle.telemetry,
+        namespacePathPolicy: policy,
       });
       memoryIds = client.mergeMemory(params);
     } else {
       const client = new MemoriesClientAsync(handle.persistence, ontology, {
         telemetry: handle.telemetry,
+        namespacePathPolicy: policy,
       });
       memoryIds = await client.mergeMemory(params);
     }
@@ -651,10 +670,13 @@ export async function handleDatabaseProvenanceTimestamp(
 export async function handleDatabaseCapabilities(
   service: MemoriesDatabaseService,
   body: unknown,
+  pathPolicy?: NamespacePathPolicy,
 ): Promise<Response> {
   const { database, handle } = await getHandle(service, body);
+  const limits = resolveNamespacePathPolicy(pathPolicy);
   const response: DatabaseCapabilitiesResponse = {
     capabilities: handle.persistence.capabilities as Record<string, boolean | undefined>,
+    namespaceLimits: { maxDepth: limits.maxDepth, maxLength: limits.maxLength },
   };
   return Response.json({ ...response, database });
 }
@@ -698,7 +720,7 @@ export async function handleDatabaseNamespacesUnderPrefix(
   }
   let prefix: string;
   try {
-    prefix = assertNamespacePath(scoped.prefix.trim());
+    prefix = namespacePathFromStored(scoped.prefix.trim());
   } catch (error) {
     mapNamespaceConstraint(error);
   }
@@ -722,7 +744,7 @@ export async function handleDatabaseNamespaceExistsUnderPrefix(
   }
   let prefix: string;
   try {
-    prefix = assertNamespacePath(scoped.prefix.trim());
+    prefix = namespacePathFromStored(scoped.prefix.trim());
   } catch (error) {
     mapNamespaceConstraint(error);
   }
@@ -753,6 +775,7 @@ export async function handleDatabaseNamespaceUpsert(
   service: MemoriesDatabaseService,
   body: unknown,
   maxNamespaces?: number,
+  pathPolicy?: NamespacePathPolicy,
 ): Promise<Response> {
   const scoped = body as {
     database?: unknown;
@@ -765,9 +788,10 @@ export async function handleDatabaseNamespaceUpsert(
   if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
     throw new HttpError("namespace is required", 400);
   }
+  const policy = pathPolicy ?? resolveNamespacePathPolicy();
   let namespace: string;
   try {
-    namespace = assertNamespacePath(scoped.namespace.trim());
+    namespace = assertNamespacePath(scoped.namespace.trim(), policy);
     await enforceMaxNamespaces(handle, namespace, maxNamespaces);
   } catch (error) {
     mapNamespaceConstraint(error);
@@ -840,7 +864,7 @@ export async function handleDatabaseNamespaceDelete(
   }
   let namespace: string;
   try {
-    namespace = assertNamespacePath(scoped.namespace.trim());
+    namespace = namespacePathFromStored(scoped.namespace.trim());
   } catch (error) {
     mapNamespaceConstraint(error);
   }
@@ -877,6 +901,7 @@ export async function handleDatabaseNamespaceRename(
   service: MemoriesDatabaseService,
   body: unknown,
   maxNamespaces?: number,
+  pathPolicy?: NamespacePathPolicy,
 ): Promise<Response> {
   const scoped = body as {
     database?: unknown;
@@ -891,11 +916,12 @@ export async function handleDatabaseNamespaceRename(
   if (typeof scoped.to !== "string" || scoped.to.trim().length === 0) {
     throw new HttpError("to is required", 400);
   }
+  const policy = pathPolicy ?? resolveNamespacePathPolicy();
   let from: string;
   let to: string;
   try {
-    from = assertNamespacePath(scoped.from.trim());
-    to = assertNamespacePath(scoped.to.trim());
+    from = namespacePathFromStored(scoped.from.trim());
+    to = assertNamespacePath(scoped.to.trim(), policy);
   } catch (error) {
     mapNamespaceConstraint(error);
   }

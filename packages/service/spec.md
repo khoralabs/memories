@@ -393,7 +393,10 @@ createMemoriesDatabaseService({ resolver, telemetry: createMemoriesOtelTelemetry
 
 Emits database lifecycle (`open` / `close` / `delete` / `evict`) and threads a database-bound sink into HTTP merge/search/delete so node ops include `memories.database.*` attributes. Libraries do not start an OTel SDK. Networked ingest (`POST /telemetry/events`) is planned — see [roadmap](./roadmap/README.md#telemetry-event-ingest-phase-2) and [otel README](../otel/README.md).
 
-Optional HTTP/stack option **`maxNamespaces`**: cap on distinct paths (memories ∪ metadata). `undefined` = unlimited. Enforced when merge, namespace metadata upsert, or literal rename introduces a **net-new** path (`NamespaceConstraintError` → HTTP 400). Path depth remains fixed at 6 segments (grammar).
+Optional HTTP/stack options for namespace quotas/limits:
+
+- **`maxNamespaces`**: cap on distinct paths (memories ∪ metadata). `undefined` = unlimited. Enforced when merge, namespace metadata upsert, or literal rename introduces a **net-new** path (`NamespaceConstraintError` → HTTP 400).
+- **`maxNamespaceDepth`** / **`maxNamespacePathLength`**: host write policy for path segment depth and character length (defaults **6** / **512**; absolute ceilings **32** / **2048**). Segment charset remains `[a-z0-9_-]+`. Advertised on `POST /databases/capabilities` as `namespaceLimits: { maxDepth, maxLength }`.
 
 **Namespace alias vs literal rename:** upsert `alias` is soft rename (UI label; path key unchanged; DB column `display_name`). `POST /databases/namespaces/rename` rematerializes memory/node/edge ids under a new path (rare/destructive). Upsert still accepts deprecated `displayName` as synonym for `alias`.
 

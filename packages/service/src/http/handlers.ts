@@ -68,6 +68,7 @@ import {
   handleDatabaseUnsuppressMemory,
   handleDatabaseUnsuppressNamespace,
   handleDatabaseVectorDimensions,
+  namespacePathPolicyFromHttpOpts,
 } from "./persistence-handlers";
 
 export type DatabaseIdBody = {
@@ -113,6 +114,10 @@ export type MemoriesServiceHttpOptions = {
    * Enforced on merge and namespace metadata upsert when introducing a new path.
    */
   maxNamespaces?: number;
+  /** Host write max namespace path depth (segments). Default 6; clamped to absolute max. */
+  maxNamespaceDepth?: number;
+  /** Host write max namespace path length (chars). Default 512; clamped to absolute max. */
+  maxNamespacePathLength?: number;
   projectionSource?: (input: {
     database: MemoriesDatabaseId;
     handle: MemoriesDatabaseHandle;
@@ -331,6 +336,7 @@ export async function handleMemoriesServiceHttpRequest(
         attribution,
         opts.ontology,
         opts.maxNamespaces,
+        namespacePathPolicyFromHttpOpts(opts),
       );
     }
 
@@ -407,7 +413,7 @@ export async function handleMemoriesServiceHttpRequest(
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());
-      return handleDatabaseCapabilities(opts.service, body);
+      return handleDatabaseCapabilities(opts.service, body, namespacePathPolicyFromHttpOpts(opts));
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces") {
@@ -442,7 +448,12 @@ export async function handleMemoriesServiceHttpRequest(
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, scopeFromNamespaceMutation(body));
-      return await handleDatabaseNamespaceUpsert(opts.service, body, opts.maxNamespaces);
+      return await handleDatabaseNamespaceUpsert(
+        opts.service,
+        body,
+        opts.maxNamespaces,
+        namespacePathPolicyFromHttpOpts(opts),
+      );
     }
 
     if (req.method === "POST" && url.pathname === "/databases/namespaces/delete") {
@@ -456,7 +467,12 @@ export async function handleMemoriesServiceHttpRequest(
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, scopeFromRename(body));
-      return await handleDatabaseNamespaceRename(opts.service, body, opts.maxNamespaces);
+      return await handleDatabaseNamespaceRename(
+        opts.service,
+        body,
+        opts.maxNamespaces,
+        namespacePathPolicyFromHttpOpts(opts),
+      );
     }
 
     if (req.method === "POST" && url.pathname === "/databases/edge-preview") {

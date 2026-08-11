@@ -1,17 +1,48 @@
 import { describe, expect, test } from "bun:test";
 import {
+  assertNamespacePath,
   canonicalizeNamespacePrefixes,
   isPrefixOf,
+  NAMESPACE_ABSOLUTE_MAX_DEPTH,
+  NAMESPACE_MAX_PATH_LENGTH,
   namespaceFromSegments,
   namespacePath,
   namespaceSegments,
+  parseNamespaceSyntax,
+  resolveNamespacePathPolicy,
   zNamespacePath,
 } from "./namespace-path";
 
 describe("namespacePath / zNamespacePath", () => {
-  test("accepts single segment and depth up to 6", () => {
+  test("accepts single segment and depth up to 6 under default policy", () => {
     expect(namespaceSegments(namespacePath("a"))).toEqual(["a"]);
     expect(namespaceSegments(namespacePath("a/b/c/d/e/f"))).toEqual(["a", "b", "c", "d", "e", "f"]);
+  });
+
+  test("rejects depth 7 under default policy", () => {
+    expect(() => namespacePath("a/b/c/d/e/f/g")).toThrow();
+  });
+
+  test("accepts depth 7 when policy maxDepth is raised", () => {
+    expect(assertNamespacePath("a/b/c/d/e/f/g", { maxDepth: 8 })).toBe("a/b/c/d/e/f/g");
+  });
+
+  test("accepts length 129 under new default max length", () => {
+    const seg = "a".repeat(129);
+    expect(seg.length).toBe(129);
+    expect(seg.length).toBeLessThanOrEqual(NAMESPACE_MAX_PATH_LENGTH);
+    expect(namespacePath(seg)).toBe(seg);
+  });
+
+  test("rejects over absolute max depth even with high policy", () => {
+    const parts = Array.from({ length: NAMESPACE_ABSOLUTE_MAX_DEPTH + 1 }, (_, i) => `s${i}`);
+    const deep = parts.join("/");
+    expect(() => assertNamespacePath(deep, { maxDepth: 100 })).toThrow();
+    expect(() => parseNamespaceSyntax(deep)).toThrow();
+  });
+
+  test("parseNamespaceSyntax accepts depth 7 (read path)", () => {
+    expect(parseNamespaceSyntax("a/b/c/d/e/f/g")).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
   });
 
   test("rejects empty, slashes, bad chars", () => {
@@ -26,6 +57,13 @@ describe("namespacePath / zNamespacePath", () => {
   test("zNamespacePath parses valid paths", () => {
     expect(zNamespacePath.parse("ns1")).toBe("ns1");
     expect(zNamespacePath.safeParse("bad!").success).toBe(false);
+  });
+
+  test("resolveNamespacePathPolicy clamps", () => {
+    expect(resolveNamespacePathPolicy({ maxDepth: 100 }).maxDepth).toBe(
+      NAMESPACE_ABSOLUTE_MAX_DEPTH,
+    );
+    expect(resolveNamespacePathPolicy({ maxDepth: 0 }).maxDepth).toBe(1);
   });
 });
 

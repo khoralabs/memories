@@ -43,6 +43,10 @@ export type CreateLocalSqliteServiceStackOptions = {
    * Pass through to {@link MemoriesServiceHttpOptions.maxNamespaces}.
    */
   maxNamespaces?: number;
+  /** Pass through to {@link MemoriesServiceHttpOptions.maxNamespaceDepth}. */
+  maxNamespaceDepth?: number;
+  /** Pass through to {@link MemoriesServiceHttpOptions.maxNamespacePathLength}. */
+  maxNamespacePathLength?: number;
 };
 
 export type LocalSqliteServiceStack = {
@@ -52,6 +56,8 @@ export type LocalSqliteServiceStack = {
   catalog: MemoriesDatabaseCatalogStore;
   defaultStrategy: SqliteBackendStrategy;
   maxNamespaces?: number;
+  maxNamespaceDepth?: number;
+  maxNamespacePathLength?: number;
 };
 
 export function createLocalSqliteServiceStack(
@@ -103,5 +109,9 @@ export function createLocalSqliteServiceStack(
     catalog,
     defaultStrategy,
     ...(opts.maxNamespaces !== undefined ? { maxNamespaces: opts.maxNamespaces } : {}),
+    ...(opts.maxNamespaceDepth !== undefined ? { maxNamespaceDepth: opts.maxNamespaceDepth } : {}),
+    ...(opts.maxNamespacePathLength !== undefined
+      ? { maxNamespacePathLength: opts.maxNamespacePathLength }
+      : {}),
   };
 }

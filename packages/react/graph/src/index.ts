@@ -144,6 +144,14 @@ export type {
   MemoriesGraphNamespaceEntry,
   MemoriesGraphNamespaceEntryInput,
 } from "./lib/namespace-entries.js";
+export {
+  joinNamespacePath,
+  NAMESPACE_MAX_DEPTH,
+  NAMESPACE_MAX_PATH_LENGTH,
+  type NamespacePathPolicy,
+  validateNamespacePath,
+  validateNamespaceSegment,
+} from "./lib/namespace-path.js";
 export { DEFAULT_SEARCH_DEBOUNCE_MS } from "./lib/search-debounce.js";
 export {
   installBenignResizeObserverErrorSuppression,

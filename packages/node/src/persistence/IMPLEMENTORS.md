@@ -116,7 +116,10 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 
 ## Namespace path constraints
 
-- Path grammar: 1..`NAMESPACE_MAX_DEPTH` (6) segments, `[a-z0-9_-]+`, max 128 chars. Violations throw **`NamespaceConstraintError`** (`invalid_path` | `max_depth`).
+- Segment charset and slash rules are fixed: non-empty path, no leading/trailing `/`, no `//`, each segment `[a-z0-9_-]+`.
+- **Write policy** (host-configurable): default max depth **`NAMESPACE_MAX_DEPTH` (6)** and max length **`NAMESPACE_MAX_PATH_LENGTH` (512)**. Hosts/service may raise or lower via `NamespacePathPolicy` / HTTP `maxNamespaceDepth` + `maxNamespacePathLength`. Values are clamped to absolute ceilings **`NAMESPACE_ABSOLUTE_MAX_DEPTH` (32)** and **`NAMESPACE_ABSOLUTE_MAX_PATH_LENGTH` (2048)**.
+- **Writes** use `assertNamespacePath` / `namespacePath` with the host policy. **Reads** / stored-row hydration use `parseNamespaceSyntax` / `namespacePathFromStored` (absolute ceilings only) so a raised host depth does not break readers still on default policy.
+- Policy violations throw **`NamespaceConstraintError`** (`invalid_path` | `max_depth`).
 - Optional **max distinct namespaces** (memories ∪ metadata) is enforced by hosts/service (`maxNamespaces`); introducing a new path when at the cap throws `NamespaceConstraintError` with code `max_namespaces`.
 
 ## Search arms and ranking

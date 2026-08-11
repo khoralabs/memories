@@ -1,6 +1,9 @@
 import type { ContentHash, SourceRef } from "@khoralabs/sourcemaps";
 import z from "zod";
-import { MEMORY_NAMESPACE_PATH_REGEX } from "../models/namespace-path";
+import {
+  MEMORY_NAMESPACE_PATH_REGEX,
+  NAMESPACE_ABSOLUTE_MAX_PATH_LENGTH,
+} from "../models/namespace-path";
 import { defineSchema, zId } from "./define-schema";
 
 /** Lowercase SHA-256 hex digest (64 chars, no `0x`). */
@@ -15,7 +18,7 @@ export type MemoryKind = z.infer<typeof zMemoryKind>;
  * `kind: edge` rows reference exactly one `edges` row via `edge_id` (no primary `nodes` row for `key`).
  */
 export const zMemory = z.object({
-  namespace: z.string().regex(MEMORY_NAMESPACE_PATH_REGEX).max(128),
+  namespace: z.string().regex(MEMORY_NAMESPACE_PATH_REGEX).max(NAMESPACE_ABSOLUTE_MAX_PATH_LENGTH),
   key: z.string(),
   kind: zMemoryKind,
   /** Set when `kind` is `edge`; unique per non-null value. */
@@ -110,7 +113,10 @@ export const zNodeLabelAssignment = z.object({
 });
 
 /** Scope identifier for DAG visibility (same path syntax as {@link MEMORY_NAMESPACE_PATH_REGEX}). */
-export const zScopePath = z.string().regex(MEMORY_NAMESPACE_PATH_REGEX).max(128);
+export const zScopePath = z
+  .string()
+  .regex(MEMORY_NAMESPACE_PATH_REGEX)
+  .max(NAMESPACE_ABSOLUTE_MAX_PATH_LENGTH);
 
 /**
  * Each primary graph node rows links to exactly one memory row.

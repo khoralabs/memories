@@ -194,6 +194,8 @@ export type DatabaseProvenanceTimestampResponse = { timestampMs: number | null }
 export type DatabaseCapabilitiesRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseCapabilitiesResponse = {
   capabilities: Record<string, boolean | undefined>;
+  /** Effective host write limits for namespace paths. */
+  namespaceLimits: { maxDepth: number; maxLength: number };
 };
 
 export type DatabaseNamespacesRequest = DatabaseScopedBody<{

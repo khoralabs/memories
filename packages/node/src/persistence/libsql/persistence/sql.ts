@@ -1,7 +1,7 @@
 import {
   asOfSqlClause,
   canonicalizeNamespacePrefixes,
-  namespacePath,
+  namespacePathFromStored,
   type SearchAsOf,
   type SearchNamespaceScope,
 } from "../../../persistence/core";
@@ -57,7 +57,7 @@ export function namespaceSubtreeOrClauses(
   namespaces: readonly string[],
   tableAlias?: string,
 ): { sql: string; bindings: unknown[] } {
-  const roots = canonicalizeNamespacePrefixes(namespaces.map((n) => namespacePath(n)));
+  const roots = canonicalizeNamespacePrefixes(namespaces.map((n) => namespacePathFromStored(n)));
   if (roots.length === 0) {
     return { sql: "1 = 0", bindings: [] };
   }
@@ -141,7 +141,7 @@ export function memoriesWhereClauseFromScope(
   }
 
   if (scope.kind === "exactScope") {
-    const ss = scope.scopes.map((s) => namespacePath(s));
+    const ss = scope.scopes.map((s) => namespacePathFromStored(s));
     if (ss.length === 0) {
       return { sql: "1 = 0", bindings: [] };
     }
@@ -154,7 +154,7 @@ export function memoriesWhereClauseFromScope(
     };
   }
 
-  const roots = scope.roots.map((r) => namespacePath(r));
+  const roots = scope.roots.map((r) => namespacePathFromStored(r));
   if (roots.length === 0) {
     return { sql: "1 = 0", bindings: [] };
   }

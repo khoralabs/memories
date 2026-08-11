@@ -11,7 +11,7 @@ import {
   type NeighborConstraint,
   type NeighborFilter,
   type NeighborNodesFilter,
-  namespacePath,
+  namespacePathFromStored,
   type OntologyLabelInstance,
   type SearchNamespaceScope,
 } from "../../../../persistence/core";
@@ -118,7 +118,7 @@ function namespaceSubtreeOrClauses(
   namespaces: readonly string[],
   tableAlias?: string,
 ): { sql: string; bindings: SQLQueryBindings[] } {
-  const roots = canonicalizeNamespacePrefixes(namespaces.map((n) => namespacePath(n)));
+  const roots = canonicalizeNamespacePrefixes(namespaces.map((n) => namespacePathFromStored(n)));
   if (roots.length === 0) {
     return { sql: "1 = 0", bindings: [] };
   }
@@ -197,7 +197,7 @@ function memoriesWhereClauseFromScope(
   }
 
   if (scope.kind === "exactScope") {
-    const ss = scope.scopes.map((s) => namespacePath(s));
+    const ss = scope.scopes.map((s) => namespacePathFromStored(s));
     if (ss.length === 0) {
       return { sql: "1 = 0", bindings: [] };
     }
@@ -211,7 +211,7 @@ function memoriesWhereClauseFromScope(
   }
 
   /** scopeDag */
-  const roots = scope.roots.map((r) => namespacePath(r));
+  const roots = scope.roots.map((r) => namespacePathFromStored(r));
   if (roots.length === 0) {
     return { sql: "1 = 0", bindings: [] };
   }
@@ -482,7 +482,7 @@ export function hydrateSourceMapHits(
       const mem: Memory = {
         _id: row.memoryId,
         _ts_created: row.memoryCreated,
-        namespace: namespacePath(row.namespace),
+        namespace: namespacePathFromStored(row.namespace),
         key: row.key,
         kind: mk === "edge" ? "edge" : "node",
         ...(mk === "edge" && row.memoryEdgeId ? { edge_id: row.memoryEdgeId } : {}),
@@ -690,7 +690,7 @@ export function listNeighborsForMemory<
       memory: {
         _id: row.memoryId,
         _ts_created: row.memoryCreated,
-        namespace: namespacePath(row.namespace),
+        namespace: namespacePathFromStored(row.namespace),
         key: row.key,
         kind: "node",
         suppressed:

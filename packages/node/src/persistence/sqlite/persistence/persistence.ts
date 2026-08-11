@@ -9,10 +9,12 @@ import type {
   MemoriesBackendCapabilities,
   MemoryOpContext,
   NamespaceMetadataInfo,
+  NamespacePathPolicy,
   NeighborFilter,
   SearchAsOf,
   SearchNamespaceScope,
 } from "../../../persistence/core";
+import { resolveNamespacePathPolicy } from "../../../persistence/core";
 import type { SourceMap, TextFeatureExportRow } from "../../../persistence/core/persistence";
 import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
 import {
@@ -103,13 +105,16 @@ import { hasVectorAnnSearch } from "./search-indexes";
 
 export class MemoriesPersistence implements IMemoriesPersistence {
   readonly capabilities: MemoriesBackendCapabilities;
+  readonly namespacePathPolicy: NamespacePathPolicy;
 
   private readonly stmts: MemoriesSqliteStmts;
 
   constructor(
     private readonly db: Database,
     private readonly labelPropsSearchFormatter?: LabelPropsSearchFormatter,
+    namespacePathPolicy?: NamespacePathPolicy,
   ) {
+    this.namespacePathPolicy = resolveNamespacePathPolicy(namespacePathPolicy);
     this.capabilities = {
       lexicalSearch: true,
       vectorSearch: true,
@@ -659,7 +664,14 @@ export function getMemoriesSqliteDatabase(persistence: IMemoriesPersistence): Da
 
 export function createMemoriesPersistence(
   db: Database,
-  options?: { labelPropsSearchFormatter?: LabelPropsSearchFormatter },
+  options?: {
+    labelPropsSearchFormatter?: LabelPropsSearchFormatter;
+    namespacePathPolicy?: NamespacePathPolicy;
+  },
 ): MemoriesPersistence {
-  return new MemoriesPersistence(db, options?.labelPropsSearchFormatter);
+  return new MemoriesPersistence(
+    db,
+    options?.labelPropsSearchFormatter,
+    options?.namespacePathPolicy,
+  );
 }

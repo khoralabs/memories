@@ -1,4 +1,4 @@
-import { namespacePath, stableId } from "../../../../persistence/core";
+import { namespacePathFromStored, stableId } from "../../../../persistence/core";
 import { memoriesPersistenceDocumentSchema } from "../../../../persistence/core/persistence";
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "./context";
@@ -60,7 +60,7 @@ export function rebuildScopeClosure(ctx: DbCtx): void {
 
 export function upsertScope(ctx: DbCtx, input: { scopeId: string }): void {
   const { now, stmts } = ctx;
-  const scopeId = namespacePath(input.scopeId);
+  const scopeId = namespacePathFromStored(input.scopeId);
   const doc = documentValidator(memoriesPersistenceDocumentSchema, "scopes");
   doc.parse({
     _id: scopeId,
@@ -81,8 +81,8 @@ export function linkScopes(
   input: { parentScopeId: string; childScopeId: string },
 ): void {
   const { db, now, stmts } = ctx;
-  const parent = namespacePath(input.parentScopeId);
-  const child = namespacePath(input.childScopeId);
+  const parent = namespacePathFromStored(input.parentScopeId);
+  const child = namespacePathFromStored(input.childScopeId);
   upsertScope(ctx, { scopeId: parent });
   upsertScope(ctx, { scopeId: child });
 
@@ -117,8 +117,8 @@ export function unlinkScopeEdge(
   input: { parentScopeId: string; childScopeId: string },
 ): void {
   const { stmts } = ctx;
-  const parent = namespacePath(input.parentScopeId);
-  const child = namespacePath(input.childScopeId);
+  const parent = namespacePathFromStored(input.parentScopeId);
+  const child = namespacePathFromStored(input.childScopeId);
   stmts.deleteScopeEdge.run(parent, child);
   rebuildScopeClosure(ctx);
 }
@@ -133,7 +133,7 @@ export function replaceMemoryScopes(
 
   const msDoc = documentValidator(memoriesPersistenceDocumentSchema, "memory_scopes");
   for (const raw of input.scopeIds) {
-    const scopeId = namespacePath(raw);
+    const scopeId = namespacePathFromStored(raw);
     upsertScope(ctx, { scopeId });
     const rowId = stableId("ms", memoryId, scopeId);
     msDoc.parse({

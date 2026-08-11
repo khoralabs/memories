@@ -6,7 +6,7 @@ import type {
   OntologyDefinition,
 } from "../../ontology/ontology.ts";
 import { propsSchemaToJson } from "../../ontology/ontology.ts";
-import type { NamespacePath } from "../../persistence/core";
+import type { NamespacePath, NamespacePathPolicy } from "../../persistence/core";
 import { assertNamespacePath, ids, MEMORY_SEARCH_META_SOURCE_KEY } from "../../persistence/core";
 import {
   type MemoriesPersistence,
@@ -34,6 +34,8 @@ export interface MutationCtx {
   persistence: MemoriesPersistence;
   /** Optional structured ops telemetry sink. */
   telemetry?: MemoriesTelemetry;
+  /** Host write policy for namespace paths (falls back to persistence.namespacePathPolicy). */
+  namespacePathPolicy?: NamespacePathPolicy;
 }
 
 export type { MemoryMutationAttribution } from "../../persistence/core/provenance";
@@ -250,6 +252,10 @@ export function mergeMemory(ctx: MutationCtx, params: MergeMemoryParams): string
   });
 }
 
+function pathPolicy(ctx: MutationCtx): NamespacePathPolicy | undefined {
+  return ctx.namespacePathPolicy ?? ctx.persistence.namespacePathPolicy;
+}
+
 function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ctx: MutationCtx,
   params: MergeMemoryParamsNode<TNode, TEdge>,
@@ -257,7 +263,7 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
   const { persistence } = ctx;
   const op = buildMemoryOpContext(params.attribution);
 
-  const namespace = assertNamespacePath(params.namespace);
+  const namespace = assertNamespacePath(params.namespace, pathPolicy(ctx));
   const memoryId = ids.memory(namespace, params.key);
   const nodeId = ids.node(namespace, params.key);
 
@@ -411,7 +417,7 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
   const { persistence } = ctx;
   const op = buildMemoryOpContext(params.attribution);
 
-  const namespace = assertNamespacePath(params.namespace);
+  const namespace = assertNamespacePath(params.namespace, pathPolicy(ctx));
   const memoryId = ids.memory(namespace, params.key);
 
   validateContentAndMetaVector(persistence, params.content, params.searchMetaVector);

@@ -1,4 +1,4 @@
-import type { NamespacePath } from "../models/namespace-path";
+import type { NamespacePath, NamespacePathPolicy } from "../models/namespace-path";
 import type {
   HydratedNeighbor,
   HydratedSourceMapHit,
@@ -702,6 +702,11 @@ export type MemoriesPersistence = MemoriesMutationCore &
   MemoriesPersistenceReads &
   MemoriesGraph & {
     capabilities?: MemoriesBackendCapabilities;
+    /**
+     * Host write policy for namespace path depth/length.
+     * Defaults apply when omitted ({@link DEFAULT_NAMESPACE_PATH_POLICY}).
+     */
+    namespacePathPolicy?: NamespacePathPolicy;
   };
 
 /** Core persistence passed to merge / search / delete APIs. */

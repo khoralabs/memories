@@ -5,6 +5,7 @@ import {
   validateEdgeLabel,
   validateNodeLabel,
 } from "../../ontology/ontology.ts";
+import type { NamespacePathPolicy } from "../../persistence/core";
 import type { MemoriesPersistenceAsync } from "../../persistence/core/persistence";
 import type { MemoriesTelemetry } from "../../telemetry/index.js";
 import type { DeleteMemoryParams } from "../models/delete-memory";
@@ -70,6 +71,7 @@ export class MemoriesClientAsync<
   private readonly store?: Store<EntityMap>;
   private readonly storeForNamespace?: (namespace: string) => Store<EntityMap> | undefined;
   private readonly telemetry?: MemoriesTelemetry;
+  private readonly namespacePathPolicy?: NamespacePathPolicy;
 
   constructor(
     persistence: MemoriesPersistenceAsync,
@@ -81,10 +83,15 @@ export class MemoriesClientAsync<
     this.store = options?.store;
     this.storeForNamespace = options?.storeForNamespace;
     this.telemetry = options?.telemetry;
+    this.namespacePathPolicy = options?.namespacePathPolicy;
   }
 
   private get mutationCtx(): MutationCtxAsync {
-    return { persistence: this.persistence, telemetry: this.telemetry };
+    return {
+      persistence: this.persistence,
+      telemetry: this.telemetry,
+      namespacePathPolicy: this.namespacePathPolicy ?? this.persistence.namespacePathPolicy,
+    };
   }
 
   private storeForMergeNamespace(namespace: string): Store<EntityMap> | undefined {

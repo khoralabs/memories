@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { namespacePath } from "../../../../persistence/core/models/namespace-path";
+import { namespacePathFromStored } from "../../../../persistence/core/models/namespace-path";
 import type {
   MemoryOpContext,
   NamespaceMetadataInfo,
@@ -25,7 +25,7 @@ function rowToInfo(row: NamespaceMetadataRow & { suppressed?: number }): Namespa
  * `null` when none apply.
  */
 export function findClosestSuppressedNamespace(db: Database, namespace: string): string | null {
-  const ns = namespacePath(namespace);
+  const ns = namespacePathFromStored(namespace);
   const row = db
     .query<{ namespace: string }, [string, string]>(
       `SELECT _id AS namespace FROM namespace_metadata
@@ -52,7 +52,7 @@ export function setNamespaceSuppressed(
   op: MemoryOpContext,
   input: { namespace: string; suppressed: boolean },
 ): void {
-  const ns = namespacePath(input.namespace);
+  const ns = namespacePathFromStored(input.namespace);
   const existing = db
     .query<{ alias: string | null; description: string }, [string]>(
       `SELECT display_name AS alias, description FROM namespace_metadata WHERE _id = ?`,
@@ -89,7 +89,7 @@ export function getNamespaceMetadata(
   db: Database,
   namespace: string,
 ): NamespaceMetadataInfo | undefined {
-  const ns = namespacePath(namespace);
+  const ns = namespacePathFromStored(namespace);
   const row = db
     .query<NamespaceMetadataRow & { suppressed: number }, [string]>(
       `SELECT _id AS id, display_name AS alias, description, suppressed
@@ -135,7 +135,7 @@ export function listNamespacesWithMetadataUnderPrefix(
   prefix: string,
   opts?: { includeSuppressed?: boolean },
 ): NamespaceMetadataInfo[] {
-  const root = namespacePath(prefix);
+  const root = namespacePathFromStored(prefix);
   const include = opts?.includeSuppressed === true;
   const byKey = new Map<string, NamespaceMetadataInfo>();
   for (const { namespace } of db
@@ -168,7 +168,7 @@ export function namespaceExistsUnderPrefix(
   prefix: string,
   opts?: { includeSuppressed?: boolean },
 ): boolean {
-  const root = namespacePath(prefix);
+  const root = namespacePathFromStored(prefix);
   const include = opts?.includeSuppressed === true;
   for (const { namespace } of db
     .query<{ namespace: string }, [string, string]>(
@@ -200,7 +200,7 @@ export function upsertNamespaceMetadata(
     description?: string;
   },
 ): void {
-  const ns = namespacePath(input.namespace);
+  const ns = namespacePathFromStored(input.namespace);
   const existing = db
     .query<{ alias: string | null; description: string }, [string]>(
       `SELECT display_name AS alias, description FROM namespace_metadata WHERE _id = ?`,
@@ -234,13 +234,13 @@ export function deleteNamespaceMetadata(
   _op: MemoryOpContext,
   namespace: string,
 ): void {
-  const ns = namespacePath(namespace);
+  const ns = namespacePathFromStored(namespace);
   db.run(`DELETE FROM namespace_metadata WHERE _id = ?`, [ns]);
 }
 
 /** Memory keys in one primary namespace. */
 export function listMemoryKeysInNamespace(db: Database, namespace: string): string[] {
-  const ns = namespacePath(namespace);
+  const ns = namespacePathFromStored(namespace);
   return db
     .query<{ key: string }, [string]>(`SELECT key FROM memories WHERE namespace = ?`)
     .all(ns)

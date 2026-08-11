@@ -1,4 +1,4 @@
-import type { NamespacePath } from "../../persistence/core";
+import type { NamespacePath, NamespacePathPolicy } from "../../persistence/core";
 import { assertNamespacePath, ids } from "../../persistence/core";
 import type { MemoriesPersistenceAsync, MemoryOpContext } from "../../persistence/core/persistence";
 import {
@@ -22,6 +22,12 @@ export interface MutationCtxAsync {
   persistence: MemoriesPersistenceAsync;
   /** Optional structured ops telemetry sink. */
   telemetry?: MemoriesTelemetry;
+  /** Host write policy for namespace paths (falls back to persistence.namespacePathPolicy). */
+  namespacePathPolicy?: NamespacePathPolicy;
+}
+
+function pathPolicyAsync(ctx: MutationCtxAsync): NamespacePathPolicy | undefined {
+  return ctx.namespacePathPolicy ?? ctx.persistence.namespacePathPolicy;
 }
 
 /**
@@ -45,7 +51,7 @@ export async function mergeMemoryAsync(
       const caps = resolveMemoriesBackendCapabilities(persistence);
       const op = buildMemoryOpContext(params.attribution);
 
-      const namespace = assertNamespacePath(params.namespace);
+      const namespace = assertNamespacePath(params.namespace, pathPolicyAsync(ctx));
 
       for (const item of params.content) {
         zMergeMemoryContentItem.parse(item);

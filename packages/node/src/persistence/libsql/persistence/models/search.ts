@@ -4,7 +4,7 @@ import {
   type NeighborConstraint,
   type NeighborFilter,
   type NeighborNodesFilter,
-  namespacePath,
+  namespacePathFromStored,
   type OntologyLabelInstance,
   type SearchAsOf,
   type SearchNamespaceScope,
@@ -285,7 +285,7 @@ export async function hydrateSourceMapHits(
       const mem: Memory = {
         _id: row.memoryId,
         _ts_created: row.memoryCreated,
-        namespace: namespacePath(row.namespace),
+        namespace: namespacePathFromStored(row.namespace),
         key: row.key,
         kind: mk === "edge" ? "edge" : "node",
         ...(mk === "edge" && row.memoryEdgeId ? { edge_id: row.memoryEdgeId } : {}),
@@ -492,7 +492,7 @@ export async function listNeighborsForMemory<
       memory: {
         _id: row.memoryId,
         _ts_created: row.memoryCreated,
-        namespace: namespacePath(row.namespace),
+        namespace: namespacePathFromStored(row.namespace),
         key: row.key,
         kind: "node",
         suppressed:

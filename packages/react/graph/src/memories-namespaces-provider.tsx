@@ -228,6 +228,11 @@ export type MemoriesNamespacesProviderProps = PropsWithChildren<{
    * @default false
    */
   includeSuppressed?: boolean;
+  /**
+   * Host write limits for namespace paths (e.g. from `/databases/capabilities` `namespaceLimits`).
+   * Defaults match memories-node (depth 6, length 512).
+   */
+  namespaceLimits?: { maxDepth?: number; maxLength?: number };
 }>;
 
 function resolveNamespaceRootProp(prop: string | undefined): string | null {
@@ -244,14 +249,17 @@ function resolveFocusedNamespace(
   return namespaceRoot ?? "";
 }
 
-function resolveCreatePath(input: CreateNamespaceInput): string {
+function resolveCreatePath(
+  input: CreateNamespaceInput,
+  policy?: { maxDepth?: number; maxLength?: number },
+): string {
   if ("namespace" in input) {
     return input.namespace.trim();
   }
   const segmentError = validateNamespaceSegment(input.name);
   if (segmentError) throw new Error(segmentError);
   const path = joinNamespacePath(input.parent, input.name.trim());
-  const pathError = validateNamespacePath(path);
+  const pathError = validateNamespacePath(path, policy);
   if (pathError) throw new Error(pathError);
   return path;
 }
@@ -282,6 +290,7 @@ export function MemoriesNamespacesProvider({
   namespaceRoot: namespaceRootProp,
   searchDebounceMs = DEFAULT_SEARCH_DEBOUNCE_MS,
   includeSuppressed = false,
+  namespaceLimits,
 }: MemoriesNamespacesProviderProps) {
   const client = useMemoriesClient();
   const { database } = useMemoriesDatabase();
@@ -453,8 +462,8 @@ export function MemoriesNamespacesProvider({
 
   const create = useCallback(
     async (input: CreateNamespaceInput) => {
-      const path = resolveCreatePath(input);
-      const pathError = validateNamespacePath(path);
+      const path = resolveCreatePath(input, namespaceLimits);
+      const pathError = validateNamespacePath(path, namespaceLimits);
       if (pathError) throw new Error(pathError);
       const entry = await client.upsertNamespace({
         namespace: path,
@@ -467,7 +476,7 @@ export function MemoriesNamespacesProvider({
       focus(path);
       return entry;
     },
-    [client, focus, reload],
+    [client, focus, reload, namespaceLimits],
   );
 
   const rename = useCallback(
@@ -571,7 +580,7 @@ export function MemoriesNamespacesProvider({
       searchLoading,
       searchError,
       validateSegment: validateNamespaceSegment,
-      validatePath: validateNamespacePath,
+      validatePath: (path: string) => validateNamespacePath(path, namespaceLimits),
       joinPath: joinNamespacePath,
     }),
     [
@@ -600,6 +609,7 @@ export function MemoriesNamespacesProvider({
       searchResults,
       searchLoading,
       searchError,
+      namespaceLimits,
     ],
   );
 

@@ -9,12 +9,16 @@ import type {
   MemoriesBackendCapabilities,
   MemoryOpContext,
   NamespaceMetadataInfo,
+  NamespacePathPolicy,
   NeighborFilter,
   OntologyLabelInstance,
   SearchAsOf,
   SearchNamespaceScope,
 } from "../../../persistence/core";
-import { namespacePath } from "../../../persistence/core/models/namespace-path";
+import {
+  namespacePath,
+  resolveNamespacePathPolicy,
+} from "../../../persistence/core/models/namespace-path";
 import type {
   MemoriesPersistenceAsync,
   SourceMap,
@@ -106,10 +110,12 @@ export type MemoriesTursoServerlessOptions = TursoCredentials & {
   db?: TursoDatabase;
   autoMigrate?: boolean;
   labelPropsSearchFormatter?: LabelPropsSearchFormatter;
+  namespacePathPolicy?: NamespacePathPolicy;
 };
 
 export class MemoriesTursoServerlessPersistence {
   readonly capabilities: MemoriesBackendCapabilities;
+  readonly namespacePathPolicy: NamespacePathPolicy;
 
   private readonly inTransaction = { current: false };
   private txCtx: DbCtx | undefined;
@@ -118,7 +124,9 @@ export class MemoriesTursoServerlessPersistence {
     readonly db: TursoDatabase,
     private readonly labelPropsSearchFormatter?: LabelPropsSearchFormatter,
     vectorAnnSearch = false,
+    namespacePathPolicy?: NamespacePathPolicy,
   ) {
+    this.namespacePathPolicy = resolveNamespacePathPolicy(namespacePathPolicy);
     this.capabilities = {
       lexicalSearch: true,
       vectorSearch: true,
@@ -843,6 +851,7 @@ export async function createMemoriesTursoServerlessPersistence(
     db,
     options.labelPropsSearchFormatter,
     vectorAnnSearch,
+    options.namespacePathPolicy,
   ) as unknown as MemoriesPersistenceAsync;
 }
 

@@ -1,4 +1,4 @@
-import { namespacePath, stableId } from "../../../../persistence/core";
+import { namespacePathFromStored, stableId } from "../../../../persistence/core";
 import { memoriesPersistenceDocumentSchema } from "../../../../persistence/core/persistence";
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "../context";
@@ -62,7 +62,7 @@ export async function rebuildScopeClosure(ctx: DbCtx): Promise<void> {
 }
 
 export async function upsertScope(ctx: DbCtx, input: { scopeId: string }): Promise<void> {
-  const scopeId = namespacePath(input.scopeId);
+  const scopeId = namespacePathFromStored(input.scopeId);
   const doc = documentValidator(memoriesPersistenceDocumentSchema, "scopes");
   doc.parse({
     _id: scopeId,
@@ -84,8 +84,8 @@ export async function linkScopes(
   ctx: DbCtx,
   input: { parentScopeId: string; childScopeId: string },
 ): Promise<void> {
-  const parent = namespacePath(input.parentScopeId);
-  const child = namespacePath(input.childScopeId);
+  const parent = namespacePathFromStored(input.parentScopeId);
+  const child = namespacePathFromStored(input.childScopeId);
   await upsertScope(ctx, { scopeId: parent });
   await upsertScope(ctx, { scopeId: child });
 
@@ -124,8 +124,8 @@ export async function unlinkScopeEdge(
   ctx: DbCtx,
   input: { parentScopeId: string; childScopeId: string },
 ): Promise<void> {
-  const parent = namespacePath(input.parentScopeId);
-  const child = namespacePath(input.childScopeId);
+  const parent = namespacePathFromStored(input.parentScopeId);
+  const child = namespacePathFromStored(input.childScopeId);
   await ctxExec(ctx, `DELETE FROM scope_edges WHERE parent_scope_id = ? AND child_scope_id = ?`, [
     parent,
     child,
@@ -142,7 +142,7 @@ export async function replaceMemoryScopes(
 
   const msDoc = documentValidator(memoriesPersistenceDocumentSchema, "memory_scopes");
   for (const raw of input.scopeIds) {
-    const scopeId = namespacePath(raw);
+    const scopeId = namespacePathFromStored(raw);
     await upsertScope(ctx, { scopeId });
     const rowId = stableId("ms", memoryId, scopeId);
     msDoc.parse({
