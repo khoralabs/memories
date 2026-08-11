@@ -130,23 +130,30 @@ describe("memory provenance SQL (SQLite)", () => {
     const forA = persistence.listProvenanceEvents({ namespace: "ns", key: "a", limit: 10 });
     expect(forA.every((e) => (e.event as { memory_key?: string }).memory_key === "a")).toBe(true);
     expect(forA.length).toBe(2);
-    expect(forA[0]?.createdAt).toBeGreaterThanOrEqual(forA[1]?.createdAt);
+    const first = forA[0];
+    const second = forA[1];
+    if (first === undefined || second === undefined) {
+      throw new Error("expected two provenance events for memory a");
+    }
+    expect(first.createdAt).toBeGreaterThanOrEqual(second.createdAt);
 
     const page1 = persistence.listProvenanceChain({ limit: 2 });
     expect(page1).toHaveLength(2);
+    const page1Tail = page1[1];
+    if (page1Tail === undefined) throw new Error("expected page1 tail");
     const page2 = persistence.listProvenanceChain({
       limit: 2,
-      beforeRootHex: page1[1]?.rootHex,
+      beforeRootHex: page1Tail.rootHex,
     });
     expect(page2.length).toBeGreaterThanOrEqual(1);
     expect(page2[0]?.rootHex).not.toBe(page1[0]?.rootHex);
-    expect(page2[0]?.rootHex).not.toBe(page1[1]?.rootHex);
+    expect(page2[0]?.rootHex).not.toBe(page1Tail.rootHex);
 
     const eventsPage = persistence.listProvenanceEvents({
       limit: 1,
-      before: { createdAt: forA[0]?.createdAt, id: forA[0]?.id },
+      before: { createdAt: first.createdAt, id: first.id },
     });
     expect(eventsPage).toHaveLength(1);
-    expect(eventsPage[0]?.id).not.toBe(forA[0]?.id);
+    expect(eventsPage[0]?.id).not.toBe(first.id);
   });
 });

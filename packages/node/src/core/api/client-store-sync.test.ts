@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { canonicalOntology } from "../../ontology/canonical.ts";
+import { defineOntology, factNodeLabelShape } from "../../ontology/index.ts";
 import type { TextFeatureExportRow } from "../../persistence/core/persistence";
 import {
   createMemoriesPersistence,
@@ -7,6 +7,11 @@ import {
 } from "../../persistence/sqlite/persistence/index";
 import { MemoriesClient } from "./client";
 import type { Store } from "./resolve-sourcemap";
+
+const testOntology = defineOntology({
+  nodeLabels: { fact: factNodeLabelShape },
+  edgeLabels: {},
+});
 
 function openTestPersistence() {
   const db = openTestMemoriesDatabase();
@@ -25,7 +30,7 @@ describe("MemoriesClient store sync", () => {
         syncCalls.push([...rows]);
       },
     };
-    const client = new MemoriesClient(persistence, canonicalOntology, { store });
+    const client = new MemoriesClient(persistence, testOntology, { store });
     client.mergeMemory({
       key: "m1",
       namespace: "ns",
@@ -55,7 +60,7 @@ describe("MemoriesClient store sync", () => {
         return { kind: "string", string: `ok:${sm.source_key}` };
       },
     };
-    const client = new MemoriesClient(persistence, canonicalOntology, { store });
+    const client = new MemoriesClient(persistence, testOntology, { store });
     client.mergeMemory({
       key: "m1",
       namespace: "ns",
@@ -80,7 +85,7 @@ describe("MemoriesClient store sync", () => {
 
   test("resolveSourcesForMemory throws when no store configured", async () => {
     const persistence = openTestPersistence();
-    const client = new MemoriesClient(persistence, canonicalOntology);
+    const client = new MemoriesClient(persistence, testOntology);
     await expect(client.resolveSourcesForMemory("ns", "any-id", 5)).rejects.toThrow(/store/);
   });
 });

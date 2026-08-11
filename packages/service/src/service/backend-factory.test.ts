@@ -1,12 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { unsupportedStorageFeature } from "../storage/core/index";
 import type {
   MemoriesDatabaseBackend,
   MemoriesDatabaseBackendFactory,
   MemoriesDatabaseBackendStrategy,
-} from "./backend";
+} from "../storage/core/index";
+import { createInMemoryPlacementStore, unsupportedStorageFeature } from "../storage/core/index";
 import { createCompositeBackendFactory, UnknownBackendStrategyError } from "./backend-factory";
-import { createInMemoryPlacementStore } from "./placement";
 import { createBackendResolver } from "./resolver";
 
 function backendFor(

@@ -1155,38 +1155,6 @@ describe("memories service persistence http handlers", () => {
     expect(res.status).toBe(501);
   }, 20_000);
 
-  test("deprecated umap-input path aliases projection-input", async () => {
-    const stack = createTestStack();
-    const database = { kind: "account", ownerKey: "owner-umap-alias" };
-    const handle = await stack.service.getHandle(database);
-    const sync = handle.sync;
-    if (sync === undefined) throw new Error("expected sqlite handle");
-    new MemoriesClient(sync.syncPersistence, testOntology).mergeMemory({
-      kind: "node",
-      key: "n1",
-      namespace: "ns/a",
-      content: [{ key: "text", text: "alias node" }],
-      labels: [],
-    });
-
-    const res = await handleMemoriesServiceHttpRequest(
-      new Request("http://localhost/databases/projections/umap-input", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ database, namespace: "ns/a", compression: "none" }),
-      }),
-      {
-        service: stack.service,
-        ontology: stack.ontology,
-        auth: createNoneAuthStrategy(),
-        projectionSource: createFakeProjectionSource,
-      },
-    );
-    expect(res.status).toBe(200);
-    const input = await decodeProjectionInput(await res.arrayBuffer(), { compression: "none" });
-    expect(input.embeddings[0]?.memoryKey).toBe("n1");
-  }, 20_000);
-
   test("projection input endpoint returns compressed projection input", async () => {
     const stack = createTestStack();
     const database = { kind: "account", ownerKey: "owner-projection" };

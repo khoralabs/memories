@@ -1,6 +1,6 @@
 import { ScanSearchIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import type { InputGroup, InputGroupInput } from "@/components/ui/input-group.js";
+import type { InputGroup } from "@/components/ui/input-group.js";
 import { createGraphSearchField } from "./lib/graph-search-field.js";
 import { useGraphMemoriesSearch } from "./use-graph-search.js";
 
@@ -36,7 +36,4 @@ export const GraphSearch = createGraphSearchField({
   StartIcon: ScanSearchIcon,
 });
 
-export type GraphSearchProps = ComponentProps<typeof InputGroup> & {
-  /** @deprecated Prefer `<GraphSearch.Input {…} />` when composing. */
-  inputProps?: ComponentProps<typeof InputGroupInput>;
-};
+export type GraphSearchProps = ComponentProps<typeof InputGroup>;

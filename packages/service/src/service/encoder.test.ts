@@ -4,7 +4,7 @@ import {
   createReversibleOwnerKeyEncoder,
   DATABASE_FILENAME,
   OWNER_KEY_ENCODING_VERSION,
-} from "./owner-key-encoder";
+} from "../storage/core/index";
 
 describe("database id encoder", () => {
   test("encodes database ids to path-safe reversible segments", () => {

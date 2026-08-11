@@ -214,7 +214,6 @@ export class MemoriesTursoServerlessPersistence {
     input: {
       namespace: string;
       alias?: string | null;
-      displayName?: string | null;
       description?: string;
     },
   ): Promise<void> {
@@ -224,12 +223,7 @@ export class MemoriesTursoServerlessPersistence {
       `SELECT display_name AS alias, description FROM namespace_metadata WHERE _id = ?`,
       [ns],
     );
-    const aliasPatch =
-      input.alias !== undefined
-        ? input.alias
-        : input.displayName !== undefined
-          ? input.displayName
-          : undefined;
+    const aliasPatch = input.alias !== undefined ? input.alias : undefined;
     const alias = aliasPatch !== undefined ? aliasPatch : (existing?.alias ?? null);
     const description =
       input.description !== undefined ? input.description : (existing?.description ?? "");

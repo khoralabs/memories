@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   type MemoriesDatabaseBackend,
-  type MemoriesDatabaseBackendResolver,
   UnsupportedStorageFeatureError,
   unsupportedStorageFeature,
-} from "./index";
+} from "../storage/core/index";
+import type { MemoriesDatabaseBackendResolver } from "./index";
 import { createMemoriesDatabaseService } from "./service";
 
 describe("MemoriesDatabaseService snapshot", () => {

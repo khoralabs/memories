@@ -182,7 +182,6 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     input: {
       namespace: string;
       alias?: string | null;
-      displayName?: string | null;
       description?: string;
     },
   ): void {

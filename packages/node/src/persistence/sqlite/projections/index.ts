@@ -28,17 +28,13 @@ import {
 export {
   buildNamespaceGraphLayoutFromProjectionInput,
   buildNamespaceGraphLayoutFromSource,
-  buildNamespaceGraphLayoutFromUmapInput,
   buildNamespaceSubtreeGraphLayoutFromSource,
   collectNamespaceProjectionInput,
-  collectNamespaceUmapInput,
   createMemoriesVisualizationFromSource,
   createSeededRandom,
   DEFAULT_UMAP_LAYOUT_SEED,
   decodeProjectionInput,
-  decodeUmapInput,
   encodeProjectionInput,
-  encodeUmapInput,
   fibonacciSphereLayout3D,
   type GraphLayoutEdge,
   type GraphLayoutNode,
@@ -48,20 +44,15 @@ export {
   minMaxNormalize3D,
   type NamespaceGraphLayout,
   type NamespaceProjectionInput,
-  type NamespaceUmapInput,
   type Point3,
   PROJECTION_INPUT_CONTENT_TYPE,
   PROJECTION_INPUT_ENCODING_HEADER,
   PROJECTION_INPUT_VERSION,
   QUALIFIED_MEMORY_KEY_SEP,
   qualifyMemoryKey,
-  UMAP_INPUT_CONTENT_TYPE,
-  UMAP_INPUT_ENCODING_HEADER,
-  UMAP_INPUT_VERSION,
   type Umap3DLayoutOptions,
   umap3DLayout,
   validateProjectionInput,
-  validateUmapInput,
 } from "../../../projections/index";
 export {
   createSqliteGraphProjectionSource,
@@ -181,9 +172,6 @@ export type CollectSqliteProjectionInputOptions = {
   provenanceHeadRootHex?: string;
 };
 
-/** @deprecated Use CollectSqliteProjectionInputOptions */
-export type CollectSqliteUmapInputOptions = CollectSqliteProjectionInputOptions;
-
 export function collectSqliteProjectionInput(
   db: Database,
   persistence: GraphProjectionGraphReads,
@@ -195,9 +183,6 @@ export function collectSqliteProjectionInput(
     scope: input.scope,
   });
 }
-
-/** @deprecated Use collectSqliteProjectionInput */
-export const collectSqliteUmapInput = collectSqliteProjectionInput;
 
 export function loadEdgePreview(
   persistence: SyncEdgePreviewReads,

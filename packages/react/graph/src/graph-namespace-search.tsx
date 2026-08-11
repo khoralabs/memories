@@ -1,6 +1,6 @@
 import { FolderSearchIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import type { InputGroup, InputGroupInput } from "@/components/ui/input-group.js";
+import type { InputGroup } from "@/components/ui/input-group.js";
 import { createGraphSearchField } from "./lib/graph-search-field.js";
 import { useGraphNamespacesSearch } from "./use-graph-search.js";
 
@@ -37,7 +37,4 @@ export const GraphNamespaceSearch = createGraphSearchField({
   StartIcon: FolderSearchIcon,
 });
 
-export type GraphNamespaceSearchProps = ComponentProps<typeof InputGroup> & {
-  /** @deprecated Prefer `<GraphNamespaceSearch.Input {…} />` when composing. */
-  inputProps?: ComponentProps<typeof InputGroupInput>;
-};
+export type GraphNamespaceSearchProps = ComponentProps<typeof InputGroup>;

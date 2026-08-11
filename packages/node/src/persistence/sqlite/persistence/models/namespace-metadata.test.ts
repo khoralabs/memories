@@ -124,7 +124,7 @@ describe("namespace metadata", () => {
     p.withTransaction(() => {
       p.upsertNamespaceMetadata(now, {
         namespace: "user/mem-only",
-        displayName: "Memories",
+        alias: "Memories",
       });
       expect(p.getNamespaceMetadata("user/mem-only")?.alias).toBe("Memories");
       expect(p.getNamespaceMetadata("user/mem-only")?.description).toBe("");

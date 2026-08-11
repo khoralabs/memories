@@ -2,27 +2,19 @@ import { describe, expect, test } from "bun:test";
 import { asOfSqlClause, normalizeSearchAsOf } from "./search-asof";
 
 describe("normalizeSearchAsOf", () => {
-  test("undefined when neither set", () => {
+  test("undefined when asOf unset", () => {
     expect(normalizeSearchAsOf({})).toBeUndefined();
   });
 
-  test("asOfTimestampMs aliases to lte", () => {
-    expect(normalizeSearchAsOf({ asOfTimestampMs: 10 })).toEqual({ lte: 10 });
+  test("passes through asOf.lte", () => {
+    expect(normalizeSearchAsOf({ asOf: { lte: 10 } })).toEqual({ lte: 10 });
   });
 
-  test("merges asOfTimestampMs into asOf when lte omitted", () => {
-    expect(normalizeSearchAsOf({ asOf: { gt: 1 }, asOfTimestampMs: 10 })).toEqual({
+  test("passes through combined bounds", () => {
+    expect(normalizeSearchAsOf({ asOf: { gt: 1, lte: 10 } })).toEqual({
       gt: 1,
       lte: 10,
     });
-  });
-
-  test("allows matching asOf.lte and asOfTimestampMs", () => {
-    expect(normalizeSearchAsOf({ asOf: { lte: 10 }, asOfTimestampMs: 10 })).toEqual({ lte: 10 });
-  });
-
-  test("rejects conflicting lte and asOfTimestampMs", () => {
-    expect(() => normalizeSearchAsOf({ asOf: { lte: 1 }, asOfTimestampMs: 2 })).toThrow(/conflict/);
   });
 
   test("rejects empty asOf", () => {

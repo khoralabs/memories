@@ -1,7 +1,6 @@
 export {
   type AutolinkIntegrateDeps,
   type IntegrateNewMemoryArgs,
-  integrateNewMemoryIntoGraph,
   runAutolinkIntegrate,
 } from "./integrate.js";
 export {

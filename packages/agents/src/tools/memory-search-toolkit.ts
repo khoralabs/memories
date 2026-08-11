@@ -13,15 +13,6 @@ import z from "zod";
 import { memoriesLog, memoriesLogToolBodies } from "./telemetry.js";
 import { elapsedMs } from "./timing.js";
 
-/** Re-exported from `@khoralabs/memories-node/helpers` for backward compatibility. */
-export type {
-  HybridMemorySearchInput,
-  HybridMemorySearchOptions,
-  MemorySearchHit,
-} from "@khoralabs/memories-node/helpers";
-/** Re-exported from `@khoralabs/memories-node/helpers` for backward compatibility. */
-export { embeddingCacheKey } from "@khoralabs/memories-node/helpers";
-
 /** Minimal logger for toolkit structured events (compatible with Pino). */
 export type MemorySearchLogger = {
   info: (obj: object, msg?: string) => void;
@@ -36,7 +27,8 @@ export type MemorySearchEnv = {
   /** Used to embed query text for the vector retrieval arm when that arm is active. */
   embeddingModel?: EmbeddingModel;
   /**
-   * Optional per-session cache for query embedding vectors (same normalized key as {@link embeddingCacheKey}).
+   * Optional per-session cache for query embedding vectors (same normalized key as
+   * `embeddingCacheKey` from `@khoralabs/memories-node/helpers`).
    * Instantiated in {@link buildMemorySearchToolkitContext}.
    */
   embeddingCache?: Map<string, number[]>;

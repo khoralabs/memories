@@ -172,7 +172,7 @@ export type MemoriesBackendCapabilities = {
   /** When `true`, retrieval can run without a namespace predicate (entire DB). Required for `searchEntireDatabase` on `SearchParams`. */
   unscopedSearch: boolean;
   /**
-   * When `true`, hybrid search honors `SearchParams.asOf` / deprecated `asOfTimestampMs`
+   * When `true`, hybrid search honors `SearchParams.asOf`
    * (memory `_ts_created` bounds). Backends that omit this key are treated as unsupported.
    */
   asOfTimestampMsSearch?: boolean;
@@ -445,7 +445,6 @@ export interface MemoriesMutationCore {
 
   /**
    * Upsert display metadata for a namespace path (may exist before any memories).
-   * Prefer `alias`; `displayName` is accepted as a deprecated synonym.
    * Omit `alias` to leave unchanged on update; pass `null` to clear (use key in UI).
    * Omit `description` to leave unchanged on update; default `""` on insert.
    */
@@ -454,8 +453,6 @@ export interface MemoriesMutationCore {
     input: {
       namespace: NamespacePath;
       alias?: string | null;
-      /** @deprecated Use {@link alias}. */
-      displayName?: string | null;
       description?: string;
     },
   ): void;

@@ -28,15 +28,5 @@ describe("search asOf capability gate", () => {
         },
       ),
     ).toThrow("asOfTimestampMsSearch");
-    expect(() =>
-      search(
-        { persistence: persistence as never },
-        {
-          namespace: "ns",
-          content: { text: "x" },
-          asOfTimestampMs: 1,
-        },
-      ),
-    ).toThrow("asOfTimestampMsSearch");
   });
 });

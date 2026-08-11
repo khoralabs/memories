@@ -12,14 +12,14 @@ import {
   type DatabaseAction,
   type MemoriesDatabaseAccessStrategy,
 } from "../auth/index";
+import type { MemoriesDatabaseService } from "../service/index";
 import type {
   DatabaseKind,
   MemoriesDatabaseCatalogStore,
   MemoriesDatabaseHandle,
   MemoriesDatabaseId,
   MemoriesDatabaseOntologyStore,
-  MemoriesDatabaseService,
-} from "../service/index";
+} from "../storage/core/index";
 import {
   scopeDatabase,
   scopeFromMemoryBody,
@@ -179,7 +179,6 @@ async function authorize(
     action,
     scope,
     ...(database !== undefined ? { database } : {}),
-    ...(scope.kind === "namespace" ? { namespace: scope.namespace } : {}),
   });
   return actor;
 }
@@ -573,11 +572,7 @@ export async function handleMemoriesServiceHttpRequest(
       return await handleDatabaseGraphStats(opts.service, body);
     }
 
-    if (
-      req.method === "POST" &&
-      (url.pathname === "/databases/projections/projection-input" ||
-        url.pathname === "/databases/projections/umap-input")
-    ) {
+    if (req.method === "POST" && url.pathname === "/databases/projections/projection-input") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));

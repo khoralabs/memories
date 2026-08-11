@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { unsupportedStorageFeature } from "../storage/core/index";
 import {
-  createBackendResolver,
   createInMemoryPlacementStore,
   type MemoriesDatabaseBackend,
   type MemoriesDatabaseBackendFactory,
   type MemoriesDatabaseId,
   type SqliteBackendStrategy,
-} from "./index";
+  unsupportedStorageFeature,
+} from "../storage/core/index";
+import { createBackendResolver } from "./index";
 
 function createMockBackend(
   strategy: SqliteBackendStrategy,

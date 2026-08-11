@@ -277,7 +277,6 @@ Suppression: discovery endpoints exclude suppressed memories/namespaces by defau
 | `POST` | `/databases/source-map/replace` | Upsert one content arm (text and/or vector) without clearing other arms | `write` |
 | `POST` | `/databases/vector-dimensions` | Vector index dimensions | `read` |
 | `POST` | `/databases/projections/projection-input` | Compressed projection input rows for external layout workers | `read` |
-| `POST` | `/databases/projections/umap-input` | Deprecated alias of `projection-input` | `read` |
 | `POST` | `/databases/graph-layout` | Ready graph layout JSON (projection-input → layout on server) | `read` |
 | `POST` | `/databases/ensure-scope-chain` | Ensure scope chain paths | `write` |
 | `POST` | `/databases/find-memory-id` | Resolve memory id by key | `read` |
@@ -317,8 +316,6 @@ type MemoriesDatabaseAccessStrategy = {
     action: "read" | "write" | "manage";
     database?: MemoriesDatabaseId;
     scope: AuthorizeScope;
-    /** @deprecated Mirrored when scope.kind === "namespace" */
-    namespace?: string;
   }): Promise<void>;
 };
 ```
@@ -404,7 +401,7 @@ Optional HTTP/stack options for namespace quotas/limits:
 - **`maxNamespaces`**: cap on distinct paths (memories ∪ metadata). `undefined` = unlimited. Enforced when merge, namespace metadata upsert, or literal rename introduces a **net-new** path (`NamespaceConstraintError` → HTTP 400).
 - **`maxNamespaceDepth`** / **`maxNamespacePathLength`**: host write policy for path segment depth and character length (defaults **6** / **512**; absolute ceilings **32** / **2048**). Segment charset remains `[a-z0-9_-]+`. Advertised on `POST /databases/capabilities` as `namespaceLimits: { maxDepth, maxLength }`.
 
-**Namespace alias vs literal rename:** upsert `alias` is soft rename (UI label; path key unchanged; DB column `display_name`). `POST /databases/namespaces/rename` rematerializes memory/node/edge ids under a new path (rare/destructive). Upsert still accepts deprecated `displayName` as synonym for `alias`.
+**Namespace alias vs literal rename:** upsert `alias` is soft rename (UI label; path key unchanged; DB column `display_name`). `POST /databases/namespaces/rename` rematerializes memory/node/edge ids under a new path (rare/destructive).
 
 ## Non-goals
 

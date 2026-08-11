@@ -21,10 +21,6 @@ export type AuthorizeInput = {
   action: DatabaseAction;
   database?: MemoriesDatabaseId;
   scope: AuthorizeScope;
-  /**
-   * @deprecated Prefer `scope`. Mirrored when `scope.kind === "namespace"` for back-compat.
-   */
-  namespace?: string;
 };
 
 export type MemoriesDatabaseAccessStrategy = {

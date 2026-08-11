@@ -134,7 +134,8 @@ describe("feature inventory + single-arm replace", () => {
     );
     expect(replace.status).toBe(200);
     const replaceBody = (await replace.json()) as { sourceMapId: string; rootHex: string };
-    expect(replaceBody.sourceMapId).toBe(bodyArm?.sourceMapId);
+    if (bodyArm === undefined) throw new Error("expected body content arm");
+    expect(replaceBody.sourceMapId).toBe(bodyArm.sourceMapId);
     expect(replaceBody.rootHex.length).toBeGreaterThan(0);
 
     const preview2 = await handleMemoriesServiceHttpRequest(

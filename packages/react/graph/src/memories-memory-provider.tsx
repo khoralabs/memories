@@ -624,16 +624,6 @@ export function MemoriesNamespaceMemoriesProvider({
   return <MemoriesMemoryContext.Provider value={value}>{children}</MemoriesMemoryContext.Provider>;
 }
 
-/**
- * @deprecated Use {@link MemoriesNamespaceMemoriesProvider}.
- */
-export const MemoriesMemoryProvider = MemoriesNamespaceMemoriesProvider;
-
-/**
- * @deprecated Use {@link MemoriesNamespaceMemoriesProviderProps}.
- */
-export type MemoriesMemoryProviderProps = MemoriesNamespaceMemoriesProviderProps;
-
 /** Access {@link MemoriesMemoryValue}; must be under {@link MemoriesNamespaceMemoriesProvider}. */
 export function useMemoriesMemory(): MemoriesMemoryValue {
   const ctx = useContext(MemoriesMemoryContext);

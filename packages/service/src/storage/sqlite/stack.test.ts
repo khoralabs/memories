@@ -4,13 +4,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { ensureCustomSqliteForExtensions } from "@khoralabs/memories-node/sqlite";
 import { TEST_SQLCIPHER_KEY } from "@khoralabs/sqlite-crypto";
+import { createCompositeBackendFactory } from "../../service/index";
 import type {
   MemoriesDatabaseBackend,
   MemoriesDatabaseBackendFactory,
   MemoriesDatabaseBackendStrategy,
   TursoServerlessBackendStrategy,
-} from "../../service/index";
-import { createCompositeBackendFactory, unsupportedStorageFeature } from "../../service/index";
+} from "../../storage/core/index";
+import { unsupportedStorageFeature } from "../../storage/core/index";
 import { createLocalSqliteBackendFactory } from "./local-sqlite-backend";
 import { createLocalSqliteServiceStack } from "./stack";
 

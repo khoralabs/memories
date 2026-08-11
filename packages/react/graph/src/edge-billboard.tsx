@@ -322,8 +322,3 @@ export const EdgeBillboard = Object.assign(EdgeBillboardRoot, {
   Metadata: EdgeBillboardMetadata,
   Loading: EdgeBillboardLoading,
 });
-
-/** @deprecated Prefer {@link EdgeBillboard}. */
-export function EdgePreviewCard(props: EdgeBillboardProps) {
-  return <EdgeBillboard {...props} />;
-}

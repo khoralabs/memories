@@ -18,21 +18,11 @@ function assertFinite(label: string, value: number): void {
 }
 
 /**
- * Merge deprecated `asOfTimestampMs` (lte alias) with `asOf`.
- * Returns `undefined` when neither is set.
+ * Validate `asOf` bounds. Returns `undefined` when unset.
  */
-export function normalizeSearchAsOf(input: {
-  asOf?: SearchAsOf;
-  asOfTimestampMs?: number;
-}): SearchAsOf | undefined {
-  const { asOf, asOfTimestampMs } = input;
-  if (asOf === undefined && asOfTimestampMs === undefined) return undefined;
-
-  if (asOfTimestampMs !== undefined) assertFinite("asOfTimestampMs", asOfTimestampMs);
-
-  if (asOf === undefined) {
-    return { lte: asOfTimestampMs };
-  }
+export function normalizeSearchAsOf(input: { asOf?: SearchAsOf }): SearchAsOf | undefined {
+  const { asOf } = input;
+  if (asOf === undefined) return undefined;
 
   if (asOf === null || typeof asOf !== "object" || Array.isArray(asOf)) {
     throw new Error("SearchParams.asOf must be an object");
@@ -44,15 +34,6 @@ export function normalizeSearchAsOf(input: {
     if (v === undefined) continue;
     assertFinite(op, v);
     out[op] = v;
-  }
-
-  if (asOfTimestampMs !== undefined) {
-    if (out.lte !== undefined && out.lte !== asOfTimestampMs) {
-      throw new Error(
-        "SearchParams.asOf.lte and asOfTimestampMs conflict (must be equal when both set)",
-      );
-    }
-    out.lte = asOfTimestampMs;
   }
 
   if (OPS.every((op) => out[op] === undefined)) {

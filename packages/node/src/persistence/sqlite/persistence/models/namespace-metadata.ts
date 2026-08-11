@@ -74,13 +74,9 @@ export function setNamespaceSuppressed(
   );
 }
 
-/** Resolve canonical alias from upsert input (`alias` wins over deprecated `displayName`). */
-export function resolveAliasPatch(input: {
-  alias?: string | null;
-  displayName?: string | null;
-}): string | null | undefined {
+/** Resolve canonical alias from upsert input. */
+export function resolveAliasPatch(input: { alias?: string | null }): string | null | undefined {
   if (input.alias !== undefined) return input.alias;
-  if (input.displayName !== undefined) return input.displayName;
   return undefined;
 }
 
@@ -196,7 +192,6 @@ export function upsertNamespaceMetadata(
   input: {
     namespace: string;
     alias?: string | null;
-    displayName?: string | null;
     description?: string;
   },
 ): void {

@@ -1,5 +1,3 @@
-/** @deprecated Storage contracts are owned by ../storage/core/index. */
-export * from "../storage/core/index";
 export {
   type CompositeBackendFactoryMap,
   createCompositeBackendFactory,
@@ -16,19 +14,7 @@ export {
   releaseCachedConnection,
   setCachedConnection,
 } from "./connection-cache";
-export {
-  canonicalizeStoredOntology,
-  hashStoredOntology,
-  listOntologyLabelKinds,
-  normalizeStoredOntologyJsonSchema,
-  type OntologyLabelKinds,
-  ontologyMatchesLabelKinds,
-  ontologyToStoredJsonSchema,
-  STORED_ONTOLOGY_JSON_SCHEMA_URI,
-  type StoredOntologyJsonSchema,
-  type StoredOntologyJsonSchemaMetadata,
-  type StoredOntologyLabelMapSchema,
-} from "./ontology";
+export { ontologyToStoredJsonSchema } from "./ontology";
 export {
   type CreateBackendResolverOptions,
   createBackendResolver,

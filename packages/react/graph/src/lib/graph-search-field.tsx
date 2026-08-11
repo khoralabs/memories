@@ -93,15 +93,11 @@ export function createGraphSearchField(opts: CreateGraphSearchFieldOptions) {
   }
   SearchLoading.displayName = `${displayName}.Loading`;
 
-  function DefaultChildren({
-    inputProps,
-  }: {
-    inputProps?: ComponentProps<typeof InputGroupInput>;
-  }) {
+  function DefaultChildren() {
     const { searchLoading } = useSearchFieldContext("Root");
     return (
       <>
-        <SearchInput {...inputProps} />
+        <SearchInput />
         <SearchAddon>
           <StartIcon className="text-muted-foreground" aria-hidden />
         </SearchAddon>
@@ -125,15 +121,9 @@ export function createGraphSearchField(opts: CreateGraphSearchFieldOptions) {
     return found;
   }
 
-  type RootProps = ComponentProps<typeof InputGroup> & {
-    /**
-     * @deprecated Prefer composing `<….Input {…} />`.
-     * Applied to the default `.Input` only when `children` are omitted.
-     */
-    inputProps?: ComponentProps<typeof InputGroupInput>;
-  };
+  type RootProps = ComponentProps<typeof InputGroup>;
 
-  function SearchRoot({ className, children, inputProps, ...props }: RootProps) {
+  function SearchRoot({ className, children, ...props }: RootProps) {
     const slice = useSearch();
     const value: GraphSearchFieldContextValue = {
       ...slice,
@@ -144,7 +134,7 @@ export function createGraphSearchField(opts: CreateGraphSearchFieldOptions) {
     return (
       <SearchFieldContext.Provider value={value}>
         <InputGroup className={cn("w-full", className)} {...props}>
-          {hasRenderableChildren(children) ? children : <DefaultChildren inputProps={inputProps} />}
+          {hasRenderableChildren(children) ? children : <DefaultChildren />}
         </InputGroup>
       </SearchFieldContext.Provider>
     );

@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { DEFAULT_SQLITE_STRATEGY_CAPABILITIES, resolveStrategyCapabilities } from "./backend";
+import {
+  DEFAULT_SQLITE_STRATEGY_CAPABILITIES,
+  resolveStrategyCapabilities,
+} from "../storage/core/index";
 
 describe("resolveStrategyCapabilities", () => {
   test("sqlite strategy defaults to full sqlite backend capabilities", () => {

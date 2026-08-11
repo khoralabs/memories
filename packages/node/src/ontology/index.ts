@@ -1,4 +1,3 @@
-export * from "./canonical.ts";
 export * from "./families/entities.ts";
 export * from "./families/knowledge.ts";
 export * from "./families/poleo.ts";

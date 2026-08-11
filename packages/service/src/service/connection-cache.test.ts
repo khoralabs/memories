@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { MemoriesDatabaseHandle } from "./backend";
+import type { MemoriesDatabaseHandle } from "../storage/core/index";
 import {
   createConnectionCache,
   getCachedConnection,

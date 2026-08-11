@@ -53,13 +53,13 @@ describe("server-admin auth strategy", () => {
 
 describe("app-policy auth strategy", () => {
   test("delegates authenticate and authorize including scope", async () => {
-    const seen: Array<{ action: string; namespace?: string; scope: AuthorizeScope }> = [];
+    const seen: Array<{ action: string; scope: AuthorizeScope }> = [];
     const auth = createAppPolicyAuthStrategy({
       async authenticate() {
         return { scheme: "app-policy", subject: "user-1", claims: { org: "acme" } };
       },
       async authorize(input) {
-        seen.push({ action: input.action, namespace: input.namespace, scope: input.scope });
+        seen.push({ action: input.action, scope: input.scope });
       },
     });
 
@@ -71,12 +71,10 @@ describe("app-policy auth strategy", () => {
       action: "read",
       database: { kind: "account", ownerKey: "o1" },
       scope: { kind: "namespace", namespace: "user/a", mode: "exact" },
-      namespace: "user/a",
     });
     expect(seen).toEqual([
       {
         action: "read",
-        namespace: "user/a",
         scope: { kind: "namespace", namespace: "user/a", mode: "exact" },
       },
     ]);

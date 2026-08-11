@@ -60,7 +60,6 @@ export {
   type EdgeBillboardMetadataCtx,
   type EdgeBillboardMetadataProps,
   type EdgeBillboardProps,
-  EdgePreviewCard,
   useEdgeBillboard,
 } from "./edge-billboard.js";
 export {
@@ -94,8 +93,6 @@ export {
   type GraphPreviewDockProps,
 } from "./graph-preview-dock.js";
 export {
-  GraphRefreshButton,
-  type GraphRefreshButtonProps,
   RefreshGraphButton,
   type RefreshGraphButtonProps,
 } from "./graph-refresh-button.js";
@@ -183,8 +180,6 @@ export {
   type CatalogMemory,
   type CreateMemoryInput,
   type FocusedMemory,
-  MemoriesMemoryProvider,
-  type MemoriesMemoryProviderProps,
   type MemoriesMemoryValue,
   MemoriesNamespaceMemoriesProvider,
   type MemoriesNamespaceMemoriesProviderProps,
@@ -232,7 +227,6 @@ export {
   type NodeBillboardMetadataCtx,
   type NodeBillboardMetadataProps,
   type NodeBillboardProps,
-  NodePreviewCard,
   useNodeBillboard,
 } from "./node-billboard.js";
 export * from "./projection-types.js";

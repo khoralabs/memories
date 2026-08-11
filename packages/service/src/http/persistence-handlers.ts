@@ -54,13 +54,13 @@ import {
   type DatabaseVectorDimensionsRequest,
   serializeSearchHit,
 } from "../client/index";
+import type { MemoriesDatabaseService } from "../service/index";
 import type {
   MemoriesDatabaseHandle,
   MemoriesDatabaseId,
   MemoriesDatabaseOntologyStore,
-  MemoriesDatabaseService,
-} from "../service/index";
-import type { StoredOntologyJsonSchema } from "../storage/core/index";
+  StoredOntologyJsonSchema,
+} from "../storage/core/index";
 
 import { HttpError, type MemoriesServiceHttpOptions, parseDatabaseIdBody } from "./handlers";
 import { labelMapsFromStoredOntology } from "./stored-ontology-label-schema";
@@ -940,7 +940,6 @@ export async function handleDatabaseNamespaceUpsert(
     database?: unknown;
     namespace?: unknown;
     alias?: unknown;
-    displayName?: unknown;
     description?: unknown;
   };
   const { database, handle } = await getHandle(service, scoped);
@@ -961,10 +960,7 @@ export async function handleDatabaseNamespaceUpsert(
     if (typeof value === "string") return value;
     throw new HttpError(`${field} must be a string or null`, 400);
   };
-  // Canonical wire field is `alias`; `displayName` accepted as deprecated synonym.
-  const aliasFromAlias = parseOptionalStringOrNull(scoped.alias, "alias");
-  const aliasFromDisplayName = parseOptionalStringOrNull(scoped.displayName, "displayName");
-  const alias = aliasFromAlias !== undefined ? aliasFromAlias : aliasFromDisplayName;
+  const alias = parseOptionalStringOrNull(scoped.alias, "alias");
   const description =
     scoped.description === undefined
       ? undefined
@@ -1503,9 +1499,6 @@ export async function handleDatabaseGraphStats(
     labelKinds,
   });
 }
-
-/** @deprecated Use handleDatabaseProjectionInput */
-export const handleDatabaseUmapInput = handleDatabaseProjectionInput;
 
 export async function handleDatabaseEnsureScopeChain(
   service: MemoriesDatabaseService,

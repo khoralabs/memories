@@ -245,19 +245,17 @@ describe("memories service http handlers", () => {
     expect(await service.exists({ kind: "organization", ownerKey: "org-1" })).toBe(true);
   });
 
-  test("app-policy authorize receives namespace from search body", async () => {
+  test("app-policy authorize receives namespace scope from search body", async () => {
     const { service } = createTestStack();
     const database = { kind: "account", ownerKey: "owner-ns" };
     await service.open(database);
 
-    let seenNamespace: string | undefined;
     let seenScope: AuthorizeScope | undefined;
     const auth = createAppPolicyAuthStrategy({
       async authenticate() {
         return { scheme: "app-policy", subject: "tester" };
       },
       async authorize(input) {
-        seenNamespace = input.namespace;
         seenScope = input.scope;
       },
     });
@@ -279,7 +277,6 @@ describe("memories service http handlers", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(seenNamespace).toBe("user/a");
     expect(seenScope).toEqual({ kind: "namespace", namespace: "user/a", mode: "exact" });
   });
 

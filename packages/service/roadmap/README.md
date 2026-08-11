@@ -73,7 +73,6 @@ type AppPolicyAuthStrategyOptions = {
     action: DatabaseAction;
     database?: MemoriesDatabaseId;
     scope: AuthorizeScope;
-    namespace?: string; // deprecated mirror when scope.kind === "namespace"
   }): Promise<void>;
 };
 ```

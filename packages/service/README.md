@@ -115,9 +115,8 @@ const auth =
           // host identity (session, JWT, …)
           return { scheme: "app-policy", subject: "user-1" };
         },
-        async authorize({ actor, action, database, scope, namespace }) {
+        async authorize({ actor, action, database, scope }) {
           // host team/org + namespace rules via `scope`; throw AuthStrategyError on deny
-          // `namespace` is a deprecated mirror when scope.kind === "namespace"
         },
       })
     : createAuthStrategyFromEnv();

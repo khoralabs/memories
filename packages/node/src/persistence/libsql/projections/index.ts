@@ -13,17 +13,13 @@ import { createLibsqlGraphProjectionSource, type LibsqlProjectionQueryClient } f
 export {
   buildNamespaceGraphLayoutFromProjectionInput,
   buildNamespaceGraphLayoutFromSource,
-  buildNamespaceGraphLayoutFromUmapInput,
   buildNamespaceSubtreeGraphLayoutFromSource,
   collectNamespaceProjectionInput,
-  collectNamespaceUmapInput,
   createMemoriesVisualizationFromSource,
   createSeededRandom,
   DEFAULT_UMAP_LAYOUT_SEED,
   decodeProjectionInput,
-  decodeUmapInput,
   encodeProjectionInput,
-  encodeUmapInput,
   fibonacciSphereLayout3D,
   type GraphLayoutEdge,
   type GraphLayoutNode,
@@ -33,20 +29,15 @@ export {
   minMaxNormalize3D,
   type NamespaceGraphLayout,
   type NamespaceProjectionInput,
-  type NamespaceUmapInput,
   type Point3,
   PROJECTION_INPUT_CONTENT_TYPE,
   PROJECTION_INPUT_ENCODING_HEADER,
   PROJECTION_INPUT_VERSION,
   QUALIFIED_MEMORY_KEY_SEP,
   qualifyMemoryKey,
-  UMAP_INPUT_CONTENT_TYPE,
-  UMAP_INPUT_ENCODING_HEADER,
-  UMAP_INPUT_VERSION,
   type Umap3DLayoutOptions,
   umap3DLayout,
   validateProjectionInput,
-  validateUmapInput,
 } from "../../../projections/index";
 export {
   createLibsqlGraphProjectionSource,
@@ -93,9 +84,6 @@ export type CollectLibsqlProjectionInputOptions = {
   provenanceHeadRootHex?: string;
 };
 
-/** @deprecated Use CollectLibsqlProjectionInputOptions */
-export type CollectLibsqlUmapInputOptions = CollectLibsqlProjectionInputOptions;
-
 export function collectLibsqlProjectionInput(
   queryClient: LibsqlProjectionQueryClient,
   persistence: GraphProjectionGraphReads,
@@ -107,9 +95,6 @@ export function collectLibsqlProjectionInput(
     scope: input.scope,
   });
 }
-
-/** @deprecated Use collectLibsqlProjectionInput */
-export const collectLibsqlUmapInput = collectLibsqlProjectionInput;
 
 export function createLibsqlMemoriesVisualization(
   queryClient: LibsqlProjectionQueryClient,

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { AddNamespaceButton } from "./add-namespace-button.js";
-import { GraphRefreshButton, RefreshGraphButton } from "./graph-refresh-button.js";
+import { RefreshGraphButton } from "./graph-refresh-button.js";
 import { type MemoriesGraphNamespaceEntry, namespaceEntryLabel } from "./lib/namespace-entries.js";
 import {
   buildSearchNamespaceTree,
@@ -164,7 +164,6 @@ function isLabelAction(child: ReactElement): boolean {
   if (
     child.type === AddNamespaceButton ||
     child.type === RefreshGraphButton ||
-    child.type === GraphRefreshButton ||
     child.type === GraphNamespaceTreeLabelActions
   ) {
     return true;

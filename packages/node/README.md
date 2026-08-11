@@ -22,11 +22,10 @@ This is the embeddable core. For multi-tenant HTTP, see [`@khoralabs/memories-se
 | `./turso-serverless` | Turso Cloud persistence; Node-safe (no projection helpers yet) |
 | `./projections` | UMAP / namespace graph layout math (**requires `umap-js`**) |
 | `./projections/projection-input` | Wire codec only (no `umap-js`) |
-| `./projections/umap-input` | Deprecated alias of `./projections/projection-input` |
 | `./attestation` | Contributor attestation envelope + formats |
 | `./attestation/formats/direct-principal-v1` | Caller-signed principal attestation |
 | `./attestation/formats/http-request-v1` | Server-signed HTTP request attestation |
-| `./autolink` | `integrateNewMemoryIntoGraph` |
+| `./autolink` | `runAutolinkIntegrate` |
 | `./autolink/workflows` | Workflow DevKit wrappers (**requires `workflow`**) |
 | `./testing` | Persistence + projections conformance runners |
 
@@ -36,7 +35,7 @@ Backend drivers are optional peer dependencies — see the [root README](../../R
 
 ## Ontology
 
-Compose label maps from families rather than the deprecated `canonicalOntology`:
+Compose label maps from families:
 
 ```ts
 import { defineOntology } from "@khoralabs/memories-node/ontology/core";

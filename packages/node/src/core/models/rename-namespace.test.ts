@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { canonicalOntology } from "../../ontology/canonical.ts";
+import {
+  defineOntology,
+  factNodeLabelShape,
+  referencesEdgeLabelShape,
+} from "../../ontology/index.ts";
 import { ids, NamespaceConstraintError } from "../../persistence/core";
 import { assertRenameRespectsMaxNamespaces } from "../../persistence/core/models/rename-namespace-plan";
 import {
@@ -8,10 +12,15 @@ import {
 } from "../../persistence/sqlite/persistence/index";
 import { MemoriesClient } from "../api/client";
 
+const testOntology = defineOntology({
+  nodeLabels: { fact: factNodeLabelShape },
+  edgeLabels: { references: referencesEdgeLabelShape },
+});
+
 function openClient() {
   const db = openTestMemoriesDatabase();
   const persistence = createMemoriesPersistence(db);
-  const client = new MemoriesClient(persistence, canonicalOntology);
+  const client = new MemoriesClient(persistence, testOntology);
   return { db, persistence, client };
 }
 

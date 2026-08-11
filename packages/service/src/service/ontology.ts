@@ -7,29 +7,6 @@ import {
   type StoredOntologyLabelMapSchema,
 } from "../storage/core/index";
 
-export {
-  /** @deprecated Import from ../storage/core/index instead. */
-  canonicalizeStoredOntology,
-  /** @deprecated Import from ../storage/core/index instead. */
-  hashStoredOntology,
-  /** @deprecated Import from ../storage/core/index instead. */
-  listOntologyLabelKinds,
-  /** @deprecated Import from ../storage/core/index instead. */
-  normalizeStoredOntologyJsonSchema,
-  /** @deprecated Import from ../storage/core/index instead. */
-  type OntologyLabelKinds,
-  /** @deprecated Import from ../storage/core/index instead. */
-  ontologyMatchesLabelKinds,
-  /** @deprecated Import from ../storage/core/index instead. */
-  STORED_ONTOLOGY_JSON_SCHEMA_URI,
-  /** @deprecated Import from ../storage/core/index instead. */
-  type StoredOntologyJsonSchema,
-  /** @deprecated Import from ../storage/core/index instead. */
-  type StoredOntologyJsonSchemaMetadata,
-  /** @deprecated Import from ../storage/core/index instead. */
-  type StoredOntologyLabelMapSchema,
-} from "../storage/core/index";
-
 function labelMapFromOntology<T extends LabelSchemaMap>(labels: T): StoredOntologyLabelMapSchema {
   const properties: Record<string, Record<string, unknown>> = {};
   for (const kind of Object.keys(labels).sort()) {

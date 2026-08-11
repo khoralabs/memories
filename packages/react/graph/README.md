@@ -12,7 +12,7 @@ Built on **React 19**, **@react-three/fiber**, and **three.js**. The package doe
 | `@khoralabs/memories-react-graph/service` | `createServiceReactMemoriesClient` (Node/server or hosts that intentionally pull memories-service) |
 | `MemoriesClientProvider` / `useMemoriesClient` / `useMemoriesDatabase` | Client + database focus + resolved ontology |
 | `MemoriesNamespacesProvider` / `useMemoriesNamespaces` | Namespace catalog, focus, CRUD/suppress, arms-driven search |
-| `MemoriesNamespaceMemoriesProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove (`MemoriesMemoryProvider` is a deprecated alias) |
+| `MemoriesNamespaceMemoriesProvider` / `useMemoriesMemory` | Scope-sensitive graph catalog, search, memory focus, create/update/remove |
 | `useGraphMemoriesSearch` / `useGraphNamespacesSearch` | Thin chrome slices of provider search state (not `useMemoriesGraphChrome`) |
 | `ReactMemoriesClient` | Host backend interface (implement over a BFF, or use `/service`) |
 | `DEFAULT_SEARCH_DEBOUNCE_MS` | Shared default debounce for namespace + memory search |

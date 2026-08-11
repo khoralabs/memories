@@ -94,7 +94,6 @@ export {
   type DatabaseSuppressMemoryResponse,
   type DatabaseSuppressNamespaceRequest,
   type DatabaseSuppressNamespaceResponse,
-  type DatabaseUmapInputRequest,
   type DatabaseUnsuppressMemoryRequest,
   type DatabaseUnsuppressMemoryResponse,
   type DatabaseUnsuppressNamespaceRequest,

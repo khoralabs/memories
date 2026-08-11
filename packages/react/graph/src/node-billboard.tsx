@@ -333,8 +333,3 @@ export const NodeBillboard = Object.assign(NodeBillboardRoot, {
   Metadata: NodeBillboardMetadata,
   Loading: NodeBillboardLoading,
 });
-
-/** @deprecated Prefer {@link NodeBillboard}. */
-export function NodePreviewCard(props: NodeBillboardProps) {
-  return <NodeBillboard {...props} />;
-}

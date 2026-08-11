@@ -511,8 +511,6 @@ export class RemoteMemoriesReadClient {
   async upsertNamespaceMetadata(input: {
     namespace: string;
     alias?: string | null;
-    /** @deprecated Use `alias`. */
-    displayName?: string | null;
     description?: string;
   }): Promise<DatabaseNamespaceMetadata> {
     const response = await this.#client.postJson<{ namespace: DatabaseNamespaceMetadata }>(
@@ -694,13 +692,6 @@ export class RemoteMemoriesReadClient {
       suppressedEdgeCount: response.suppressedEdgeCount,
       labelKinds: response.labelKinds,
     };
-  }
-
-  /** @deprecated Use fetchProjectionInput */
-  fetchUmapInput(
-    input: Parameters<RemoteMemoriesReadClient["fetchProjectionInput"]>[0],
-  ): Promise<NamespaceProjectionInput> {
-    return this.fetchProjectionInput(input);
   }
 
   async ensureScopeChain(scopePaths: readonly string[]): Promise<void> {

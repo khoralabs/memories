@@ -20,13 +20,9 @@ export {
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
 } from "./memory-agent-defaults.js";
 export {
-  embeddingCacheKey,
-  type HybridMemorySearchInput,
-  type HybridMemorySearchOptions,
   MEMORY_SEARCH_BUDGET_POLICY_ID,
   MEMORY_SEARCH_TOOL_NAME,
   type MemorySearchEnv,
-  type MemorySearchHit,
   type MemorySearchLogger,
   type MemorySearchToolInput,
   memorySearchBudgetPolicy,

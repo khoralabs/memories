@@ -229,7 +229,7 @@ Ontology is a Zod / Standard Schema map of node and edge label kinds. Assemble f
 | `retrieval` | Similarity / retrieval edges |
 | `salience` | Salience + retrieval composition |
 
-Use `defineOntology` / `mergeOntologies`. The old `canonicalOntology` export is **deprecated** — prefer composing families for your app.
+Use `defineOntology` / `mergeOntologies`. Prefer composing families for your app.
 
 ---
 
@@ -241,7 +241,7 @@ Use `defineOntology` / `mergeOntologies`. The old `canonicalOntology` export is 
 | `@khoralabs/memories-agents/investigator` | Multi-step Q&A over one or many namespaces |
 | `@khoralabs/memories-agents/integrator` | Decompose + embed + merge logical memories |
 | `@khoralabs/memories-agents/adapter` | Domain payload → memory draft |
-| `@khoralabs/memories-node/autolink` | `integrateNewMemoryIntoGraph` — search, link patch, merge |
+| `@khoralabs/memories-node/autolink` | `runAutolinkIntegrate` — search, link patch, merge |
 | `@khoralabs/memories-service` | Multi-tenant open/list/delete, placement, HTTP, auth |
 | `@khoralabs/memories-react-graph` | React 3D graph: search, namespaces, memory preview |
 

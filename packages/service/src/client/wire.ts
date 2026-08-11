@@ -82,8 +82,6 @@ export type SearchParamsWire = {
     lt?: number;
     lte?: number;
   };
-  /** @deprecated Prefer `asOf: { lte }`. */
-  asOfTimestampMs?: number;
 };
 
 export type DeleteMemoryParamsWire = {
@@ -286,8 +284,6 @@ export type DatabaseNamespaceGetResponse = {
 export type DatabaseNamespaceUpsertRequest = DatabaseScopedBody<{
   namespace: string;
   alias?: string | null;
-  /** @deprecated Use `alias`. */
-  displayName?: string | null;
   description?: string;
 }>;
 export type DatabaseNamespaceUpsertResponse = { namespace: DatabaseNamespaceMetadata };
@@ -401,9 +397,6 @@ export type DatabaseProjectionInputRequest = DatabaseScopedBody<{
   includeProvenanceHead?: boolean;
   includeSuppressed?: boolean;
 }>;
-
-/** @deprecated Use DatabaseProjectionInputRequest */
-export type DatabaseUmapInputRequest = DatabaseProjectionInputRequest;
 
 export type DatabaseGraphLayoutRequest = DatabaseScopedBody<{
   namespace: string;

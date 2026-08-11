@@ -102,11 +102,6 @@ export interface SearchParams<
    * Requires persistence {@link MemoriesBackendCapabilities.asOfTimestampMsSearch}.
    */
   asOf?: SearchAsOf;
-  /**
-   * @deprecated Prefer `asOf: { lte }`. Alias for `{ lte: asOfTimestampMs }`.
-   * Requires persistence {@link MemoriesBackendCapabilities.asOfTimestampMsSearch}.
-   */
-  asOfTimestampMs?: number;
 }
 
 export type SearchNeighborHit<
@@ -487,11 +482,10 @@ function searchInner<NODE_LABELS extends string = string, EDGE_LABELS extends st
 
   const asOf = normalizeSearchAsOf({
     ...(params.asOf !== undefined ? { asOf: params.asOf } : {}),
-    ...(params.asOfTimestampMs !== undefined ? { asOfTimestampMs: params.asOfTimestampMs } : {}),
   });
   if (asOf !== undefined && caps.asOfTimestampMsSearch !== true) {
     throw new Error(
-      "SearchParams.asOf / asOfTimestampMs requires a persistence backend that sets capabilities.asOfTimestampMsSearch",
+      "SearchParams.asOf requires a persistence backend that sets capabilities.asOfTimestampMsSearch",
     );
   }
 

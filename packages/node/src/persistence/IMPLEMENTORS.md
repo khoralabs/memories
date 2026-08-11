@@ -114,7 +114,7 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 ## Namespace metadata (alias / soft rename)
 
 - **Table:** `namespace_metadata` (`_id` = namespace path, optional `display_name`, `description`, `_ts_created` / `_ts_updated`). Wire/API field is **`alias`** (maps to `display_name`); path remains identity.
-- **`upsertNamespaceMetadata`:** may create metadata before any memories exist. Prefer `alias`; `displayName` accepted as deprecated synonym. `alias: null` means UI should show the path key.
+- **`upsertNamespaceMetadata`:** may create metadata before any memories exist. `alias: null` means UI should show the path key.
 - **`deleteNamespaceMetadata`:** remove one metadata row (idempotent if missing).
 - **`listMemoryKeysInNamespace`:** keys for one primary namespace.
 - **`listNamespacesWithMetadata`:** **primary catalog list** — union of distinct `memories.namespace` and metadata keys (memory-only → `alias: null`, empty description). Prefer this for UI/agents.

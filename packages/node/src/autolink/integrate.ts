@@ -110,16 +110,3 @@ export async function runAutolinkIntegrate<
     } as Parameters<MemoriesClient<TNode, TEdge>["mergeMemory"]>[0]),
   );
 }
-
-/**
- * @deprecated Prefer {@link runAutolinkIntegrate} or the durable `autolinkIntegrate` workflow.
- */
-export async function integrateNewMemoryIntoGraph<
-  TNode extends LabelSchemaMap,
-  TEdge extends LabelSchemaMap,
->(
-  client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>,
-  args: IntegrateNewMemoryArgs<TNode, TEdge>,
-): Promise<string[]> {
-  return runAutolinkIntegrate(args, { client });
-}

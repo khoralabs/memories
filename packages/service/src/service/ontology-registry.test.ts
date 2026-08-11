@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { hashStoredOntology, type StoredOntologyJsonSchema } from "./ontology";
-import { createInMemoryOntologyStore } from "./ontology-registry";
+import {
+  createInMemoryOntologyStore,
+  hashStoredOntology,
+  type StoredOntologyJsonSchema,
+} from "../storage/core/index";
 
 function schemaWithNodeKind(kind: string): StoredOntologyJsonSchema {
   return {

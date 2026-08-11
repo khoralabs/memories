@@ -508,7 +508,7 @@ export function runMemoriesPersistenceContractTests(
     });
 
     describe("asOf search", () => {
-      test("asOfTimestampMs=0 excludes all memories", async () => {
+      test("asOf.lte=0 excludes all memories", async () => {
         const persistence = await create();
         const caps = resolveMemoriesBackendCapabilities(persistence);
         if (!caps.vectorSearch || caps.asOfTimestampMsSearch !== true) return;
@@ -531,13 +531,13 @@ export function runMemoriesPersistenceContractTests(
             namespace: namespacePath(namespace),
             content: { vector: makeVec(1.0) },
             options: { topK: 10, arms: { vector: 1, lexical: 0 } },
-            asOfTimestampMs: 0,
+            asOf: { lte: 0 },
           },
         );
         expect(hits).toHaveLength(0);
       });
 
-      test("asOf.lte / asOfTimestampMs alias and gt/range filter by _ts_created", async () => {
+      test("asOf.lte / gt / range filter by _ts_created", async () => {
         const persistence = await create();
         const caps = resolveMemoriesBackendCapabilities(persistence);
         if (!caps.lexicalSearch || caps.asOfTimestampMsSearch !== true) return;
@@ -580,17 +580,6 @@ export function runMemoriesPersistenceContractTests(
           },
         );
         expect(full.map((h) => h.memory.key).sort()).toEqual(["early", "late"]);
-
-        const { hits: aliasHits } = await searchAsync(
-          { persistence },
-          {
-            namespace: namespacePath(namespace),
-            content: { text: marker },
-            options: lex,
-            asOfTimestampMs: earlyCutoff,
-          },
-        );
-        expect(aliasHits.map((h) => h.memory.key)).toEqual(["early"]);
 
         const { hits: lteHits } = await searchAsync(
           { persistence },

@@ -5,7 +5,7 @@ import {
   hashStoredOntology,
   listOntologyLabelKinds,
   type StoredOntologyJsonSchema,
-} from "./ontology";
+} from "../storage/core/index";
 
 const sampleSchema = (): StoredOntologyJsonSchema => ({
   $schema: "https://json-schema.org/draft/2020-12/schema",
