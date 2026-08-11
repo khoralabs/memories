@@ -58,6 +58,9 @@ import {
   handleDatabaseNamespacesUnderPrefix,
   handleDatabaseNamespaceUpsert,
   handleDatabaseProjectionInput,
+  handleDatabaseProvenanceChain,
+  handleDatabaseProvenanceContent,
+  handleDatabaseProvenanceEvents,
   handleDatabaseProvenanceHead,
   handleDatabaseProvenanceTimestamp,
   handleDatabaseSearch,
@@ -401,14 +404,35 @@ export async function handleMemoriesServiceHttpRequest(
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
-      return handleDatabaseProvenanceHead(opts.service, body);
+      return await handleDatabaseProvenanceHead(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/provenance/timestamp") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
-      return handleDatabaseProvenanceTimestamp(opts.service, body);
+      return await handleDatabaseProvenanceTimestamp(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/provenance/events") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseProvenanceEvents(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/provenance/chain") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseProvenanceChain(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/provenance/content") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseProvenanceContent(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/capabilities") {

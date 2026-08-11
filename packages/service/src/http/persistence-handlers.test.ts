@@ -176,6 +176,188 @@ describe("memories service persistence http handlers", () => {
     expect(deleteRes.status).toBe(200);
   }, 15_000);
 
+  test("provenance events, chain, and content-at-root", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-provenance-apis" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const client = new MemoriesClient(sync.syncPersistence, testOntology);
+
+    client.mergeMemory({
+      kind: "node",
+      key: "mem",
+      namespace: "ns/prov",
+      content: [
+        { key: "alpha", text: "A1" },
+        { key: "beta", text: "B1" },
+      ],
+      labels: [],
+    });
+    const mergeRoot = (await postJson(
+      "http://localhost/databases/provenance/head",
+      { database },
+      stack,
+    ).then((r) => r.json())) as { rootHex: string };
+    expect(mergeRoot.rootHex.length).toBe(64);
+
+    client.replaceMemoryFeature({
+      namespace: "ns/prov",
+      key: "mem",
+      sourceKey: "alpha",
+      text: "A2",
+    });
+    const replaceHead = (await postJson(
+      "http://localhost/databases/provenance/head",
+      { database },
+      stack,
+    ).then((r) => r.json())) as { rootHex: string };
+    expect(replaceHead.rootHex).not.toBe(mergeRoot.rootHex);
+
+    const eventsRes = await postJson(
+      "http://localhost/databases/provenance/events",
+      { database, namespace: "ns/prov", key: "mem", limit: 10 },
+      stack,
+    );
+    expect(eventsRes.status).toBe(200);
+    const eventsBody = (await eventsRes.json()) as {
+      events: Array<{ rootHex: string; eventType: string; id: string; createdAt: number }>;
+      nextBefore?: { createdAt: number; id: string };
+    };
+    expect(eventsBody.events.length).toBeGreaterThanOrEqual(2);
+    expect(
+      eventsBody.events.every((e) => e.eventType === "MERGE_MEMORY" || e.eventType.length > 0),
+    ).toBe(true);
+
+    const eventsPage = await postJson(
+      "http://localhost/databases/provenance/events",
+      {
+        database,
+        namespace: "ns/prov",
+        key: "mem",
+        limit: 1,
+        before: {
+          createdAt: eventsBody.events[0]?.createdAt,
+          id: eventsBody.events[0]?.id,
+        },
+      },
+      stack,
+    );
+    expect(eventsPage.status).toBe(200);
+    const eventsPageBody = (await eventsPage.json()) as {
+      events: Array<{ id: string }>;
+      nextBefore?: { createdAt: number; id: string };
+    };
+    expect(eventsPageBody.events).toHaveLength(1);
+    expect(eventsPageBody.events[0]?.id).not.toBe(eventsBody.events[0]?.id);
+    expect(eventsPageBody.nextBefore).toBeDefined();
+
+    const chainRes = await postJson(
+      "http://localhost/databases/provenance/chain",
+      { database, limit: 1 },
+      stack,
+    );
+    expect(chainRes.status).toBe(200);
+    const chainBody = (await chainRes.json()) as {
+      links: Array<{ rootHex: string }>;
+      nextBeforeRootHex?: string;
+    };
+    expect(chainBody.links).toHaveLength(1);
+    expect(chainBody.nextBeforeRootHex).toBe(chainBody.links[0]?.rootHex);
+
+    const chainPage = await postJson(
+      "http://localhost/databases/provenance/chain",
+      { database, limit: 10, beforeRootHex: chainBody.nextBeforeRootHex },
+      stack,
+    );
+    expect(chainPage.status).toBe(200);
+    const chainPageBody = (await chainPage.json()) as { links: Array<{ rootHex: string }> };
+    expect(chainPageBody.links.some((l) => l.rootHex === mergeRoot.rootHex)).toBe(true);
+
+    const contentAtMerge = await postJson(
+      "http://localhost/databases/provenance/content",
+      {
+        database,
+        rootHex: mergeRoot.rootHex,
+        namespace: "ns/prov",
+        key: "mem",
+      },
+      stack,
+    );
+    expect(contentAtMerge.status).toBe(200);
+    const mergeContent = (await contentAtMerge.json()) as {
+      content: Array<{ sourceKey: string; text: string }>;
+    };
+    const mergeByKey = Object.fromEntries(mergeContent.content.map((c) => [c.sourceKey, c.text]));
+    expect(mergeByKey).toEqual({ alpha: "A1", beta: "B1" });
+
+    const contentAtReplace = await postJson(
+      "http://localhost/databases/provenance/content",
+      {
+        database,
+        rootHex: replaceHead.rootHex,
+        namespace: "ns/prov",
+        key: "mem",
+      },
+      stack,
+    );
+    expect(contentAtReplace.status).toBe(200);
+    const replaceContent = (await contentAtReplace.json()) as {
+      content: Array<{ sourceKey: string; text: string }>;
+    };
+    const replaceByKey = Object.fromEntries(
+      replaceContent.content.map((c) => [c.sourceKey, c.text]),
+    );
+    expect(replaceByKey).toEqual({ alpha: "A2", beta: "B1" });
+
+    client.deleteMemory({ namespace: "ns/prov", key: "mem" });
+    const deleteHead = (await postJson(
+      "http://localhost/databases/provenance/head",
+      { database },
+      stack,
+    ).then((r) => r.json())) as { rootHex: string };
+    const contentAtDelete = await postJson(
+      "http://localhost/databases/provenance/content",
+      {
+        database,
+        rootHex: deleteHead.rootHex,
+        namespace: "ns/prov",
+        key: "mem",
+      },
+      stack,
+    );
+    expect(contentAtDelete.status).toBe(200);
+    const deleteContent = (await contentAtDelete.json()) as {
+      content: Array<{ sourceKey: string; text: string }>;
+    };
+    expect(deleteContent.content).toEqual([]);
+
+    const unknownTip = await postJson(
+      "http://localhost/databases/provenance/content",
+      {
+        database,
+        rootHex: "0".repeat(64),
+        namespace: "ns/prov",
+        key: "mem",
+      },
+      stack,
+    );
+    expect(unknownTip.status).toBe(200);
+    expect(((await unknownTip.json()) as { content: unknown[] }).content).toEqual([]);
+
+    const badHex = await postJson(
+      "http://localhost/databases/provenance/content",
+      {
+        database,
+        rootHex: "not-a-root-hex",
+        namespace: "ns/prov",
+        key: "mem",
+      },
+      stack,
+    );
+    expect(badHex.status).toBe(400);
+  }, 15_000);
+
   test("sqlite read endpoints", async () => {
     const stack = createTestStack();
     const { service } = stack;

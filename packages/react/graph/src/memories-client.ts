@@ -228,4 +228,46 @@ export type ReactMemoriesClient = {
 
   /** Full joined text for a source map (no truncation). */
   getSourceMapText(input: { sourceMapId: string; signal?: AbortSignal }): Promise<string | null>;
+
+  /** Newest-first provenance events (optional namespace/key filter + keyset cursor). */
+  listProvenanceEvents(input: {
+    namespace?: string;
+    key?: string;
+    limit?: number;
+    before?: { createdAt: number; id: string };
+    signal?: AbortSignal;
+  }): Promise<
+    Array<{
+      id: string;
+      rootHex: string;
+      parentRootHex: string;
+      eventType: string;
+      createdAt: number;
+      event: Record<string, unknown>;
+      intentSnapshotId?: string;
+    }>
+  >;
+
+  /** Newest-first provenance chain links (keyset via `beforeRootHex`). */
+  listProvenanceChain(input: {
+    limit?: number;
+    beforeRootHex?: string;
+    signal?: AbortSignal;
+  }): Promise<
+    Array<{
+      rootHex: string;
+      parentRootHex: string;
+      eventType: string;
+      createdAt: number;
+      id: string;
+    }>
+  >;
+
+  /** Per-arm LWW lexical content as of a provenance tip. */
+  getMemoryContentAtRootHex(input: {
+    rootHex: string;
+    namespace: string;
+    key: string;
+    signal?: AbortSignal;
+  }): Promise<Array<{ sourceKey: string; text: string }>>;
 };

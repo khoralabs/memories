@@ -191,6 +191,55 @@ export type DatabaseProvenanceHeadResponse = { rootHex: string };
 export type DatabaseProvenanceTimestampRequest = DatabaseScopedBody<{ rootHex: string }>;
 export type DatabaseProvenanceTimestampResponse = { timestampMs: number | null };
 
+export type DatabaseProvenanceEventsRequest = DatabaseScopedBody<{
+  namespace?: string;
+  key?: string;
+  limit?: number;
+  before?: { createdAt: number; id: string };
+}>;
+export type DatabaseProvenanceEventItem = {
+  id: string;
+  rootHex: string;
+  parentRootHex: string;
+  eventType: string;
+  createdAt: number;
+  event: Record<string, unknown>;
+  intentSnapshotId?: string;
+};
+export type DatabaseProvenanceEventsResponse = {
+  events: DatabaseProvenanceEventItem[];
+  nextBefore?: { createdAt: number; id: string };
+  database: { kind: string; ownerKey: string };
+};
+
+export type DatabaseProvenanceChainRequest = DatabaseScopedBody<{
+  limit?: number;
+  beforeRootHex?: string;
+}>;
+export type DatabaseProvenanceChainLink = {
+  rootHex: string;
+  parentRootHex: string;
+  eventType: string;
+  createdAt: number;
+  id: string;
+};
+export type DatabaseProvenanceChainResponse = {
+  links: DatabaseProvenanceChainLink[];
+  nextBeforeRootHex?: string;
+  database: { kind: string; ownerKey: string };
+};
+
+export type DatabaseProvenanceContentRequest = DatabaseScopedBody<{
+  rootHex: string;
+  namespace: string;
+  key: string;
+}>;
+export type DatabaseProvenanceContentResponse = {
+  rootHex: string;
+  content: Array<{ sourceKey: string; text: string }>;
+  database: { kind: string; ownerKey: string };
+};
+
 export type DatabaseCapabilitiesRequest = DatabaseScopedBody<Record<string, never>>;
 export type DatabaseCapabilitiesResponse = {
   capabilities: Record<string, boolean | undefined>;

@@ -73,6 +73,8 @@ import {
   getProvenanceHeadRootHex,
   getProvenanceTimestampMsForRootHex as getProvenanceTsForRootHexQuery,
   appendProvenanceEvent as insertProvenanceRow,
+  listProvenanceChain as listProvenanceChainQuery,
+  listProvenanceEvents as listProvenanceEventsQuery,
 } from "./models/memory-provenance";
 import {
   buildCanonicalMemorySearchMetaText,
@@ -799,6 +801,19 @@ export class MemoriesTursoServerlessPersistence {
 
   async listVectorEmbeddingIndexDimensions(): Promise<number[]> {
     return listVectorEmbeddingIndexDimensionsQuery(this.db);
+  }
+
+  async listProvenanceEvents(input: {
+    namespace?: string;
+    key?: string;
+    limit: number;
+    before?: { createdAt: number; id: string };
+  }) {
+    return listProvenanceEventsQuery(this.db, input);
+  }
+
+  async listProvenanceChain(input: { limit: number; beforeRootHex?: string }) {
+    return listProvenanceChainQuery(this.db, input);
   }
 
   async loadGraphEdgesForNamespace(

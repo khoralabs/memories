@@ -71,6 +71,9 @@ export function createMockReactClient(
       suppressed: false,
     })),
     getSourceMapText: mock(async () => null),
+    listProvenanceEvents: mock(async () => []),
+    listProvenanceChain: mock(async () => []),
+    getMemoryContentAtRootHex: mock(async () => []),
     ...overrides,
   };
   return client;

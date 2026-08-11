@@ -49,6 +49,32 @@ export type SourceMapInventoryItem = {
   hasVector: boolean;
 };
 
+/** Newest-first provenance event row for timeline UIs. */
+export type ProvenanceEventListItem = {
+  id: string;
+  rootHex: string;
+  parentRootHex: string;
+  eventType: string;
+  createdAt: number;
+  event: MemoryProvenanceEvent;
+  intentSnapshotId?: string;
+};
+
+/** Compact chain tip for tip pickers (no full event blob). */
+export type ProvenanceChainLink = {
+  rootHex: string;
+  parentRootHex: string;
+  eventType: string;
+  createdAt: number;
+  id: string;
+};
+
+/** Lexical arm reconstructed as of a provenance tip. */
+export type MemoryContentAtRootItem = {
+  sourceKey: string;
+  text: string;
+};
+
 /**
  * Graph profiling stats for one primary namespace.
  * `labelKinds` histograms use the same visibility set as {@link GraphNamespaceCounts}
@@ -635,6 +661,33 @@ export interface MemoriesPersistenceReads {
 
   /** Timestamp (`memory_provenance._ts_created`) for a chain link `root_hex`, when known. */
   getProvenanceTimestampMsForRootHex?(rootHex: string): number | undefined;
+
+  /**
+   * Newest-first provenance events, optionally filtered by memory `namespace` / `key`
+   * via `event_json`. `key` requires `namespace`. Hard-caps `limit` (typical max 100).
+   */
+  listProvenanceEvents?(input: {
+    namespace?: string;
+    key?: string;
+    limit: number;
+    before?: { createdAt: number; id: string };
+  }): ProvenanceEventListItem[];
+
+  /**
+   * Newest-first chain tip links (no full `event_json`). Page older than `beforeRootHex`
+   * when set. Hard-caps `limit` (typical max 100).
+   */
+  listProvenanceChain?(input: { limit: number; beforeRootHex?: string }): ProvenanceChainLink[];
+
+  /**
+   * Lexical source arms as of a provenance tip (per-arm LWW). Empty when tip unknown,
+   * memory deleted at tip, or bodies unavailable (e.g. dropped without cold store).
+   */
+  getMemoryContentAtRootHex?(
+    rootHex: string,
+    namespace: string,
+    memoryKey: string,
+  ): MemoryContentAtRootItem[];
 }
 
 /**

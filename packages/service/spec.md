@@ -249,6 +249,10 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 | `POST` | `/databases/merge` | Merge memory node/edge | `write` |
 | `POST` | `/databases/delete-memory` | Delete memory by namespace/key | `write` |
 | `POST` | `/databases/provenance/head` | Provenance head root hex | `read` |
+| `POST` | `/databases/provenance/timestamp` | Provenance timestamp for a root hex | `read` |
+| `POST` | `/databases/provenance/events` | List provenance events (optional namespace/key filter, keyset cursor) | `read` |
+| `POST` | `/databases/provenance/chain` | List provenance chain links newest-first (keyset via `beforeRootHex`) | `read` |
+| `POST` | `/databases/provenance/content` | Per-arm LWW memory content at a tip (`rootHex` + namespace/key). Unknown tip → empty `content`. Cold-evacuated bodies are fetched when a cold store is configured; dropped bodies without cold storage are omitted. Malformed `rootHex` → 400. | `read` |
 | `POST` | `/databases/capabilities` | Backend capabilities for database | `read` |
 
 Client-supplied embeddings on `search`, `search-namespaces` (`vector`), and `merge` (`content[].vector`, `searchMetaVector`) must be **512–3072** float32 values.
@@ -379,7 +383,7 @@ Host matching rules and reference helpers (`authorizeScopeAgainstGrants`, etc.):
 
 Runtime clients:
 
-- `createRemoteMemoriesClientAsync()` — `MemoriesClientAsync` over HTTP (search, merge, delete-memory, provenance head)
+- `createRemoteMemoriesClientAsync()` — `MemoriesClientAsync` over HTTP (search, merge, delete-memory, provenance head/timestamp/events/chain/content)
 - `createRemoteMemoriesReadClient()` — graph/index reads (namespaces with metadata, graph layout, edge preview, snippets, vector dimensions, scope chains)
 - `MemoriesOntologyClient`, `ensureDatabaseOntologyLink()` — ontology register/link over HTTP
 

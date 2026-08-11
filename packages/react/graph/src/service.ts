@@ -377,6 +377,56 @@ export function createServiceReactMemoriesClient(
     async getSourceMapText(input) {
       return reads.getSourceMapText(input.sourceMapId);
     },
+
+    async listProvenanceEvents(input) {
+      const response = await service.postJson<{
+        events: Array<{
+          id: string;
+          rootHex: string;
+          parentRootHex: string;
+          eventType: string;
+          createdAt: number;
+          event: Record<string, unknown>;
+          intentSnapshotId?: string;
+        }>;
+      }>("/databases/provenance/events", {
+        database,
+        ...(input.namespace !== undefined ? { namespace: input.namespace } : {}),
+        ...(input.key !== undefined ? { key: input.key } : {}),
+        ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        ...(input.before !== undefined ? { before: input.before } : {}),
+      });
+      return response.events;
+    },
+
+    async listProvenanceChain(input) {
+      const response = await service.postJson<{
+        links: Array<{
+          rootHex: string;
+          parentRootHex: string;
+          eventType: string;
+          createdAt: number;
+          id: string;
+        }>;
+      }>("/databases/provenance/chain", {
+        database,
+        ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        ...(input.beforeRootHex !== undefined ? { beforeRootHex: input.beforeRootHex } : {}),
+      });
+      return response.links;
+    },
+
+    async getMemoryContentAtRootHex(input) {
+      const response = await service.postJson<{
+        content: Array<{ sourceKey: string; text: string }>;
+      }>("/databases/provenance/content", {
+        database,
+        rootHex: input.rootHex,
+        namespace: input.namespace,
+        key: input.key,
+      });
+      return response.content;
+    },
   };
 
   return client;

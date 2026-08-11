@@ -668,6 +668,164 @@ export async function handleDatabaseProvenanceTimestamp(
   });
 }
 
+const ROOT_HEX_RE = /^[0-9a-fA-F]{64}$/;
+
+function parseProvenanceListLimit(raw: unknown, fallback = 50): number {
+  if (raw === undefined) return fallback;
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 1) {
+    throw new HttpError("limit must be a positive number", 400);
+  }
+  return Math.min(Math.floor(raw), 100);
+}
+
+export async function handleDatabaseProvenanceEvents(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as {
+    database?: unknown;
+    namespace?: unknown;
+    key?: unknown;
+    limit?: unknown;
+    before?: unknown;
+  };
+  const { database, handle } = await getHandle(service, scoped);
+  if (scoped.key !== undefined && scoped.namespace === undefined) {
+    throw new HttpError("key requires namespace", 400);
+  }
+  if (scoped.namespace !== undefined && typeof scoped.namespace !== "string") {
+    throw new HttpError("namespace must be a string", 400);
+  }
+  if (scoped.key !== undefined && typeof scoped.key !== "string") {
+    throw new HttpError("key must be a string", 400);
+  }
+  let before: { createdAt: number; id: string } | undefined;
+  if (scoped.before !== undefined) {
+    const b = scoped.before as { createdAt?: unknown; id?: unknown };
+    if (
+      typeof b.createdAt !== "number" ||
+      !Number.isFinite(b.createdAt) ||
+      typeof b.id !== "string" ||
+      b.id.length === 0
+    ) {
+      throw new HttpError("before must be { createdAt: number, id: string }", 400);
+    }
+    before = { createdAt: b.createdAt, id: b.id };
+  }
+  const fn = handle.persistence.listProvenanceEvents;
+  if (fn === undefined) {
+    return Response.json({ events: [], database });
+  }
+  const limit = parseProvenanceListLimit(scoped.limit);
+  const events = await Promise.resolve(
+    fn.call(handle.persistence, {
+      ...(typeof scoped.namespace === "string" ? { namespace: scoped.namespace } : {}),
+      ...(typeof scoped.key === "string" ? { key: scoped.key } : {}),
+      limit,
+      ...(before !== undefined ? { before } : {}),
+    }),
+  );
+  const last = events.at(-1);
+  return Response.json({
+    events,
+    ...(events.length === limit && last !== undefined
+      ? { nextBefore: { createdAt: last.createdAt, id: last.id } }
+      : {}),
+    database,
+  });
+}
+
+export async function handleDatabaseProvenanceChain(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as {
+    database?: unknown;
+    limit?: unknown;
+    beforeRootHex?: unknown;
+  };
+  const { database, handle } = await getHandle(service, scoped);
+  if (scoped.beforeRootHex !== undefined) {
+    if (
+      typeof scoped.beforeRootHex !== "string" ||
+      !ROOT_HEX_RE.test(scoped.beforeRootHex.trim())
+    ) {
+      throw new HttpError("beforeRootHex must be a 64-char hex string", 400);
+    }
+  }
+  const fn = handle.persistence.listProvenanceChain;
+  if (fn === undefined) {
+    return Response.json({ links: [], database });
+  }
+  const limit = parseProvenanceListLimit(scoped.limit);
+  const beforeRootHex =
+    typeof scoped.beforeRootHex === "string" ? scoped.beforeRootHex.trim() : undefined;
+  const links = await Promise.resolve(
+    fn.call(handle.persistence, {
+      limit,
+      ...(beforeRootHex !== undefined ? { beforeRootHex } : {}),
+    }),
+  );
+  const last = links.at(-1);
+  return Response.json({
+    links,
+    ...(links.length === limit && last !== undefined ? { nextBeforeRootHex: last.rootHex } : {}),
+    database,
+  });
+}
+
+export async function handleDatabaseProvenanceContent(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as {
+    database?: unknown;
+    rootHex?: unknown;
+    namespace?: unknown;
+    key?: unknown;
+  };
+  const { database, handle } = await getHandle(service, scoped);
+  if (typeof scoped.rootHex !== "string" || !ROOT_HEX_RE.test(scoped.rootHex.trim())) {
+    throw new HttpError("rootHex must be a 64-char hex string", 400);
+  }
+  if (typeof scoped.namespace !== "string" || scoped.namespace.trim().length === 0) {
+    throw new HttpError("namespace is required", 400);
+  }
+  if (typeof scoped.key !== "string" || scoped.key.trim().length === 0) {
+    throw new HttpError("key is required", 400);
+  }
+  const rootHex = scoped.rootHex.trim();
+  const namespace = scoped.namespace.trim();
+  const key = scoped.key.trim();
+
+  const persistence = handle.persistence as {
+    getMemoryContentAtRootHex?: (
+      rootHex: string,
+      namespace: string,
+      memoryKey: string,
+    ) =>
+      | Array<{ sourceKey: string; text: string }>
+      | Promise<Array<{ sourceKey: string; text: string }>>;
+    getMemoryContentAtRootHexAsync?: (
+      rootHex: string,
+      namespace: string,
+      memoryKey: string,
+    ) => Promise<Array<{ sourceKey: string; text: string }>>;
+  };
+
+  let content: Array<{ sourceKey: string; text: string }> = [];
+  if (typeof persistence.getMemoryContentAtRootHexAsync === "function") {
+    content = await persistence.getMemoryContentAtRootHexAsync(rootHex, namespace, key);
+  } else if (typeof persistence.getMemoryContentAtRootHex === "function") {
+    content = await Promise.resolve(persistence.getMemoryContentAtRootHex(rootHex, namespace, key));
+  }
+  return Response.json({
+    rootHex,
+    content: content.map((c) => ({ sourceKey: c.sourceKey, text: c.text })),
+    database,
+  });
+}
+
 export async function handleDatabaseCapabilities(
   service: MemoriesDatabaseService,
   body: unknown,

@@ -91,4 +91,62 @@ describe("memory provenance SQL (SQLite)", () => {
     expect(row?.event_json).toBe(canonicalJson(event));
     expect(row?.intent_snapshot_id).toBe("agent-run-1");
   });
+
+  test("listProvenanceEvents filters by memory; listProvenanceChain paginates newest-first", () => {
+    const db = openTestMemoriesDatabase();
+    const persistence = createMemoriesPersistence(db);
+
+    mergeMemory(
+      { persistence },
+      {
+        key: "a",
+        namespace: "ns",
+        content: [{ key: "s", text: "a1" }],
+        labels: [],
+        edges: [],
+      },
+    );
+    mergeMemory(
+      { persistence },
+      {
+        key: "b",
+        namespace: "ns",
+        content: [{ key: "s", text: "b1" }],
+        labels: [],
+        edges: [],
+      },
+    );
+    mergeMemory(
+      { persistence },
+      {
+        key: "a",
+        namespace: "ns",
+        content: [{ key: "s", text: "a2" }],
+        labels: [],
+        edges: [],
+      },
+    );
+
+    const forA = persistence.listProvenanceEvents({ namespace: "ns", key: "a", limit: 10 });
+    expect(forA.every((e) => (e.event as { memory_key?: string }).memory_key === "a")).toBe(true);
+    expect(forA.length).toBe(2);
+    expect(forA[0]?.createdAt).toBeGreaterThanOrEqual(forA[1]?.createdAt);
+
+    const page1 = persistence.listProvenanceChain({ limit: 2 });
+    expect(page1).toHaveLength(2);
+    const page2 = persistence.listProvenanceChain({
+      limit: 2,
+      beforeRootHex: page1[1]?.rootHex,
+    });
+    expect(page2.length).toBeGreaterThanOrEqual(1);
+    expect(page2[0]?.rootHex).not.toBe(page1[0]?.rootHex);
+    expect(page2[0]?.rootHex).not.toBe(page1[1]?.rootHex);
+
+    const eventsPage = persistence.listProvenanceEvents({
+      limit: 1,
+      before: { createdAt: forA[0]?.createdAt, id: forA[0]?.id },
+    });
+    expect(eventsPage).toHaveLength(1);
+    expect(eventsPage[0]?.id).not.toBe(forA[0]?.id);
+  });
 });

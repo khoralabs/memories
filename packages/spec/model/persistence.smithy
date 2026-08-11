@@ -97,6 +97,9 @@ service MemoriesPersistenceReads {
         ListTextFeatureExportRowsForMemory
         GetSourceMapTextPreview
         GetProvenanceTimestampMsForRootHex
+        ListProvenanceEvents
+        ListProvenanceChain
+        GetMemoryContentAtRootHex
     ]
 }
 
@@ -117,7 +120,7 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 - **Graph topology reads** (`MemoriesGraphIndex` in TS on `MemoriesPersistence`) — **LoadGraphEdgesForNamespace**, **LoadNodeLabelsForNamespace**, **LoadNodePropertiesForNamespace**, **ListIncidentGraphEdges**, **LoadNodeLabelsForMemory**, **LoadNodePropertiesForMemory**, **LoadGraphEdge**, **LoadGraphNode** — omit when `graphIndex` is `false`.
 - **MemoriesPersistenceLabelProps** — optional (`syncLabelPropsSearchFeatures?` in TS).
 - **MemoriesPersistenceReads** — prefetch/export; commonly implemented with Core.
-- **AppendContentOutbox** / **GetProvenanceTimestampMsForRootHex** — optional methods in TS (`?`).
+- **AppendContentOutbox** / **GetProvenanceTimestampMsForRootHex** / **ListProvenanceEvents** / **ListProvenanceChain** / **GetMemoryContentAtRootHex** — optional methods in TS (`?`).
 
 `multiNamespaceSearch`, `unscopedSearch`, and `asOfTimestampMsSearch` constrain search **behavior**, not operation membership.
 
@@ -133,7 +136,7 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 
 **Read helpers:** **ListMemoryNamespaces**, **ListNamespacesWithMetadata**, **GetNamespaceMetadata**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable.
 
-**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete + suppress/unsuppress + rename) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY` / `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` / `RENAME_NAMESPACE`). Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide).
+**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, **GetProvenanceTimestampMsForRootHex**, **ListProvenanceEvents**, **ListProvenanceChain**, **GetMemoryContentAtRootHex**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete + suppress/unsuppress + rename) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY` / `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` / `RENAME_NAMESPACE`). Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide). Content-at-root is per-arm LWW (not a full tip snapshot); cold-evacuated bodies are resolved when a cold store is configured.
 """)
 service MemoriesPersistenceService {
     version: "2026-07-21"
@@ -185,6 +188,9 @@ service MemoriesPersistenceService {
         ListTextFeatureExportRowsForMemory
         GetSourceMapTextPreview
         GetProvenanceTimestampMsForRootHex
+        ListProvenanceEvents
+        ListProvenanceChain
+        GetMemoryContentAtRootHex
         ListVectorEmbeddingIndexDimensions
         LoadGraphEdgesForNamespace
         LoadNodeLabelsForNamespace
@@ -909,6 +915,102 @@ structure GetProvenanceTimestampMsForRootHexInput {
 structure GetProvenanceTimestampMsForRootHexOutput {
     /// Omitted when the root is unknown.
     timestampMs: Long
+}
+
+@documentation("""
+Newest-first provenance events, optionally filtered by memory `namespace` / `memoryKey`
+via `event_json`. `memoryKey` requires `namespace`. Implementations hard-cap `limit` (typical max 100).
+Optional on implementors (`listProvenanceEvents?` in TS).
+""")
+operation ListProvenanceEvents {
+    input: ListProvenanceEventsInput
+    output: ListProvenanceEventsOutput
+}
+
+structure ListProvenanceEventsInput {
+    namespace: String
+    memoryKey: String
+    limit: Integer
+    beforeCreatedAt: Long
+    beforeId: String
+}
+
+structure ProvenanceEventListItem {
+    id: String
+    rootHex: String
+    parentRootHex: String
+    eventType: String
+    createdAt: Long
+    event: MemoryProvenanceEvent
+    intentSnapshotId: String
+}
+
+list ProvenanceEventListItemList {
+    member: ProvenanceEventListItem
+}
+
+structure ListProvenanceEventsOutput {
+    events: ProvenanceEventListItemList
+}
+
+@documentation("""
+Newest-first chain tip links (no full event blob). Page older than `beforeRootHex` when set.
+Implementations hard-cap `limit` (typical max 100).
+Optional on implementors (`listProvenanceChain?` in TS).
+""")
+operation ListProvenanceChain {
+    input: ListProvenanceChainInput
+    output: ListProvenanceChainOutput
+}
+
+structure ListProvenanceChainInput {
+    limit: Integer
+    beforeRootHex: String
+}
+
+structure ProvenanceChainLink {
+    rootHex: String
+    parentRootHex: String
+    eventType: String
+    createdAt: Long
+    id: String
+}
+
+list ProvenanceChainLinkList {
+    member: ProvenanceChainLink
+}
+
+structure ListProvenanceChainOutput {
+    links: ProvenanceChainLinkList
+}
+
+@documentation("""
+Lexical source arms as of a provenance tip (per-arm LWW). Empty when tip unknown,
+memory deleted at tip, or bodies unavailable (e.g. dropped without cold store).
+Optional on implementors (`getMemoryContentAtRootHex?` in TS).
+""")
+operation GetMemoryContentAtRootHex {
+    input: GetMemoryContentAtRootHexInput
+    output: GetMemoryContentAtRootHexOutput
+}
+
+structure GetMemoryContentAtRootHexInput {
+    rootHex: String
+    namespace: String
+    memoryKey: String
+}
+
+structure MemoryContentAtRootItem {
+    sourceKey: String
+    text: String
+}
+
+list MemoryContentAtRootItemList {
+    member: MemoryContentAtRootItem
+}
+
+structure GetMemoryContentAtRootHexOutput {
+    content: MemoryContentAtRootItemList
 }
 
 @documentation("""

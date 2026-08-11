@@ -12,6 +12,9 @@ import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-nod
 import type {
   MemoriesBackendCapabilities,
   MemoriesPersistenceAsync,
+  MemoryContentAtRootItem,
+  ProvenanceChainLink,
+  ProvenanceEventListItem,
 } from "@khoralabs/memories-node/persistence";
 import type { NamespaceGraphLayout } from "@khoralabs/memories-node/projections";
 import {
@@ -40,6 +43,9 @@ import {
   type DatabaseNamespacesResponse,
   type DatabaseNamespacesUnderPrefixResponse,
   type DatabaseProjectionInputRequest,
+  type DatabaseProvenanceChainResponse,
+  type DatabaseProvenanceContentResponse,
+  type DatabaseProvenanceEventsResponse,
   type DatabaseProvenanceHeadResponse,
   type DatabaseProvenanceTimestampResponse,
   type DatabaseSearchRequest,
@@ -79,6 +85,49 @@ function createRemotePersistence(
         { database, rootHex },
       );
       return response.timestampMs ?? undefined;
+    },
+    listProvenanceEvents: async (input: {
+      namespace?: string;
+      key?: string;
+      limit: number;
+      before?: { createdAt: number; id: string };
+    }): Promise<ProvenanceEventListItem[]> => {
+      const response = await client.postJson<DatabaseProvenanceEventsResponse>(
+        "/databases/provenance/events",
+        {
+          database,
+          ...(input.namespace !== undefined ? { namespace: input.namespace } : {}),
+          ...(input.key !== undefined ? { key: input.key } : {}),
+          limit: input.limit,
+          ...(input.before !== undefined ? { before: input.before } : {}),
+        },
+      );
+      return response.events as ProvenanceEventListItem[];
+    },
+    listProvenanceChain: async (input: {
+      limit: number;
+      beforeRootHex?: string;
+    }): Promise<ProvenanceChainLink[]> => {
+      const response = await client.postJson<DatabaseProvenanceChainResponse>(
+        "/databases/provenance/chain",
+        {
+          database,
+          limit: input.limit,
+          ...(input.beforeRootHex !== undefined ? { beforeRootHex: input.beforeRootHex } : {}),
+        },
+      );
+      return response.links;
+    },
+    getMemoryContentAtRootHex: async (
+      rootHex: string,
+      namespace: string,
+      memoryKey: string,
+    ): Promise<MemoryContentAtRootItem[]> => {
+      const response = await client.postJson<DatabaseProvenanceContentResponse>(
+        "/databases/provenance/content",
+        { database, rootHex, namespace, key: memoryKey },
+      );
+      return response.content;
     },
     findMemoryIdByKey: async (namespace: string, key: string) =>
       reads.findMemoryIdByKey(namespace, key),
