@@ -1,6 +1,8 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { ensureCustomSqliteForExtensions, initMemoriesSchema, loadSqliteVec } from "./connection";
+import m001AddContentBlobs from "./migrations/0.6.0-0.7.0/001-add-content-blobs";
 
 function tableColumns(db: Database, table: string): Set<string> {
   return new Set(
@@ -46,6 +48,7 @@ describe("memories sqlite migrations", () => {
       { from_version: "0.3.0", to_version: "0.4.0", name: "001-drop-ns-prefix-columns" },
       { from_version: "0.4.0", to_version: "0.5.0", name: "001-add-memory-suppressed" },
       { from_version: "0.5.0", to_version: "0.6.0", name: "001-add-namespace-suppressed" },
+      { from_version: "0.6.0", to_version: "0.7.0", name: "001-add-content-blobs" },
     ]);
 
     const nsIdx = db
@@ -58,6 +61,12 @@ describe("memories sqlite migrations", () => {
     const outbox = tableColumns(db, "memory_content_outbox");
     expect(outbox.has("root_hex")).toBe(true);
     expect(outbox.has("text")).toBe(true);
+    expect(outbox.has("content_sha256")).toBe(true);
+
+    const blobs = tableColumns(db, "memory_content_blobs");
+    expect(blobs.has("content_sha256")).toBe(true);
+    expect(blobs.has("location")).toBe(true);
+    expect(blobs.has("cold_uri")).toBe(true);
 
     const namespaceMetadata = tableColumns(db, "namespace_metadata");
     expect(namespaceMetadata.has("display_name")).toBe(true);
@@ -70,5 +79,59 @@ describe("memories sqlite migrations", () => {
       )
       .get()?.sql;
     expect(ftsSql ?? "").toMatch(/\bporter\b/i);
+  });
+
+  test("0.7.0 content-blobs migration backfills hashes and nulls inline text", () => {
+    ensureCustomSqliteForExtensions();
+    const db = new Database(":memory:");
+    db.run(`
+CREATE TABLE memory_content_outbox (
+  _id TEXT PRIMARY KEY NOT NULL,
+  _ts_created REAL NOT NULL,
+  root_hex TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  namespace TEXT NOT NULL,
+  memory_key TEXT NOT NULL,
+  source_key TEXT,
+  text TEXT
+);
+`);
+    db.run(
+      `INSERT INTO memory_content_outbox
+         (_id, _ts_created, root_hex, event_type, namespace, memory_key, source_key, text)
+       VALUES
+         ('r1:a', 1, 'r1', 'MERGE_MEMORY', 'ns', 'm', 'a', 'hello'),
+         ('r1:b', 1, 'r1', 'MERGE_MEMORY', 'ns', 'm', 'b', 'hello'),
+         ('r2:__delete__', 2, 'r2', 'DELETE_MEMORY', 'ns', 'm', NULL, NULL)`,
+    );
+
+    m001AddContentBlobs.up(db);
+
+    const hash = createHash("sha256").update("hello").digest("hex");
+    const blob = db
+      .query<{ text: string | null; location: string }, [string]>(
+        `SELECT text, location FROM memory_content_blobs WHERE content_sha256 = ?`,
+      )
+      .get(hash);
+    expect(blob?.text).toBe("hello");
+    expect(blob?.location).toBe("hot");
+
+    const blobCount = db
+      .query<{ n: number }, []>(`SELECT COUNT(*) AS n FROM memory_content_blobs`)
+      .get()?.n;
+    expect(blobCount).toBe(1);
+
+    const mergeRows = db
+      .query<{ content_sha256: string | null; text: string | null }, []>(
+        `SELECT content_sha256, text FROM memory_content_outbox WHERE event_type = 'MERGE_MEMORY'`,
+      )
+      .all();
+    expect(mergeRows).toHaveLength(2);
+    for (const row of mergeRows) {
+      expect(row.content_sha256).toBe(hash);
+      expect(row.text).toBeNull();
+    }
+
+    expect(tableColumns(db, "memory_content_outbox").has("content_sha256")).toBe(true);
   });
 });

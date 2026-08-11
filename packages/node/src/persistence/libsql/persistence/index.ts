@@ -21,6 +21,7 @@ export {
   MemoriesLibsqlPersistence,
 } from "./persistence";
 export {
+  CONTENT_BLOBS_SQL,
   CONTENT_OUTBOX_SQL,
   MEMORIES_INDEXES_SQL,
   MEMORIES_SCHEMA_SQL,

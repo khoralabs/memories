@@ -1,6 +1,8 @@
 import type { Database } from "bun:sqlite";
-import type { LabelPropsSearchFormatter } from "../../../persistence/core";
+import type { LabelPropsSearchFormatter, NamespacePathPolicy } from "../../../persistence/core";
 import type { MemoriesPersistenceAsync } from "../../../persistence/core/persistence";
+import type { ContentBlobColdStore } from "../../../persistence/core/persistence/content-blob-cold-store";
+import type { BunS3ContentBlobColdStoreOptions } from "./content-blob-cold-store-bun";
 import {
   createMemoriesPersistence,
   type MemoriesPersistence as IMemoriesPersistence,
@@ -74,7 +76,13 @@ export function wrapMemoriesPersistenceAsAsync(
 
 export function createMemoriesPersistenceAsync(
   db: Database,
-  options?: { labelPropsSearchFormatter?: LabelPropsSearchFormatter },
+  options?: {
+    labelPropsSearchFormatter?: LabelPropsSearchFormatter;
+    namespacePathPolicy?: NamespacePathPolicy;
+    contentOutboxRetentionTips?: number;
+    contentBlobColdStore?: ContentBlobColdStore;
+    bunS3ColdStore?: BunS3ContentBlobColdStoreOptions | false;
+  },
 ): MemoriesPersistenceAsync {
   const sync = createMemoriesPersistence(db, options);
   return wrapMemoriesPersistenceAsAsync(sync, db);

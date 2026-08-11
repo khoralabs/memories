@@ -129,8 +129,8 @@ export function prepareMemoriesSqliteStmts(db: Database): MemoriesSqliteStmts {
     ),
 
     insertContentOutbox: db.prepare(
-      `INSERT OR IGNORE INTO memory_content_outbox (_id, _ts_created, root_hex, event_type, namespace, memory_key, source_key, text)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO memory_content_outbox (_id, _ts_created, root_hex, event_type, namespace, memory_key, source_key, text, content_sha256)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
 
     deleteTextFeaturesFtsByTextFeatureId: db.prepare(

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { LibsqlDatabase } from "./client";
 import { execMultiple, execSql, queryAll, queryOne } from "./client";
 import {
@@ -6,6 +7,7 @@ import {
   TEXT_FEATURES_FTS_SQL,
 } from "./libsql-schema";
 import {
+  CONTENT_BLOBS_SQL,
   CONTENT_OUTBOX_SQL,
   MEMORIES_INDEXES_SQL,
   MEMORIES_SCHEMA_SQL,
@@ -13,7 +15,7 @@ import {
 } from "./schema";
 import { batchWriteStatements } from "./transactions";
 
-export const MEMORIES_SCHEMA_VERSION = "0.6.0";
+export const MEMORIES_SCHEMA_VERSION = "0.7.0";
 
 const NS_PREFIX_COLUMNS = [
   "ns_prefix_1",
@@ -31,6 +33,10 @@ type Migration = {
   up?: (db: LibsqlDatabase) => Promise<void>;
 };
 
+function sha256Hex(data: string): string {
+  return createHash("sha256").update(data).digest("hex");
+}
+
 async function dropNsPrefixColumns(db: LibsqlDatabase): Promise<void> {
   await execSql(db.client, `DROP INDEX IF EXISTS idx_memories_ns_prefixes`);
   const cols = await queryAll<{ name: string }>(db.client, `PRAGMA table_info(memories)`);
@@ -44,6 +50,40 @@ async function dropNsPrefixColumns(db: LibsqlDatabase): Promise<void> {
     db.client,
     `CREATE INDEX IF NOT EXISTS idx_memories_namespace ON memories (namespace)`,
   );
+}
+
+async function addContentBlobs(db: LibsqlDatabase): Promise<void> {
+  for (const stmt of CONTENT_BLOBS_SQL.split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)) {
+    await execSql(db.client, stmt);
+  }
+  const cols = await queryAll<{ name: string }>(
+    db.client,
+    `PRAGMA table_info(memory_content_outbox)`,
+  );
+  if (!cols.some((r) => r.name === "content_sha256")) {
+    await execSql(db.client, `ALTER TABLE memory_content_outbox ADD COLUMN content_sha256 TEXT`);
+  }
+  const rows = await queryAll<{ _id: string; text: string }>(
+    db.client,
+    `SELECT _id, text FROM memory_content_outbox WHERE text IS NOT NULL AND length(text) > 0`,
+  );
+  const now = Date.now();
+  for (const row of rows) {
+    const hash = sha256Hex(row.text);
+    await execSql(
+      db.client,
+      `INSERT OR IGNORE INTO memory_content_blobs (content_sha256, text, location, cold_uri, _ts_created)
+       VALUES (?, ?, 'hot', NULL, ?)`,
+      [hash, row.text, now],
+    );
+    await execSql(
+      db.client,
+      `UPDATE memory_content_outbox SET content_sha256 = ?, text = NULL WHERE _id = ?`,
+      [hash, row._id],
+    );
+  }
 }
 
 const migrations: Migration[] = [
@@ -101,6 +141,11 @@ const migrations: Migration[] = [
         );
       }
     },
+  },
+  {
+    to: "0.7.0",
+    name: "001-add-content-blobs",
+    up: addContentBlobs,
   },
 ];
 

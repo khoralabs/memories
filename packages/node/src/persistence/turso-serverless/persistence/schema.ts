@@ -183,6 +183,18 @@ CREATE INDEX IF NOT EXISTS "idx_memory_content_outbox_root_hex"
   ON "memory_content_outbox" ("root_hex");
 `;
 
+export const CONTENT_BLOBS_SQL = `
+CREATE TABLE IF NOT EXISTS "memory_content_blobs" (
+  "content_sha256" TEXT PRIMARY KEY NOT NULL,
+  "text" TEXT,
+  "location" TEXT NOT NULL DEFAULT 'hot',
+  "cold_uri" TEXT,
+  "_ts_created" REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_memory_content_outbox_ns_key_source"
+  ON "memory_content_outbox" ("namespace", "memory_key", "source_key");
+`;
+
 export const NAMESPACE_METADATA_SQL = `
 CREATE TABLE IF NOT EXISTS "namespace_metadata" (
   "_id" TEXT PRIMARY KEY NOT NULL,

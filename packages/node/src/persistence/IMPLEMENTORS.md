@@ -87,6 +87,14 @@ Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../co
 - **`content_hash`:** Nullable column on **`source_maps`**, lowercase 64-char hex. After inserting text and/or vector features for that map, **`updateSourceMapContentHash`** sets `SHA-256(MEMORIES_SOURCE_BODY_v1 || NUL || UTF-8(canonical_json(descriptor)))` where the descriptor references `text_sha256` / `vector_sha256` of the materialized payloads (see `computeSourceMapContentHash` in persistence core). Merge provenance events may include optional **`content_hashes`** keyed by `source_key` for audit without re-reading blobs.
 - **Rollbacks:** Provenance and content-hash writes participate in the same **`withTransaction`** boundary as merge/delete; a failing append rolls back the whole mutation.
 
+### Content outbox (thin tips + content-addressed blobs)
+
+- **`memory_content_outbox`:** Append-only **thin** tip log — one row per `(root_hex, source_key)` MERGE (or a DELETE tombstone). New rows store **`content_sha256`** only (`text` is null). Thin rows are **kept indefinitely** in the primary DB (no tip pruning of outbox pointers).
+- **`memory_content_blobs`:** Content-addressed UTF-8 bodies (`content_sha256 = sha256Hex(text)`). `location` is `hot` | `cold` | `dropped`; `cold_uri` set when cold.
+- **Reconstruction (LWW):** Per `(namespace, memory_key, source_key)`, take the latest MERGE at-or-before the target provenance tip; a later DELETE clears the memory. Resolve text from hot blob → cold store fetch (verify sha) → else omit. Legacy inline `outbox.text` still works when `content_sha256` is null. Sync SQLite reconstruct is hot/legacy only; use async + cold store for evacuated bodies.
+- **Hot tip window:** `contentOutboxRetentionTips` (default **256**; `0` = never evacuate). Bodies whose newest referencing tip is outside the window are **evacuated**: uploaded via `contentBlobColdStore` when configured, otherwise **permanently dropped** (`location = 'dropped'`). SQLite can auto-wire Bun `S3Client` when a bucket is configured (`createBunS3ContentBlobColdStore` / `S3_BUCKET` / `AWS_BUCKET`); without a bucket, drop behavior applies.
+- **Scale note:** Blob tiering bounds hot DB size. At extreme tip counts, further scale by **tiered thinning of the outbox itself** (segment old tip ranges into cold parquet/JSONL + a small catalog)—intentionally not implemented here.
+
 ### Future (out of scope here)
 
 Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG are not part of this schema; only the linear mutation log + per-map digests are specified today.

@@ -16,13 +16,22 @@ import type {
 } from "../../../persistence/core";
 import { resolveNamespacePathPolicy } from "../../../persistence/core";
 import type { SourceMap, TextFeatureExportRow } from "../../../persistence/core/persistence";
+import type { ContentBlobColdStore } from "../../../persistence/core/persistence/content-blob-cold-store";
+import { DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS } from "../../../persistence/core/persistence/content-blob-cold-store";
 import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
+import {
+  type BunS3ContentBlobColdStoreOptions,
+  createBunS3ContentBlobColdStore,
+} from "./content-blob-cold-store-bun";
 import { clearSourceMapFeatures as clearSourceMapFeaturesQuery } from "./models/clear-source-map-features";
 import {
   appendDeleteOutboxEntry,
   appendMergeOutboxEntries,
   type ContentAtRootHit,
+  evacuateContentBlobsOutsideHotWindow,
+  getMemoryContentAtRootHexAsync as getMemoryContentAtRootHexAsyncQuery,
   getMemoryContentAtRootHex as getMemoryContentAtRootHexQuery,
+  reconstructStoreAtRootHexAsync as reconstructStoreAtRootHexAsyncQuery,
   reconstructStoreAtRootHex as reconstructStoreAtRootHexQuery,
 } from "./models/content-outbox";
 import type { DbCtx } from "./models/context";
@@ -110,13 +119,20 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   readonly namespacePathPolicy: NamespacePathPolicy;
 
   private readonly stmts: MemoriesSqliteStmts;
+  private readonly contentOutboxRetentionTips: number;
+  private readonly contentBlobColdStore: ContentBlobColdStore | undefined;
 
   constructor(
     private readonly db: Database,
     private readonly labelPropsSearchFormatter?: LabelPropsSearchFormatter,
     namespacePathPolicy?: NamespacePathPolicy,
+    contentOutboxRetentionTips?: number,
+    contentBlobColdStore?: ContentBlobColdStore,
   ) {
     this.namespacePathPolicy = resolveNamespacePathPolicy(namespacePathPolicy);
+    this.contentOutboxRetentionTips =
+      contentOutboxRetentionTips ?? DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS;
+    this.contentBlobColdStore = contentBlobColdStore;
     this.capabilities = {
       lexicalSearch: true,
       vectorSearch: true,
@@ -295,9 +311,21 @@ export class MemoriesPersistence implements IMemoriesPersistence {
         entries: input.entries,
       });
     }
+    // Drop path is sync until the first await; run inline so short-lived DBs aren't
+    // closed under a deferred microtask. Cold put may continue asynchronously.
+    void evacuateContentBlobsOutsideHotWindow(this.db, {
+      retentionTips: this.contentOutboxRetentionTips,
+      coldStore: this.contentBlobColdStore,
+    });
   }
 
-  /** Reconstruct the text content of one memory as of the given provenance chain link. */
+  /**
+   * Reconstruct text as of a provenance tip (hot blob + legacy inline text).
+   * Cold-evacuated bodies need {@link getMemoryContentAtRootHexAsync}.
+   *
+   * Thin outbox rows are kept indefinitely; at extreme tip counts, scale by tiered
+   * thinning of the outbox itself (segment old tips to cold files)—not implemented here.
+   */
   getMemoryContentAtRootHex(
     rootHex: string,
     namespace: string,
@@ -306,12 +334,39 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return getMemoryContentAtRootHexQuery(this.db, rootHex, namespace, memoryKey);
   }
 
+  /** Like {@link getMemoryContentAtRootHex} but fetches cold S3 bodies when configured. */
+  async getMemoryContentAtRootHexAsync(
+    rootHex: string,
+    namespace: string,
+    memoryKey: string,
+  ): Promise<ContentAtRootHit[]> {
+    return getMemoryContentAtRootHexAsyncQuery(
+      this.db,
+      rootHex,
+      namespace,
+      memoryKey,
+      this.contentBlobColdStore,
+    );
+  }
+
   /**
    * Reconstruct the text content of every memory in the store as of the given chain link.
    * Scans the full outbox — use {@link getMemoryContentAtRootHex} for single-key lookups.
    */
   reconstructStoreAtRootHex(rootHex: string): ContentAtRootHit[] {
     return reconstructStoreAtRootHexQuery(this.db, rootHex);
+  }
+
+  async reconstructStoreAtRootHexAsync(rootHex: string): Promise<ContentAtRootHit[]> {
+    return reconstructStoreAtRootHexAsyncQuery(this.db, rootHex, this.contentBlobColdStore);
+  }
+
+  /** Run tip-window blob evacuation (S3 or drop). */
+  async evacuateContentBlobs(): Promise<void> {
+    await evacuateContentBlobsOutsideHotWindow(this.db, {
+      retentionTips: this.contentOutboxRetentionTips,
+      coldStore: this.contentBlobColdStore,
+    });
   }
 
   updateSourceMapContentHash(
@@ -682,11 +737,30 @@ export function createMemoriesPersistence(
   options?: {
     labelPropsSearchFormatter?: LabelPropsSearchFormatter;
     namespacePathPolicy?: NamespacePathPolicy;
+    /** Newest provenance tips whose blob bodies stay hot (default 256; `0` = never evacuate). */
+    contentOutboxRetentionTips?: number;
+    /** When set, bodies outside the hot window go here; when omitted, they are permanently dropped. */
+    contentBlobColdStore?: ContentBlobColdStore;
+    /**
+     * Bun S3 cold-store factory options. Used when `contentBlobColdStore` is omitted.
+     * Pass `false` to skip auto-detecting env (`S3_BUCKET` / `AWS_BUCKET`).
+     */
+    bunS3ColdStore?: BunS3ContentBlobColdStoreOptions | false;
   },
 ): MemoriesPersistence {
-  return new MemoriesPersistence(
+  const coldStore =
+    options?.contentBlobColdStore ??
+    (options?.bunS3ColdStore === false
+      ? undefined
+      : createBunS3ContentBlobColdStore(
+          options?.bunS3ColdStore === undefined ? undefined : options.bunS3ColdStore,
+        ));
+  const persistence = new MemoriesPersistence(
     db,
     options?.labelPropsSearchFormatter,
     options?.namespacePathPolicy,
+    options?.contentOutboxRetentionTips,
+    coldStore,
   );
+  return persistence;
 }

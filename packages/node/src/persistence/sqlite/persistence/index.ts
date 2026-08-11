@@ -14,9 +14,17 @@ export {
   vectorToBlob,
 } from "./connection";
 export {
+  type BunS3ContentBlobColdStoreOptions,
+  createBunS3ContentBlobColdStore,
+  createMemoryContentBlobColdStore,
+} from "./content-blob-cold-store-bun";
+export {
   type ContentAtRootHit,
+  evacuateContentBlobsOutsideHotWindow,
   getMemoryContentAtRootHex,
+  getMemoryContentAtRootHexAsync,
   reconstructStoreAtRootHex,
+  reconstructStoreAtRootHexAsync,
 } from "./models/content-outbox";
 export { listMemoryNamespaces } from "./models/list-memory-namespaces";
 export { listNamespacesUnderPrefix } from "./models/list-namespaces-under-prefix";

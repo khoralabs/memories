@@ -24,6 +24,8 @@ import type {
   SourceMap,
   TextFeatureExportRow,
 } from "../../../persistence/core/persistence";
+import type { ContentBlobColdStore } from "../../../persistence/core/persistence/content-blob-cold-store";
+import { DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS } from "../../../persistence/core/persistence/content-blob-cold-store";
 import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
 import { createTursoClients, execSql, queryAll, queryOne, type TursoCredentials } from "./client";
 import { type DbCtx, readCtx, writeCtx } from "./context";
@@ -35,6 +37,7 @@ import {
   appendDeleteOutboxEntry,
   appendMergeOutboxEntries,
   type ContentAtRootHit,
+  evacuateContentBlobsOutsideHotWindow,
   getMemoryContentAtRootHex as getMemoryContentAtRootHexQuery,
   reconstructStoreAtRootHex as reconstructStoreAtRootHexQuery,
 } from "./models/content-outbox";
@@ -113,6 +116,8 @@ export type MemoriesTursoServerlessOptions = TursoCredentials & {
   autoMigrate?: boolean;
   labelPropsSearchFormatter?: LabelPropsSearchFormatter;
   namespacePathPolicy?: NamespacePathPolicy;
+  contentOutboxRetentionTips?: number;
+  contentBlobColdStore?: ContentBlobColdStore;
 };
 
 export class MemoriesTursoServerlessPersistence {
@@ -121,14 +126,21 @@ export class MemoriesTursoServerlessPersistence {
 
   private readonly inTransaction = { current: false };
   private txCtx: DbCtx | undefined;
+  private readonly contentOutboxRetentionTips: number;
+  private readonly contentBlobColdStore: ContentBlobColdStore | undefined;
 
   constructor(
     readonly db: TursoDatabase,
     private readonly labelPropsSearchFormatter?: LabelPropsSearchFormatter,
     vectorAnnSearch = false,
     namespacePathPolicy?: NamespacePathPolicy,
+    contentOutboxRetentionTips?: number,
+    contentBlobColdStore?: ContentBlobColdStore,
   ) {
     this.namespacePathPolicy = resolveNamespacePathPolicy(namespacePathPolicy);
+    this.contentOutboxRetentionTips =
+      contentOutboxRetentionTips ?? DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS;
+    this.contentBlobColdStore = contentBlobColdStore;
     this.capabilities = {
       lexicalSearch: true,
       vectorSearch: true,
@@ -355,18 +367,40 @@ export class MemoriesTursoServerlessPersistence {
         entries: input.entries,
       });
     }
+    void evacuateContentBlobsOutsideHotWindow(this.db, {
+      retentionTips: this.contentOutboxRetentionTips,
+      coldStore: this.contentBlobColdStore,
+    });
   }
 
+  /**
+   * Reconstruct text as of a provenance tip (hot + legacy; cold when store configured).
+   * Thin outbox rows are kept indefinitely; at extreme tip counts, scale by tiered
+   * thinning of the outbox itself—not implemented here.
+   */
   async getMemoryContentAtRootHex(
     rootHex: string,
     namespace: string,
     memoryKey: string,
   ): Promise<ContentAtRootHit[]> {
-    return getMemoryContentAtRootHexQuery(this.db, rootHex, namespace, memoryKey);
+    return getMemoryContentAtRootHexQuery(
+      this.db,
+      rootHex,
+      namespace,
+      memoryKey,
+      this.contentBlobColdStore,
+    );
   }
 
   async reconstructStoreAtRootHex(rootHex: string): Promise<ContentAtRootHit[]> {
-    return reconstructStoreAtRootHexQuery(this.db, rootHex);
+    return reconstructStoreAtRootHexQuery(this.db, rootHex, this.contentBlobColdStore);
+  }
+
+  async evacuateContentBlobs(): Promise<void> {
+    await evacuateContentBlobsOutsideHotWindow(this.db, {
+      retentionTips: this.contentOutboxRetentionTips,
+      coldStore: this.contentBlobColdStore,
+    });
   }
 
   async updateSourceMapContentHash(
@@ -862,12 +896,15 @@ export async function createMemoriesTursoServerlessPersistence(
   } catch {
     // Some Turso deployments do not expose libSQL vector indexes.
   }
-  return new MemoriesTursoServerlessPersistence(
+  const instance = new MemoriesTursoServerlessPersistence(
     db,
     options.labelPropsSearchFormatter,
     vectorAnnSearch,
     options.namespacePathPolicy,
-  ) as unknown as MemoriesPersistenceAsync;
+    options.contentOutboxRetentionTips,
+    options.contentBlobColdStore,
+  );
+  return instance as unknown as MemoriesPersistenceAsync;
 }
 
 export { migrateMemoriesTursoServerless };
