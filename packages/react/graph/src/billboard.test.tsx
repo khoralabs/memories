@@ -38,7 +38,7 @@ const edge: SceneEdge = {
 
 function mount(client: ReturnType<typeof createMockReactClient>, child: ReactNode) {
   return render(
-    <MemoriesClientProvider client={client} database={TEST_DATABASE}>
+    <MemoriesClientProvider createClient={() => client} database={TEST_DATABASE}>
       <MemoriesNamespacesProvider namespaceRoot="acme">
         <MemoriesNamespaceMemoriesProvider>
           <GraphProjectionProvider>{child}</GraphProjectionProvider>

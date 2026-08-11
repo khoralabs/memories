@@ -392,7 +392,7 @@ export class MemoriesLibsqlPersistence {
   }
 
   /**
-   * Reconstruct text as of a provenance tip (hot + legacy; cold when store configured).
+   * Reconstruct text as of a provenance tip (hot blob; cold when store configured).
    * Thin outbox rows are kept indefinitely; at extreme tip counts, scale by tiered
    * thinning of the outbox itself—not implemented here.
    */

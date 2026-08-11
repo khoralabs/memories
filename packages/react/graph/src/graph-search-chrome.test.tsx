@@ -20,7 +20,7 @@ afterEach(() => {
 function wrap(child: ReactNode) {
   const client = createMockReactClient();
   return (
-    <MemoriesClientProvider client={client} database={TEST_DATABASE}>
+    <MemoriesClientProvider createClient={() => client} database={TEST_DATABASE}>
       <MemoriesNamespacesProvider namespaceRoot="acme" searchDebounceMs={0}>
         <MemoriesNamespaceMemoriesProvider searchDebounceMs={0}>
           {child}

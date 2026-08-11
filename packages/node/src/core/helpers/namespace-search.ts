@@ -288,7 +288,7 @@ function resolveNamespaceSearchArms(
   vectorWeight: number;
   contentArms?: { lexical?: number; vector?: number };
 } {
-  // Missing `nodes` defaults to 1 so legacy `{ lexical, vector }` callers keep memory search.
+  // Missing `nodes` defaults to 1 so `{ lexical, vector }` callers still search memories.
   const nodesWeight = inputArms?.nodes !== undefined ? Math.max(0, inputArms.nodes) : 1;
 
   if (inputArms === undefined) {

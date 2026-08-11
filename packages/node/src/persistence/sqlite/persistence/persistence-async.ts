@@ -113,7 +113,7 @@ export function getMemoriesSqliteDatabaseFromAsync(
   );
 }
 
-/** Resolve sync persistence from a SQLite async adapter (admin projections, legacy sync APIs). */
+/** Resolve sync persistence from a SQLite async adapter (admin projections, sync unwrap). */
 export function getMemoriesSyncPersistenceFromAsync(
   persistence: MemoriesPersistenceAsync,
 ): IMemoriesPersistence {

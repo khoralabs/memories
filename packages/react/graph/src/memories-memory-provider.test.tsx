@@ -37,7 +37,7 @@ function SearchProbe(props: { onValue: (v: ReturnType<typeof useGraphMemoriesSea
 
 function mount(client: ReturnType<typeof createMockReactClient>, child: ReactNode) {
   return render(
-    <MemoriesClientProvider client={client} database={TEST_DATABASE}>
+    <MemoriesClientProvider createClient={() => client} database={TEST_DATABASE}>
       <MemoriesNamespacesProvider namespaceRoot="acme" namespace="acme" scope="subtree">
         <MemoriesNamespaceMemoriesProvider searchDebounceMs={0}>
           {child}

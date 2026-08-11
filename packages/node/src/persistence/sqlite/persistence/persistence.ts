@@ -322,7 +322,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   }
 
   /**
-   * Reconstruct text as of a provenance tip (hot blob + legacy inline text).
+   * Reconstruct text as of a provenance tip (hot blob only).
    * Cold-evacuated bodies need {@link getMemoryContentAtRootHexAsync}.
    *
    * Thin outbox rows are kept indefinitely; at extreme tip counts, scale by tiered

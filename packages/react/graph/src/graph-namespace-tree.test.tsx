@@ -18,7 +18,7 @@ afterEach(() => {
 function Wrapper({ children }: { children: ReactNode }) {
   const client = createMockReactClient();
   return (
-    <MemoriesClientProvider client={client} database={TEST_DATABASE}>
+    <MemoriesClientProvider createClient={() => client} database={TEST_DATABASE}>
       <MemoriesNamespacesProvider namespaceRoot="acme">
         <SidebarProvider className="min-h-0 w-full">{children}</SidebarProvider>
       </MemoriesNamespacesProvider>

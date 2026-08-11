@@ -41,7 +41,7 @@ export function hasVectorAnnSearch(db: Database): boolean {
 }
 
 /**
- * Replace legacy flat vec0 tables with DiskANN tables and repopulate them from
+ * Replace pre-DiskANN flat vec0 tables with DiskANN tables and repopulate them from
  * canonical little-endian float32 BLOB rows in `vector_features`.
  */
 export function backfillVectorFeaturesVecTables(db: Database): boolean {

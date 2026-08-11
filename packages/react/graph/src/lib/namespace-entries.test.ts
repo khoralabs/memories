@@ -6,15 +6,6 @@ import {
 } from "./namespace-entries.ts";
 
 describe("normalizeNamespaceEntries", () => {
-  test("accepts legacy string[]", () => {
-    const entries = normalizeNamespaceEntries(["user/a", " user/b "]);
-    expect(entries).toEqual([
-      { namespace: "user/a", alias: null, description: "", suppressed: false },
-      { namespace: "user/b", alias: null, description: "", suppressed: false },
-    ]);
-    expect(namespacePathsFromEntries(entries)).toEqual(["user/a", "user/b"]);
-  });
-
   test("accepts metadata rows", () => {
     const entries = normalizeNamespaceEntries([
       { namespace: "user/a", alias: "Alpha", description: "desc", suppressed: true },
@@ -24,20 +15,19 @@ describe("normalizeNamespaceEntries", () => {
       { namespace: "user/a", alias: "Alpha", description: "desc", suppressed: true },
       { namespace: "user/b", alias: null, description: "", suppressed: false },
     ]);
+    expect(namespacePathsFromEntries(entries)).toEqual(["user/a", "user/b"]);
   });
 
-  test("mixed payload", () => {
+  test("skips empty namespace paths", () => {
     const entries = normalizeNamespaceEntries([
-      "plain",
-      { namespace: "meta", alias: "M", description: "d" },
+      { namespace: "  ", alias: null, description: "" },
+      { namespace: "kept", alias: "K", description: "d" },
     ]);
-    expect(namespacePathsFromEntries(entries)).toEqual(["plain", "meta"]);
-    const plain = entries[0];
-    const meta = entries[1];
-    if (plain === undefined || meta === undefined) {
-      throw new Error("expected two normalized namespace entries");
+    expect(namespacePathsFromEntries(entries)).toEqual(["kept"]);
+    const kept = entries[0];
+    if (kept === undefined) {
+      throw new Error("expected one normalized namespace entry");
     }
-    expect(namespaceEntryLabel(meta)).toBe("M");
-    expect(namespaceEntryLabel(plain)).toBe("plain");
+    expect(namespaceEntryLabel(kept)).toBe("K");
   });
 });

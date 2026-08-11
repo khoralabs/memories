@@ -128,34 +128,6 @@ describe("content outbox blobs + LWW", () => {
     expect(persistence.getMemoryContentAtRootHex(deleteRoot, "ns", "mem")).toEqual([]);
   });
 
-  test("legacy inline outbox.text reconstructs when content_sha256 is null", () => {
-    const db = openTestMemoriesDatabase();
-    const persistence = createMemoriesPersistence(db, { bunS3ColdStore: false });
-
-    mergeMemory(
-      { persistence },
-      {
-        key: "mem",
-        namespace: "ns",
-        content: [{ key: "s", text: "placeholder" }],
-        labels: [],
-        edges: [],
-      },
-    );
-    const root = requireHead(persistence);
-
-    db.run(
-      `UPDATE memory_content_outbox
-       SET content_sha256 = NULL, text = ?
-       WHERE root_hex = ? AND source_key = ?`,
-      ["legacy-inline", root, "s"],
-    );
-
-    expect(persistence.getMemoryContentAtRootHex(root, "ns", "mem")).toEqual([
-      { namespace: "ns", memoryKey: "mem", sourceKey: "s", text: "legacy-inline" },
-    ]);
-  });
-
   test("without cold store, evacuate drops bodies but keeps thin outbox rows", async () => {
     const db = openTestMemoriesDatabase();
     const persistence = createMemoriesPersistence(db, {

@@ -44,7 +44,7 @@ describe("MemoriesNamespacesProvider", () => {
     let latest: ReturnType<typeof useMemoriesNamespaces> | null = null;
 
     render(
-      <MemoriesClientProvider client={client} database={TEST_DATABASE}>
+      <MemoriesClientProvider createClient={() => client} database={TEST_DATABASE}>
         <MemoriesNamespacesProvider>
           <Probe
             onValue={(v) => {
@@ -71,7 +71,7 @@ describe("MemoriesNamespacesProvider", () => {
     let latest: ReturnType<typeof useMemoriesNamespaces> | null = null;
 
     render(
-      <MemoriesClientProvider client={client} database={TEST_DATABASE}>
+      <MemoriesClientProvider createClient={() => client} database={TEST_DATABASE}>
         <MemoriesNamespacesProvider namespaceRoot="host-root">
           <Probe
             onValue={(v) => {
@@ -93,7 +93,7 @@ describe("MemoriesNamespacesProvider", () => {
     let latest: ReturnType<typeof useMemoriesNamespaces> | null = null;
 
     render(
-      <MemoriesClientProvider client={client} database={TEST_DATABASE}>
+      <MemoriesClientProvider createClient={() => client} database={TEST_DATABASE}>
         <MemoriesNamespacesProvider namespaceRoot="acme" namespace="acme/child">
           <Probe
             onValue={(v) => {
@@ -131,7 +131,7 @@ describe("MemoriesNamespacesProvider", () => {
     let latest: ReturnType<typeof useGraphNamespacesSearch> | null = null;
 
     render(
-      <MemoriesClientProvider client={client} database={TEST_DATABASE}>
+      <MemoriesClientProvider createClient={() => client} database={TEST_DATABASE}>
         <MemoriesNamespacesProvider namespaceRoot="acme" searchDebounceMs={0}>
           <SearchProbe
             onValue={(v) => {

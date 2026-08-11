@@ -14,11 +14,11 @@ export type MemoriesGraphNamespaceEntry = {
 
 /**
  * Host catalog input before {@link normalizeNamespaceEntries}.
- * Legacy string paths and rows omitting `suppressed` are accepted; output always has a boolean.
+ * Rows omitting `suppressed` are accepted; output always has a boolean.
  */
-export type MemoriesGraphNamespaceEntryInput =
-  | string
-  | (Omit<MemoriesGraphNamespaceEntry, "suppressed"> & { suppressed?: boolean });
+export type MemoriesGraphNamespaceEntryInput = Omit<MemoriesGraphNamespaceEntry, "suppressed"> & {
+  suppressed?: boolean;
+};
 
 export type MemoriesGraphNamespacesPayload = {
   namespaces?: Array<MemoriesGraphNamespaceEntryInput>;
@@ -32,19 +32,13 @@ export type MemoriesGraphNamespacesPayload = {
   error?: string;
 };
 
-/** Coerce host `namespaces` (legacy strings or metadata rows) into catalog entries. */
+/** Coerce host `namespaces` metadata rows into catalog entries. */
 export function normalizeNamespaceEntries(
   namespaces: readonly MemoriesGraphNamespaceEntryInput[] | undefined,
 ): MemoriesGraphNamespaceEntry[] {
   if (namespaces === undefined) return [];
   const out: MemoriesGraphNamespaceEntry[] = [];
   for (const entry of namespaces) {
-    if (typeof entry === "string") {
-      const namespace = entry.trim();
-      if (namespace.length === 0) continue;
-      out.push({ namespace, alias: null, description: "", suppressed: false });
-      continue;
-    }
     if (entry === null || typeof entry !== "object") continue;
     const namespace = typeof entry.namespace === "string" ? entry.namespace.trim() : "";
     if (namespace.length === 0) continue;

@@ -110,7 +110,6 @@ type LwwArmRow = {
   memoryKey: string;
   sourceKey: string;
   contentSha256: string | null;
-  legacyText: string | null;
   blobText: string | null;
   location: string | null;
   coldUri: string | null;
@@ -147,8 +146,7 @@ const LWW_SQL = `
       lm.namespace,
       lm.memory_key,
       lm.source_key,
-      o.content_sha256,
-      o.text AS legacy_text
+      o.content_sha256
     FROM last_merge lm
     JOIN eligible e ON e.prov_rowid = lm.merge_rowid
     JOIN memory_content_outbox o
@@ -169,7 +167,6 @@ const LWW_SQL = `
     p.memory_key AS memoryKey,
     p.source_key AS sourceKey,
     p.content_sha256 AS contentSha256,
-    p.legacy_text AS legacyText,
     b.text AS blobText,
     b.location AS location,
     b.cold_uri AS coldUri
@@ -196,22 +193,21 @@ async function queryLwwArms(
   return readQueryAll<LwwArmRow>(db, sql, [rootHex]);
 }
 
-function hitsFromHotOrLegacy(rows: LwwArmRow[]): ContentAtRootHit[] {
+function hitsFromHot(rows: LwwArmRow[]): ContentAtRootHit[] {
   const out: ContentAtRootHit[] = [];
   for (const row of rows) {
-    const text = row.blobText ?? row.legacyText;
-    if (text == null) continue;
+    if (row.blobText == null) continue;
     out.push({
       namespace: row.namespace,
       memoryKey: row.memoryKey,
       sourceKey: row.sourceKey,
-      text,
+      text: row.blobText,
     });
   }
   return out;
 }
 
-/** Reconstruct text as of a tip (hot blob + legacy inline). Cold bodies need coldStore. */
+/** Reconstruct text as of a tip (hot blob). Cold bodies need coldStore. */
 export async function getMemoryContentAtRootHex(
   db: LibsqlDatabase,
   rootHex: string,
@@ -220,7 +216,7 @@ export async function getMemoryContentAtRootHex(
   coldStore?: ContentBlobColdStore,
 ): Promise<ContentAtRootHit[]> {
   const rows = await queryLwwArms(db, rootHex, { namespace, memoryKey });
-  if (coldStore === undefined) return hitsFromHotOrLegacy(rows);
+  if (coldStore === undefined) return hitsFromHot(rows);
   return resolveLwwRows(db, rows, coldStore);
 }
 
@@ -230,7 +226,7 @@ export async function reconstructStoreAtRootHex(
   coldStore?: ContentBlobColdStore,
 ): Promise<ContentAtRootHit[]> {
   const rows = await queryLwwArms(db, rootHex, null);
-  if (coldStore === undefined) return hitsFromHotOrLegacy(rows);
+  if (coldStore === undefined) return hitsFromHot(rows);
   return resolveLwwRows(db, rows, coldStore);
 }
 
@@ -241,7 +237,7 @@ async function resolveLwwRows(
 ): Promise<ContentAtRootHit[]> {
   const out: ContentAtRootHit[] = [];
   for (const row of rows) {
-    let text = row.blobText ?? row.legacyText;
+    let text = row.blobText;
     if (
       (text == null || text.length === 0) &&
       row.location === "cold" &&
@@ -259,7 +255,7 @@ async function resolveLwwRows(
       }
     }
     if (text == null) continue;
-    if (row.location === "dropped" && row.blobText == null && row.legacyText == null) continue;
+    if (row.location === "dropped" && row.blobText == null) continue;
     out.push({
       namespace: row.namespace,
       memoryKey: row.memoryKey,
