@@ -1,11 +1,10 @@
 import z from "zod";
 import type { NamespacePath } from "../../persistence/core";
-import { assertNamespacePath, ids } from "../../persistence/core";
+import { assertNamespacePath } from "../../persistence/core";
 import {
   resolveMemoriesBackendCapabilities,
   zVectorPayload,
 } from "../../persistence/core/persistence";
-import { computeSourceMapContentHash } from "../../persistence/core/provenance";
 import { runWithOpTelemetryAsync } from "../../telemetry/index.js";
 import { buildMemoryOpContext, zMergeMemoryContentItem, zUserSourceKey } from "./merge-memory";
 import type { MutationCtxAsync } from "./merge-memory-async";
@@ -13,6 +12,7 @@ import type {
   ReplaceMemoryFeatureParams,
   ReplaceMemoryFeatureResult,
 } from "./replace-memory-feature";
+import { applyReplaceMemoryFeatureArmsAsync } from "./replace-memory-feature-arms";
 
 const zReplaceMemoryFeatureBody = z
   .object({
@@ -68,37 +68,11 @@ export async function replaceMemoryFeatureAsync(
         if (assoc === undefined) {
           throw new Error("memory not found");
         }
-        const memoryId = assoc.memoryId;
-        const sourceMapId = ids.sourceMap(memoryId, parsed.sourceKey);
-
-        await persistence.clearSourceMapFeatures(op, sourceMapId);
-        await persistence.insertSourceMap(op, {
-          memoryId,
+        const arms = await applyReplaceMemoryFeatureArmsAsync(persistence, op, {
+          memoryId: assoc.memoryId,
           sourceKey: parsed.sourceKey,
-        });
-        const vec = parsed.vector !== undefined ? new Float32Array(parsed.vector) : undefined;
-        if (parsed.text !== undefined) {
-          await persistence.insertLexicalFeature(op, {
-            memoryId,
-            sourceMapId,
-            text: parsed.text,
-          });
-        }
-        if (vec !== undefined) {
-          await persistence.insertVectorFeature(op, {
-            memoryId,
-            sourceMapId,
-            vector: vec,
-          });
-        }
-        await persistence.updateSourceMapContentHash(op, {
-          sourceMapId,
-          text: parsed.text,
-          vector: vec,
-        });
-        const contentHash = computeSourceMapContentHash({
-          text: parsed.text,
-          vector: vec,
+          ...(parsed.text !== undefined ? { text: parsed.text } : {}),
+          ...(parsed.vector !== undefined ? { vector: new Float32Array(parsed.vector) } : {}),
         });
 
         const { root_hex } = await persistence.appendProvenanceEvent(op, {
@@ -106,9 +80,9 @@ export async function replaceMemoryFeatureAsync(
           kind: "MERGE_MEMORY",
           namespace,
           memory_key: params.key,
-          memory_id: memoryId,
+          memory_id: assoc.memoryId,
           source_keys: [parsed.sourceKey],
-          content_hashes: { [parsed.sourceKey]: contentHash },
+          content_hashes: { [parsed.sourceKey]: arms.contentHash },
           ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
           ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
         });
@@ -117,9 +91,9 @@ export async function replaceMemoryFeatureAsync(
           event_type: "MERGE_MEMORY",
           namespace,
           memoryKey: params.key,
-          entries: [{ sourceKey: parsed.sourceKey, text: parsed.text }],
+          entries: [{ sourceKey: parsed.sourceKey, text: arms.text }],
         });
-        result = { sourceMapId, rootHex: root_hex };
+        result = { sourceMapId: arms.sourceMapId, rootHex: root_hex };
       });
 
       if (result === undefined) {

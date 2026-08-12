@@ -169,4 +169,92 @@ describe("feature inventory + single-arm replace", () => {
     );
     expect(missing.status).toBe(404);
   });
+
+  test("text-only replace preserves hasVector on same sourceKey", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "feat-inv-vec" };
+    await stack.service.open(database);
+    const opts = {
+      service: stack.service,
+      catalog: stack.catalog,
+      ontology: stack.ontology,
+      auth: createNoneAuthStrategy(),
+    };
+
+    const vector = Array.from({ length: 512 }, () => 0);
+    const merge = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          params: {
+            kind: "node",
+            key: "m1",
+            namespace: "ns",
+            content: [{ key: "body", text: "with-vector", vector }],
+            labels: [],
+          },
+        }),
+      }),
+      opts,
+    );
+    expect(merge.status).toBe(200);
+
+    const preview = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/memory-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "ns", key: "m1" }),
+      }),
+      opts,
+    );
+    expect(preview.status).toBe(200);
+    const before = (await preview.json()) as {
+      content: Array<{ sourceKey: string; hasText: boolean; hasVector: boolean }>;
+    };
+    expect(before.content.find((c) => c.sourceKey === "body")).toMatchObject({
+      hasText: true,
+      hasVector: true,
+    });
+
+    const replace = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/source-map/replace", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          database,
+          namespace: "ns",
+          key: "m1",
+          sourceKey: "body",
+          text: "text-only-replace",
+        }),
+      }),
+      opts,
+    );
+    expect(replace.status).toBe(200);
+
+    const preview2 = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/databases/memory-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database, namespace: "ns", key: "m1" }),
+      }),
+      opts,
+    );
+    expect(preview2.status).toBe(200);
+    const after = (await preview2.json()) as {
+      content: Array<{
+        sourceKey: string;
+        text: string | null;
+        hasText: boolean;
+        hasVector: boolean;
+      }>;
+    };
+    expect(after.content.find((c) => c.sourceKey === "body")).toMatchObject({
+      text: "text-only-replace",
+      hasText: true,
+      hasVector: true,
+    });
+  });
 });

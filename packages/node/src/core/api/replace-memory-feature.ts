@@ -1,14 +1,11 @@
 import z from "zod";
 import type { NamespacePath } from "../../persistence/core";
-import { assertNamespacePath, ids } from "../../persistence/core";
+import { assertNamespacePath } from "../../persistence/core";
 import {
   resolveMemoriesBackendCapabilities,
   zVectorPayload,
 } from "../../persistence/core/persistence";
-import {
-  computeSourceMapContentHash,
-  type MemoryMutationAttribution,
-} from "../../persistence/core/provenance";
+import type { MemoryMutationAttribution } from "../../persistence/core/provenance";
 import { runWithOpTelemetrySync } from "../../telemetry/index.js";
 import {
   buildMemoryOpContext,
@@ -16,6 +13,7 @@ import {
   zMergeMemoryContentItem,
   zUserSourceKey,
 } from "./merge-memory";
+import { applyReplaceMemoryFeatureArmsSync } from "./replace-memory-feature-arms";
 
 export type ReplaceMemoryFeatureParams = {
   namespace: string;
@@ -43,7 +41,7 @@ const zReplaceMemoryFeatureBody = z
 
 /**
  * Upsert one (sourceKey → text?/vector?) feature on an existing memory without clearing
- * other arms, labels, edges, or scopes.
+ * other arms, labels, edges, or scopes. Omitting text or vector preserves that sibling arm.
  */
 export function replaceMemoryFeature(
   ctx: MutationCtx,
@@ -64,7 +62,6 @@ export function replaceMemoryFeature(
         ...(params.text !== undefined ? { text: params.text } : {}),
         ...(params.vector !== undefined ? { vector: params.vector } : {}),
       });
-      // Reuse merge content item validation (vector dims via zVectorPayload when present).
       zMergeMemoryContentItem.parse({
         key: parsed.sourceKey,
         ...(parsed.text !== undefined ? { text: parsed.text } : {}),
@@ -89,37 +86,11 @@ export function replaceMemoryFeature(
         if (assoc === undefined) {
           throw new Error("memory not found");
         }
-        const memoryId = assoc.memoryId;
-        const sourceMapId = ids.sourceMap(memoryId, parsed.sourceKey);
-
-        persistence.clearSourceMapFeatures(op, sourceMapId);
-        persistence.insertSourceMap(op, {
-          memoryId,
+        const arms = applyReplaceMemoryFeatureArmsSync(persistence, op, {
+          memoryId: assoc.memoryId,
           sourceKey: parsed.sourceKey,
-        });
-        const vec = parsed.vector !== undefined ? new Float32Array(parsed.vector) : undefined;
-        if (parsed.text !== undefined) {
-          persistence.insertLexicalFeature(op, {
-            memoryId,
-            sourceMapId,
-            text: parsed.text,
-          });
-        }
-        if (vec !== undefined) {
-          persistence.insertVectorFeature(op, {
-            memoryId,
-            sourceMapId,
-            vector: vec,
-          });
-        }
-        persistence.updateSourceMapContentHash(op, {
-          sourceMapId,
-          text: parsed.text,
-          vector: vec,
-        });
-        const contentHash = computeSourceMapContentHash({
-          text: parsed.text,
-          vector: vec,
+          ...(parsed.text !== undefined ? { text: parsed.text } : {}),
+          ...(parsed.vector !== undefined ? { vector: new Float32Array(parsed.vector) } : {}),
         });
 
         const { root_hex } = persistence.appendProvenanceEvent(op, {
@@ -127,9 +98,9 @@ export function replaceMemoryFeature(
           kind: "MERGE_MEMORY",
           namespace,
           memory_key: params.key,
-          memory_id: memoryId,
+          memory_id: assoc.memoryId,
           source_keys: [parsed.sourceKey],
-          content_hashes: { [parsed.sourceKey]: contentHash },
+          content_hashes: { [parsed.sourceKey]: arms.contentHash },
           ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
           ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
         });
@@ -138,9 +109,9 @@ export function replaceMemoryFeature(
           event_type: "MERGE_MEMORY",
           namespace,
           memoryKey: params.key,
-          entries: [{ sourceKey: parsed.sourceKey, text: parsed.text }],
+          entries: [{ sourceKey: parsed.sourceKey, text: arms.text }],
         });
-        result = { sourceMapId, rootHex: root_hex };
+        result = { sourceMapId: arms.sourceMapId, rootHex: root_hex };
       });
 
       if (result === undefined) {
