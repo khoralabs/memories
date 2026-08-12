@@ -18,11 +18,18 @@ const doc = documentValidator(memoriesPersistenceDocumentSchema, "memory_provena
 
 export const PROVENANCE_LIST_LIMIT_MAX = 100;
 
+/** Soft cap for keyset cursor ids (stable ids are short; reject oversized clients). */
+export const PROVENANCE_CURSOR_ID_MAX_LENGTH = 256;
+
 export function clampProvenanceListLimit(limit: number): number {
   if (!Number.isFinite(limit) || limit < 1) {
     throw new RangeError("provenance list limit must be a positive integer");
   }
   return Math.min(Math.floor(limit), PROVENANCE_LIST_LIMIT_MAX);
+}
+
+export function isValidProvenanceCursorId(id: string): boolean {
+  return id.length > 0 && id.length <= PROVENANCE_CURSOR_ID_MAX_LENGTH;
 }
 
 export function getProvenanceHeadRootHex(db: Database): string | undefined {
@@ -63,7 +70,11 @@ export function listProvenanceEvents(
   const ns = input.namespace ?? null;
   const key = input.key ?? null;
   const beforeCreated = input.before?.createdAt ?? null;
-  const beforeId = input.before?.id ?? null;
+  const beforeIdRaw = input.before?.id ?? null;
+  if (beforeIdRaw !== null && !isValidProvenanceCursorId(beforeIdRaw)) {
+    throw new RangeError("listProvenanceEvents: before.id is invalid");
+  }
+  const beforeId = beforeIdRaw;
 
   const rows = db
     .query<
@@ -81,6 +92,8 @@ export function listProvenanceEvents(
         string | null,
         string | null,
         string | null,
+        string | null,
+        string | null,
         number | null,
         number | null,
         number | null,
@@ -90,7 +103,12 @@ export function listProvenanceEvents(
     >(
       `SELECT _id, root_hex, parent_root_hex, event_type, _ts_created, event_json, intent_snapshot_id
        FROM memory_provenance
-       WHERE (? IS NULL OR json_extract(event_json, '$.namespace') = ?)
+       WHERE (
+         ? IS NULL
+         OR json_extract(event_json, '$.namespace') = ?
+         OR json_extract(event_json, '$.from_namespace') = ?
+         OR json_extract(event_json, '$.to_namespace') = ?
+       )
          AND (? IS NULL OR json_extract(event_json, '$.memory_key') = ?)
          AND (
            ? IS NULL
@@ -100,7 +118,7 @@ export function listProvenanceEvents(
        ORDER BY _ts_created DESC, _id DESC
        LIMIT ?`,
     )
-    .all(ns, ns, key, key, beforeCreated, beforeCreated, beforeCreated, beforeId, limit);
+    .all(ns, ns, ns, ns, key, key, beforeCreated, beforeCreated, beforeCreated, beforeId, limit);
 
   return rows.map((row) => ({
     id: row._id,
