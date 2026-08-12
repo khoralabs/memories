@@ -651,6 +651,18 @@ export interface MemoriesPersistenceReads {
   getSourceMapText(sourceMapId: string): string | null;
 
   /**
+   * Vector payload for one source map (newest vector_features row), or `null` when absent.
+   * Used by {@link replaceMemoryFeature} to preserve the sibling arm.
+   */
+  getSourceMapVector(sourceMapId: string): Float32Array | null;
+
+  /**
+   * Owning memory coordinates for a source map id (`null` if the map is unknown).
+   * Used by HTTP to authorize source-map text reads against the real namespace.
+   */
+  resolveSourceMapMemory(sourceMapId: string): { namespace: string; key: string } | null;
+
+  /**
    * Distinct embedding widths present in the store's vector indexes (one entry per width in use).
    * Return `[]` when there are no indexed vectors or dimension metadata is unavailable.
    */
