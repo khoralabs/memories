@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { sqlNamespaceEqualsOrUnderPrefix } from "../../../../persistence/core";
 import { namespacePathFromStored } from "../../../../persistence/core/models/namespace-path";
 import type {
   MemoryOpContext,
@@ -30,7 +31,7 @@ export function findClosestSuppressedNamespace(db: Database, namespace: string):
     .query<{ namespace: string }, [string, string]>(
       `SELECT _id AS namespace FROM namespace_metadata
        WHERE suppressed != 0
-         AND (_id = ? OR ? LIKE _id || '/%')
+         AND (? = _id OR substr(?, 1, length(_id) + 1) = _id || '/')
        ORDER BY length(_id) DESC
        LIMIT 1`,
     )
@@ -135,20 +136,20 @@ export function listNamespacesWithMetadataUnderPrefix(
   const include = opts?.includeSuppressed === true;
   const byKey = new Map<string, NamespaceMetadataInfo>();
   for (const { namespace } of db
-    .query<{ namespace: string }, [string, string]>(
+    .query<{ namespace: string }, [string, string, string]>(
       `SELECT DISTINCT namespace FROM memories
-       WHERE namespace = ? OR namespace LIKE ? || '/%'`,
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("namespace")}`,
     )
-    .all(root, root)) {
+    .all(root, root, root)) {
     if (!include && isNamespaceSuppressed(db, namespace)) continue;
     byKey.set(namespace, { namespace, alias: null, description: "", suppressed: false });
   }
   for (const row of db
-    .query<NamespaceMetadataRow & { suppressed: number }, [string, string]>(
+    .query<NamespaceMetadataRow & { suppressed: number }, [string, string, string]>(
       `SELECT _id AS id, display_name AS alias, description, suppressed FROM namespace_metadata
-       WHERE _id = ? OR _id LIKE ? || '/%'`,
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("_id")}`,
     )
-    .all(root, root)) {
+    .all(root, root, root)) {
     if (!include && isNamespaceSuppressed(db, row.id)) continue;
     byKey.set(row.id, rowToInfo(row));
   }
@@ -167,19 +168,19 @@ export function namespaceExistsUnderPrefix(
   const root = namespacePathFromStored(prefix);
   const include = opts?.includeSuppressed === true;
   for (const { namespace } of db
-    .query<{ namespace: string }, [string, string]>(
+    .query<{ namespace: string }, [string, string, string]>(
       `SELECT DISTINCT namespace FROM memories
-       WHERE namespace = ? OR namespace LIKE ? || '/%'`,
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("namespace")}`,
     )
-    .all(root, root)) {
+    .all(root, root, root)) {
     if (include || !isNamespaceSuppressed(db, namespace)) return true;
   }
   for (const { id } of db
-    .query<{ id: string }, [string, string]>(
+    .query<{ id: string }, [string, string, string]>(
       `SELECT _id AS id FROM namespace_metadata
-       WHERE _id = ? OR _id LIKE ? || '/%'`,
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("_id")}`,
     )
-    .all(root, root)) {
+    .all(root, root, root)) {
     if (include || !isNamespaceSuppressed(db, id)) return true;
   }
   return false;

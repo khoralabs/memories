@@ -7,7 +7,7 @@ import type {
   IncludeSuppressedOpts,
   OntologyLabelInstance,
 } from "../../../../persistence/core";
-import { ids } from "../../../../persistence/core";
+import { ids, sqlNamespaceEqualsOrUnderPrefixCol } from "../../../../persistence/core";
 import { isNamespaceSuppressed } from "./namespace-metadata";
 
 function parsePropsColumn(raw: unknown): Record<string, unknown> {
@@ -61,8 +61,8 @@ const GRAPH_EDGE_NOT_SUPPRESSED = `
     SELECT 1 FROM namespace_metadata nm
     WHERE nm.suppressed != 0
       AND (
-        mf.namespace = nm._id OR mf.namespace LIKE nm._id || '/%'
-        OR mt.namespace = nm._id OR mt.namespace LIKE nm._id || '/%'
+        ${sqlNamespaceEqualsOrUnderPrefixCol("mf.namespace", "nm._id")}
+        OR ${sqlNamespaceEqualsOrUnderPrefixCol("mt.namespace", "nm._id")}
       )
   )`;
 

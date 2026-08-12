@@ -14,6 +14,8 @@ import {
   namespacePathFromStored,
   type OntologyLabelInstance,
   type SearchNamespaceScope,
+  sqlNamespaceEqualsOrUnderPrefix,
+  sqlNamespaceEqualsOrUnderPrefixCol,
 } from "../../../../persistence/core";
 import type { Edge, Memory } from "../../../../persistence/core/persistence";
 import { vectorToBlob } from "../connection";
@@ -126,8 +128,8 @@ function namespaceSubtreeOrClauses(
   const bindings: SQLQueryBindings[] = [];
   const col = tableAlias ? `${tableAlias}.namespace` : "namespace";
   for (const root of roots) {
-    parts.push(`(${col} = ? OR ${col} LIKE ? || '/%')`);
-    bindings.push(root, root);
+    parts.push(sqlNamespaceEqualsOrUnderPrefix(col));
+    bindings.push(root, root, root);
   }
   return { sql: parts.join(" OR "), bindings };
 }
@@ -139,7 +141,7 @@ function memoryDiscoveryVisibleSql(): string {
     AND NOT EXISTS (
       SELECT 1 FROM namespace_metadata nm
       WHERE nm.suppressed != 0
-        AND (memories.namespace = nm._id OR memories.namespace LIKE nm._id || '/%')
+        AND ${sqlNamespaceEqualsOrUnderPrefixCol("memories.namespace", "nm._id")}
     )
     AND NOT (
       memories.kind = 'edge' AND memories.edge_id IS NOT NULL AND EXISTS (
@@ -156,8 +158,8 @@ function memoryDiscoveryVisibleSql(): string {
               SELECT 1 FROM namespace_metadata nm
               WHERE nm.suppressed != 0
                 AND (
-                  m_from.namespace = nm._id OR m_from.namespace LIKE nm._id || '/%'
-                  OR m_to.namespace = nm._id OR m_to.namespace LIKE nm._id || '/%'
+                  ${sqlNamespaceEqualsOrUnderPrefixCol("m_from.namespace", "nm._id")}
+                  OR ${sqlNamespaceEqualsOrUnderPrefixCol("m_to.namespace", "nm._id")}
                 )
             )
           )
@@ -616,7 +618,7 @@ export function listNeighborsForMemory<
          AND NOT EXISTS (
            SELECT 1 FROM namespace_metadata nm
            WHERE nm.suppressed != 0
-             AND (m.namespace = nm._id OR m.namespace LIKE nm._id || '/%')
+             AND ${sqlNamespaceEqualsOrUnderPrefixCol("m.namespace", "nm._id")}
          )
          AND NOT EXISTS (
            SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0

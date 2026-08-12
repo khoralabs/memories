@@ -4,6 +4,8 @@ import {
   namespacePathFromStored,
   type SearchAsOf,
   type SearchNamespaceScope,
+  sqlNamespaceEqualsOrUnderPrefix,
+  sqlNamespaceEqualsOrUnderPrefixCol,
 } from "../../../persistence/core";
 
 export function placeholders(count: number): string {
@@ -65,8 +67,8 @@ export function namespaceSubtreeOrClauses(
   const bindings: unknown[] = [];
   const col = tableAlias ? `${tableAlias}.namespace` : "namespace";
   for (const root of roots) {
-    parts.push(`(${col} = ? OR ${col} LIKE ? || '/%')`);
-    bindings.push(root, root);
+    parts.push(sqlNamespaceEqualsOrUnderPrefix(col));
+    bindings.push(root, root, root);
   }
   return { sql: parts.join(" OR "), bindings };
 }
@@ -80,7 +82,7 @@ function memoryDiscoveryVisibleSql(tableAlias?: string): string {
     AND NOT EXISTS (
       SELECT 1 FROM namespace_metadata nm
       WHERE nm.suppressed != 0
-        AND (${col("namespace")} = nm._id OR ${col("namespace")} LIKE nm._id || '/%')
+        AND ${sqlNamespaceEqualsOrUnderPrefixCol(col("namespace"), "nm._id")}
     )
     AND NOT (
       ${col("kind")} = 'edge' AND ${col("edge_id")} IS NOT NULL AND EXISTS (
@@ -97,8 +99,8 @@ function memoryDiscoveryVisibleSql(tableAlias?: string): string {
               SELECT 1 FROM namespace_metadata nm
               WHERE nm.suppressed != 0
                 AND (
-                  m_from.namespace = nm._id OR m_from.namespace LIKE nm._id || '/%'
-                  OR m_to.namespace = nm._id OR m_to.namespace LIKE nm._id || '/%'
+                  ${sqlNamespaceEqualsOrUnderPrefixCol("m_from.namespace", "nm._id")}
+                  OR ${sqlNamespaceEqualsOrUnderPrefixCol("m_to.namespace", "nm._id")}
                 )
             )
           )

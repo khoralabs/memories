@@ -1442,6 +1442,57 @@ describe("memories service persistence http handlers", () => {
     expect(statsBody.suppressedEdgeCount).toBe(0);
     expect(statsBody.labelKinds.edges.references).toBe(1);
   }, 20_000);
+
+  test("graph-counts subtree does not treat underscore as LIKE wildcard", async () => {
+    const stack = createTestStack();
+    const database = { kind: "account", ownerKey: "owner-graph-counts-us" };
+    const handle = await stack.service.getHandle(database);
+    const sync = handle.sync;
+    if (sync === undefined) throw new Error("expected sqlite handle");
+    const client = new MemoriesClient(sync.syncPersistence, testOntology);
+
+    client.mergeMemory({
+      kind: "node",
+      key: "a",
+      namespace: "user_a",
+      content: [{ key: "text", text: "a" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "child",
+      namespace: "user_a/child",
+      content: [{ key: "text", text: "child" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "x",
+      namespace: "userxa",
+      content: [{ key: "text", text: "x" }],
+      labels: [],
+    });
+    client.mergeMemory({
+      kind: "node",
+      key: "xchild",
+      namespace: "userxa/child",
+      content: [{ key: "text", text: "xchild" }],
+      labels: [],
+    });
+
+    const subtree = await postJson(
+      "http://localhost/databases/graph-counts",
+      { database, namespace: "user_a", scope: "subtree" },
+      stack,
+    );
+    expect(subtree.status).toBe(200);
+    expect(await subtree.json()).toMatchObject({
+      namespace: "user_a",
+      scope: "subtree",
+      nodeCount: 2,
+      edgeCount: 0,
+    });
+  }, 20_000);
 });
 
 describe("remote memories client over http", () => {

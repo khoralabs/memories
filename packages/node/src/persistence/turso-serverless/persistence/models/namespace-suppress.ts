@@ -17,7 +17,7 @@ export async function findClosestSuppressedNamespace(
     db,
     `SELECT _id AS namespace FROM namespace_metadata
      WHERE suppressed != 0
-       AND (_id = ? OR ? LIKE _id || '/%')
+       AND (? = _id OR substr(?, 1, length(_id) + 1) = _id || '/')
      ORDER BY length(_id) DESC
      LIMIT 1`,
     [ns, ns],

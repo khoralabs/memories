@@ -8,6 +8,7 @@ import {
   type OntologyLabelInstance,
   type SearchAsOf,
   type SearchNamespaceScope,
+  sqlNamespaceEqualsOrUnderPrefixCol,
 } from "../../../../persistence/core";
 import type { Edge, Memory } from "../../../../persistence/core/persistence";
 import type { DbCtx } from "../context";
@@ -421,7 +422,7 @@ export async function listNeighborsForMemory<
        AND NOT EXISTS (
          SELECT 1 FROM namespace_metadata nm
          WHERE nm.suppressed != 0
-           AND (m.namespace = nm._id OR m.namespace LIKE nm._id || '/%')
+           AND ${sqlNamespaceEqualsOrUnderPrefixCol("m.namespace", "nm._id")}
        )
        AND NOT EXISTS (
          SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0

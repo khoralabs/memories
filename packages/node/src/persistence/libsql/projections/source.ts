@@ -1,4 +1,5 @@
 import type { GraphMemoryEmbedding, IncludeSuppressedOpts } from "../../../persistence/core";
+import { sqlNamespaceEqualsOrUnderPrefix } from "../../../persistence/core";
 import type { GraphProjectionSource } from "../../../projections/index";
 
 export type LibsqlProjectionRow = Record<string, unknown>;
@@ -57,7 +58,7 @@ async function isNamespaceSuppressedClient(
     queryClient,
     `SELECT 1 AS ok FROM namespace_metadata
      WHERE suppressed != 0
-       AND (_id = ? OR ? LIKE _id || '/%')
+       AND (? = _id OR substr(?, 1, length(_id) + 1) = _id || '/')
      LIMIT 1`,
     [namespace, namespace],
   );
@@ -73,9 +74,9 @@ export async function listNamespacesUnderPrefix(
   const result = await executeQuery(
     queryClient,
     `SELECT DISTINCT namespace FROM memories
-     WHERE namespace = ? OR namespace LIKE ? || '/%'
+     WHERE ${sqlNamespaceEqualsOrUnderPrefix("namespace")}
      ORDER BY namespace`,
-    [prefix, prefix],
+    [prefix, prefix, prefix],
   );
   const out: string[] = [];
   for (const row of result.rows) {
@@ -88,8 +89,8 @@ export async function listNamespacesUnderPrefix(
     const meta = await executeQuery(
       queryClient,
       `SELECT _id AS id FROM namespace_metadata
-       WHERE _id = ? OR _id LIKE ? || '/%'`,
-      [prefix, prefix],
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("_id")}`,
+      [prefix, prefix, prefix],
     );
     const seen = new Set(out);
     for (const row of meta.rows) {

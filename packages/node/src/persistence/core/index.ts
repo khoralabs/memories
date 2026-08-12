@@ -1,5 +1,6 @@
 export { ids, stableId } from "./models/ids";
 export * from "./models/label-props-search-text";
+export * from "./models/like-escape";
 export * from "./models/memory-search-meta";
 export * from "./models/namespace-constraints";
 export * from "./models/namespace-metadata-paths";
