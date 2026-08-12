@@ -18,7 +18,7 @@ Convention for helpers: **`manage` ⊇ `write` ⊇ `read`**.
 
 `mode: "subtree"` means the operation includes descendants (default recursive delete/rename). Authz still checks the **root** path(s), not every child.
 
-Deprecated top-level `namespace` is set only when `scope.kind === "namespace"` (migration mirror).
+Authorize only from `input.scope` (and `input.action` / `input.database`). There is no top-level `AuthorizeInput.namespace` mirror.
 
 ## Grant shape
 

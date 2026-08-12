@@ -74,7 +74,7 @@ Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../co
 - **Text:** `insertLexicalFeature` ties searchable text to that source map; lexical search returns `source_map` ids.
 - **Vector:** `insertVectorFeature` stores a `Float32Array`; **query vectors in search must use the same dimensionality** as stored vectors for the vector arm to return hits.
 - **Inventory:** `listSourceMapInventoryForMemory` returns ids + `hasText` / `hasVector` (no payloads). `getSourceMapText` returns full joined text; `getSourceMapTextPreview` truncates.
-- **Single-arm replace:** `clearSourceMapFeatures` + re-insert for one `sourceMapId` (via core `replaceMemoryFeature`) leaves other arms and graph topology intact. Full merge still uses `clearMemorySubtree`.
+- **Single-arm replace:** `replaceMemoryFeature` clears/reinserts one `sourceMapId` while **preserving the sibling text/vector arm** when only one is supplied, and leaves other sourceKeys and graph topology intact. Full merge still uses `clearMemorySubtree`.
 - If `MemoriesBackendCapabilities.vectorSearch` is `false`, the logic layer rejects merge/replace items that include `vector` and skips the vector search arm (see capabilities below).
 
 ## Memory provenance chain + `source_maps.content_hash`
@@ -92,7 +92,7 @@ Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../co
 - **`memory_content_outbox`:** Append-only **thin** tip log — one row per `(root_hex, source_key)` MERGE (or a DELETE tombstone). New rows store **`content_sha256`** only (`text` is null). Thin rows are **kept indefinitely** in the primary DB (no tip pruning of outbox pointers).
 - **`memory_content_blobs`:** Content-addressed UTF-8 bodies (`content_sha256 = sha256Hex(text)`). `location` is `hot` | `cold` | `dropped`; `cold_uri` set when cold.
 - **Reconstruction (LWW):** Per `(namespace, memory_key, source_key)`, take the latest MERGE at-or-before the target provenance tip; a later DELETE clears the memory. Resolve text from hot blob → cold store fetch (verify sha) → else omit. Sync SQLite reconstruct is hot-blob only; use async + cold store for evacuated bodies.
-- **Hot tip window:** `contentOutboxRetentionTips` (default **256**; `0` = never evacuate). Bodies whose newest referencing tip is outside the window are **evacuated**: uploaded via `contentBlobColdStore` when configured, otherwise **permanently dropped** (`location = 'dropped'`). SQLite can auto-wire Bun `S3Client` when a bucket is configured (`createBunS3ContentBlobColdStore` / `S3_BUCKET` / `AWS_BUCKET`); without a bucket, drop behavior applies.
+- **Hot tip window:** `contentOutboxRetentionTips` (default **256**; `0` = never evacuate). Bodies whose newest referencing tip is outside the window are **evacuated**: uploaded via `contentBlobColdStore` when configured. Without a cold store, evacuate is a **no-op** unless `allowDropWithoutColdStore: true` (then permanently drop, `location = 'dropped'`). SQLite can auto-wire Bun `S3Client` when a bucket is configured (`createBunS3ContentBlobColdStore` / `S3_BUCKET` / `AWS_BUCKET`).
 - **Scale note:** Blob tiering bounds hot DB size. At extreme tip counts, further scale by **tiered thinning of the outbox itself** (segment old tip ranges into cold parquet/JSONL + a small catalog)—intentionally not implemented here.
 
 ### Future (out of scope here)
@@ -109,7 +109,7 @@ Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG 
 - **Tables:** `scopes`, `scope_edges`, `scope_closure`, `memory_scopes` (see Zod `memoriesPersistenceDocumentSchema`). Scope ids reuse **`MemoryNamespace`** path syntax.
 - **`linkScopes`:** inserts `parent → child`; **rejects cycles**. Reference impl rebuilds **`scope_closure`** (all `(ancestor, descendant)` pairs including self) after each link/unlink.
 - **`replaceMemoryScopes`:** merge replaces attachments for the focal memory; **primary namespace is always included** alongside optional `attachScopes`.
-- **Search:** `SearchNamespaceScope` adds **`scopeDag`** (roots expand through closure → attached memories) and **`exactScope`** (no descent). **`pathSubtree`** keeps prefix semantics on each row’s primary `memories.namespace` (strategy-private indexing; SQL backends use `namespace = ? OR namespace LIKE ? || '/%'`).
+- **Search:** `SearchNamespaceScope` adds **`scopeDag`** (roots expand through closure → attached memories) and **`exactScope`** (no descent). **`pathSubtree`** keeps prefix semantics on each row’s primary `memories.namespace` (strategy-private indexing; SQL backends use `sqlNamespaceEqualsOrUnderPrefix` / substr path-boundary match — not `LIKE` wildcards).
 
 ## Namespace metadata (alias / soft rename)
 
