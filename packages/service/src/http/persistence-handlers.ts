@@ -1208,30 +1208,63 @@ export async function handleDatabaseMemoryPreview(
 export async function handleDatabaseSourceMapTextPreview(
   service: MemoriesDatabaseService,
   body: unknown,
+  authorizeNamespace: (namespace: string) => Promise<void>,
 ): Promise<Response> {
-  const scoped = body as DatabaseSourceMapTextPreviewRequest;
+  const scoped = body as DatabaseSourceMapTextPreviewRequest & { namespace?: string };
   const { database, handle } = await getHandle(service, scoped);
   if (typeof scoped.sourceMapId !== "string" || scoped.sourceMapId.trim().length === 0) {
     throw new HttpError("sourceMapId is required", 400);
   }
+  const sourceMapId = scoped.sourceMapId.trim();
+  const resolve = handle.persistence.resolveSourceMapMemory;
+  if (resolve === undefined) {
+    throw new HttpError("source map resolve is not supported", 501);
+  }
+  const ref = await Promise.resolve(resolve.call(handle.persistence, sourceMapId));
+  if (ref === null) {
+    throw new HttpError("source map not found", 404);
+  }
+  const decoy =
+    typeof scoped.namespace === "string" && scoped.namespace.trim().length > 0
+      ? scoped.namespace.trim()
+      : undefined;
+  if (decoy !== undefined && decoy !== ref.namespace) {
+    throw new HttpError("namespace does not match source map", 403);
+  }
+  await authorizeNamespace(ref.namespace);
   const maxChars = scoped.maxChars ?? 2400;
-  const text = await handle.persistence.getSourceMapTextPreview(
-    scoped.sourceMapId.trim(),
-    maxChars,
-  );
+  const text = await handle.persistence.getSourceMapTextPreview(sourceMapId, maxChars);
   return Response.json({ text, database });
 }
 
 export async function handleDatabaseSourceMapText(
   service: MemoriesDatabaseService,
   body: unknown,
+  authorizeNamespace: (namespace: string) => Promise<void>,
 ): Promise<Response> {
-  const scoped = body as DatabaseSourceMapTextRequest;
+  const scoped = body as DatabaseSourceMapTextRequest & { namespace?: string };
   const { database, handle } = await getHandle(service, scoped);
   if (typeof scoped.sourceMapId !== "string" || scoped.sourceMapId.trim().length === 0) {
     throw new HttpError("sourceMapId is required", 400);
   }
-  const text = await handle.persistence.getSourceMapText(scoped.sourceMapId.trim());
+  const sourceMapId = scoped.sourceMapId.trim();
+  const resolve = handle.persistence.resolveSourceMapMemory;
+  if (resolve === undefined) {
+    throw new HttpError("source map resolve is not supported", 501);
+  }
+  const ref = await Promise.resolve(resolve.call(handle.persistence, sourceMapId));
+  if (ref === null) {
+    throw new HttpError("source map not found", 404);
+  }
+  const decoy =
+    typeof scoped.namespace === "string" && scoped.namespace.trim().length > 0
+      ? scoped.namespace.trim()
+      : undefined;
+  if (decoy !== undefined && decoy !== ref.namespace) {
+    throw new HttpError("namespace does not match source map", 403);
+  }
+  await authorizeNamespace(ref.namespace);
+  const text = await handle.persistence.getSourceMapText(sourceMapId);
   return Response.json({ text, database });
 }
 

@@ -517,15 +517,29 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === "/databases/source-map/text-preview") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
-      return handleDatabaseSourceMapTextPreview(opts.service, body);
+      const actor = await opts.auth.authenticate(req);
+      return await handleDatabaseSourceMapTextPreview(opts.service, body, async (namespace) => {
+        await opts.auth.authorize({
+          actor,
+          action: "read",
+          database: id,
+          scope: { kind: "namespace", namespace, mode: "exact" },
+        });
+      });
     }
 
     if (req.method === "POST" && url.pathname === "/databases/source-map/text") {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
-      return handleDatabaseSourceMapText(opts.service, body);
+      const actor = await opts.auth.authenticate(req);
+      return await handleDatabaseSourceMapText(opts.service, body, async (namespace) => {
+        await opts.auth.authorize({
+          actor,
+          action: "read",
+          database: id,
+          scope: { kind: "namespace", namespace, mode: "exact" },
+        });
+      });
     }
 
     if (req.method === "POST" && url.pathname === "/databases/source-map/replace") {
