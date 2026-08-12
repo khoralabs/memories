@@ -3,6 +3,7 @@ import { execMultiple, execSql, queryAll, queryOne } from "./client";
 import type { TursoDatabase } from "./db";
 import {
   CONTENT_BLOBS_SQL,
+  CONTENT_OUTBOX_CONTENT_SHA256_INDEX_SQL,
   CONTENT_OUTBOX_SQL,
   MEMORIES_INDEXES_SQL,
   MEMORIES_SCHEMA_SQL,
@@ -15,7 +16,7 @@ import {
   TURSO_PRAGMAS_SQL,
 } from "./turso-schema";
 
-export const MEMORIES_SCHEMA_VERSION = "0.7.0";
+export const MEMORIES_SCHEMA_VERSION = "0.8.0";
 
 const NS_PREFIX_COLUMNS = [
   "ns_prefix_1",
@@ -146,6 +147,11 @@ const migrations: Migration[] = [
     to: "0.7.0",
     name: "001-add-content-blobs",
     up: addContentBlobs,
+  },
+  {
+    to: "0.8.0",
+    name: "001-add-content-sha256-index",
+    statements: [CONTENT_OUTBOX_CONTENT_SHA256_INDEX_SQL],
   },
 ];
 

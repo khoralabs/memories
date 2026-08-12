@@ -19,6 +19,7 @@ import type { SourceMap, TextFeatureExportRow } from "../../../persistence/core/
 import type { ContentBlobColdStore } from "../../../persistence/core/persistence/content-blob-cold-store";
 import { DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS } from "../../../persistence/core/persistence/content-blob-cold-store";
 import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
+import { blobToVector } from "./connection";
 import {
   type BunS3ContentBlobColdStoreOptions,
   createBunS3ContentBlobColdStore,
@@ -120,9 +121,11 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   readonly capabilities: MemoriesBackendCapabilities;
   readonly namespacePathPolicy: NamespacePathPolicy;
 
+  private pendingContentBlobEvacuate = false;
   private readonly stmts: MemoriesSqliteStmts;
   private readonly contentOutboxRetentionTips: number;
   private readonly contentBlobColdStore: ContentBlobColdStore | undefined;
+  private readonly allowDropWithoutColdStore: boolean;
 
   constructor(
     private readonly db: Database,
@@ -130,11 +133,13 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     namespacePathPolicy?: NamespacePathPolicy,
     contentOutboxRetentionTips?: number,
     contentBlobColdStore?: ContentBlobColdStore,
+    allowDropWithoutColdStore?: boolean,
   ) {
     this.namespacePathPolicy = resolveNamespacePathPolicy(namespacePathPolicy);
     this.contentOutboxRetentionTips =
       contentOutboxRetentionTips ?? DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS;
     this.contentBlobColdStore = contentBlobColdStore;
+    this.allowDropWithoutColdStore = allowDropWithoutColdStore === true;
     this.capabilities = {
       lexicalSearch: true,
       vectorSearch: true,
@@ -158,7 +163,37 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   }
 
   withTransaction<T>(fn: () => T): T {
-    return this.db.transaction(fn)();
+    this.clearPendingContentBlobEvacuate();
+    try {
+      const result = this.db.transaction(fn)();
+      // Sync API cannot await; errors are logged inside flushPendingContentBlobEvacuate.
+      void this.flushPendingContentBlobEvacuate();
+      return result;
+    } catch (err) {
+      this.clearPendingContentBlobEvacuate();
+      throw err;
+    }
+  }
+
+  /**
+   * Run deferred tip-window evacuate after an outer COMMIT (e.g. async wrapper).
+   * Safe to call when no evacuate is pending.
+   *
+   * Sync {@link withTransaction} intentionally fire-and-forgets the returned promise
+   * (with `.catch` logging) because the sync API cannot await. Async wrappers must
+   * `await` this so evacuate completes before the caller continues (matches libsql/turso).
+   */
+  flushPendingContentBlobEvacuate(): Promise<void> {
+    if (!this.pendingContentBlobEvacuate) return Promise.resolve();
+    this.pendingContentBlobEvacuate = false;
+    return this.evacuateContentBlobs().catch((err) => {
+      console.error("content blob evacuate failed:", err);
+    });
+  }
+
+  /** Clear deferred evacuate without running it (BEGIN / ROLLBACK of an outer tx). */
+  clearPendingContentBlobEvacuate(): void {
+    this.pendingContentBlobEvacuate = false;
   }
 
   listNeighborMemoriesForNode(
@@ -312,12 +347,14 @@ export class MemoriesPersistence implements IMemoriesPersistence {
         entries: input.entries,
       });
     }
-    // Drop path is sync until the first await; run inline so short-lived DBs aren't
-    // closed under a deferred microtask. Cold put may continue asynchronously.
-    void evacuateContentBlobsOutsideHotWindow(this.db, {
-      retentionTips: this.contentOutboxRetentionTips,
-      coldStore: this.contentBlobColdStore,
-    });
+    // Defer evacuate until after commit when inside a transaction (sync or BEGIN).
+    if (this.db.inTransaction) {
+      this.pendingContentBlobEvacuate = true;
+    } else {
+      void this.evacuateContentBlobs().catch((err) => {
+        console.error("content blob evacuate failed:", err);
+      });
+    }
   }
 
   /**
@@ -362,11 +399,12 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return reconstructStoreAtRootHexAsyncQuery(this.db, rootHex, this.contentBlobColdStore);
   }
 
-  /** Run tip-window blob evacuation (S3 or drop). */
+  /** Run tip-window blob evacuation (cold put, or drop when allowDropWithoutColdStore). */
   async evacuateContentBlobs(): Promise<void> {
     await evacuateContentBlobsOutsideHotWindow(this.db, {
       retentionTips: this.contentOutboxRetentionTips,
       coldStore: this.contentBlobColdStore,
+      allowDropWithoutColdStore: this.allowDropWithoutColdStore,
     });
   }
 
@@ -625,6 +663,33 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     return rows.map((row) => row.text).join("\n\n");
   }
 
+  getSourceMapVector(sourceMapId: string): Float32Array | null {
+    const row = this.db
+      .query<{ vector: Buffer | Uint8Array }, [string]>(
+        `SELECT vector FROM vector_features
+         WHERE source_map_id = ?
+         ORDER BY _ts_created DESC, _id DESC
+         LIMIT 1`,
+      )
+      .get(sourceMapId);
+    if (!row) return null;
+    return blobToVector(row.vector instanceof Buffer ? new Uint8Array(row.vector) : row.vector);
+  }
+
+  resolveSourceMapMemory(sourceMapId: string): { namespace: string; key: string } | null {
+    const row = this.db
+      .query<{ namespace: string; key: string }, [string]>(
+        `SELECT m.namespace AS namespace, m.key AS key
+         FROM source_maps sm
+         JOIN memories m ON m._id = sm.memory_id
+         WHERE sm._id = ?
+         LIMIT 1`,
+      )
+      .get(sourceMapId);
+    if (!row) return null;
+    return { namespace: row.namespace, key: row.key };
+  }
+
   listVectorEmbeddingIndexDimensions(): number[] {
     return listVectorEmbeddingIndexDimensionsQuery(this.db);
   }
@@ -753,8 +818,13 @@ export function createMemoriesPersistence(
     namespacePathPolicy?: NamespacePathPolicy;
     /** Newest provenance tips whose blob bodies stay hot (default 256; `0` = never evacuate). */
     contentOutboxRetentionTips?: number;
-    /** When set, bodies outside the hot window go here; when omitted, they are permanently dropped. */
+    /** When set, bodies outside the hot window go here. */
     contentBlobColdStore?: ContentBlobColdStore;
+    /**
+     * When true and no cold store, evacuate permanently drops hot bodies.
+     * Default false: evacuate is a no-op without a cold store (hot bodies retained).
+     */
+    allowDropWithoutColdStore?: boolean;
     /**
      * Bun S3 cold-store factory options. Used when `contentBlobColdStore` is omitted.
      * Pass `false` to skip auto-detecting env (`S3_BUCKET` / `AWS_BUCKET`).
@@ -775,6 +845,7 @@ export function createMemoriesPersistence(
     options?.namespacePathPolicy,
     options?.contentOutboxRetentionTips,
     coldStore,
+    options?.allowDropWithoutColdStore,
   );
   return persistence;
 }

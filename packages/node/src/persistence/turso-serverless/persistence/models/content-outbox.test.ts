@@ -19,6 +19,7 @@ describe.skipIf(!integration)("turso content outbox smoke", () => {
       authToken,
       autoMigrate: true,
       contentOutboxRetentionTips: 1,
+      allowDropWithoutColdStore: true,
     });
     const turso = persistence as unknown as MemoriesTursoServerlessPersistence;
 

@@ -22,7 +22,8 @@ function resolveBucket(options?: BunS3ContentBlobColdStoreOptions): string | und
 
 /**
  * Cold blob store backed by Bun's native S3 API (`S3Client`).
- * Returns `undefined` when no bucket is configured (evacuate should drop bodies).
+ * Returns `undefined` when no bucket is configured (evacuate is then a no-op
+ * unless `allowDropWithoutColdStore: true`).
  */
 export function createBunS3ContentBlobColdStore(
   options?: BunS3ContentBlobColdStoreOptions,

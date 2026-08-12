@@ -49,6 +49,7 @@ describe("memories sqlite migrations", () => {
       { from_version: "0.4.0", to_version: "0.5.0", name: "001-add-memory-suppressed" },
       { from_version: "0.5.0", to_version: "0.6.0", name: "001-add-namespace-suppressed" },
       { from_version: "0.6.0", to_version: "0.7.0", name: "001-add-content-blobs" },
+      { from_version: "0.7.0", to_version: "0.8.0", name: "001-add-content-sha256-index" },
     ]);
 
     const nsIdx = db
@@ -57,6 +58,13 @@ describe("memories sqlite migrations", () => {
       )
       .get();
     expect(nsIdx?.name).toBe("idx_memories_namespace");
+
+    const contentShaIdx = db
+      .query<{ name: string }, []>(
+        `SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_memory_content_outbox_content_sha256'`,
+      )
+      .get();
+    expect(contentShaIdx?.name).toBe("idx_memory_content_outbox_content_sha256");
 
     const outbox = tableColumns(db, "memory_content_outbox");
     expect(outbox.has("root_hex")).toBe(true);

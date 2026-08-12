@@ -15,6 +15,7 @@ import type {
   SearchAsOf,
   SearchNamespaceScope,
 } from "../../../persistence/core";
+import { sqlNamespaceEqualsOrUnderPrefix } from "../../../persistence/core";
 import {
   namespacePath,
   resolveNamespacePathPolicy,
@@ -123,6 +124,8 @@ export type MemoriesLibsqlOptions = {
   namespacePathPolicy?: NamespacePathPolicy;
   contentOutboxRetentionTips?: number;
   contentBlobColdStore?: ContentBlobColdStore;
+  /** When true and no cold store, evacuate drops hot bodies (default false = no-op). */
+  allowDropWithoutColdStore?: boolean;
 };
 
 export class MemoriesLibsqlPersistence {
@@ -134,6 +137,7 @@ export class MemoriesLibsqlPersistence {
   private pendingContentBlobEvacuate = false;
   private readonly contentOutboxRetentionTips: number;
   private readonly contentBlobColdStore: ContentBlobColdStore | undefined;
+  private readonly allowDropWithoutColdStore: boolean;
 
   constructor(
     readonly db: LibsqlDatabase,
@@ -142,11 +146,13 @@ export class MemoriesLibsqlPersistence {
     namespacePathPolicy?: NamespacePathPolicy,
     contentOutboxRetentionTips?: number,
     contentBlobColdStore?: ContentBlobColdStore,
+    allowDropWithoutColdStore?: boolean,
   ) {
     this.namespacePathPolicy = resolveNamespacePathPolicy(namespacePathPolicy);
     this.contentOutboxRetentionTips =
       contentOutboxRetentionTips ?? DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS;
     this.contentBlobColdStore = contentBlobColdStore;
+    this.allowDropWithoutColdStore = allowDropWithoutColdStore === true;
     this.capabilities = {
       lexicalSearch: true,
       vectorSearch: true,
@@ -412,6 +418,7 @@ export class MemoriesLibsqlPersistence {
     await evacuateContentBlobsOutsideHotWindow(this.db, {
       retentionTips: this.contentOutboxRetentionTips,
       coldStore: this.contentBlobColdStore,
+      allowDropWithoutColdStore: this.allowDropWithoutColdStore,
     });
   }
 
@@ -674,8 +681,8 @@ export class MemoriesLibsqlPersistence {
     for (const row of await queryAll<{ namespace: string }>(
       this.db.client,
       `SELECT DISTINCT namespace FROM memories
-       WHERE namespace = ? OR namespace LIKE ? || '/%'`,
-      [root, root],
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("namespace")}`,
+      [root, root, root],
     )) {
       if (!include && (await isNamespaceSuppressedQuery(this.db, row.namespace))) continue;
       byKey.set(row.namespace, {
@@ -693,8 +700,8 @@ export class MemoriesLibsqlPersistence {
     }>(
       this.db.client,
       `SELECT _id AS id, display_name AS alias, description, suppressed FROM namespace_metadata
-       WHERE _id = ? OR _id LIKE ? || '/%'`,
-      [root, root],
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("_id")}`,
+      [root, root, root],
     )) {
       if (!include && (await isNamespaceSuppressedQuery(this.db, row.id))) continue;
       byKey.set(row.id, {
@@ -716,16 +723,16 @@ export class MemoriesLibsqlPersistence {
     for (const row of await queryAll<{ namespace: string }>(
       this.db.client,
       `SELECT DISTINCT namespace FROM memories
-       WHERE namespace = ? OR namespace LIKE ? || '/%'`,
-      [root, root],
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("namespace")}`,
+      [root, root, root],
     )) {
       if (include || !(await isNamespaceSuppressedQuery(this.db, row.namespace))) return true;
     }
     for (const row of await queryAll<{ id: string }>(
       this.db.client,
       `SELECT _id AS id FROM namespace_metadata
-       WHERE _id = ? OR _id LIKE ? || '/%'`,
-      [root, root],
+       WHERE ${sqlNamespaceEqualsOrUnderPrefix("_id")}`,
+      [root, root, root],
     )) {
       if (include || !(await isNamespaceSuppressedQuery(this.db, row.id))) return true;
     }
@@ -794,6 +801,48 @@ export class MemoriesLibsqlPersistence {
     );
     if (rows.length === 0) return null;
     return rows.map((row) => row.text).join("\n\n");
+  }
+
+  async getSourceMapVector(sourceMapId: string): Promise<Float32Array | null> {
+    const row = await queryOne<{ vector_json: string }>(
+      this.db.client,
+      `SELECT vector_extract(vector) AS vector_json
+       FROM vector_features
+       WHERE source_map_id = ?
+       ORDER BY _ts_created DESC, _id DESC
+       LIMIT 1`,
+      [sourceMapId],
+    );
+    if (!row?.vector_json) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(row.vector_json);
+    } catch {
+      return null;
+    }
+    if (
+      !Array.isArray(parsed) ||
+      !parsed.every((n) => typeof n === "number" && Number.isFinite(n))
+    ) {
+      return null;
+    }
+    return new Float32Array(parsed as number[]);
+  }
+
+  async resolveSourceMapMemory(
+    sourceMapId: string,
+  ): Promise<{ namespace: string; key: string } | null> {
+    const row = await queryOne<{ namespace: string; key: string }>(
+      this.db.client,
+      `SELECT m.namespace AS namespace, m.key AS key
+       FROM source_maps sm
+       JOIN memories m ON m._id = sm.memory_id
+       WHERE sm._id = ?
+       LIMIT 1`,
+      [sourceMapId],
+    );
+    if (!row) return null;
+    return { namespace: row.namespace, key: row.key };
   }
 
   async listVectorEmbeddingIndexDimensions(): Promise<number[]> {
@@ -939,6 +988,7 @@ export async function createMemoriesLibsqlPersistence(
     options.namespacePathPolicy,
     options.contentOutboxRetentionTips,
     options.contentBlobColdStore,
+    options.allowDropWithoutColdStore,
   );
   // Proxy so extracted optional methods (e.g. syncLabelPropsSearchFeatures) keep `this`.
   return new Proxy(instance, {

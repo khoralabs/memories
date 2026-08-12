@@ -132,6 +132,7 @@ describe("content outbox blobs + LWW", () => {
     const db = openTestMemoriesDatabase();
     const persistence = createMemoriesPersistence(db, {
       bunS3ColdStore: false,
+      allowDropWithoutColdStore: true,
       contentOutboxRetentionTips: 1,
     });
 
@@ -175,6 +176,79 @@ describe("content outbox blobs + LWW", () => {
 
     const hotHits = persistence.getMemoryContentAtRootHex(oldRoot, "ns", "m1");
     expect(hotHits).toEqual([]);
+  });
+
+  test("without cold store, default evacuate is a no-op and retains hot bodies", async () => {
+    const db = openTestMemoriesDatabase();
+    const persistence = createMemoriesPersistence(db, {
+      bunS3ColdStore: false,
+      contentOutboxRetentionTips: 1,
+    });
+
+    mergeMemory(
+      { persistence },
+      {
+        key: "m1",
+        namespace: "ns",
+        content: [{ key: "s", text: "retain-me" }],
+        labels: [],
+        edges: [],
+      },
+    );
+    const oldRoot = requireHead(persistence);
+
+    mergeMemory(
+      { persistence },
+      {
+        key: "m2",
+        namespace: "ns",
+        content: [{ key: "s", text: "newer" }],
+        labels: [],
+        edges: [],
+      },
+    );
+
+    await persistence.evacuateContentBlobs();
+
+    const row = db
+      .query<{ location: string; text: string | null }, [string]>(
+        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
+      )
+      .get(sha256Hex("retain-me"));
+    expect(row?.location).toBe("hot");
+    expect(row?.text).toBe("retain-me");
+    expect(persistence.getMemoryContentAtRootHex(oldRoot, "ns", "m1")).toEqual([
+      { namespace: "ns", memoryKey: "m1", sourceKey: "s", text: "retain-me" },
+    ]);
+  });
+
+  test("empty-string hot body is valid and reconstructs (not treated as cold-missing)", () => {
+    const db = openTestMemoriesDatabase();
+    const persistence = createMemoriesPersistence(db, { bunS3ColdStore: false });
+
+    mergeMemory(
+      { persistence },
+      {
+        key: "empty",
+        namespace: "ns",
+        content: [{ key: "s", text: "" }],
+        labels: [],
+        edges: [],
+      },
+    );
+    const root = requireHead(persistence);
+
+    const blob = db
+      .query<{ location: string; text: string | null }, [string]>(
+        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
+      )
+      .get(sha256Hex(""));
+    expect(blob?.location).toBe("hot");
+    expect(blob?.text).toBe("");
+
+    expect(persistence.getMemoryContentAtRootHex(root, "ns", "empty")).toEqual([
+      { namespace: "ns", memoryKey: "empty", sourceKey: "s", text: "" },
+    ]);
   });
 
   test("retentionTips 0 never evacuates or drops bodies", async () => {
@@ -224,6 +298,7 @@ describe("content outbox blobs + LWW", () => {
     const db = openTestMemoriesDatabase();
     const persistence = createMemoriesPersistence(db, {
       bunS3ColdStore: false,
+      allowDropWithoutColdStore: true,
       contentOutboxRetentionTips: 1,
     });
 
@@ -263,6 +338,7 @@ describe("content outbox blobs + LWW", () => {
     const db = openTestMemoriesDatabase();
     const persistence = createMemoriesPersistence(db, {
       bunS3ColdStore: false,
+      allowDropWithoutColdStore: true,
       contentOutboxRetentionTips: 1,
     });
 

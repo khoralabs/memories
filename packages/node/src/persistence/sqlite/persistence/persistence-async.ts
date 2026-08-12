@@ -49,16 +49,25 @@ export function wrapMemoriesPersistenceAsAsync(
             return fn();
           }
           inTransaction = true;
+          if (sync instanceof MemoriesPersistence) {
+            sync.clearPendingContentBlobEvacuate();
+          }
           db.run("BEGIN IMMEDIATE");
           try {
             const result = await fn();
             db.run("COMMIT");
+            if (sync instanceof MemoriesPersistence) {
+              await sync.flushPendingContentBlobEvacuate();
+            }
             return result;
           } catch (err) {
             try {
               db.run("ROLLBACK");
             } catch {
               /* ignore rollback failure */
+            }
+            if (sync instanceof MemoriesPersistence) {
+              sync.clearPendingContentBlobEvacuate();
             }
             throw err;
           } finally {
@@ -81,6 +90,7 @@ export function createMemoriesPersistenceAsync(
     namespacePathPolicy?: NamespacePathPolicy;
     contentOutboxRetentionTips?: number;
     contentBlobColdStore?: ContentBlobColdStore;
+    allowDropWithoutColdStore?: boolean;
     bunS3ColdStore?: BunS3ContentBlobColdStoreOptions | false;
   },
 ): MemoriesPersistenceAsync {

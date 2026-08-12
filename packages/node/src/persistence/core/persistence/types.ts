@@ -678,7 +678,8 @@ export interface MemoriesPersistenceReads {
 
   /**
    * Lexical source arms as of a provenance tip (per-arm LWW). Empty when tip unknown,
-   * memory deleted at tip, or bodies unavailable (e.g. dropped without cold store).
+   * memory deleted at tip, or bodies unavailable (evacuated and not resolvable — e.g. cold miss,
+   * or permanently dropped when `allowDropWithoutColdStore` was used).
    */
   getMemoryContentAtRootHex?(
     rootHex: string,

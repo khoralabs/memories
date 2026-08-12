@@ -34,6 +34,7 @@ type LibsqlOutboxHarness = {
 async function openLibsql(opts?: {
   contentOutboxRetentionTips?: number;
   contentBlobColdStore?: ContentBlobColdStore;
+  allowDropWithoutColdStore?: boolean;
 }): Promise<LibsqlOutboxHarness> {
   const dir = mkdtempSync(join(tmpdir(), "memories-libsql-outbox-"));
   const persistence = await createMemoriesLibsqlPersistence({
@@ -41,6 +42,7 @@ async function openLibsql(opts?: {
     autoMigrate: true,
     contentOutboxRetentionTips: opts?.contentOutboxRetentionTips,
     contentBlobColdStore: opts?.contentBlobColdStore,
+    allowDropWithoutColdStore: opts?.allowDropWithoutColdStore,
   });
   return {
     persistence,
@@ -50,7 +52,10 @@ async function openLibsql(opts?: {
 
 describe("libsql content outbox smoke", () => {
   test("thin append stores hash; evacuate drops bodies outside hot window", async () => {
-    const { persistence, libsql } = await openLibsql({ contentOutboxRetentionTips: 1 });
+    const { persistence, libsql } = await openLibsql({
+      contentOutboxRetentionTips: 1,
+      allowDropWithoutColdStore: true,
+    });
 
     await mergeMemoryAsync(
       { persistence },

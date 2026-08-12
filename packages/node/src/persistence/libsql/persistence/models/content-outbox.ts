@@ -238,12 +238,7 @@ async function resolveLwwRows(
   const out: ContentAtRootHit[] = [];
   for (const row of rows) {
     let text = row.blobText;
-    if (
-      (text == null || text.length === 0) &&
-      row.location === "cold" &&
-      row.contentSha256 &&
-      coldStore
-    ) {
+    if (text == null && row.location === "cold" && row.contentSha256 && coldStore) {
       const fetched = await coldStore.get(row.contentSha256);
       if (fetched !== null && sha256Hex(fetched) === row.contentSha256) {
         text = fetched;
@@ -268,13 +263,15 @@ async function resolveLwwRows(
 
 /**
  * Evict blob bodies for tips outside the hot window: upload to cold store if
- * configured, otherwise permanently drop. Thin outbox rows are never deleted.
+ * configured; optionally drop when no cold store (`allowDropWithoutColdStore`).
+ * Thin outbox rows are never deleted.
  */
 export async function evacuateContentBlobsOutsideHotWindow(
   db: LibsqlDatabase,
   opts?: {
     retentionTips?: number;
     coldStore?: ContentBlobColdStore;
+    allowDropWithoutColdStore?: boolean;
   },
 ): Promise<void> {
   try {
@@ -299,10 +296,15 @@ async function evacuateContentBlobsOutsideHotWindowInner(
   opts?: {
     retentionTips?: number;
     coldStore?: ContentBlobColdStore;
+    allowDropWithoutColdStore?: boolean;
   },
 ): Promise<void> {
   const retention = opts?.retentionTips ?? DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS;
   if (retention === 0) return;
+
+  const coldStore = opts?.coldStore;
+  const allowDrop = opts?.allowDropWithoutColdStore === true;
+  if (coldStore === undefined && !allowDrop) return;
 
   const hotTips = (
     await queryAll<{ root_hex: string }>(
@@ -330,10 +332,15 @@ async function evacuateContentBlobsOutsideHotWindowInner(
     hotTips,
   );
 
-  const coldStore = opts?.coldStore;
   for (const row of candidates) {
     if (row.text == null) continue;
     if (coldStore !== undefined) {
+      if (sha256Hex(row.text) !== row.content_sha256) {
+        console.error(
+          `evacuateContentBlobs: sha mismatch for ${row.content_sha256}; skipping cold put`,
+        );
+        continue;
+      }
       await coldStore.put(row.content_sha256, row.text);
       const uri = coldStore.uriFor(row.content_sha256);
       await execSql(

@@ -1,6 +1,8 @@
 /**
  * Optional cold tier for content-addressed text blobs outside the hot tip window.
- * When unset, evacuate permanently drops hot blob bodies (`location = 'dropped'`).
+ * When unset, evacuate is a no-op by default (hot bodies retained). Pass
+ * `allowDropWithoutColdStore: true` on createMemories*Persistence to permanently
+ * drop bodies (`location = 'dropped'`) instead.
  */
 export type ContentBlobColdStore = {
   put(contentSha256: string, text: string): Promise<void>;

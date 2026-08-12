@@ -195,6 +195,12 @@ CREATE INDEX IF NOT EXISTS "idx_memory_content_outbox_ns_key_source"
   ON "memory_content_outbox" ("namespace", "memory_key", "source_key");
 `;
 
+/** Requires `memory_content_outbox.content_sha256` (added in 0.7.0). */
+export const CONTENT_OUTBOX_CONTENT_SHA256_INDEX_SQL = `
+CREATE INDEX IF NOT EXISTS "idx_memory_content_outbox_content_sha256"
+  ON "memory_content_outbox" ("content_sha256");
+`;
+
 export const NAMESPACE_METADATA_SQL = `
 CREATE TABLE IF NOT EXISTS "namespace_metadata" (
   "_id" TEXT PRIMARY KEY NOT NULL,
