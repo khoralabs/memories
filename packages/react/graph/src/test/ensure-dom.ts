@@ -12,6 +12,7 @@ export function ensureDom(): void {
   g.window = w;
   g.document = w.document;
   g.navigator = w.navigator;
+  g.Element = w.Element;
   g.HTMLElement = w.HTMLElement;
   g.Node = w.Node;
   g.DocumentFragment = w.DocumentFragment;

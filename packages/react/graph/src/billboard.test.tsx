@@ -3,6 +3,7 @@ import { cleanup, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 import { EdgeBillboard } from "./edge-billboard.js";
+import { GraphNodeBillboardOntology } from "./graph-billboard-compounds.js";
 import { MemoriesClientProvider } from "./memories-client-provider.js";
 import { MemoriesNamespaceMemoriesProvider } from "./memories-memory-provider.js";
 import { MemoriesNamespacesProvider } from "./memories-namespaces-provider.js";
@@ -115,6 +116,29 @@ describe("NodeBillboard", () => {
       expect(container.textContent).toContain("injected");
     });
     expect(getMemoryPreview).not.toHaveBeenCalled();
+  });
+
+  test("GraphNodeBillboardOntology uses preview-merged labels", async () => {
+    const getMemoryPreview = mock(async () => ({
+      key: "n1",
+      namespace: "acme",
+      labels: [{ kind: "event", props: {} }],
+      content: [],
+      properties: null,
+      suppressed: false,
+    }));
+    const client = createMockReactClient({ getMemoryPreview });
+    const { container } = mount(
+      client,
+      <NodeBillboard point={point} open>
+        <GraphNodeBillboardOntology />
+      </NodeBillboard>,
+    );
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Person");
+      expect(container.textContent).toContain("Event");
+    });
   });
 });
 

@@ -707,4 +707,122 @@ describe("createServiceReactMemoriesClient", () => {
       suppressed: false,
     });
   });
+
+  test("replaceFeature posts /databases/source-map/replace", async () => {
+    const postJson = mock(async (path: string, body: unknown) => {
+      expect(path).toBe("/databases/source-map/replace");
+      expect(body).toEqual({
+        database,
+        namespace: "ns",
+        key: "k",
+        sourceKey: "body",
+        text: "next",
+        intentSnapshotId: "snap",
+      });
+      return { sourceMapId: "sm1", rootHex: "aa".repeat(32) };
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+    await expect(
+      client.replaceFeature({
+        namespace: "ns",
+        key: "k",
+        sourceKey: "body",
+        text: "next",
+        intentSnapshotId: "snap",
+      }),
+    ).resolves.toEqual({ sourceMapId: "sm1", rootHex: "aa".repeat(32) });
+    expect(postJson).toHaveBeenCalled();
+  });
+
+  test("provenance helpers post events, chain, and content routes", async () => {
+    const postJson = mock(async (path: string, body: unknown) => {
+      if (path === "/databases/provenance/events") {
+        expect(body).toEqual({
+          database,
+          namespace: "ns",
+          key: "k",
+          limit: 5,
+          before: { createdAt: 1, id: "e0" },
+        });
+        return {
+          events: [
+            {
+              id: "e1",
+              rootHex: "r1",
+              parentRootHex: "r0",
+              eventType: "MERGE_MEMORY",
+              createdAt: 2,
+              event: { kind: "MERGE_MEMORY" },
+            },
+          ],
+        };
+      }
+      if (path === "/databases/provenance/chain") {
+        expect(body).toEqual({ database, limit: 2, beforeRootHex: "r9" });
+        return {
+          links: [
+            {
+              rootHex: "r8",
+              parentRootHex: "r7",
+              eventType: "MERGE_MEMORY",
+              createdAt: 3,
+              id: "l1",
+            },
+          ],
+        };
+      }
+      if (path === "/databases/provenance/content") {
+        expect(body).toEqual({
+          database,
+          rootHex: "r1",
+          namespace: "ns",
+          key: "k",
+        });
+        return { content: [{ sourceKey: "body", text: "at-tip" }] };
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+    const client = createServiceReactMemoriesClient({
+      baseUrl: "http://localhost",
+      database,
+      reads: createMockReads(),
+      service: createMockService(postJson),
+    });
+
+    await expect(
+      client.listProvenanceEvents({
+        namespace: "ns",
+        key: "k",
+        limit: 5,
+        before: { createdAt: 1, id: "e0" },
+      }),
+    ).resolves.toEqual([
+      {
+        id: "e1",
+        rootHex: "r1",
+        parentRootHex: "r0",
+        eventType: "MERGE_MEMORY",
+        createdAt: 2,
+        event: { kind: "MERGE_MEMORY" },
+      },
+    ]);
+    await expect(client.listProvenanceChain({ limit: 2, beforeRootHex: "r9" })).resolves.toEqual([
+      {
+        rootHex: "r8",
+        parentRootHex: "r7",
+        eventType: "MERGE_MEMORY",
+        createdAt: 3,
+        id: "l1",
+      },
+    ]);
+    await expect(
+      client.getMemoryContentAtRootHex({ rootHex: "r1", namespace: "ns", key: "k" }),
+    ).resolves.toEqual([{ sourceKey: "body", text: "at-tip" }]);
+    expect(postJson).toHaveBeenCalledTimes(3);
+  });
 });

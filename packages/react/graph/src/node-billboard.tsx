@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { MemoryPreviewJson } from "./memories-client.js";
 import { useMemoriesClient } from "./memories-client-provider.js";
+import { MemoryMetadata } from "./memory-metadata.js";
 import {
   type GraphOntologyLabelMap,
   graphLabelFingerprint,
@@ -285,7 +286,7 @@ export function NodeBillboardMetadata({
   children,
   ...props
 }: NodeBillboardMetadataProps) {
-  const { properties, loading } = useNodeBillboard();
+  const { point, properties, loading, namespace, ontologyLabels } = useNodeBillboard();
   const ctx: NodeBillboardMetadataCtx = { properties, loading };
 
   if (typeof children === "function") {
@@ -306,23 +307,17 @@ export function NodeBillboardMetadata({
 
   if (properties == null) return null;
 
-  const propsEntries = Object.entries(properties);
-
   return (
-    <div className={cn("space-y-1 border-t border-border/60 pt-2", className)} {...props}>
-      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        Node metadata
-      </div>
-      <dl className="space-y-1 font-mono text-[11px] text-foreground">
-        {propsEntries.map(([k, v]) => (
-          <div key={k} className="grid gap-0.5">
-            <dt className="text-muted-foreground">{k}</dt>
-            <dd className="break-all pl-1">
-              {typeof v === "object" ? JSON.stringify(v) : String(v)}
-            </dd>
-          </div>
-        ))}
-      </dl>
+    <div className={cn(className)} {...props}>
+      <MemoryMetadata
+        kind="node"
+        memoryKey={point.key}
+        namespace={namespace}
+        labelKinds={ontologyLabels.map((lb) => lb.kind)}
+        properties={properties}
+        showList
+        className="border-t border-border/60 pt-2"
+      />
     </div>
   );
 }

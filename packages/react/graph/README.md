@@ -2,7 +2,7 @@
 
 React components for exploring a memories knowledge graph in 3D: hybrid search, namespace selection, and memory preview.
 
-Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database by itself — mount `MemoriesClientProvider` with a `ReactMemoriesClient` (or `createClient` factory for database switching), then namespaces + namespace-memories providers for catalog/focus/CRUD.
+Built on **React 19**, **@react-three/fiber**, and **three.js**. The package does **not** open a database by itself — mount `MemoriesClientProvider` with required `createClient` + `database` (factory rebuilds the client when the database focus changes), then namespaces + namespace-memories providers for catalog/focus/CRUD.
 
 ## Exports
 

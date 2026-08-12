@@ -44,6 +44,8 @@ export function MemoryNodeHoverCard({
   prefetchedContent,
   className,
   children,
+  open: openProp,
+  onOpenChange,
 }: {
   client: ReactMemoriesClient;
   namespace: string;
@@ -56,19 +58,36 @@ export function MemoryNodeHoverCard({
   prefetchedContent?: MemoryContentArm[] | null;
   className?: string;
   children: ReactNode;
+  /** Optional controlled open state (tests / hosts). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    onOpenChange?.(next);
+    if (openProp === undefined) setUncontrolledOpen(next);
+  };
   const [loading, setLoading] = useState(false);
   const [excerpt, setExcerpt] = useState<string | null>(() =>
     firstContentExcerpt(prefetchedContent ?? undefined),
   );
   const [fetched, setFetched] = useState(prefetchedContent !== undefined);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
+  // Adjust cached preview when identity/prefetch changes (during render so the
+  // fetch effect below sees cleared `fetched` in the same commit — effect-only
+  // reset races and leaves stale excerpt while open).
+  const [identity, setIdentity] = useState({ namespace, memoryKey, prefetchedContent });
+  if (
+    identity.namespace !== namespace ||
+    identity.memoryKey !== memoryKey ||
+    identity.prefetchedContent !== prefetchedContent
+  ) {
+    setIdentity({ namespace, memoryKey, prefetchedContent });
     setExcerpt(firstContentExcerpt(prefetchedContent ?? undefined));
-    if (prefetchedContent !== undefined) setFetched(true);
-  }, [prefetchedContent]);
+    setFetched(prefetchedContent !== undefined);
+    setError(null);
+  }
 
   useEffect(() => {
     if (!open || fetched || namespace.length === 0 || memoryKey.trim().length === 0) {
@@ -161,6 +180,8 @@ export function MemoryEdgeHoverCard({
   labelKinds,
   className,
   children,
+  open: openProp,
+  onOpenChange,
 }: {
   client: ReactMemoriesClient;
   namespace: string;
@@ -171,11 +192,25 @@ export function MemoryEdgeHoverCard({
   labelKinds?: readonly string[];
   className?: string;
   children: ReactNode;
+  /** Optional controlled open state (tests / hosts). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    onOpenChange?.(next);
+    if (openProp === undefined) setUncontrolledOpen(next);
+  };
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<EdgePreviewJson | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [identity, setIdentity] = useState({ namespace, edgeId });
+  if (identity.namespace !== namespace || identity.edgeId !== edgeId) {
+    setIdentity({ namespace, edgeId });
+    setDetail(null);
+    setError(null);
+  }
 
   useEffect(() => {
     if (!open || detail !== null || namespace.length === 0) return;
