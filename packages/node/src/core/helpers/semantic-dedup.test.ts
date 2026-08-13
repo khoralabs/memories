@@ -314,6 +314,69 @@ describe("planSemanticDedup", () => {
     expect(result.looseEpsilon ?? 0).toBeGreaterThan(result.epsilon);
   });
 
+  test("apply emits suppress telemetry and counts only real suppresses", () => {
+    const persistence = createMemoriesPersistence(openTestMemoriesDatabase());
+    const ops: { op: string; ok?: boolean }[] = [];
+    const telemetry = {
+      emitOp(event: { op: string; ok?: boolean }) {
+        ops.push({ op: event.op, ok: event.ok });
+      },
+      emitDatabaseLifecycle() {},
+    };
+    const ctx = { persistence, telemetry };
+    const namespace = "dedup/telemetry";
+    const v = unitVec(512, 0);
+    mergeMemory(ctx, {
+      key: "keep",
+      namespace,
+      content: [
+        {
+          key: "text",
+          text: "alice prefers dark roast coffee in the morning",
+          vector: nearVec(v, 0),
+        },
+      ],
+      labels: [],
+      edges: [],
+    });
+    mergeMemory(ctx, {
+      key: "drop",
+      namespace,
+      content: [
+        {
+          key: "text",
+          text: "alice prefers dark roast coffee each morning",
+          vector: nearVec(v, 0.02),
+        },
+      ],
+      labels: [],
+      edges: [],
+    });
+
+    const first = planSemanticDedup(ctx, {
+      namespace,
+      epsilon: 0.05,
+      k: 1,
+      seed: 5,
+      minLexicalJaccard: 0.05,
+      mode: "apply",
+    });
+    expect(first.applied).toBeGreaterThanOrEqual(1);
+    expect(ops.some((e) => e.op === "suppress" && e.ok === true)).toBe(true);
+
+    const suppressOpsBefore = ops.filter((e) => e.op === "suppress").length;
+    const second = planSemanticDedup(ctx, {
+      namespace,
+      epsilon: 0.05,
+      k: 1,
+      seed: 5,
+      minLexicalJaccard: 0.05,
+      mode: "apply",
+    });
+    expect(second.applied).toBe(0);
+    expect(ops.filter((e) => e.op === "suppress").length).toBe(suppressOpsBefore);
+  });
+
   test("fails closed on mixed embedding dimensions", () => {
     const persistence = createMemoriesPersistence(openTestMemoriesDatabase());
     const ctx = { persistence };

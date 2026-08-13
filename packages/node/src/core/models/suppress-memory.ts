@@ -11,13 +11,19 @@ export interface SuppressMemoryParams {
   attribution?: MemoryMutationAttribution;
 }
 
-/** Apply suppress mutations; caller must already be inside {@link MemoriesPersistence.withTransaction}. */
-export function suppressMemoryInTransaction(ctx: MutationCtx, params: SuppressMemoryParams): void {
+/**
+ * Apply suppress mutations; caller must already be inside {@link MemoriesPersistence.withTransaction}.
+ * @returns `true` when a suppress write + provenance append occurred.
+ */
+export function suppressMemoryInTransaction(
+  ctx: MutationCtx,
+  params: SuppressMemoryParams,
+): boolean {
   const { persistence } = ctx;
   const op = buildMemoryOpContext(params.attribution);
   const assoc = persistence.findMemoryAssociation(params.namespace, params.key);
-  if (assoc === undefined) return;
-  if (persistence.isMemorySuppressed(assoc.memoryId)) return;
+  if (assoc === undefined) return false;
+  if (persistence.isMemorySuppressed(assoc.memoryId)) return false;
   persistence.setMemorySuppressed(op, { memoryId: assoc.memoryId, suppressed: true });
   persistence.appendProvenanceEvent(op, {
     v: 1,
@@ -28,6 +34,7 @@ export function suppressMemoryInTransaction(ctx: MutationCtx, params: SuppressMe
     ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
     ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
   });
+  return true;
 }
 
 /**

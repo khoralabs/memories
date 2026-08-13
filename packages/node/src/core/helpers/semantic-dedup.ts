@@ -18,6 +18,7 @@
 
 import type { MemoriesPersistence } from "../../persistence/core/persistence";
 import { isSystemSearchMetaSourceKey } from "../../persistence/core/search-meta-constants";
+import { runWithOpTelemetrySync } from "../../telemetry/index.js";
 import type { MutationCtx } from "../api/merge-memory";
 import { suppressMemoryInTransaction } from "../models/suppress-memory";
 
@@ -589,17 +590,25 @@ export function planSemanticDedup(
     if (drops.length > 0) {
       ctx.persistence.withTransaction(() => {
         for (const d of drops) {
-          suppressMemoryInTransaction(ctx, {
+          const didApply = runWithOpTelemetrySync({
+            telemetry: ctx.telemetry,
+            op: "suppress",
             namespace: params.namespace,
-            key: d.key,
-            attribution: {
-              intentSnapshotId: buildIntentSnapshotId({
-                epsilon,
-                peerKey: d.peerKey,
+            memoryKey: d.key,
+            getProvenanceRootHex: () => ctx.persistence.getProvenanceHeadRootHex() ?? "",
+            fn: () =>
+              suppressMemoryInTransaction(ctx, {
+                namespace: params.namespace,
+                key: d.key,
+                attribution: {
+                  intentSnapshotId: buildIntentSnapshotId({
+                    epsilon,
+                    peerKey: d.peerKey,
+                  }),
+                },
               }),
-            },
           });
-          applied += 1;
+          if (didApply) applied += 1;
         }
       });
     }
