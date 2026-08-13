@@ -6,7 +6,8 @@
  * deduplication*, arXiv:2303.09540v3 — https://arxiv.org/abs/2303.09540
  *
  * Paper algorithm (applied here): embed → k-means partition → intra-cluster
- * pairwise cosine ≥ `1 − ε` → keep one per connected group.
+ * pairwise cosine ≥ `1 − ε` → keep one per **connected component** (single-linkage
+ * over the threshold graph; intentional SemDeDup §3 — not complete-linkage).
  *
  * Memories adaptations (deliberate deviations from the paper):
  * - Unit = memory (mean of non-system source_map vectors), not one embedding per doc
@@ -18,7 +19,7 @@
 import type { MemoriesPersistence } from "../../persistence/core/persistence";
 import { isSystemSearchMetaSourceKey } from "../../persistence/core/search-meta-constants";
 import type { MutationCtx } from "../api/merge-memory";
-import { suppressMemory } from "../models/suppress-memory";
+import { suppressMemoryInTransaction } from "../models/suppress-memory";
 
 /** Short paper id for docs and provenance (`intentSnapshotId`). */
 export const SEMDEDUP_PAPER = "arXiv:2303.09540" as const;
@@ -67,8 +68,9 @@ export type PlanSemanticDedupParams = {
    */
   epsilon?: number;
   /**
-   * Looser ε (must be > `epsilon`). Groups at this threshold that are not already in
+   * Looser ε (should be > `epsilon`). Groups at this threshold that are not already in
    * the tight band are reported as `band: "loose"` candidates only (never auto-applied).
+   * If ≤ `epsilon` (e.g. after calibration), it is lifted to `epsilon + 1e-6`.
    */
   looseEpsilon?: number;
   /** Override k-means cluster count. Default ≈ `max(16, min(N/32, √N))` capped by N. */
@@ -133,7 +135,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 function tokenize(text: string): Set<string> {
   const out = new Set<string>();
   for (const m of text.toLowerCase().match(/[a-z0-9_]+/g) ?? []) {
-    if (m.length >= 2) out.add(m);
+    if (m.length >= 1) out.add(m);
   }
   return out;
 }
@@ -303,6 +305,7 @@ function connectedComponents(
   indices: number[],
   isEdge: (i: number, j: number) => boolean,
 ): number[][] {
+  // Single-linkage / Union-Find over edges with sim ≥ 1−ε (SemDeDup threshold graph).
   const parent = new Map<number, number>();
   const find = (x: number): number => {
     let p = parent.get(x) ?? x;
@@ -455,8 +458,17 @@ export function calibrateSemanticDedupEpsilon(
   const minLex = opts?.minLexicalJaccard ?? DEFAULT_MIN_LEXICAL_JACCARD;
   const sampleFraction = opts?.sampleFraction ?? 0.1;
 
-  // Sample ~10% of clusters (paper §6.5); use all when small.
+  // Sample ~10% of clusters (paper §6.5); seeded shuffle so sample is not insertion-order biased.
   const clusterIds = [...new Set(assignments)];
+  const rand = mulberry32(opts?.seed ?? 1);
+  for (let i = clusterIds.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const a = clusterIds[i];
+    const b = clusterIds[j];
+    if (a === undefined || b === undefined) continue;
+    clusterIds[i] = b;
+    clusterIds[j] = a;
+  }
   const sampleCount = Math.max(
     1,
     Math.min(clusterIds.length, Math.ceil(clusterIds.length * sampleFraction)),
@@ -531,11 +543,10 @@ export function planSemanticDedup(
   }
   if (!(epsilon >= 0)) throw new RangeError("epsilon must be >= 0");
 
-  const looseEpsilon = params.looseEpsilon;
-  if (looseEpsilon !== undefined) {
-    if (!(looseEpsilon > epsilon)) {
-      throw new RangeError("looseEpsilon must be greater than epsilon");
-    }
+  let looseEpsilon = params.looseEpsilon;
+  if (looseEpsilon !== undefined && !(looseEpsilon > epsilon)) {
+    // Calibrated ε can land ≥ a fixed looseEpsilon; lift the loose band instead of crashing.
+    looseEpsilon = epsilon + 1e-6;
   }
 
   const k = params.k ?? defaultSemDeDupK(items.length);
@@ -571,20 +582,26 @@ export function planSemanticDedup(
   let applied = 0;
 
   if (params.mode === "apply") {
+    const drops: { key: string; peerKey: string }[] = [];
     for (const g of tightGroups) {
-      for (const d of g.drop) {
-        suppressMemory(ctx, {
-          namespace: params.namespace,
-          key: d.key,
-          attribution: {
-            intentSnapshotId: buildIntentSnapshotId({
-              epsilon,
-              peerKey: g.keep.key,
-            }),
-          },
-        });
-        applied += 1;
-      }
+      for (const d of g.drop) drops.push({ key: d.key, peerKey: g.keep.key });
+    }
+    if (drops.length > 0) {
+      ctx.persistence.withTransaction(() => {
+        for (const d of drops) {
+          suppressMemoryInTransaction(ctx, {
+            namespace: params.namespace,
+            key: d.key,
+            attribution: {
+              intentSnapshotId: buildIntentSnapshotId({
+                epsilon,
+                peerKey: d.peerKey,
+              }),
+            },
+          });
+          applied += 1;
+        }
+      });
     }
   }
 

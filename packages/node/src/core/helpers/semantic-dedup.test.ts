@@ -61,6 +61,11 @@ describe("semantic-dedup primitives", () => {
     expect(lexicalJaccard("coffee preference", "quantum chromodynamics lattice")).toBeLessThan(0.1);
   });
 
+  test("lexicalJaccard distinguishes single-character texts", () => {
+    expect(lexicalJaccard("a", "b")).toBe(0);
+    expect(lexicalJaccard("a", "a")).toBe(1);
+  });
+
   test("defaultSemDeDupK clamps to N and prefers ~sqrt scale", () => {
     expect(defaultSemDeDupK(1)).toBe(1);
     expect(defaultSemDeDupK(10)).toBe(10);
@@ -275,6 +280,38 @@ describe("planSemanticDedup", () => {
     });
     expect(Number.isFinite(eps)).toBe(true);
     expect(eps).toBeGreaterThan(0);
+  });
+
+  test("lifts looseEpsilon when calibrated epsilon is not strictly smaller", () => {
+    const persistence = createMemoriesPersistence(openTestMemoriesDatabase());
+    const ctx = { persistence };
+    const namespace = "dedup/loose-clamp";
+    const v = unitVec(512, 0);
+    mergeMemory(ctx, {
+      key: "a",
+      namespace,
+      content: [{ key: "text", text: "alpha beta gamma", vector: v }],
+      labels: [],
+      edges: [],
+    });
+    mergeMemory(ctx, {
+      key: "b",
+      namespace,
+      content: [{ key: "text", text: "alpha beta gamma delta", vector: nearVec(v, 0.02) }],
+      labels: [],
+      edges: [],
+    });
+    const result = planSemanticDedup(ctx, {
+      namespace,
+      targetKeepFraction: 0.5,
+      looseEpsilon: 1e-12,
+      k: 1,
+      seed: 4,
+      minLexicalJaccard: 0,
+      mode: "plan",
+    });
+    expect(result.looseEpsilon).toBeDefined();
+    expect(result.looseEpsilon ?? 0).toBeGreaterThan(result.epsilon);
   });
 
   test("fails closed on mixed embedding dimensions", () => {
