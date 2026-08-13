@@ -312,6 +312,22 @@ structure DeleteMemoryParams {
 
 structure DeleteMemoryOutput {}
 
+/// Upsert one content arm without clearing other arms, labels, edges, or scopes.
+/// Omitting `text` or `vector` preserves that sibling arm. Records provenance as `MERGE_MEMORY`.
+structure ReplaceMemoryFeatureParams {
+    namespace: MemoryNamespace
+    key: String
+    sourceKey: String
+    text: String
+    vector: DoubleList
+    attribution: MemoryMutationAttribution
+}
+
+structure ReplaceMemoryFeatureOutput {
+    sourceMapId: String
+    rootHex: String
+}
+
 structure SuppressMemoryParams {
     namespace: MemoryNamespace
     key: String

@@ -10,7 +10,7 @@ This package is **not** the HTTP wire model for `@khoralabs/memories-service` (l
 |------|----------|
 | `model/persistence.smithy` | `MemoriesPersistenceService` and capability modules (`MemoriesPersistenceCore`, `MemoriesPersistenceVector`, …) |
 | `model/shapes.smithy` | Shared shapes (rows, search/merge, provenance events, capabilities) |
-| `model/public.smithy` | Public service surface (`MergeMemory`, `Search`, `DeleteMemory`) |
+| `model/public.smithy` | Public service surface (`MergeMemory`, `Search`, `DeleteMemory`, `ReplaceMemoryFeature`, suppress/unsuppress) |
 | `smithy-build.json` | Smithy build config |
 
 ## Capability modules

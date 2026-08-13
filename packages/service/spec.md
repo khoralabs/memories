@@ -250,10 +250,23 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 | `POST` | `/databases/delete-memory` | Delete memory by namespace/key | `write` |
 | `POST` | `/databases/provenance/head` | Provenance head root hex | `read` |
 | `POST` | `/databases/provenance/timestamp` | Provenance timestamp for a root hex | `read` |
-| `POST` | `/databases/provenance/events` | List provenance events (optional namespace/key filter, keyset cursor) | `read` |
+| `POST` | `/databases/provenance/events` | List provenance events (optional namespace/key filter, nested keyset cursor) | `read` |
 | `POST` | `/databases/provenance/chain` | List provenance chain links newest-first (keyset via `beforeRootHex`) | `read` |
-| `POST` | `/databases/provenance/content` | Per-arm LWW memory content at a tip (`rootHex` + namespace/key). Unknown tip → empty `content`. Cold-evacuated bodies are fetched when a cold store is configured; dropped bodies without cold storage are omitted. Malformed `rootHex` → 400. | `read` |
+| `POST` | `/databases/provenance/content` | Per-arm LWW memory content at a tip (`rootHex` + namespace/key) | `read` |
 | `POST` | `/databases/capabilities` | Backend capabilities for database | `read` |
+
+**Wire naming:** public/HTTP memory identity is always `key` (not `memoryKey`). Persistence TS method parameters may still be named `memoryKey` when adjacent to `sourceKey` / graph fields; HTTP adapters map body `key` → that arg.
+
+**`POST /databases/provenance/events`**
+
+- Request: `{ database, namespace?, key?, limit?, before?: { createdAt, id } }` — `key` requires `namespace`
+- Response: `{ events, nextBefore?: { createdAt, id }, database }` — `nextBefore` is set when the page is full; pass it as the next request's `before`
+
+**`POST /databases/provenance/content`**
+
+- Request: `{ database, rootHex, namespace, key }`
+- Response: `{ rootHex, content: [{ sourceKey, text }], database }`
+- Semantics: unknown tip → empty `content`; cold-evacuated bodies are fetched when a cold store is configured; permanently dropped bodies without cold storage are omitted; malformed `rootHex` → 400
 
 Client-supplied embeddings on `search`, `search-namespaces` (`vector`), and `merge` (`content[].vector`, `searchMetaVector`) must be **512–3072** float32 values.
 
@@ -282,6 +295,12 @@ Suppression: discovery endpoints exclude suppressed memories/namespaces by defau
 | `POST` | `/databases/find-memory-id` | Resolve memory id by key | `read` |
 | `POST` | `/databases/effective-suppression` | Ancestor-aware suppression status (`suppressedBy` closest covering namespace) | `read` |
 | `POST` | `/databases/load-memory-namespace-key` | Load namespace/key by memory id | `read` |
+
+**`POST /databases/source-map/replace`**
+
+- Request: `{ database, namespace, key, sourceKey, text?, vector?, attribution?, intentSnapshotId? }` — at least one of `text` or `vector`
+- Response: `{ sourceMapId, rootHex, database }`
+- Semantics: upserts one content arm without clearing sibling arms; provenance is recorded as `MERGE_MEMORY` (no separate event kind)
 
 ### Ontology registry
 
@@ -380,7 +399,7 @@ Host matching rules and reference helpers (`authorizeScopeAgainstGrants`, etc.):
 
 Runtime clients:
 
-- `createRemoteMemoriesClientAsync()` — `MemoriesClientAsync` over HTTP (search, merge, delete-memory, provenance head/timestamp/events/chain/content)
+- `createRemoteMemoriesClientAsync()` — `MemoriesClientAsync` over HTTP (search, merge, delete-memory, replace, provenance head/timestamp/events/chain/content)
 - `createRemoteMemoriesReadClient()` — graph/index reads (namespaces with metadata, graph layout, edge preview, snippets, vector dimensions, scope chains)
 - `MemoriesOntologyClient`, `ensureDatabaseOntologyLink()` — ontology register/link over HTTP
 

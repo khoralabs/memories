@@ -137,7 +137,7 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 
 **Async:** Mirror with Promise/async method signatures in language bindings.
 
-**Read helpers:** **ListMemoryNamespaces**, **ListNamespacesWithMetadata**, **GetNamespaceMetadata**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**, **GetSourceMapText**, **GetSourceMapVector**, **ResolveSourceMapMemory**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable. Public **ReplaceMemoryFeature** (sibling-arm preserve) is implemented in `@khoralabs/memories-node` / HTTP; Spec op deferred to a follow-up.
+**Read helpers:** **ListMemoryNamespaces**, **ListNamespacesWithMetadata**, **GetNamespaceMetadata**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**, **GetSourceMapText**, **GetSourceMapVector**, **ResolveSourceMapMemory**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable. Public **ReplaceMemoryFeature** (sibling-arm preserve) is modeled on `MemoriesPublic` and implemented in `@khoralabs/memories-node` / HTTP `POST /databases/source-map/replace`; provenance is recorded as **MERGE_MEMORY** (no separate event kind).
 
 **Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, **GetProvenanceTimestampMsForRootHex**, **ListProvenanceEvents**, **ListProvenanceChain**, **GetMemoryContentAtRootHex**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete + suppress/unsuppress + rename) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY` / `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` / `RENAME_NAMESPACE`). Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide). Content-at-root is per-arm LWW (not a full tip snapshot); cold-evacuated bodies are resolved when a cold store is configured.
 """)
@@ -984,13 +984,22 @@ structure GetProvenanceTimestampMsForRootHexOutput {
 }
 
 @documentation("""
-Newest-first provenance events, optionally filtered by memory `namespace` / `memoryKey`
-via `event_json`. `memoryKey` requires `namespace`. Implementations hard-cap `limit` (typical max 100).
+Newest-first provenance events, optionally filtered by memory `namespace` / `key`
+via `event_json`. `key` requires `namespace`. Implementations hard-cap `limit` (typical max 100).
 Optional on implementors (`listProvenanceEvents?` in TS).
+
+**Naming:** public/HTTP wire uses `key` for memory identity. Persistence TS method parameters
+may still be named `memoryKey` when adjacent to `sourceKey`; adapters map wire `key` → that arg.
 """)
 operation ListProvenanceEvents {
     input: ListProvenanceEventsInput
     output: ListProvenanceEventsOutput
+}
+
+/// Nested keyset cursor for provenance events (matches HTTP `before` / `nextBefore`).
+structure ProvenanceEventsBeforeCursor {
+    createdAt: Long
+    id: String
 }
 
 structure ListProvenanceEventsInput {
@@ -998,9 +1007,7 @@ structure ListProvenanceEventsInput {
     /// Wire/HTTP field name is `key` (same meaning as memory key).
     key: String
     limit: Integer
-    /// Nested keyset cursor (wire); prefer over flat beforeCreatedAt/beforeId.
-    beforeCreatedAt: Long
-    beforeId: String
+    before: ProvenanceEventsBeforeCursor
 }
 
 structure ProvenanceEventListItem {
@@ -1019,6 +1026,8 @@ list ProvenanceEventListItemList {
 
 structure ListProvenanceEventsOutput {
     events: ProvenanceEventListItemList
+    /// Present when the page is full; pass as the next request's `before`.
+    nextBefore: ProvenanceEventsBeforeCursor
 }
 
 @documentation("""
@@ -1067,7 +1076,9 @@ operation GetMemoryContentAtRootHex {
 structure GetMemoryContentAtRootHexInput {
     rootHex: String
     namespace: String
-    memoryKey: String
+    /// Wire/HTTP field name is `key` (same meaning as memory key). Persistence TS
+    /// often takes a `memoryKey` parameter and maps from this wire field.
+    key: String
 }
 
 structure MemoryContentAtRootItem {

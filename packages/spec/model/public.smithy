@@ -7,7 +7,7 @@ Logical client API: validates content and ontology at the app layer, then drives
 Label kinds are opaque strings here (Zod / closed enums live in app packages).
 
 Merge returns stable memory ids touched by the operation (primary + neighbors whose search-meta was synced).
-Attribution (`contributor` / `intentSnapshotId`) is optional on merge, delete, suppress, and unsuppress and feeds provenance.
+Attribution (`contributor` / `intentSnapshotId`) is optional on merge, delete, replace-feature, suppress, and unsuppress and feeds provenance.
 """)
 service MemoriesPublic {
     version: "2026-07-21"
@@ -15,6 +15,7 @@ service MemoriesPublic {
         MergeMemory
         Search
         DeleteMemory
+        ReplaceMemoryFeature
         SuppressMemory
         UnsuppressMemory
         SuppressNamespace
@@ -35,6 +36,11 @@ operation Search {
 operation DeleteMemory {
     input: DeleteMemoryParams
     output: DeleteMemoryOutput
+}
+
+operation ReplaceMemoryFeature {
+    input: ReplaceMemoryFeatureParams
+    output: ReplaceMemoryFeatureOutput
 }
 
 operation SuppressMemory {
