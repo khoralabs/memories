@@ -484,11 +484,16 @@ export function runMemoriesPersistenceContractTests(
         expect(first.createdAt).toBeGreaterThanOrEqual(second.createdAt);
 
         const eventsPage = await persistence.listProvenanceEvents({
+          namespace,
+          key: "a",
           limit: 1,
           before: { createdAt: first.createdAt, id: first.id },
         });
         expect(eventsPage).toHaveLength(1);
-        expect(eventsPage[0]?.id).not.toBe(first.id);
+        const next = eventsPage[0];
+        if (next === undefined) throw new Error("expected scoped cursor page");
+        expect(next.id).toBe(second.id);
+        expect((next.event as { memory_key?: string }).memory_key).toBe("a");
       });
 
       test("listProvenanceChain paginates newest-first", async () => {
