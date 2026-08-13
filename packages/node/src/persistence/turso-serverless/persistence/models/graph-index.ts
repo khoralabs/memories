@@ -6,7 +6,18 @@ import type {
   IncludeSuppressedOpts,
   OntologyLabelInstance,
 } from "../../../../persistence/core";
-import { ids, sqlNamespaceEqualsOrUnderPrefixCol } from "../../../../persistence/core";
+import { ids } from "../../../../persistence/core";
+import {
+  foldKindCountRows,
+  GRAPH_EDGE_NOT_SUPPRESSED,
+  SQL_COUNT_SUPPRESSED_NODES,
+  sqlCountDistinctEdges,
+  sqlCountNodes,
+  sqlEdgeLabelKindHistogram,
+  sqlNodeKeys,
+  sqlNodeLabelKindHistogram,
+  suppressedEdgeCountFromTotals,
+} from "../../../../persistence/core/models/graph-namespace-stats-sql";
 import type { DbCtx } from "../context";
 import type { TursoDatabase } from "../db";
 import { ctxQueryAll, readQueryAll } from "../db";
@@ -36,21 +47,6 @@ function parseEdgeRowProperties(json: string | null): Record<string, unknown> | 
   }
   return null;
 }
-
-/** Edge visible in graph layout when neither endpoint/memory nor namespace is suppressed. */
-const GRAPH_EDGE_NOT_SUPPRESSED = `
-  AND mf.suppressed = 0 AND mt.suppressed = 0
-  AND NOT EXISTS (
-    SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM namespace_metadata nm
-    WHERE nm.suppressed != 0
-      AND (
-        ${sqlNamespaceEqualsOrUnderPrefixCol("mf.namespace", "nm._id")}
-        OR ${sqlNamespaceEqualsOrUnderPrefixCol("mt.namespace", "nm._id")}
-      )
-  )`;
 
 const GRAPH_EDGE_SUPPRESSION_COLS = `,
               mf.suppressed AS fromSuppressed,
@@ -307,9 +303,7 @@ export async function loadGraphEdge(
 }
 
 function nodeKeysSql(includeSuppressed: boolean): string {
-  return includeSuppressed
-    ? `SELECT key FROM memories WHERE namespace = ? AND kind = 'node'`
-    : `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`;
+  return sqlNodeKeys(includeSuppressed);
 }
 
 function nodeRowsSql(includeSuppressed: boolean): string {
@@ -422,18 +416,10 @@ async function countDistinctEdges(
 ): Promise<number> {
   const nsSuppressed = await isNamespaceSuppressed(db, namespace);
   if (!includeSuppressed && nsSuppressed) return 0;
-  const filter = includeSuppressed ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
-  const rows = await readQueryAll<{ c: number }>(
-    db,
-    `SELECT COUNT(DISTINCT e._id) AS c
-     FROM edges e
-     JOIN nodes nf ON nf._id = e.from_node_id
-     JOIN nodes nt ON nt._id = e.to_node_id
-     JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
-     JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
-     WHERE 1 = 1${filter}`,
-    [namespace, namespace],
-  );
+  const rows = await readQueryAll<{ c: number }>(db, sqlCountDistinctEdges(includeSuppressed), [
+    namespace,
+    namespace,
+  ]);
   return rows[0]?.c ?? 0;
 }
 
@@ -443,13 +429,7 @@ async function countNodes(
   includeSuppressed: boolean,
 ): Promise<number> {
   if (!includeSuppressed && (await isNamespaceSuppressed(db, namespace))) return 0;
-  const rows = await readQueryAll<{ c: number }>(
-    db,
-    includeSuppressed
-      ? `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node'`
-      : `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`,
-    [namespace],
-  );
+  const rows = await readQueryAll<{ c: number }>(db, sqlCountNodes(includeSuppressed), [namespace]);
   return rows[0]?.c ?? 0;
 }
 
@@ -457,11 +437,7 @@ async function countSuppressedNodes(db: TursoDatabase, namespace: string): Promi
   if (await isNamespaceSuppressed(db, namespace)) {
     return countNodes(db, namespace, true);
   }
-  const rows = await readQueryAll<{ c: number }>(
-    db,
-    `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed != 0`,
-    [namespace],
-  );
+  const rows = await readQueryAll<{ c: number }>(db, SQL_COUNT_SUPPRESSED_NODES, [namespace]);
   return rows[0]?.c ?? 0;
 }
 
@@ -469,7 +445,7 @@ async function countSuppressedEdges(db: TursoDatabase, namespace: string): Promi
   const all = await countDistinctEdges(db, namespace, true);
   if (await isNamespaceSuppressed(db, namespace)) return all;
   const visible = await countDistinctEdges(db, namespace, false);
-  return Math.max(0, all - visible);
+  return suppressedEdgeCountFromTotals(all, visible);
 }
 
 async function nodeLabelKindHistogram(
@@ -484,16 +460,10 @@ async function nodeLabelKindHistogram(
   const ph = nodeIds.map(() => "?").join(",");
   const rows = await readQueryAll<{ kind: string; c: number }>(
     db,
-    `SELECT nl.kind AS kind, COUNT(*) AS c
-     FROM node_label_assignments nla
-     JOIN node_labels nl ON nl._id = nla.label_id
-     WHERE nla.node_id IN (${ph})
-     GROUP BY nl.kind`,
+    sqlNodeLabelKindHistogram(ph),
     nodeIds,
   );
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.kind] = r.c;
-  return out;
+  return foldKindCountRows(rows);
 }
 
 async function edgeLabelKindHistogram(
@@ -503,24 +473,12 @@ async function edgeLabelKindHistogram(
 ): Promise<Record<string, number>> {
   const nsSuppressed = await isNamespaceSuppressed(db, namespace);
   if (!includeSuppressed && nsSuppressed) return {};
-  const filter = includeSuppressed ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = await readQueryAll<{ kind: string; c: number }>(
     db,
-    `SELECT el.kind AS kind, COUNT(DISTINCT e._id) AS c
-     FROM edges e
-     JOIN nodes nf ON nf._id = e.from_node_id
-     JOIN nodes nt ON nt._id = e.to_node_id
-     JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
-     JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
-     JOIN edge_label_assignments ela ON ela.edge_id = e._id
-     JOIN edge_labels el ON el._id = ela.label_id
-     WHERE 1 = 1${filter}
-     GROUP BY el.kind`,
+    sqlEdgeLabelKindHistogram(includeSuppressed),
     [namespace, namespace],
   );
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.kind] = r.c;
-  return out;
+  return foldKindCountRows(rows);
 }
 
 export async function countGraphForNamespace(

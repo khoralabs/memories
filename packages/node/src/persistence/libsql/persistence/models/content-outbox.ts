@@ -1,17 +1,25 @@
+import {
+  evacuateContentBlobsOutsideHotWindowWith,
+  resolveLwwRows,
+} from "../../../../persistence/core/models/content-outbox-lww";
+import {
+  buildLwwArmsQuery,
+  type ContentAtRootHit,
+  hitsFromHot,
+  type LwwArmRow,
+  SQL_INSERT_CONTENT_OUTBOX,
+  SQL_INSERT_HOT_BLOB,
+  SQL_REHYDRATE_HOT_BLOB,
+  SQL_SELECT_BLOB_BY_SHA,
+} from "../../../../persistence/core/models/content-outbox-sql";
 import { sha256Hex } from "../../../../persistence/core/models/sha256";
 import type { ContentBlobColdStore } from "../../../../persistence/core/persistence/content-blob-cold-store";
-import { DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS } from "../../../../persistence/core/persistence/content-blob-cold-store";
-import { execSql, queryAll } from "../client";
+import { execSql } from "../client";
 import type { DbCtx } from "../context";
 import type { LibsqlDatabase } from "../db";
 import { ctxExec, ctxQueryOne, readQueryAll } from "../db";
 
-export type ContentAtRootHit = {
-  namespace: string;
-  memoryKey: string;
-  sourceKey: string;
-  text: string;
-};
+export type { ContentAtRootHit };
 
 /**
  * Append-only thin content outbox for point-in-time text reconstruction.
@@ -38,23 +46,17 @@ export async function appendMergeOutboxEntries(
       contentSha = sha256Hex(entry.text);
       await upsertHotBlob(ctx, contentSha, entry.text);
     }
-    await ctxExec(
-      ctx,
-      `INSERT OR IGNORE INTO memory_content_outbox
-         (_id, _ts_created, root_hex, event_type, namespace, memory_key, source_key, text, content_sha256)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        `${input.root_hex}:${entry.sourceKey}`,
-        ctx.now,
-        input.root_hex,
-        "MERGE_MEMORY",
-        input.namespace,
-        input.memoryKey,
-        entry.sourceKey,
-        null,
-        contentSha,
-      ],
-    );
+    await ctxExec(ctx, SQL_INSERT_CONTENT_OUTBOX, [
+      `${input.root_hex}:${entry.sourceKey}`,
+      ctx.now,
+      input.root_hex,
+      "MERGE_MEMORY",
+      input.namespace,
+      input.memoryKey,
+      entry.sourceKey,
+      null,
+      contentSha,
+    ]);
   }
 }
 
@@ -62,149 +64,55 @@ export async function appendDeleteOutboxEntry(
   ctx: DbCtx,
   input: { root_hex: string; namespace: string; memoryKey: string },
 ): Promise<void> {
-  await ctxExec(
-    ctx,
-    `INSERT OR IGNORE INTO memory_content_outbox
-       (_id, _ts_created, root_hex, event_type, namespace, memory_key, source_key, text, content_sha256)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      `${input.root_hex}:__delete__`,
-      ctx.now,
-      input.root_hex,
-      "DELETE_MEMORY",
-      input.namespace,
-      input.memoryKey,
-      null,
-      null,
-      null,
-    ],
-  );
+  await ctxExec(ctx, SQL_INSERT_CONTENT_OUTBOX, [
+    `${input.root_hex}:__delete__`,
+    ctx.now,
+    input.root_hex,
+    "DELETE_MEMORY",
+    input.namespace,
+    input.memoryKey,
+    null,
+    null,
+    null,
+  ]);
 }
 
 async function upsertHotBlob(ctx: DbCtx, contentSha256: string, text: string): Promise<void> {
   const existing = await ctxQueryOne<{ location: string; text: string | null }>(
     ctx,
-    `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
+    SQL_SELECT_BLOB_BY_SHA,
     [contentSha256],
   );
   if (existing === undefined) {
-    await ctxExec(
-      ctx,
-      `INSERT INTO memory_content_blobs (content_sha256, text, location, cold_uri, _ts_created)
-       VALUES (?, ?, 'hot', NULL, ?)`,
-      [contentSha256, text, ctx.now],
-    );
+    await ctxExec(ctx, SQL_INSERT_HOT_BLOB, [contentSha256, text, ctx.now]);
     return;
   }
   if (existing.location !== "hot" || existing.text == null) {
-    await ctxExec(
-      ctx,
-      `UPDATE memory_content_blobs SET text = ?, location = 'hot', cold_uri = NULL WHERE content_sha256 = ?`,
-      [text, contentSha256],
-    );
+    await ctxExec(ctx, SQL_REHYDRATE_HOT_BLOB, [text, contentSha256]);
   }
 }
-
-type LwwArmRow = {
-  namespace: string;
-  memoryKey: string;
-  sourceKey: string;
-  contentSha256: string | null;
-  blobText: string | null;
-  location: string | null;
-  coldUri: string | null;
-};
-
-const LWW_SQL = `
-  WITH target AS (
-    SELECT rowid AS target_rowid FROM memory_provenance WHERE root_hex = ?
-  ),
-  eligible AS (
-    SELECT p.root_hex, p.rowid AS prov_rowid
-    FROM memory_provenance p, target
-    WHERE p.rowid <= target.target_rowid
-  ),
-  last_delete AS (
-    SELECT o.namespace, o.memory_key, MAX(e.prov_rowid) AS del_rowid
-    FROM memory_content_outbox o
-    JOIN eligible e ON e.root_hex = o.root_hex
-    WHERE o.event_type = 'DELETE_MEMORY'
-    {{WHERE}}
-    GROUP BY o.namespace, o.memory_key
-  ),
-  last_merge AS (
-    SELECT o.namespace, o.memory_key, o.source_key, MAX(e.prov_rowid) AS merge_rowid
-    FROM memory_content_outbox o
-    JOIN eligible e ON e.root_hex = o.root_hex
-    WHERE o.event_type = 'MERGE_MEMORY'
-      AND o.source_key IS NOT NULL
-    {{WHERE}}
-    GROUP BY o.namespace, o.memory_key, o.source_key
-  ),
-  picked AS (
-    SELECT
-      lm.namespace,
-      lm.memory_key,
-      lm.source_key,
-      o.content_sha256
-    FROM last_merge lm
-    JOIN eligible e ON e.prov_rowid = lm.merge_rowid
-    JOIN memory_content_outbox o
-      ON o.root_hex = e.root_hex
-     AND o.namespace = lm.namespace
-     AND o.memory_key = lm.memory_key
-     AND o.source_key = lm.source_key
-     AND o.event_type = 'MERGE_MEMORY'
-    WHERE NOT EXISTS (
-      SELECT 1 FROM last_delete ld
-      WHERE ld.namespace = lm.namespace
-        AND ld.memory_key = lm.memory_key
-        AND ld.del_rowid > lm.merge_rowid
-    )
-  )
-  SELECT
-    p.namespace AS namespace,
-    p.memory_key AS memoryKey,
-    p.source_key AS sourceKey,
-    p.content_sha256 AS contentSha256,
-    b.text AS blobText,
-    b.location AS location,
-    b.cold_uri AS coldUri
-  FROM picked p
-  LEFT JOIN memory_content_blobs b ON b.content_sha256 = p.content_sha256
-`;
 
 async function queryLwwArms(
   db: LibsqlDatabase,
   rootHex: string,
   scope: { namespace: string; memoryKey: string } | null,
 ): Promise<LwwArmRow[]> {
-  const where = scope !== null ? "AND o.namespace = ? AND o.memory_key = ?" : "";
-  const sql = LWW_SQL.replaceAll("{{WHERE}}", where);
-  if (scope !== null) {
-    return readQueryAll<LwwArmRow>(db, sql, [
-      rootHex,
-      scope.namespace,
-      scope.memoryKey,
-      scope.namespace,
-      scope.memoryKey,
-    ]);
-  }
-  return readQueryAll<LwwArmRow>(db, sql, [rootHex]);
+  const { sql, params } = buildLwwArmsQuery(rootHex, scope);
+  return readQueryAll<LwwArmRow>(db, sql, params);
 }
 
-function hitsFromHot(rows: LwwArmRow[]): ContentAtRootHit[] {
-  const out: ContentAtRootHit[] = [];
-  for (const row of rows) {
-    if (row.blobText == null) continue;
-    out.push({
-      namespace: row.namespace,
-      memoryKey: row.memoryKey,
-      sourceKey: row.sourceKey,
-      text: row.blobText,
-    });
-  }
-  return out;
+function libsqlOutboxDeps(db: LibsqlDatabase, coldStore?: ContentBlobColdStore) {
+  return {
+    queryAll: async <T extends Record<string, unknown>>(
+      sql: string,
+      params: unknown[],
+    ): Promise<T[]> => readQueryAll<T>(db, sql, params),
+    exec: async (sql: string, params: unknown[]): Promise<void> => {
+      await execSql(db.client, sql, params);
+    },
+    coldStore,
+    isClosedDatabaseError,
+  };
 }
 
 /** Reconstruct text as of a tip (hot blob). Cold bodies need coldStore. */
@@ -217,7 +125,7 @@ export async function getMemoryContentAtRootHex(
 ): Promise<ContentAtRootHit[]> {
   const rows = await queryLwwArms(db, rootHex, { namespace, memoryKey });
   if (coldStore === undefined) return hitsFromHot(rows);
-  return resolveLwwRows(db, rows, coldStore);
+  return resolveLwwRows(libsqlOutboxDeps(db, coldStore), rows);
 }
 
 export async function reconstructStoreAtRootHex(
@@ -227,38 +135,7 @@ export async function reconstructStoreAtRootHex(
 ): Promise<ContentAtRootHit[]> {
   const rows = await queryLwwArms(db, rootHex, null);
   if (coldStore === undefined) return hitsFromHot(rows);
-  return resolveLwwRows(db, rows, coldStore);
-}
-
-async function resolveLwwRows(
-  db: LibsqlDatabase,
-  rows: LwwArmRow[],
-  coldStore?: ContentBlobColdStore,
-): Promise<ContentAtRootHit[]> {
-  const out: ContentAtRootHit[] = [];
-  for (const row of rows) {
-    let text = row.blobText;
-    if (text == null && row.location === "cold" && row.contentSha256 && coldStore) {
-      const fetched = await coldStore.get(row.contentSha256);
-      if (fetched !== null && sha256Hex(fetched) === row.contentSha256) {
-        text = fetched;
-        await execSql(
-          db.client,
-          `UPDATE memory_content_blobs SET text = ?, location = 'hot', cold_uri = NULL WHERE content_sha256 = ?`,
-          [fetched, row.contentSha256],
-        );
-      }
-    }
-    if (text == null) continue;
-    if (row.location === "dropped" && row.blobText == null) continue;
-    out.push({
-      namespace: row.namespace,
-      memoryKey: row.memoryKey,
-      sourceKey: row.sourceKey,
-      text,
-    });
-  }
-  return out;
+  return resolveLwwRows(libsqlOutboxDeps(db, coldStore), rows);
 }
 
 /**
@@ -274,12 +151,7 @@ export async function evacuateContentBlobsOutsideHotWindow(
     allowDropWithoutColdStore?: boolean;
   },
 ): Promise<void> {
-  try {
-    await evacuateContentBlobsOutsideHotWindowInner(db, opts);
-  } catch (err) {
-    if (isClosedDatabaseError(err)) return;
-    throw err;
-  }
+  await evacuateContentBlobsOutsideHotWindowWith(libsqlOutboxDeps(db, opts?.coldStore), opts);
 }
 
 function isClosedDatabaseError(err: unknown): boolean {
@@ -289,71 +161,4 @@ function isClosedDatabaseError(err: unknown): boolean {
       err.message,
     )
   );
-}
-
-async function evacuateContentBlobsOutsideHotWindowInner(
-  db: LibsqlDatabase,
-  opts?: {
-    retentionTips?: number;
-    coldStore?: ContentBlobColdStore;
-    allowDropWithoutColdStore?: boolean;
-  },
-): Promise<void> {
-  const retention = opts?.retentionTips ?? DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS;
-  if (retention === 0) return;
-
-  const coldStore = opts?.coldStore;
-  const allowDrop = opts?.allowDropWithoutColdStore === true;
-  if (coldStore === undefined && !allowDrop) return;
-
-  const hotTips = (
-    await queryAll<{ root_hex: string }>(
-      db.client,
-      `SELECT root_hex FROM memory_provenance
-       ORDER BY _ts_created DESC, rowid DESC
-       LIMIT ?`,
-      [retention],
-    )
-  ).map((r) => r.root_hex);
-  if (hotTips.length === 0) return;
-
-  const placeholders = hotTips.map(() => "?").join(",");
-  const candidates = await queryAll<{ content_sha256: string; text: string | null }>(
-    db.client,
-    `SELECT DISTINCT b.content_sha256, b.text
-     FROM memory_content_blobs b
-     WHERE b.location = 'hot'
-       AND b.text IS NOT NULL
-       AND NOT EXISTS (
-         SELECT 1 FROM memory_content_outbox o
-         WHERE o.content_sha256 = b.content_sha256
-           AND o.root_hex IN (${placeholders})
-       )`,
-    hotTips,
-  );
-
-  for (const row of candidates) {
-    if (row.text == null) continue;
-    if (coldStore !== undefined) {
-      if (sha256Hex(row.text) !== row.content_sha256) {
-        console.error(
-          `evacuateContentBlobs: sha mismatch for ${row.content_sha256}; skipping cold put`,
-        );
-        continue;
-      }
-      await coldStore.put(row.content_sha256, row.text);
-      const uri = coldStore.uriFor(row.content_sha256);
-      await execSql(
-        db.client,
-        `UPDATE memory_content_blobs SET text = NULL, location = 'cold', cold_uri = ? WHERE content_sha256 = ?`,
-        [uri, row.content_sha256],
-      );
-    } else {
-      await execSql(
-        db.client,
-        `UPDATE memory_content_blobs SET text = NULL, location = 'dropped', cold_uri = NULL WHERE content_sha256 = ?`,
-        [row.content_sha256],
-      );
-    }
-  }
 }

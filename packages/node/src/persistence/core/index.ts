@@ -1,3 +1,6 @@
+export * from "./models/content-outbox-lww";
+export * from "./models/content-outbox-sql";
+export * from "./models/graph-namespace-stats-sql";
 export { ids, stableId } from "./models/ids";
 export * from "./models/label-props-search-text";
 export * from "./models/like-escape";
@@ -7,6 +10,7 @@ export * from "./models/namespace-metadata-paths";
 export * from "./models/namespace-path";
 export * from "./models/neighbor-search-types";
 export * from "./models/ontology-label";
+export * from "./models/provenance-list-sql";
 export * from "./models/rename-namespace-plan";
 export * from "./persistence/index";
 export * from "./provenance/index";

@@ -7,7 +7,18 @@ import type {
   IncludeSuppressedOpts,
   OntologyLabelInstance,
 } from "../../../../persistence/core";
-import { ids, sqlNamespaceEqualsOrUnderPrefixCol } from "../../../../persistence/core";
+import { ids } from "../../../../persistence/core";
+import {
+  foldKindCountRows,
+  GRAPH_EDGE_NOT_SUPPRESSED,
+  SQL_COUNT_SUPPRESSED_NODES,
+  sqlCountDistinctEdges,
+  sqlCountNodes,
+  sqlEdgeLabelKindHistogram,
+  sqlNodeKeys,
+  sqlNodeLabelKindHistogram,
+  suppressedEdgeCountFromTotals,
+} from "../../../../persistence/core/models/graph-namespace-stats-sql";
 import { isNamespaceSuppressed } from "./namespace-metadata";
 
 function parsePropsColumn(raw: unknown): Record<string, unknown> {
@@ -50,21 +61,6 @@ function parseEdgeRowProperties(json: string | null): Record<string, unknown> | 
   }
   return null;
 }
-
-/** Edge visible in graph layout when neither endpoint/memory nor namespace is suppressed. */
-const GRAPH_EDGE_NOT_SUPPRESSED = `
-  AND mf.suppressed = 0 AND mt.suppressed = 0
-  AND NOT EXISTS (
-    SELECT 1 FROM memories me WHERE me.edge_id = e._id AND me.suppressed != 0
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM namespace_metadata nm
-    WHERE nm.suppressed != 0
-      AND (
-        ${sqlNamespaceEqualsOrUnderPrefixCol("mf.namespace", "nm._id")}
-        OR ${sqlNamespaceEqualsOrUnderPrefixCol("mt.namespace", "nm._id")}
-      )
-  )`;
 
 const GRAPH_EDGE_SUPPRESSION_COLS = `,
               mf.suppressed AS fromSuppressed,
@@ -323,9 +319,7 @@ export function loadGraphEdge(
 }
 
 function nodeKeysSql(includeSuppressed: boolean): string {
-  return includeSuppressed
-    ? `SELECT key FROM memories WHERE namespace = ? AND kind = 'node'`
-    : `SELECT key FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`;
+  return sqlNodeKeys(includeSuppressed);
 }
 
 function nodeRowsSql(includeSuppressed: boolean): string {
@@ -438,30 +432,15 @@ export function loadNodeLabelsForNamespace(
 function countDistinctEdges(db: Database, namespace: string, includeSuppressed: boolean): number {
   const nsSuppressed = isNamespaceSuppressed(db, namespace);
   if (!includeSuppressed && nsSuppressed) return 0;
-  const filter = includeSuppressed ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const row = db
-    .query<{ c: number }, [string, string]>(
-      `SELECT COUNT(DISTINCT e._id) AS c
-       FROM edges e
-       JOIN nodes nf ON nf._id = e.from_node_id
-       JOIN nodes nt ON nt._id = e.to_node_id
-       JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
-       JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
-       WHERE 1 = 1${filter}`,
-    )
+    .query<{ c: number }, [string, string]>(sqlCountDistinctEdges(includeSuppressed))
     .get(namespace, namespace);
   return row?.c ?? 0;
 }
 
 function countNodes(db: Database, namespace: string, includeSuppressed: boolean): number {
   if (!includeSuppressed && isNamespaceSuppressed(db, namespace)) return 0;
-  const row = db
-    .query<{ c: number }, [string]>(
-      includeSuppressed
-        ? `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node'`
-        : `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed = 0`,
-    )
-    .get(namespace);
+  const row = db.query<{ c: number }, [string]>(sqlCountNodes(includeSuppressed)).get(namespace);
   return row?.c ?? 0;
 }
 
@@ -469,11 +448,7 @@ function countSuppressedNodes(db: Database, namespace: string): number {
   if (isNamespaceSuppressed(db, namespace)) {
     return countNodes(db, namespace, true);
   }
-  const row = db
-    .query<{ c: number }, [string]>(
-      `SELECT COUNT(*) AS c FROM memories WHERE namespace = ? AND kind = 'node' AND suppressed != 0`,
-    )
-    .get(namespace);
+  const row = db.query<{ c: number }, [string]>(SQL_COUNT_SUPPRESSED_NODES).get(namespace);
   return row?.c ?? 0;
 }
 
@@ -481,7 +456,7 @@ function countSuppressedEdges(db: Database, namespace: string): number {
   const all = countDistinctEdges(db, namespace, true);
   if (isNamespaceSuppressed(db, namespace)) return all;
   const visible = countDistinctEdges(db, namespace, false);
-  return Math.max(0, all - visible);
+  return suppressedEdgeCountFromTotals(all, visible);
 }
 
 function nodeLabelKindHistogram(
@@ -490,22 +465,14 @@ function nodeLabelKindHistogram(
   includeSuppressed: boolean,
 ): Record<string, number> {
   if (!includeSuppressed && isNamespaceSuppressed(db, namespace)) return {};
-  const keys = db.query<{ key: string }, [string]>(nodeKeysSql(includeSuppressed)).all(namespace);
+  const keys = db.query<{ key: string }, [string]>(sqlNodeKeys(includeSuppressed)).all(namespace);
   if (keys.length === 0) return {};
   const nodeIds = keys.map((k) => ids.node(namespace, k.key));
   const ph = nodeIds.map(() => "?").join(",");
   const rows = db
-    .query<{ kind: string; c: number }, string[]>(
-      `SELECT nl.kind AS kind, COUNT(*) AS c
-       FROM node_label_assignments nla
-       JOIN node_labels nl ON nl._id = nla.label_id
-       WHERE nla.node_id IN (${ph})
-       GROUP BY nl.kind`,
-    )
+    .query<{ kind: string; c: number }, string[]>(sqlNodeLabelKindHistogram(ph))
     .all(...nodeIds);
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.kind] = r.c;
-  return out;
+  return foldKindCountRows(rows);
 }
 
 function edgeLabelKindHistogram(
@@ -515,24 +482,12 @@ function edgeLabelKindHistogram(
 ): Record<string, number> {
   const nsSuppressed = isNamespaceSuppressed(db, namespace);
   if (!includeSuppressed && nsSuppressed) return {};
-  const filter = includeSuppressed ? "" : GRAPH_EDGE_NOT_SUPPRESSED;
   const rows = db
     .query<{ kind: string; c: number }, [string, string]>(
-      `SELECT el.kind AS kind, COUNT(DISTINCT e._id) AS c
-       FROM edges e
-       JOIN nodes nf ON nf._id = e.from_node_id
-       JOIN nodes nt ON nt._id = e.to_node_id
-       JOIN memories mf ON mf.namespace = ? AND mf.key = nf.value
-       JOIN memories mt ON mt.namespace = ? AND mt.key = nt.value
-       JOIN edge_label_assignments ela ON ela.edge_id = e._id
-       JOIN edge_labels el ON el._id = ela.label_id
-       WHERE 1 = 1${filter}
-       GROUP BY el.kind`,
+      sqlEdgeLabelKindHistogram(includeSuppressed),
     )
     .all(namespace, namespace);
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.kind] = r.c;
-  return out;
+  return foldKindCountRows(rows);
 }
 
 export function countGraphForNamespace(

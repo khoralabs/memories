@@ -1,11 +1,20 @@
 import type { Database } from "bun:sqlite";
 import { ids } from "../../../../persistence/core";
+import {
+  buildProvenanceEventsQuery,
+  mapProvenanceChainRow,
+  mapProvenanceEventRow,
+  normalizeProvenanceChainInput,
+  type ProvenanceChainRow,
+  type ProvenanceEventRow,
+  SQL_PROVENANCE_CHAIN_BEFORE,
+  SQL_PROVENANCE_CHAIN_FIRST,
+  SQL_PROVENANCE_CHAIN_TIP,
+  SQL_PROVENANCE_HEAD,
+  SQL_PROVENANCE_TIMESTAMP,
+} from "../../../../persistence/core/models/provenance-list-sql";
 import { memoriesPersistenceDocumentSchema } from "../../../../persistence/core/persistence";
-import type {
-  MemoryContentAtRootItem,
-  ProvenanceChainLink,
-  ProvenanceEventListItem,
-} from "../../../../persistence/core/persistence/types";
+import type { MemoryContentAtRootItem } from "../../../../persistence/core/persistence/types";
 import {
   canonicalJson,
   type MemoryProvenanceEvent,
@@ -14,31 +23,17 @@ import {
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "./context";
 
+export {
+  clampProvenanceListLimit,
+  isValidProvenanceCursorId,
+  PROVENANCE_CURSOR_ID_MAX_LENGTH,
+  PROVENANCE_LIST_LIMIT_MAX,
+} from "../../../../persistence/core/models/provenance-list-sql";
+
 const doc = documentValidator(memoriesPersistenceDocumentSchema, "memory_provenance");
 
-export const PROVENANCE_LIST_LIMIT_MAX = 100;
-
-/** Soft cap for keyset cursor ids (stable ids are short; reject oversized clients). */
-export const PROVENANCE_CURSOR_ID_MAX_LENGTH = 256;
-
-export function clampProvenanceListLimit(limit: number): number {
-  if (!Number.isFinite(limit) || limit < 1) {
-    throw new RangeError("provenance list limit must be a positive integer");
-  }
-  return Math.min(Math.floor(limit), PROVENANCE_LIST_LIMIT_MAX);
-}
-
-export function isValidProvenanceCursorId(id: string): boolean {
-  return id.length > 0 && id.length <= PROVENANCE_CURSOR_ID_MAX_LENGTH;
-}
-
 export function getProvenanceHeadRootHex(db: Database): string | undefined {
-  const row = db
-    .query<{ root_hex: string }, []>(
-      // Tie-break with rowid: `_id` sort order is unrelated to chain order; same-ms merges must see latest link.
-      `SELECT root_hex FROM memory_provenance ORDER BY _ts_created DESC, rowid DESC LIMIT 1`,
-    )
-    .get();
+  const row = db.query<{ root_hex: string }, []>(SQL_PROVENANCE_HEAD).get();
   return row?.root_hex;
 }
 
@@ -46,11 +41,7 @@ export function getProvenanceTimestampMsForRootHex(
   db: Database,
   rootHex: string,
 ): number | undefined {
-  const row = db
-    .query<{ _ts_created: number }, [string]>(
-      `SELECT _ts_created FROM memory_provenance WHERE root_hex = ? LIMIT 1`,
-    )
-    .get(rootHex);
+  const row = db.query<{ _ts_created: number }, [string]>(SQL_PROVENANCE_TIMESTAMP).get(rootHex);
   return row?._ts_created;
 }
 
@@ -62,142 +53,32 @@ export function listProvenanceEvents(
     limit: number;
     before?: { createdAt: number; id: string };
   },
-): ProvenanceEventListItem[] {
-  if (input.key !== undefined && input.namespace === undefined) {
-    throw new RangeError("listProvenanceEvents: key requires namespace");
-  }
-  const limit = clampProvenanceListLimit(input.limit);
-  const ns = input.namespace ?? null;
-  const key = input.key ?? null;
-  const beforeCreated = input.before?.createdAt ?? null;
-  const beforeIdRaw = input.before?.id ?? null;
-  if (beforeIdRaw !== null && !isValidProvenanceCursorId(beforeIdRaw)) {
-    throw new RangeError("listProvenanceEvents: before.id is invalid");
-  }
-  const beforeId = beforeIdRaw;
-
-  const rows = db
-    .query<
-      {
-        _id: string;
-        root_hex: string;
-        parent_root_hex: string;
-        event_type: string;
-        _ts_created: number;
-        event_json: string;
-        intent_snapshot_id: string | null;
-      },
-      [
-        string | null,
-        string | null,
-        string | null,
-        string | null,
-        string | null,
-        string | null,
-        number | null,
-        number | null,
-        number | null,
-        string | null,
-        number,
-      ]
-    >(
-      `SELECT _id, root_hex, parent_root_hex, event_type, _ts_created, event_json, intent_snapshot_id
-       FROM memory_provenance
-       WHERE (
-         ? IS NULL
-         OR json_extract(event_json, '$.namespace') = ?
-         OR json_extract(event_json, '$.from_namespace') = ?
-         OR json_extract(event_json, '$.to_namespace') = ?
-       )
-         AND (? IS NULL OR json_extract(event_json, '$.memory_key') = ?)
-         AND (
-           ? IS NULL
-           OR _ts_created < ?
-           OR (_ts_created = ? AND _id < ?)
-         )
-       ORDER BY _ts_created DESC, _id DESC
-       LIMIT ?`,
-    )
-    .all(ns, ns, ns, ns, key, key, beforeCreated, beforeCreated, beforeCreated, beforeId, limit);
-
-  return rows.map((row) => ({
-    id: row._id,
-    rootHex: row.root_hex,
-    parentRootHex: row.parent_root_hex,
-    eventType: row.event_type,
-    createdAt: row._ts_created,
-    event: JSON.parse(row.event_json) as MemoryProvenanceEvent,
-    ...(row.intent_snapshot_id != null ? { intentSnapshotId: row.intent_snapshot_id } : {}),
-  }));
+) {
+  const { sql, params } = buildProvenanceEventsQuery(input);
+  const rows = db.query(sql).all(...(params as never[])) as ProvenanceEventRow[];
+  return rows.map(mapProvenanceEventRow);
 }
 
 export function listProvenanceChain(
   db: Database,
   input: { limit: number; beforeRootHex?: string },
-): ProvenanceChainLink[] {
-  const limit = clampProvenanceListLimit(input.limit);
-  const beforeRootHex = input.beforeRootHex?.trim() || null;
+) {
+  const { limit, beforeRootHex } = normalizeProvenanceChainInput(input);
 
   if (beforeRootHex !== null) {
     const tip = db
-      .query<{ _ts_created: number; _id: string }, [string]>(
-        `SELECT _ts_created, _id FROM memory_provenance WHERE root_hex = ? LIMIT 1`,
-      )
+      .query<{ _ts_created: number; _id: string }, [string]>(SQL_PROVENANCE_CHAIN_TIP)
       .get(beforeRootHex);
     if (tip === null || tip === undefined) return [];
 
     const rows = db
-      .query<
-        {
-          _id: string;
-          root_hex: string;
-          parent_root_hex: string;
-          event_type: string;
-          _ts_created: number;
-        },
-        [number, number, string, number]
-      >(
-        `SELECT _id, root_hex, parent_root_hex, event_type, _ts_created
-         FROM memory_provenance
-         WHERE _ts_created < ?
-            OR (_ts_created = ? AND _id < ?)
-         ORDER BY _ts_created DESC, _id DESC
-         LIMIT ?`,
-      )
+      .query<ProvenanceChainRow, [number, number, string, number]>(SQL_PROVENANCE_CHAIN_BEFORE)
       .all(tip._ts_created, tip._ts_created, tip._id, limit);
-    return rows.map((row) => ({
-      id: row._id,
-      rootHex: row.root_hex,
-      parentRootHex: row.parent_root_hex,
-      eventType: row.event_type,
-      createdAt: row._ts_created,
-    }));
+    return rows.map(mapProvenanceChainRow);
   }
 
-  const rows = db
-    .query<
-      {
-        _id: string;
-        root_hex: string;
-        parent_root_hex: string;
-        event_type: string;
-        _ts_created: number;
-      },
-      [number]
-    >(
-      `SELECT _id, root_hex, parent_root_hex, event_type, _ts_created
-       FROM memory_provenance
-       ORDER BY _ts_created DESC, _id DESC
-       LIMIT ?`,
-    )
-    .all(limit);
-  return rows.map((row) => ({
-    id: row._id,
-    rootHex: row.root_hex,
-    parentRootHex: row.parent_root_hex,
-    eventType: row.event_type,
-    createdAt: row._ts_created,
-  }));
+  const rows = db.query<ProvenanceChainRow, [number]>(SQL_PROVENANCE_CHAIN_FIRST).all(limit);
+  return rows.map(mapProvenanceChainRow);
 }
 
 /** Map LWW content hits to the public read shape (sourceKey + text only). */
