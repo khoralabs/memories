@@ -6,8 +6,8 @@ export type MemoryMetadataKind = "node" | "edge";
 const SAFE_META_PROPERTY_NAME = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 /** Whether a freeform property key is safe to embed in a `memory:property:*` meta name. */
-export function isSafeMetaPropertyName(name: string): boolean {
-  return SAFE_META_PROPERTY_NAME.test(name);
+export function isSafeMetaPropertyName(name: unknown): boolean {
+  return typeof name === "string" && SAFE_META_PROPERTY_NAME.test(name);
 }
 
 function metaContent(value: unknown): string {

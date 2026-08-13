@@ -23,6 +23,8 @@ describe("isSafeMetaPropertyName", () => {
     expect(isSafeMetaPropertyName('"><img onerror=alert(1)>')).toBe(false);
     expect(isSafeMetaPropertyName("")).toBe(false);
     expect(isSafeMetaPropertyName("_leading")).toBe(false);
+    expect(isSafeMetaPropertyName(null)).toBe(false);
+    expect(isSafeMetaPropertyName(undefined)).toBe(false);
   });
 });
 
