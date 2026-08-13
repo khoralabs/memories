@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ids } from "../persistence/core";
+import { ids, sqlColumnStartsWithPrefix } from "../persistence/core";
 import {
   MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
   MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
@@ -8,12 +8,17 @@ import {
   createMemoriesPersistence,
   openTestMemoriesDatabase,
 } from "../persistence/sqlite/persistence/index";
+import { removeLabelPropsSearchMaps } from "../persistence/sqlite/persistence/models/label-props-search";
+import { prepareMemoriesSqliteStmts } from "../persistence/sqlite/persistence/models/prepared-stmts";
 import { mergeMemory } from "./api/merge-memory";
 import { search } from "./api/search";
 
 function openTestDb() {
   return openTestMemoriesDatabase();
 }
+
+/** Matches `__mem_nl_props__/%` under LIKE `_` wildcards but not literal substr prefix. */
+const LIKE_FALSE_POSITIVE_NODE_PROPS_KEY = "ABmemCnlDpropsEF/decoy";
 
 describe("label props search features", () => {
   test("lexical search finds text only indexed on label props chunk", () => {
@@ -70,10 +75,10 @@ describe("label props search features", () => {
     const memId = ids.memory("ns", "m1");
     const countMaps = () =>
       db
-        .query<{ n: number }, [string]>(
-          `SELECT COUNT(*) AS n FROM source_maps WHERE memory_id = ? AND source_key LIKE '__mem_nl_props__%'`,
+        .query<{ n: number }, [string, string, string]>(
+          `SELECT COUNT(*) AS n FROM source_maps WHERE memory_id = ? AND ${sqlColumnStartsWithPrefix("source_key")}`,
         )
-        .get(memId)?.n;
+        .get(memId, MEMORY_NODE_LABEL_PROPS_KEY_PREFIX, MEMORY_NODE_LABEL_PROPS_KEY_PREFIX)?.n;
 
     expect(countMaps()).toBe(1);
     expect(
@@ -100,6 +105,56 @@ describe("label props search features", () => {
       search({ persistence }, { namespace: "ns", content: { text: v2 }, options: { topK: 3 } }).hits
         .length,
     ).toBeGreaterThanOrEqual(1);
+  });
+
+  test("removeLabelPropsSearchMaps does not delete LIKE underscore false positives", () => {
+    const db = openTestDb();
+    const persistence = createMemoriesPersistence(db);
+    const token = "underscorenotwild42";
+
+    mergeMemory(
+      { persistence },
+      {
+        key: "m1",
+        namespace: "ns",
+        content: [{ key: "c", text: "body" }],
+        labels: [{ kind: "person", props: { name: "A", role: token } }],
+        edges: [],
+      },
+    );
+
+    const memId = ids.memory("ns", "m1");
+    const now = Date.now();
+    const decoyId = ids.sourceMap(memId, LIKE_FALSE_POSITIVE_NODE_PROPS_KEY);
+    db.query(
+      `INSERT INTO source_maps (_id, _ts_created, memory_id, source_key) VALUES (?, ?, ?, ?)`,
+    ).run(decoyId, now, memId, LIKE_FALSE_POSITIVE_NODE_PROPS_KEY);
+
+    expect(
+      db
+        .query<{ n: number }, [string, string]>(
+          `SELECT COUNT(*) AS n FROM source_maps WHERE memory_id = ? AND source_key LIKE ?`,
+        )
+        .get(memId, `${MEMORY_NODE_LABEL_PROPS_KEY_PREFIX}%`)?.n,
+    ).toBe(2);
+
+    // Call remove directly — merge rebuilds wipe all source maps for the memory.
+    removeLabelPropsSearchMaps({ db, now, stmts: prepareMemoriesSqliteStmts(db) }, memId);
+
+    expect(
+      db
+        .query<{ n: number }, [string, string]>(
+          `SELECT COUNT(*) AS n FROM source_maps WHERE memory_id = ? AND source_key = ?`,
+        )
+        .get(memId, LIKE_FALSE_POSITIVE_NODE_PROPS_KEY)?.n,
+    ).toBe(1);
+    expect(
+      db
+        .query<{ n: number }, [string, string, string]>(
+          `SELECT COUNT(*) AS n FROM source_maps WHERE memory_id = ? AND ${sqlColumnStartsWithPrefix("source_key")}`,
+        )
+        .get(memId, MEMORY_NODE_LABEL_PROPS_KEY_PREFIX, MEMORY_NODE_LABEL_PROPS_KEY_PREFIX)?.n,
+    ).toBe(0);
   });
 
   test("edge label props chunk is searchable from edge memory", () => {

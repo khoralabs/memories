@@ -13,3 +13,8 @@ export function sqlNamespaceEqualsOrUnderPrefix(col: string): string {
 export function sqlNamespaceEqualsOrUnderPrefixCol(col: string, prefixCol: string): string {
   return `(${col} = ${prefixCol} OR substr(${col}, 1, length(${prefixCol}) + 1) = ${prefixCol} || '/')`;
 }
+
+/** Prefix match without LIKE wildcards. Bind the same prefix value twice. */
+export function sqlColumnStartsWithPrefix(col: string): string {
+  return `substr(${col}, 1, length(?)) = ?`;
+}

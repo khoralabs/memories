@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { sqlNamespaceEqualsOrUnderPrefix, sqlNamespaceEqualsOrUnderPrefixCol } from "./like-escape";
+import {
+  sqlColumnStartsWithPrefix,
+  sqlNamespaceEqualsOrUnderPrefix,
+  sqlNamespaceEqualsOrUnderPrefixCol,
+} from "./like-escape";
 
 describe("like-escape", () => {
   test("sqlNamespaceEqualsOrUnderPrefix uses substr boundary", () => {
@@ -12,5 +16,9 @@ describe("like-escape", () => {
     expect(sqlNamespaceEqualsOrUnderPrefixCol("m.namespace", "nm._id")).toBe(
       `(m.namespace = nm._id OR substr(m.namespace, 1, length(nm._id) + 1) = nm._id || '/')`,
     );
+  });
+
+  test("sqlColumnStartsWithPrefix uses substr equality", () => {
+    expect(sqlColumnStartsWithPrefix("source_key")).toBe(`substr(source_key, 1, length(?)) = ?`);
   });
 });

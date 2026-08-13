@@ -7,6 +7,7 @@ import {
   MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
   memoryEdgeLabelPropsSourceKey,
   memoryNodeLabelPropsSourceKey,
+  sqlColumnStartsWithPrefix,
 } from "../../../../persistence/core";
 import { blobToVector } from "../connection";
 import type { DbCtx } from "./context";
@@ -71,15 +72,18 @@ function deleteSourceMapBySourceKey(ctx: DbCtx, memoryId: string, sourceKey: str
 /** Remove all label-props FTS chunks for a memory before rebuilding. */
 export function removeLabelPropsSearchMaps(ctx: DbCtx, memoryId: string): void {
   const rows = ctx.db
-    .query<{ source_key: string }, [string, string, string]>(
+    .query<{ source_key: string }, [string, string, string, string, string]>(
       `SELECT source_key FROM source_maps WHERE memory_id = ? AND (
-         source_key LIKE ? OR source_key LIKE ?
+         ${sqlColumnStartsWithPrefix("source_key")}
+         OR ${sqlColumnStartsWithPrefix("source_key")}
        )`,
     )
     .all(
       memoryId,
-      `${MEMORY_NODE_LABEL_PROPS_KEY_PREFIX}%`,
-      `${MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX}%`,
+      MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
+      MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
+      MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
+      MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
     );
   for (const row of rows) {
     deleteSourceMapBySourceKey(ctx, memoryId, row.source_key);

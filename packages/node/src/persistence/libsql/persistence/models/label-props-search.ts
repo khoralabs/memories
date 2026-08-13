@@ -7,6 +7,7 @@ import {
   MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
   memoryEdgeLabelPropsSourceKey,
   memoryNodeLabelPropsSourceKey,
+  sqlColumnStartsWithPrefix,
 } from "../../../../persistence/core";
 import type { DbCtx } from "../context";
 import { ctxExec, ctxQueryAll, ctxQueryOne } from "../db";
@@ -35,9 +36,16 @@ export async function removeLabelPropsSearchMaps(ctx: DbCtx, memoryId: string): 
   const rows = await ctxQueryAll<{ source_key: string }>(
     ctx,
     `SELECT source_key FROM source_maps WHERE memory_id = ? AND (
-       source_key LIKE ? OR source_key LIKE ?
+       ${sqlColumnStartsWithPrefix("source_key")}
+       OR ${sqlColumnStartsWithPrefix("source_key")}
      )`,
-    [memoryId, `${MEMORY_NODE_LABEL_PROPS_KEY_PREFIX}%`, `${MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX}%`],
+    [
+      memoryId,
+      MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
+      MEMORY_NODE_LABEL_PROPS_KEY_PREFIX,
+      MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
+      MEMORY_EDGE_LABEL_PROPS_KEY_PREFIX,
+    ],
   );
   for (const row of rows) {
     await deleteSourceMapBySourceKey(ctx, memoryId, row.source_key);
