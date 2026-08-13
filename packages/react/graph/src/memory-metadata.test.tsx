@@ -26,6 +26,15 @@ describe("isSafeMetaPropertyName", () => {
     expect(isSafeMetaPropertyName(null)).toBe(false);
     expect(isSafeMetaPropertyName(undefined)).toBe(false);
   });
+
+  test("enforces max length of 128 characters", () => {
+    const atLimit = `a${"b".repeat(127)}`;
+    const tooLong = `a${"b".repeat(128)}`;
+    expect(atLimit.length).toBe(128);
+    expect(tooLong.length).toBe(129);
+    expect(isSafeMetaPropertyName(atLimit)).toBe(true);
+    expect(isSafeMetaPropertyName(tooLong)).toBe(false);
+  });
 });
 
 describe("MemoryMetadata", () => {
