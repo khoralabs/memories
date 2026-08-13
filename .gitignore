@@ -3,6 +3,7 @@ node_modules
 .llm-context
 .workflow-*
 .swc
+.data
 
 # output
 out
