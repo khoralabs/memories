@@ -239,10 +239,13 @@ describe("planSemanticDedup", () => {
       edges: [],
     });
 
-    const sim = cosineSimilarity(
-      loadSemanticDedupItems(persistence, namespace).find((i) => i.key === "m1")?.embedding,
-      loadSemanticDedupItems(persistence, namespace).find((i) => i.key === "m2")?.embedding,
-    );
+    const items = loadSemanticDedupItems(persistence, namespace);
+    const e1 = items.find((i) => i.key === "m1")?.embedding;
+    const e2 = items.find((i) => i.key === "m2")?.embedding;
+    expect(e1).toBeDefined();
+    expect(e2).toBeDefined();
+    if (e1 === undefined || e2 === undefined) throw new Error("expected embeddings");
+    const sim = cosineSimilarity(e1, e2);
     expect(sim).toBeGreaterThan(0.7);
     expect(sim).toBeLessThan(0.95);
 

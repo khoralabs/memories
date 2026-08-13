@@ -398,8 +398,10 @@ function buildGroupsForEpsilon(
           const j = comp[b];
           if (i === undefined || j === undefined) continue;
           const key = i < j ? `${i}:${j}` : `${j}:${i}`;
-          const s =
-            pairScore.get(key) ?? cosineSimilarity(items[i]?.embedding, items[j]?.embedding);
+          const ei = items[i]?.embedding;
+          const ej = items[j]?.embedding;
+          if (ei === undefined || ej === undefined) continue;
+          const s = pairScore.get(key) ?? cosineSimilarity(ei, ej);
           if (s > score) score = s;
         }
       }
