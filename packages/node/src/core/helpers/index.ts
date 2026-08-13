@@ -6,4 +6,5 @@ export * from "./logical-memory";
 export * from "./memory-search-pipeline";
 export * from "./merge-logical-memory";
 export * from "./namespace-search";
+export * from "./semantic-dedup";
 export * from "./text-to-content";
