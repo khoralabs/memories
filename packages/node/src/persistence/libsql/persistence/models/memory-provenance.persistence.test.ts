@@ -1,0 +1,171 @@
+import { describe, expect, test } from "bun:test";
+import { ids, mergeMemoryAsync } from "../../../../core/index";
+import {
+  canonicalJson,
+  computeSourceMapContentHash,
+  GENESIS_PARENT_HEX,
+  nextProvenanceRoot,
+} from "../../../../persistence/core/provenance";
+import { queryOne } from "../client";
+import type { MemoriesLibsqlPersistence } from "../persistence";
+import { openLibsqlTestPersistence } from "../test-harness";
+
+/**
+ * LibSQL schema fidelity for provenance rows.
+ * Chain / rollback / idempotent-delete behavior lives in the shared contract suite.
+ */
+describe("memory provenance SQL (libsql)", () => {
+  test("first provenance row links genesis parent and stores canonical event_json", async () => {
+    const persistence = await openLibsqlTestPersistence();
+    const libsql = persistence as unknown as MemoriesLibsqlPersistence;
+    const namespace = "ns";
+    const key = "mem";
+    const memoryId = ids.memory(namespace, key);
+    await mergeMemoryAsync(
+      { persistence },
+      {
+        key,
+        namespace,
+        content: [{ key: "alpha", text: "hello" }],
+        labels: [],
+        edges: [],
+      },
+    );
+
+    const event = {
+      v: 1 as const,
+      kind: "MERGE_MEMORY" as const,
+      namespace,
+      memory_key: key,
+      memory_id: memoryId,
+      source_keys: ["alpha"],
+      content_hashes: {
+        alpha: computeSourceMapContentHash({ text: "hello" }),
+      },
+    };
+    expect(await persistence.getProvenanceHeadRootHex()).toBe(
+      nextProvenanceRoot(undefined, event).root_hex,
+    );
+
+    const row = await queryOne<{
+      parent_root_hex: string;
+      event_type: string;
+      event_json: string;
+    }>(
+      libsql.db.client,
+      `SELECT parent_root_hex, event_type, event_json FROM memory_provenance ORDER BY _ts_created ASC LIMIT 1`,
+    );
+    expect(row?.parent_root_hex).toBe(GENESIS_PARENT_HEX);
+    expect(row?.event_type).toBe("MERGE_MEMORY");
+    expect(row?.event_json).toBe(canonicalJson(event));
+  });
+
+  test("appendProvenanceEvent stores contributor in event_json and intent snapshot column", async () => {
+    const persistence = await openLibsqlTestPersistence();
+    const libsql = persistence as unknown as MemoriesLibsqlPersistence;
+    const op = { now: Date.now() };
+    const event = {
+      v: 1 as const,
+      kind: "MERGE_MEMORY" as const,
+      namespace: "ns",
+      memory_key: "signed",
+      memory_id: ids.memory("ns", "signed"),
+      source_keys: ["source"],
+      contributor: {
+        v: 1 as const,
+        format: "khora.direct-principal-v1",
+        principal: "did:key:z-test",
+        payload: "eyJ2IjoxfQ",
+        signature: "MEUCIQD",
+        alg: "EdDSA",
+        keyId: "did:key:z-test#z-test",
+      },
+      intent_snapshot_id: "agent-run-1",
+    };
+
+    await persistence.withTransaction(async () => {
+      await persistence.appendProvenanceEvent(op, event);
+    });
+
+    const row = await queryOne<{
+      root_hex: string;
+      event_json: string;
+      intent_snapshot_id: string | null;
+    }>(
+      libsql.db.client,
+      `SELECT root_hex, event_json, intent_snapshot_id FROM memory_provenance ORDER BY _ts_created ASC LIMIT 1`,
+    );
+    expect(row?.root_hex).toBe(nextProvenanceRoot(undefined, event).root_hex);
+    expect(row?.event_json).toBe(canonicalJson(event));
+    expect(row?.intent_snapshot_id).toBe("agent-run-1");
+  });
+
+  test("listProvenanceEvents filters by memory; listProvenanceChain paginates newest-first", async () => {
+    const persistence = await openLibsqlTestPersistence();
+    const listEvents = persistence.listProvenanceEvents;
+    const listChain = persistence.listProvenanceChain;
+    if (listEvents === undefined || listChain === undefined) {
+      throw new Error("expected listProvenanceEvents and listProvenanceChain");
+    }
+
+    await mergeMemoryAsync(
+      { persistence },
+      {
+        key: "a",
+        namespace: "ns",
+        content: [{ key: "s", text: "a1" }],
+        labels: [],
+        edges: [],
+      },
+    );
+    await mergeMemoryAsync(
+      { persistence },
+      {
+        key: "b",
+        namespace: "ns",
+        content: [{ key: "s", text: "b1" }],
+        labels: [],
+        edges: [],
+      },
+    );
+    await mergeMemoryAsync(
+      { persistence },
+      {
+        key: "a",
+        namespace: "ns",
+        content: [{ key: "s", text: "a2" }],
+        labels: [],
+        edges: [],
+      },
+    );
+
+    const forA = await listEvents({ namespace: "ns", key: "a", limit: 10 });
+    expect(forA.every((e) => (e.event as { memory_key?: string }).memory_key === "a")).toBe(true);
+    expect(forA.length).toBe(2);
+    const first = forA[0];
+    const second = forA[1];
+    if (first === undefined || second === undefined) {
+      throw new Error("expected two provenance events for memory a");
+    }
+    expect(first.createdAt).toBeGreaterThanOrEqual(second.createdAt);
+
+    const page1 = await listChain({ limit: 2 });
+    expect(page1).toHaveLength(2);
+    const page1Tail = page1[1];
+    if (page1Tail === undefined) throw new Error("expected page1 tail");
+    const page2 = await listChain({
+      limit: 2,
+      beforeRootHex: page1Tail.rootHex,
+    });
+    expect(page2.length).toBeGreaterThanOrEqual(1);
+    expect(page2[0]?.rootHex).not.toBe(page1[0]?.rootHex);
+    expect(page2[0]?.rootHex).not.toBe(page1Tail.rootHex);
+
+    const eventsPage = await listEvents({
+      limit: 1,
+      before: { createdAt: first.createdAt, id: first.id },
+    });
+    expect(eventsPage).toHaveLength(1);
+    expect(eventsPage[0]?.id).not.toBe(first.id);
+  });
+});

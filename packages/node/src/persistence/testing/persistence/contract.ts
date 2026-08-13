@@ -430,6 +430,160 @@ export function runMemoriesPersistenceContractTests(
           nextProvenanceRoot(parent, event).root_hex,
         );
       });
+
+      test("listProvenanceEvents filters by memory; before cursor pages older", async () => {
+        const persistence = await create();
+        if (persistence.listProvenanceEvents === undefined) return;
+
+        const namespace = uniqueNs("contract/prov-list");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "a",
+            namespace,
+            content: [{ key: "s", text: "a1" }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "b",
+            namespace,
+            content: [{ key: "s", text: "b1" }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "a",
+            namespace,
+            content: [{ key: "s", text: "a2" }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const forA = await persistence.listProvenanceEvents({
+          namespace,
+          key: "a",
+          limit: 10,
+        });
+        expect(forA.every((e) => (e.event as { memory_key?: string }).memory_key === "a")).toBe(
+          true,
+        );
+        expect(forA.length).toBe(2);
+        const first = forA[0];
+        const second = forA[1];
+        if (first === undefined || second === undefined) {
+          throw new Error("expected two provenance events for memory a");
+        }
+        expect(first.createdAt).toBeGreaterThanOrEqual(second.createdAt);
+
+        const eventsPage = await persistence.listProvenanceEvents({
+          limit: 1,
+          before: { createdAt: first.createdAt, id: first.id },
+        });
+        expect(eventsPage).toHaveLength(1);
+        expect(eventsPage[0]?.id).not.toBe(first.id);
+      });
+
+      test("listProvenanceChain paginates newest-first", async () => {
+        const persistence = await create();
+        if (persistence.listProvenanceChain === undefined) return;
+
+        const namespace = uniqueNs("contract/prov-chain");
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "a",
+            namespace,
+            content: [{ key: "s", text: "a1" }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "b",
+            namespace,
+            content: [{ key: "s", text: "b1" }],
+            labels: [],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key: "a",
+            namespace,
+            content: [{ key: "s", text: "a2" }],
+            labels: [],
+            edges: [],
+          },
+        );
+
+        const page1 = await persistence.listProvenanceChain({ limit: 2 });
+        expect(page1).toHaveLength(2);
+        const page1Tail = page1[1];
+        if (page1Tail === undefined) throw new Error("expected page1 tail");
+        const page2 = await persistence.listProvenanceChain({
+          limit: 2,
+          beforeRootHex: page1Tail.rootHex,
+        });
+        expect(page2.length).toBeGreaterThanOrEqual(1);
+        expect(page2[0]?.rootHex).not.toBe(page1[0]?.rootHex);
+        expect(page2[0]?.rootHex).not.toBe(page1Tail.rootHex);
+
+        const unknown = await persistence.listProvenanceChain({
+          limit: 5,
+          beforeRootHex: "0".repeat(64),
+        });
+        expect(unknown).toEqual([]);
+      });
+    });
+
+    describe("content at root", () => {
+      test("getMemoryContentAtRootHex returns arms at tip; delete tip clears", async () => {
+        const persistence = await create();
+        if (persistence.getMemoryContentAtRootHex === undefined) return;
+
+        const namespace = uniqueNs("contract/content-root");
+        const key = "mem";
+
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key,
+            namespace,
+            content: [{ key: "s", text: "alive" }],
+            labels: [],
+            edges: [],
+          },
+        );
+        const mergeRoot = await persistence.getProvenanceHeadRootHex();
+        expect(mergeRoot).toBeDefined();
+        if (mergeRoot === undefined) throw new Error("expected merge tip");
+
+        const atMerge = await persistence.getMemoryContentAtRootHex(mergeRoot, namespace, key);
+        expect(atMerge.some((h) => h.sourceKey === "s" && h.text === "alive")).toBe(true);
+
+        await deleteMemoryAsync({ persistence }, { namespace, key });
+        const deleteRoot = await persistence.getProvenanceHeadRootHex();
+        expect(deleteRoot).toBeDefined();
+        if (deleteRoot === undefined) throw new Error("expected delete tip");
+        expect(deleteRoot).not.toBe(mergeRoot);
+
+        const atDelete = await persistence.getMemoryContentAtRootHex(deleteRoot, namespace, key);
+        expect(atDelete).toEqual([]);
+
+        const prior = await persistence.getMemoryContentAtRootHex(mergeRoot, namespace, key);
+        expect(prior.some((h) => h.sourceKey === "s" && h.text === "alive")).toBe(true);
+      });
     });
 
     describe("graph", () => {
