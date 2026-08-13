@@ -142,7 +142,7 @@ Compose search chrome when you need extra addons (`.Loading` is the status spinn
 Billboards are compounds:
 
 - **`Labels`** — ontology label **kinds** by default (not JSON of label `props`). Use a render prop `((ctx) => …)` for custom rows; `ctx.labels` still includes ontology `props`.
-- **`Metadata`** — freeform memory/edge **`properties`** (`nodes.properties` / edge JSON blob). Empty when none.
+- **`Metadata`** — freeform memory/edge **`properties`** (`nodes.properties` / edge JSON blob). Empty when none. `<meta name="memory:property:…">` is emitted only for allowlisted token-like keys (`[A-Za-z0-9][A-Za-z0-9._:-]*`); hostile keys still appear in the visible list (React-escaped).
 - **`Loading`** — shown while preview fetch is in flight.
 - Ontology label **`props` ≠ freeform `properties`**: the former are typed schema fields on a label kind; the latter are the unstructured property bag on the node/edge row. Do not stringify label props into Labels.
 

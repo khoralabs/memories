@@ -205,6 +205,7 @@ export {
   type MemoryLabel,
 } from "./memory-detail-ontology.js";
 export {
+  isSafeMetaPropertyName,
   MemoryMetadata,
   type MemoryMetadataKind,
   type MemoryMetadataProps,

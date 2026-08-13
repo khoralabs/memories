@@ -2,6 +2,14 @@ import { cn } from "@/lib/utils";
 
 export type MemoryMetadataKind = "node" | "edge";
 
+/** Token-like keys only — used as HTML `<meta name="memory:property:…">` suffixes. */
+const SAFE_META_PROPERTY_NAME = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+
+/** Whether a freeform property key is safe to embed in a `memory:property:*` meta name. */
+export function isSafeMetaPropertyName(name: string): boolean {
+  return SAFE_META_PROPERTY_NAME.test(name);
+}
+
 function metaContent(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value;
@@ -90,9 +98,11 @@ export function MemoryMetadata({
           {kinds.map((labelKind) => (
             <meta key={labelKind} name="memory:label" content={labelKind} />
           ))}
-          {entries.map(([name, value]) => (
-            <meta key={name} name={`memory:property:${name}`} content={metaContent(value)} />
-          ))}
+          {entries.map(([name, value]) =>
+            isSafeMetaPropertyName(name) ? (
+              <meta key={name} name={`memory:property:${name}`} content={metaContent(value)} />
+            ) : null,
+          )}
         </>
       ) : null}
 
