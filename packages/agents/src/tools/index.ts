@@ -20,6 +20,13 @@ export {
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
 } from "./memory-agent-defaults.js";
 export {
+  type MemorySearchAgentExecutor,
+  type MemorySearchAgentRunResult,
+  toolLoopGenerationToRunResult,
+  toolLoopMemorySearchExecutor,
+  toolLoopStepMessages,
+} from "./memory-search-agent-executor.js";
+export {
   buildMemorySearchAgentSpec,
   buildMemorySearchBudgetPrepareStep,
   buildMemorySearchTools,
