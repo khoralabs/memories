@@ -25,7 +25,7 @@ export function suppressMemoryInTransaction(
   if (assoc === undefined) return false;
   if (persistence.isMemorySuppressed(assoc.memoryId)) return false;
   persistence.setMemorySuppressed(op, { memoryId: assoc.memoryId, suppressed: true });
-  persistence.appendProvenanceEvent(op, {
+  const { root_hex } = persistence.appendProvenanceEvent(op, {
     v: 1,
     kind: "SUPPRESS_MEMORY",
     namespace: params.namespace,
@@ -33,6 +33,13 @@ export function suppressMemoryInTransaction(
     memory_id: assoc.memoryId,
     ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
     ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
+  });
+  persistence.appendGraphFacetOutbox?.(op, {
+    root_hex,
+    event_type: "SUPPRESS_MEMORY",
+    namespace: params.namespace,
+    memoryKey: params.key,
+    edgeId: assoc.kind === "edge" ? assoc.edgeId : null,
   });
   return true;
 }
@@ -80,7 +87,7 @@ export function unsuppressMemory(ctx: MutationCtx, params: SuppressMemoryParams)
           return;
         }
         persistence.setMemorySuppressed(op, { memoryId: assoc.memoryId, suppressed: false });
-        persistence.appendProvenanceEvent(op, {
+        const { root_hex } = persistence.appendProvenanceEvent(op, {
           v: 1,
           kind: "UNSUPPRESS_MEMORY",
           namespace: params.namespace,
@@ -88,6 +95,13 @@ export function unsuppressMemory(ctx: MutationCtx, params: SuppressMemoryParams)
           memory_id: assoc.memoryId,
           ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
           ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
+        });
+        persistence.appendGraphFacetOutbox?.(op, {
+          root_hex,
+          event_type: "UNSUPPRESS_MEMORY",
+          namespace: params.namespace,
+          memoryKey: params.key,
+          edgeId: assoc.kind === "edge" ? assoc.edgeId : null,
         });
       });
     },

@@ -110,6 +110,7 @@ import {
 } from "./models/search";
 import { insertSourceMap, updateSourceMapContentHash } from "./models/source-maps";
 import { insertLexicalFeature } from "./models/text-features";
+import { appendGraphFacetOutbox as appendGraphFacetOutboxRow } from "./models/tip-outbox";
 import { insertVectorFeature } from "./models/vector-features";
 import { listVectorEmbeddingIndexDimensions as listVectorEmbeddingIndexDimensionsQuery } from "./models/vector-index-dimensions";
 import { withWriteTransaction } from "./transactions";
@@ -384,11 +385,30 @@ export class MemoriesLibsqlPersistence {
         entries: input.entries,
       });
     }
+    await appendGraphFacetOutboxRow(ctx, {
+      root_hex: input.root_hex,
+      event_type: input.event_type,
+      namespace: input.namespace,
+      memoryKey: input.memoryKey,
+    });
     if (this.txCtx) {
       this.pendingContentBlobEvacuate = true;
     } else {
       await this.evacuateContentBlobs();
     }
+  }
+
+  async appendGraphFacetOutbox(
+    op: MemoryOpContext,
+    input: {
+      root_hex: string;
+      event_type: "MERGE_MEMORY" | "DELETE_MEMORY" | "SUPPRESS_MEMORY" | "UNSUPPRESS_MEMORY";
+      namespace: string;
+      memoryKey: string;
+      edgeId?: string | null;
+    },
+  ): Promise<void> {
+    await appendGraphFacetOutboxRow(this.activeCtx(op), input);
   }
 
   /**

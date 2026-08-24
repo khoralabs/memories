@@ -394,8 +394,8 @@ export interface MemoriesMutationCore {
    * Write raw content to the append-only outbox so point-in-time reconstruction is possible.
    * Must be called inside the same transaction as {@link appendProvenanceEvent}, immediately after.
    * For `MERGE_MEMORY` pass one entry per user content item. For `DELETE_MEMORY` pass `entries: []`.
-   * Suppress/unsuppress do not write the outbox (flag + provenance only) so PIT reconstruction stays intact.
-   * Omitting this method is valid (outbox stays empty); reconstruction will simply return no rows.
+   * Also appends graph facet snapshots for merge/delete when implemented.
+   * Suppress/unsuppress use {@link appendGraphFacetOutbox} directly.
    */
   appendContentOutbox?(
     op: MemoryOpContext,
@@ -405,6 +405,18 @@ export interface MemoriesMutationCore {
       namespace: string;
       memoryKey: string;
       entries: ReadonlyArray<{ sourceKey: string; text?: string }>;
+    },
+  ): void;
+
+  /** Append graph facet snapshot at the current provenance tip (merge/delete/suppress). */
+  appendGraphFacetOutbox?(
+    op: MemoryOpContext,
+    input: {
+      root_hex: string;
+      event_type: "MERGE_MEMORY" | "DELETE_MEMORY" | "SUPPRESS_MEMORY" | "UNSUPPRESS_MEMORY";
+      namespace: string;
+      memoryKey: string;
+      edgeId?: string | null;
     },
   ): void;
 

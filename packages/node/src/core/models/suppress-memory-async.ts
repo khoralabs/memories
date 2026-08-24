@@ -32,7 +32,7 @@ export async function suppressMemoryAsync(
           memoryId: assoc.memoryId,
           suppressed: true,
         });
-        await persistence.appendProvenanceEvent(op, {
+        const { root_hex } = await persistence.appendProvenanceEvent(op, {
           v: 1,
           kind: "SUPPRESS_MEMORY",
           namespace: params.namespace,
@@ -40,6 +40,13 @@ export async function suppressMemoryAsync(
           memory_id: assoc.memoryId,
           ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
           ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
+        });
+        await persistence.appendGraphFacetOutbox?.(op, {
+          root_hex,
+          event_type: "SUPPRESS_MEMORY",
+          namespace: params.namespace,
+          memoryKey: params.key,
+          edgeId: assoc.kind === "edge" ? assoc.edgeId : null,
         });
       });
     },
@@ -75,7 +82,7 @@ export async function unsuppressMemoryAsync(
           memoryId: assoc.memoryId,
           suppressed: false,
         });
-        await persistence.appendProvenanceEvent(op, {
+        const { root_hex } = await persistence.appendProvenanceEvent(op, {
           v: 1,
           kind: "UNSUPPRESS_MEMORY",
           namespace: params.namespace,
@@ -83,6 +90,13 @@ export async function unsuppressMemoryAsync(
           memory_id: assoc.memoryId,
           ...(op.contributor !== undefined ? { contributor: op.contributor } : {}),
           ...(op.intentSnapshotId !== undefined ? { intent_snapshot_id: op.intentSnapshotId } : {}),
+        });
+        await persistence.appendGraphFacetOutbox?.(op, {
+          root_hex,
+          event_type: "UNSUPPRESS_MEMORY",
+          namespace: params.namespace,
+          memoryKey: params.key,
+          edgeId: assoc.kind === "edge" ? assoc.edgeId : null,
         });
       });
     },

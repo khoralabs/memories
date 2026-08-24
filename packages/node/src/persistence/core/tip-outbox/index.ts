@@ -10,6 +10,11 @@ export {
 } from "./evacuate";
 export { TIP_OUTBOX_FACET_CONFIG, validateKeysForFacet } from "./facets";
 export {
+  decodeTipGraphSnapshot,
+  encodeTipGraphSnapshot,
+  type TipGraphSnapshotV1,
+} from "./graph-snapshot";
+export {
   buildLegacyContentLwwQuery,
   deleteEntryToAppendInput,
   legacyContentOutboxInsertParams,
