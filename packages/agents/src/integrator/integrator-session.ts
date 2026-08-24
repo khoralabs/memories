@@ -14,14 +14,16 @@ import {
 } from "ai";
 import {
   attachMemorySearchSessionLayer,
+  type MemorySearchAgentRunResult,
   type MemorySearchSessionContextSlice,
+  toolLoopMemorySearchExecutor,
   type ZodLabelMap,
 } from "../tools/index";
 import type {
   IntegratorPlanGeneration,
   IntegratorSearchGeneration,
 } from "./create-integrator-agent.js";
-import { createMemoryIntegratorSearchAgent } from "./create-integrator-agent.js";
+import { buildMemoryIntegratorSearchAgentSpec } from "./create-integrator-agent.js";
 import {
   buildMemoryIntegratorAgentId,
   type DefineMemoryIntegratorIdentityOptions,
@@ -60,11 +62,12 @@ export type MemoryIntegratorSessionOutput = {
   discoveredMemoryKeys: string[];
 };
 
-function collectSearchPhaseMessages(
+/** Merge search-phase user prompt with agent-produced messages for the plan phase. */
+export function mergeSearchPhaseMessages(
   userMessage: ModelMessage,
-  searchGeneration: IntegratorSearchGeneration,
+  searchResult: MemorySearchAgentRunResult,
 ): ModelMessage[] {
-  return [userMessage, ...searchGeneration.steps.flatMap((step) => step.response.messages)];
+  return [userMessage, ...searchResult.messages];
 }
 
 /**
@@ -147,7 +150,8 @@ export function createMemoryIntegratorSessionRunner<
       );
     }
 
-    const searchAgent = createMemoryIntegratorSearchAgent({
+    const executor = context.executor ?? toolLoopMemorySearchExecutor;
+    const spec = buildMemoryIntegratorSearchAgentSpec({
       model,
       identity: agent,
       affordances: context.affordances,
@@ -156,17 +160,17 @@ export function createMemoryIntegratorSessionRunner<
     });
 
     const userMessage = buildMemoryIntegratorUserMessage({ content });
-    const searchGenerateOpts = {
+    const searchRunOpts = {
       messages: [userMessage],
       ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
     };
 
     let searchGeneration: IntegratorSearchGeneration;
     try {
-      searchGeneration = await searchAgent.generate(searchGenerateOpts);
+      searchGeneration = await executor.run(spec, searchRunOpts);
     } catch (e) {
       if (NoOutputGeneratedError.isInstance(e) || NoObjectGeneratedError.isInstance(e)) {
-        searchGeneration = await searchAgent.generate(searchGenerateOpts);
+        searchGeneration = await executor.run(spec, searchRunOpts);
       } else {
         throw e;
       }
@@ -186,7 +190,7 @@ export function createMemoryIntegratorSessionRunner<
       .filter((s) => s.length > 0)
       .join("\n\n");
     const planMessages = [
-      ...collectSearchPhaseMessages(userMessage, searchGeneration),
+      ...mergeSearchPhaseMessages(userMessage, searchGeneration),
       buildMemoryIntegratorPlanUserMessage({ allowedMemoryKeys: discoveredMemoryKeys }),
     ];
     const planGenerateOpts = {

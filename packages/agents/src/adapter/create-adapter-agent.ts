@@ -7,8 +7,9 @@ import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-nod
 import type { LanguageModel } from "ai";
 import {
   buildMemorySearchAgentSpec,
-  createMemorySearchToolLoopAgent,
+  createMemorySearchToolLoopAgentFromSpec,
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
+  type MemorySearchAgentRunResult,
   type MemorySearchAgentSpec,
   type MemorySearchEnv,
   type MemorySearchToolLoopAgent,
@@ -24,7 +25,7 @@ export type MemoryAdapterToolSet = MemorySearchToolSet;
 
 export type MemoryAdapterAgent = MemorySearchToolLoopAgent<MemoryAdapterStructuredOutput>;
 
-export type AdapterPipelineGeneration = Awaited<ReturnType<MemoryAdapterAgent["generate"]>>;
+export type AdapterPipelineGeneration = MemorySearchAgentRunResult;
 
 export type BuildMemoryAdapterAgentSpecArgs<
   TNode extends LabelSchemaMap,
@@ -66,13 +67,5 @@ export function createMemoryAdapterAgent<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
 >(args: BuildMemoryAdapterAgentSpecArgs<TNode, TEdge>): MemoryAdapterAgent {
-  const spec = buildMemoryAdapterAgentSpec(args);
-  return createMemorySearchToolLoopAgent({
-    model: spec.model,
-    identity: args.identity,
-    affordances: args.affordances,
-    runtime: args.runtime,
-    maxSteps: spec.maxSteps,
-    output: spec.output,
-  });
+  return createMemorySearchToolLoopAgentFromSpec(buildMemoryAdapterAgentSpec(args));
 }

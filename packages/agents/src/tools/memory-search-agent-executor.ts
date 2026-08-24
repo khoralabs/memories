@@ -1,9 +1,8 @@
 import { type ModelMessage, stepCountIs, ToolLoopAgent } from "ai";
 import type { MemorySearchAgentSpec, ToolLoopOutputSpec } from "./memory-search-agent-spec.js";
 
-/** Normalized agent run result decoupled from ToolLoopAgent.generate() shape. */
-export type MemorySearchAgentRunResult<OUTPUT = unknown> = {
-  output: OUTPUT;
+export type MemorySearchAgentRunResult<TOutput = unknown> = {
+  output: TOutput;
   /** Agent-produced messages (model + tool turns), excluding the input prompt. */
   messages: ModelMessage[];
   /** For error messages / telemetry; optional for workflow runs. */
@@ -15,7 +14,7 @@ export type MemorySearchAgentExecutor = {
   run<OUTPUT extends ToolLoopOutputSpec>(
     spec: MemorySearchAgentSpec<OUTPUT>,
     opts: { messages: ModelMessage[]; abortSignal?: AbortSignal },
-  ): Promise<MemorySearchAgentRunResult<OUTPUT>>;
+  ): Promise<MemorySearchAgentRunResult>;
 };
 
 type ToolLoopGenerateResult = {
@@ -26,15 +25,15 @@ type ToolLoopGenerateResult = {
 
 /** Flatten step response messages from a ToolLoop generate result. */
 export function toolLoopStepMessages(generation: ToolLoopGenerateResult): ModelMessage[] {
-  return generation.steps.flatMap((step) => step.response.messages);
+  return generation.steps.flatMap((step) => step.response?.messages ?? []);
 }
 
 /** Map ToolLoop generate output to {@link MemorySearchAgentRunResult}. */
-export function toolLoopGenerationToRunResult<OUTPUT>(
+export function toolLoopGenerationToRunResult(
   generation: ToolLoopGenerateResult,
-): MemorySearchAgentRunResult<OUTPUT> {
+): MemorySearchAgentRunResult {
   return {
-    output: generation.output as OUTPUT,
+    output: generation.output,
     messages: toolLoopStepMessages(generation),
     stepCount: generation.steps.length,
     finishReason: generation.finishReason,
@@ -60,9 +59,9 @@ export const toolLoopMemorySearchExecutor: MemorySearchAgentExecutor = {
   run: async <OUTPUT extends ToolLoopOutputSpec>(
     spec: MemorySearchAgentSpec<OUTPUT>,
     opts: { messages: ModelMessage[]; abortSignal?: AbortSignal },
-  ): Promise<MemorySearchAgentRunResult<OUTPUT>> => {
+  ): Promise<MemorySearchAgentRunResult> => {
     const agent = toolLoopAgentFromSpec(spec);
     const generation = await agent.generate(opts);
-    return toolLoopGenerationToRunResult<OUTPUT>(generation);
+    return toolLoopGenerationToRunResult(generation);
   },
 };

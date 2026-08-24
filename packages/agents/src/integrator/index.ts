@@ -43,6 +43,7 @@ export {
   type MemoryIntegratorSessionContext,
   type MemoryIntegratorSessionInput,
   type MemoryIntegratorSessionOutput,
+  mergeSearchPhaseMessages,
   registerMemoryIntegratorAgent,
 } from "./integrator-session.js";
 export { processLogicalMemoryWithIntegrator } from "./logical-memory-pipeline.js";

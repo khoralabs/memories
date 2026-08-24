@@ -9,11 +9,12 @@ import type { LanguageModel } from "ai";
 import {
   attachMemorySearchSessionLayer,
   type MemorySearchSessionContextSlice,
+  toolLoopMemorySearchExecutor,
   type ZodLabelMap,
 } from "../tools/index";
 import { parseAdapterGenerationToExpandedMemoryWire } from "./adapter-output.js";
 import type { AdapterPipelineGeneration } from "./create-adapter-agent.js";
-import { createMemoryAdapterAgent } from "./create-adapter-agent.js";
+import { buildMemoryAdapterAgentSpec } from "./create-adapter-agent.js";
 import {
   buildMemoryAdapterAgentId,
   type DefineMemoryAdapterIdentityOptions,
@@ -121,7 +122,8 @@ export function createMemoryAdapterSessionRunner<
       );
     }
 
-    const adapterAgent = createMemoryAdapterAgent({
+    const executor = context.executor ?? toolLoopMemorySearchExecutor;
+    const spec = buildMemoryAdapterAgentSpec({
       model,
       identity: agent,
       affordances: context.affordances,
@@ -131,7 +133,7 @@ export function createMemoryAdapterSessionRunner<
     });
 
     const messages = [buildMemoryAdapterUserMessage({ ingest, domainPayload })];
-    const generation = await adapterAgent.generate({
+    const generation = await executor.run(spec, {
       messages,
       ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
     });

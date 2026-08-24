@@ -51,6 +51,7 @@ export { memoriesLog, memoriesLogToolBodies } from "./telemetry.js";
 export { elapsedMs } from "./timing.js";
 export {
   createMemorySearchToolLoopAgent,
+  createMemorySearchToolLoopAgentFromSpec,
   type MemorySearchToolLoopAgent,
 } from "./tool-loop-from-affordances.js";
 export {

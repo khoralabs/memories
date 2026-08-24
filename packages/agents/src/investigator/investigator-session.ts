@@ -9,10 +9,11 @@ import { type LanguageModel, NoObjectGeneratedError, NoOutputGeneratedError } fr
 import {
   attachMemorySearchSessionLayer,
   type MemorySearchSessionContextSlice,
+  toolLoopMemorySearchExecutor,
   type ZodLabelMap,
 } from "../tools/index";
 import type { InvestigatorPipelineGeneration } from "./create-investigator-agent.js";
-import { createMemoryInvestigatorAgent } from "./create-investigator-agent.js";
+import { buildMemoryInvestigatorAgentSpec } from "./create-investigator-agent.js";
 import {
   buildMemoryInvestigatorAgentId,
   type DefineMemoryInvestigatorIdentityOptions,
@@ -119,7 +120,8 @@ export function createMemoryInvestigatorSessionRunner<
       );
     }
 
-    const investigatorAgent = createMemoryInvestigatorAgent({
+    const executor = context.executor ?? toolLoopMemorySearchExecutor;
+    const spec = buildMemoryInvestigatorAgentSpec({
       model,
       identity: agent,
       affordances: context.affordances,
@@ -128,23 +130,22 @@ export function createMemoryInvestigatorSessionRunner<
     });
 
     const messages = [buildMemoryInvestigatorUserMessage({ question })];
-    const generateOpts = {
+    const runOpts = {
       messages,
       ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
     };
     let generation: InvestigatorPipelineGeneration;
     try {
-      generation = await investigatorAgent.generate(generateOpts);
+      generation = await executor.run(spec, runOpts);
     } catch (e) {
       if (NoOutputGeneratedError.isInstance(e) || NoObjectGeneratedError.isInstance(e)) {
-        generation = await investigatorAgent.generate(generateOpts);
+        generation = await executor.run(spec, runOpts);
       } else {
         throw e;
       }
     }
 
-    const raw = generation.output as unknown;
-    const answer = parseInvestigatorAnswerWire(raw);
+    const answer = parseInvestigatorAnswerWire(generation.output as unknown);
 
     return { generation, answer };
   };

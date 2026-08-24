@@ -12,6 +12,7 @@ import type {
   HybridMemorySearchWideClientAsync,
 } from "@khoralabs/memories-node/helpers";
 import type z from "zod";
+import type { MemorySearchAgentExecutor } from "./memory-search-agent-executor.js";
 import type { MemorySearchEnv } from "./memory-search-toolkit.js";
 
 /** Zod object shape for a label map (node or edge) in session typing. */
@@ -45,6 +46,8 @@ export type MemorySearchSessionContextSlice<
   toolkitCtx?: ToolkitContext<MemorySearchEnv>;
   runtime?: ToolRuntimeContext<MemorySearchEnv>;
   affordances?: RegisteredAgentAffordances;
+  /** Custom agent runner; defaults to {@link toolLoopMemorySearchExecutor}. */
+  executor?: MemorySearchAgentExecutor;
 };
 
 export async function getMemoriesProvenanceHeadRootHex(client: {

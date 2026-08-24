@@ -186,9 +186,15 @@ export type ExpandedMemoryWire = {
 
 type AdapterGenerationLike = {
   output: unknown;
-  steps: { length: number };
-  finishReason: string | undefined;
+  finishReason?: string;
+  steps?: { length: number };
+  stepCount?: number;
 };
+
+function adapterGenerationStepCount(generation: AdapterGenerationLike): number {
+  if (generation.stepCount !== undefined) return generation.stepCount;
+  return generation.steps?.length ?? 0;
+}
 
 /**
  * Validates {@link zExpandedMemoryWireFromOntology} and enforces non-empty plaintext (session runner logic).
@@ -205,13 +211,13 @@ export function parseAdapterGenerationToExpandedMemoryWire<
   const out = wire.safeParse(generation.output);
   if (!out.success) {
     throw new Error(
-      `Memory adapter structured output failed validation (steps=${String(generation.steps.length)}, finishReason=${String(generation.finishReason)}): ${out.error.message}`,
+      `Memory adapter structured output failed validation (steps=${String(adapterGenerationStepCount(generation))}, finishReason=${String(generation.finishReason)}): ${out.error.message}`,
     );
   }
   const v = out.data as ExpandedMemoryWire;
   if (!v.plaintext?.trim()) {
     throw new Error(
-      `Memory adapter did not produce usable plaintext (steps=${String(generation.steps.length)}, finishReason=${String(generation.finishReason)})`,
+      `Memory adapter did not produce usable plaintext (steps=${String(adapterGenerationStepCount(generation))}, finishReason=${String(generation.finishReason)})`,
     );
   }
   return { ...v, plaintext: v.plaintext.trim() };

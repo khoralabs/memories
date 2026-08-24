@@ -1,6 +1,7 @@
 import { stepCountIs, ToolLoopAgent } from "ai";
 import {
   buildMemorySearchAgentSpec,
+  type MemorySearchAgentSpec,
   type MemorySearchAgentSpecOptions,
   type MemorySearchToolSet,
   type ToolLoopOutputSpec,
@@ -13,14 +14,11 @@ type ToolLoopRuntimeContext = Record<string, unknown>;
 /** {@link ToolLoopAgent} instance for memory-search sessions (AI SDK v7: runtime context + output). */
 export type MemorySearchToolLoopAgent<OUTPUT extends ToolLoopOutputSpec = ToolLoopOutputSpec> =
   ToolLoopAgent<never, MemorySearchToolSet, ToolLoopRuntimeContext, OUTPUT>;
-/**
- * {@link ToolLoopAgent} for memory-search–backed sessions: same wiring as the memories adapter/integrator agents.
- * {@code OUTPUT} is an AI SDK output spec (e.g. from {@code Output.object(...)}).
- */
-export function createMemorySearchToolLoopAgent<
+
+/** Construct a {@link ToolLoopAgent} from a pre-built {@link MemorySearchAgentSpec}. */
+export function createMemorySearchToolLoopAgentFromSpec<
   OUTPUT extends ToolLoopOutputSpec = ToolLoopOutputSpec,
->(args: MemorySearchAgentSpecOptions<OUTPUT>): MemorySearchToolLoopAgent<OUTPUT> {
-  const spec = buildMemorySearchAgentSpec(args);
+>(spec: MemorySearchAgentSpec<OUTPUT>): MemorySearchToolLoopAgent<OUTPUT> {
   return new ToolLoopAgent({
     id: spec.id,
     model: spec.model,
@@ -30,4 +28,14 @@ export function createMemorySearchToolLoopAgent<
     ...(spec.prepareStep !== undefined ? { prepareStep: spec.prepareStep } : {}),
     output: spec.output,
   });
+}
+
+/**
+ * {@link ToolLoopAgent} for memory-search–backed sessions: same wiring as the memories adapter/integrator agents.
+ * {@code OUTPUT} is an AI SDK output spec (e.g. from {@code Output.object(...)}).
+ */
+export function createMemorySearchToolLoopAgent<
+  OUTPUT extends ToolLoopOutputSpec = ToolLoopOutputSpec,
+>(args: MemorySearchAgentSpecOptions<OUTPUT>): MemorySearchToolLoopAgent<OUTPUT> {
+  return createMemorySearchToolLoopAgentFromSpec(buildMemorySearchAgentSpec(args));
 }

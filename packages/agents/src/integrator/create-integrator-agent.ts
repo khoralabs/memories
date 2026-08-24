@@ -8,8 +8,9 @@ import { type generateObject, type LanguageModel, Output } from "ai";
 import z from "zod";
 import {
   buildMemorySearchAgentSpec,
-  createMemorySearchToolLoopAgent,
+  createMemorySearchToolLoopAgentFromSpec,
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
+  type MemorySearchAgentRunResult,
   type MemorySearchAgentSpec,
   type MemorySearchEnv,
   type MemorySearchToolLoopAgent,
@@ -30,9 +31,7 @@ export type IntegratorSearchStructuredOutput = ReturnType<
 export type MemoryIntegratorSearchAgent =
   MemorySearchToolLoopAgent<IntegratorSearchStructuredOutput>;
 
-export type IntegratorSearchGeneration = Awaited<
-  ReturnType<MemoryIntegratorSearchAgent["generate"]>
->;
+export type IntegratorSearchGeneration = MemorySearchAgentRunResult;
 
 export type IntegratorPlanGeneration = Awaited<ReturnType<typeof generateObject>>;
 
@@ -79,19 +78,9 @@ export function buildMemoryIntegratorSearchAgentSpec(
   });
 }
 
-/** Phase 1: tool loop for memory_search only; accumulates keys in {@link MemorySearchEnv.discoveredMemoryKeys}. */
 export function createMemoryIntegratorSearchAgent<
   _TNode extends LabelSchemaMap = LabelSchemaMap,
   _TEdge extends LabelSchemaMap = LabelSchemaMap,
 >(args: BuildMemoryIntegratorSearchAgentSpecArgs): MemoryIntegratorSearchAgent {
-  const spec = buildMemoryIntegratorSearchAgentSpec(args);
-  return createMemorySearchToolLoopAgent<IntegratorSearchStructuredOutput>({
-    model: spec.model,
-    identity: args.identity,
-    affordances: { ...args.affordances, instructions: spec.instructions ?? "" },
-    runtime: args.runtime,
-    maxSteps: spec.maxSteps,
-    memorySearchBudgetPerStep: true,
-    output: spec.output,
-  });
+  return createMemorySearchToolLoopAgentFromSpec(buildMemoryIntegratorSearchAgentSpec(args));
 }

@@ -37,7 +37,7 @@ test("toolLoopGenerationToRunResult maps output, stepCount, and finishReason", (
     ],
   } as never;
 
-  const result = toolLoopGenerationToRunResult<{ ready: boolean }>(generation);
+  const result = toolLoopGenerationToRunResult(generation);
   expect(result.output).toEqual({ ready: true });
   expect(result.stepCount).toBe(2);
   expect(result.finishReason).toBe("stop");

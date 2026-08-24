@@ -6,8 +6,9 @@ import type {
 import type { LanguageModel } from "ai";
 import {
   buildMemorySearchAgentSpec,
-  createMemorySearchToolLoopAgent,
+  createMemorySearchToolLoopAgentFromSpec,
   DEFAULT_INVESTIGATOR_MAX_STEPS,
+  type MemorySearchAgentRunResult,
   type MemorySearchAgentSpec,
   type MemorySearchEnv,
   type MemorySearchToolLoopAgent,
@@ -22,9 +23,7 @@ export type MemoryInvestigatorToolSet = MemorySearchToolSet;
 
 export type MemoryInvestigatorAgent = MemorySearchToolLoopAgent<InvestigatorStructuredOutput>;
 
-export type InvestigatorPipelineGeneration = Awaited<
-  ReturnType<MemoryInvestigatorAgent["generate"]>
->;
+export type InvestigatorPipelineGeneration = MemorySearchAgentRunResult;
 
 export type BuildMemoryInvestigatorAgentSpecArgs = {
   model: LanguageModel;
@@ -52,14 +51,5 @@ export function buildMemoryInvestigatorAgentSpec(
 export function createMemoryInvestigatorAgent(
   args: BuildMemoryInvestigatorAgentSpecArgs,
 ): MemoryInvestigatorAgent {
-  const spec = buildMemoryInvestigatorAgentSpec(args);
-  return createMemorySearchToolLoopAgent({
-    model: spec.model,
-    identity: args.identity,
-    affordances: args.affordances,
-    runtime: args.runtime,
-    maxSteps: spec.maxSteps,
-    memorySearchBudgetPerStep: true,
-    output: spec.output,
-  });
+  return createMemorySearchToolLoopAgentFromSpec(buildMemoryInvestigatorAgentSpec(args));
 }
