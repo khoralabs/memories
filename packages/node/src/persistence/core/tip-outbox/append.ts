@@ -20,9 +20,8 @@ export function buildTipOutboxAppend(input: TipOutboxAppendInput): {
   outbox: TipOutboxInsertParams;
   hotBlob?: { sha256: string; payload: Uint8Array };
 } {
-  validateKeysForFacet(input.facet, input.keys);
-  const sha =
-    input.payload !== undefined && input.payload.length > 0 ? payloadSha256(input.payload) : null;
+  validateKeysForFacet(input.facet, input.keys, input.eventType);
+  const sha = input.payload !== undefined ? payloadSha256(input.payload) : null;
   const outbox: TipOutboxInsertParams = {
     id: input.rowId,
     now: input.now,
@@ -35,8 +34,8 @@ export function buildTipOutboxAppend(input: TipOutboxAppendInput): {
     edgeId: input.keys.edgeId ?? null,
     payloadSha256: sha,
   };
-  if (sha !== null && input.payload !== undefined) {
-    return { outbox, hotBlob: { sha256: sha, payload: input.payload } };
+  if (input.payload !== undefined) {
+    return { outbox, hotBlob: { sha256: sha as string, payload: input.payload } };
   }
   return { outbox };
 }

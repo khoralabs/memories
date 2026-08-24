@@ -4,16 +4,22 @@ import {
   resolveLwwRows,
 } from "../../../../persistence/core/models/content-outbox-lww";
 import {
-  buildLwwArmsQuery,
   type ContentAtRootHit,
   hitsFromHot,
   type LwwArmRow,
+} from "../../../../persistence/core/models/content-outbox-sql";
+import type { ContentBlobColdStore } from "../../../../persistence/core/persistence/content-blob-cold-store";
+import {
+  buildLegacyContentLwwQuery,
+  deleteEntryToAppendInput,
+  legacyContentOutboxInsertParams,
+  mergeEntriesToAppendInputs,
   SQL_INSERT_HOT_BLOB,
   SQL_REHYDRATE_HOT_BLOB,
   SQL_SELECT_BLOB_BY_SHA,
-} from "../../../../persistence/core/models/content-outbox-sql";
-import { sha256Hex } from "../../../../persistence/core/models/sha256";
-import type { ContentBlobColdStore } from "../../../../persistence/core/persistence/content-blob-cold-store";
+  tipOutboxRowToLwwArm,
+} from "../../../../persistence/core/tip-outbox";
+import type { TipOutboxLwwRow } from "../../../../persistence/core/tip-outbox/types";
 import type { DbCtx } from "./context";
 
 export type { ContentAtRootHit };
@@ -38,23 +44,10 @@ export function appendMergeOutboxEntries(
   },
 ): void {
   const { now, stmts, db } = ctx;
-  for (const entry of input.entries) {
-    let contentSha: string | null = null;
-    if (entry.text !== undefined) {
-      contentSha = sha256Hex(entry.text);
-      upsertHotBlob(db, contentSha, entry.text, now);
-    }
-    stmts.insertContentOutbox.run(
-      `${input.root_hex}:${entry.sourceKey}`,
-      now,
-      input.root_hex,
-      "MERGE_MEMORY",
-      input.namespace,
-      input.memoryKey,
-      entry.sourceKey,
-      null,
-      contentSha,
-    );
+  for (const appendInput of mergeEntriesToAppendInputs(input, now)) {
+    const { outboxParams, hotBlob } = legacyContentOutboxInsertParams(appendInput);
+    if (hotBlob) upsertHotBlob(db, hotBlob.sha256, hotBlob.text, now);
+    stmts.insertContentOutbox.run(...(outboxParams as never[]));
   }
 }
 
@@ -63,17 +56,8 @@ export function appendDeleteOutboxEntry(
   input: { root_hex: string; namespace: string; memoryKey: string },
 ): void {
   const { now, stmts } = ctx;
-  stmts.insertContentOutbox.run(
-    `${input.root_hex}:__delete__`,
-    now,
-    input.root_hex,
-    "DELETE_MEMORY",
-    input.namespace,
-    input.memoryKey,
-    null,
-    null,
-    null,
-  );
+  const { outboxParams } = legacyContentOutboxInsertParams(deleteEntryToAppendInput(input, now));
+  stmts.insertContentOutbox.run(...(outboxParams as never[]));
 }
 
 function upsertHotBlob(db: Database, contentSha256: string, text: string, now: number): void {
@@ -94,9 +78,9 @@ function queryLwwArms(
   rootHex: string,
   scope: { namespace: string; memoryKey: string } | null,
 ): LwwArmRow[] {
-  const { sql, params } = buildLwwArmsQuery(rootHex, scope);
-  // bun:sqlite bindings are positional scalars
-  return db.query(sql).all(...(params as never[])) as LwwArmRow[];
+  const { sql, params } = buildLegacyContentLwwQuery(rootHex, scope);
+  const rows = db.query(sql).all(...(params as never[])) as TipOutboxLwwRow[];
+  return rows.map(tipOutboxRowToLwwArm);
 }
 
 function sqliteOutboxDeps(db: Database, coldStore?: ContentBlobColdStore) {

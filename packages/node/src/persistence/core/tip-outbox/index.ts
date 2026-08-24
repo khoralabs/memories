@@ -10,6 +10,16 @@ export {
 } from "./evacuate";
 export { TIP_OUTBOX_FACET_CONFIG, validateKeysForFacet } from "./facets";
 export {
+  buildLegacyContentLwwQuery,
+  deleteEntryToAppendInput,
+  legacyContentOutboxInsertParams,
+  mergeEntriesToAppendInputs,
+  SQL_INSERT_HOT_BLOB,
+  SQL_REHYDRATE_HOT_BLOB,
+  SQL_SELECT_BLOB_BY_SHA,
+  tipOutboxRowToLwwArm,
+} from "./legacy-content";
+export {
   float32Bytes,
   float32FromBytes,
   payloadSha256,

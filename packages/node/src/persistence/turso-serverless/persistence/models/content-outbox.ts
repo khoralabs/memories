@@ -3,17 +3,23 @@ import {
   resolveLwwRows,
 } from "../../../../persistence/core/models/content-outbox-lww";
 import {
-  buildLwwArmsQuery,
   type ContentAtRootHit,
   hitsFromHot,
   type LwwArmRow,
   SQL_INSERT_CONTENT_OUTBOX,
+} from "../../../../persistence/core/models/content-outbox-sql";
+import type { ContentBlobColdStore } from "../../../../persistence/core/persistence/content-blob-cold-store";
+import {
+  buildLegacyContentLwwQuery,
+  deleteEntryToAppendInput,
+  legacyContentOutboxInsertParams,
+  mergeEntriesToAppendInputs,
   SQL_INSERT_HOT_BLOB,
   SQL_REHYDRATE_HOT_BLOB,
   SQL_SELECT_BLOB_BY_SHA,
-} from "../../../../persistence/core/models/content-outbox-sql";
-import { sha256Hex } from "../../../../persistence/core/models/sha256";
-import type { ContentBlobColdStore } from "../../../../persistence/core/persistence/content-blob-cold-store";
+  tipOutboxRowToLwwArm,
+} from "../../../../persistence/core/tip-outbox";
+import type { TipOutboxLwwRow } from "../../../../persistence/core/tip-outbox/types";
 import { execSql } from "../client";
 import type { DbCtx } from "../context";
 import type { TursoDatabase } from "../db";
@@ -40,23 +46,10 @@ export async function appendMergeOutboxEntries(
     entries: ReadonlyArray<{ sourceKey: string; text?: string }>;
   },
 ): Promise<void> {
-  for (const entry of input.entries) {
-    let contentSha: string | null = null;
-    if (entry.text !== undefined) {
-      contentSha = sha256Hex(entry.text);
-      await upsertHotBlob(ctx, contentSha, entry.text);
-    }
-    await ctxExec(ctx, SQL_INSERT_CONTENT_OUTBOX, [
-      `${input.root_hex}:${entry.sourceKey}`,
-      ctx.now,
-      input.root_hex,
-      "MERGE_MEMORY",
-      input.namespace,
-      input.memoryKey,
-      entry.sourceKey,
-      null,
-      contentSha,
-    ]);
+  for (const appendInput of mergeEntriesToAppendInputs(input, ctx.now)) {
+    const { outboxParams, hotBlob } = legacyContentOutboxInsertParams(appendInput);
+    if (hotBlob) await upsertHotBlob(ctx, hotBlob.sha256, hotBlob.text);
+    await ctxExec(ctx, SQL_INSERT_CONTENT_OUTBOX, outboxParams);
   }
 }
 
@@ -64,17 +57,10 @@ export async function appendDeleteOutboxEntry(
   ctx: DbCtx,
   input: { root_hex: string; namespace: string; memoryKey: string },
 ): Promise<void> {
-  await ctxExec(ctx, SQL_INSERT_CONTENT_OUTBOX, [
-    `${input.root_hex}:__delete__`,
-    ctx.now,
-    input.root_hex,
-    "DELETE_MEMORY",
-    input.namespace,
-    input.memoryKey,
-    null,
-    null,
-    null,
-  ]);
+  const { outboxParams } = legacyContentOutboxInsertParams(
+    deleteEntryToAppendInput(input, ctx.now),
+  );
+  await ctxExec(ctx, SQL_INSERT_CONTENT_OUTBOX, outboxParams);
 }
 
 async function upsertHotBlob(ctx: DbCtx, contentSha256: string, text: string): Promise<void> {
@@ -97,8 +83,9 @@ async function queryLwwArms(
   rootHex: string,
   scope: { namespace: string; memoryKey: string } | null,
 ): Promise<LwwArmRow[]> {
-  const { sql, params } = buildLwwArmsQuery(rootHex, scope);
-  return readQueryAll<LwwArmRow>(db, sql, params);
+  const { sql, params } = buildLegacyContentLwwQuery(rootHex, scope);
+  const rows = await readQueryAll<TipOutboxLwwRow>(db, sql, params);
+  return rows.map(tipOutboxRowToLwwArm);
 }
 
 function tursoOutboxDeps(db: TursoDatabase, coldStore?: ContentBlobColdStore) {

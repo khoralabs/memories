@@ -35,7 +35,11 @@ export function defaultFacetForEvent(eventType: TipOutboxEventType): TipOutboxFa
   return "graph";
 }
 
-export function validateKeysForFacet(facet: TipOutboxFacet, keys: TipOutboxKeys): void {
+export function validateKeysForFacet(
+  facet: TipOutboxFacet,
+  keys: TipOutboxKeys,
+  eventType?: TipOutboxEventType,
+): void {
   if (facet === "provenance") return;
   if (!keys.namespace) throw new Error(`tip-outbox: facet ${facet} requires namespace`);
   if (facet === "graph") {
@@ -45,7 +49,11 @@ export function validateKeysForFacet(facet: TipOutboxFacet, keys: TipOutboxKeys)
     return;
   }
   if (!keys.memoryKey) throw new Error(`tip-outbox: facet ${facet} requires memoryKey`);
-  if ((facet === "content" || facet === "vector") && !keys.sourceKey) {
+  if (
+    (facet === "content" || facet === "vector") &&
+    eventType !== "DELETE_MEMORY" &&
+    !keys.sourceKey
+  ) {
     throw new Error(`tip-outbox: facet ${facet} requires sourceKey`);
   }
 }
