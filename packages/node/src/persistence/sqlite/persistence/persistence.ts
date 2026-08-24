@@ -60,6 +60,7 @@ import { listTextFeatureExportRowsForMemory as listTextFeatureExportRowsForMemor
 import {
   findMemoryAssociation,
   findMemoryIdByKey,
+  findMemoryKeyByEdgeId as findMemoryKeyByEdgeIdRow,
   isMemorySuppressed as isMemorySuppressedRow,
   loadMemoryNamespaceKey as loadMemoryNamespaceKeyRow,
   setMemorySuppressed as setMemorySuppressedRow,
@@ -508,6 +509,10 @@ export class MemoriesPersistence implements IMemoriesPersistence {
 
   findMemoryIdByKey(namespace: string, key: string): string | undefined {
     return findMemoryIdByKey(this.readCtx(), namespace, key);
+  }
+
+  findMemoryKeyByEdgeId(namespace: string, edgeId: string): string | undefined {
+    return findMemoryKeyByEdgeIdRow(this.readCtx(), namespace, edgeId);
   }
 
   nodeExists(nodeId: string): boolean {

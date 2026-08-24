@@ -13,6 +13,19 @@ export function findMemoryIdByKey(ctx: DbCtx, namespace: string, key: string): s
   return row?._id;
 }
 
+export function findMemoryKeyByEdgeId(
+  ctx: DbCtx,
+  namespace: string,
+  edgeId: string,
+): string | undefined {
+  const row = ctx.db
+    .query<{ key: string }, [string, string]>(
+      `SELECT key FROM memories WHERE namespace = ? AND edge_id = ? AND kind = 'edge' LIMIT 1`,
+    )
+    .get(namespace, edgeId);
+  return row?.key;
+}
+
 export function loadMemoryNamespaceKey(
   ctx: DbCtx,
   memoryId: string,

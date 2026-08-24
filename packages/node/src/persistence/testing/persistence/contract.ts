@@ -702,6 +702,16 @@ export function runMemoriesPersistenceContractTests(
         expect(firstEdge.properties).toBeTruthy();
         expect((firstEdge.properties as { directed?: boolean }).directed).toBe(true);
 
+        if (persistence.findMemoryKeyByEdgeId !== undefined) {
+          const edgeKey = await Promise.resolve(
+            persistence.findMemoryKeyByEdgeId(namespace, edgeId),
+          );
+          expect(edgeKey).toBe("b");
+          expect(
+            await Promise.resolve(persistence.findMemoryKeyByEdgeId(namespace, "missing-edge")),
+          ).toBeUndefined();
+        }
+
         const one = await persistence.loadGraphEdge(namespace, edgeId);
         expect(one?.edgeId).toBe(edgeId);
         expect(one?.fromKey).toBe("b");

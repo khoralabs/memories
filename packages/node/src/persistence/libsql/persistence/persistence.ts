@@ -66,6 +66,7 @@ import { listTextFeatureExportRowsForMemory as listTextFeatureExportRowsForMemor
 import {
   findMemoryAssociation,
   findMemoryIdByKey,
+  findMemoryKeyByEdgeId as findMemoryKeyByEdgeIdRow,
   isMemorySuppressed as isMemorySuppressedRow,
   loadMemoryNamespaceKey as loadMemoryNamespaceKeyRow,
   setMemorySuppressed as setMemorySuppressedRow,
@@ -489,6 +490,10 @@ export class MemoriesLibsqlPersistence {
 
   async findMemoryIdByKey(namespace: string, key: string): Promise<string | undefined> {
     return findMemoryIdByKey(this.readDbCtx(), namespace, key);
+  }
+
+  async findMemoryKeyByEdgeId(namespace: string, edgeId: string): Promise<string | undefined> {
+    return findMemoryKeyByEdgeIdRow(this.readDbCtx(), namespace, edgeId);
   }
 
   async nodeExists(nodeId: string): Promise<boolean> {

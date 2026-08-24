@@ -18,6 +18,19 @@ export async function findMemoryIdByKey(
   return row?._id;
 }
 
+export async function findMemoryKeyByEdgeId(
+  ctx: DbCtx,
+  namespace: string,
+  edgeId: string,
+): Promise<string | undefined> {
+  const row = await ctxQueryOne<{ key: string }>(
+    ctx,
+    `SELECT key FROM memories WHERE namespace = ? AND edge_id = ? AND kind = 'edge' LIMIT 1`,
+    [namespace, edgeId],
+  );
+  return row?.key;
+}
+
 export async function loadMemoryNamespaceKey(
   ctx: DbCtx,
   memoryId: string,

@@ -323,6 +323,12 @@ export interface MemoriesMutationCore {
   /** Resolve memory primary key by logical key, or `undefined` if absent. */
   findMemoryIdByKey(namespace: NamespacePath, key: string): string | undefined;
 
+  /** Edge memory `key` for a graph edge id in a namespace, when present. */
+  findMemoryKeyByEdgeId?(
+    namespace: NamespacePath,
+    edgeId: string,
+  ): string | undefined | Promise<string | undefined>;
+
   /** Whether a node row exists (used to validate edge targets). */
   nodeExists(nodeId: string): boolean;
 
