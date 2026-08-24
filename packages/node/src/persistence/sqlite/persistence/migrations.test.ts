@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { ensureCustomSqliteForExtensions, initMemoriesSchema, loadSqliteVec } from "./connection";
 import m001AddContentBlobs from "./migrations/0.6.0-0.7.0/001-add-content-blobs";
+import m001AddTipOutbox from "./migrations/0.8.0-0.9.0/001-add-tip-outbox";
 
 function tableColumns(db: Database, table: string): Set<string> {
   return new Set(
@@ -50,6 +51,7 @@ describe("memories sqlite migrations", () => {
       { from_version: "0.5.0", to_version: "0.6.0", name: "001-add-namespace-suppressed" },
       { from_version: "0.6.0", to_version: "0.7.0", name: "001-add-content-blobs" },
       { from_version: "0.7.0", to_version: "0.8.0", name: "001-add-content-sha256-index" },
+      { from_version: "0.8.0", to_version: "0.9.0", name: "001-add-tip-outbox" },
     ]);
 
     const nsIdx = db
@@ -75,6 +77,15 @@ describe("memories sqlite migrations", () => {
     expect(blobs.has("content_sha256")).toBe(true);
     expect(blobs.has("location")).toBe(true);
     expect(blobs.has("cold_uri")).toBe(true);
+
+    const tipOutbox = tableColumns(db, "memory_tip_outbox");
+    expect(tipOutbox.has("facet")).toBe(true);
+    expect(tipOutbox.has("payload_sha256")).toBe(true);
+    expect(tipOutbox.has("edge_id")).toBe(true);
+
+    const tipBlobs = tableColumns(db, "memory_tip_blobs");
+    expect(tipBlobs.has("payload")).toBe(true);
+    expect(tipBlobs.has("location")).toBe(true);
 
     const namespaceMetadata = tableColumns(db, "namespace_metadata");
     expect(namespaceMetadata.has("display_name")).toBe(true);
@@ -141,5 +152,53 @@ CREATE TABLE memory_content_outbox (
     }
 
     expect(tableColumns(db, "memory_content_outbox").has("content_sha256")).toBe(true);
+  });
+
+  test("0.9.0 tip-outbox migration copies content outbox into unified tables", () => {
+    ensureCustomSqliteForExtensions();
+    const db = new Database(":memory:");
+    db.run(`
+CREATE TABLE memory_content_outbox (
+  _id TEXT PRIMARY KEY NOT NULL,
+  _ts_created REAL NOT NULL,
+  root_hex TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  namespace TEXT NOT NULL,
+  memory_key TEXT NOT NULL,
+  source_key TEXT,
+  text TEXT,
+  content_sha256 TEXT
+);
+`);
+    m001AddContentBlobs.up(db);
+    const hash = createHash("sha256").update("tip-body").digest("hex");
+    db.run(
+      `INSERT INTO memory_content_outbox
+        (_id, _ts_created, root_hex, event_type, namespace, memory_key, source_key, text, content_sha256)
+       VALUES (?, ?, ?, 'MERGE_MEMORY', ?, ?, ?, NULL, ?)`,
+      ["row1", 1, "aa".repeat(32), "ns", "k", "text", hash],
+    );
+    db.run(
+      `INSERT INTO memory_content_blobs (content_sha256, text, location, cold_uri, _ts_created)
+       VALUES (?, ?, 'hot', NULL, ?)`,
+      [hash, "tip-body", 1],
+    );
+
+    m001AddTipOutbox.up(db);
+
+    const tipRow = db
+      .query<{ facet: string; payload_sha256: string | null }, []>(
+        `SELECT facet, payload_sha256 FROM memory_tip_outbox WHERE _id = 'row1'`,
+      )
+      .get();
+    expect(tipRow?.facet).toBe("content");
+    expect(tipRow?.payload_sha256).toBe(hash);
+
+    const tipBlob = db
+      .query<{ payload: Uint8Array | null }, [string]>(
+        `SELECT payload FROM memory_tip_blobs WHERE content_sha256 = ?`,
+      )
+      .get(hash);
+    expect(new TextDecoder().decode(tipBlob?.payload ?? new Uint8Array())).toBe("tip-body");
   });
 });

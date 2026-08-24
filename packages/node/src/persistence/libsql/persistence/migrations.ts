@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL } from "../../core/tip-outbox/schema-sql";
 import type { LibsqlDatabase } from "./client";
 import { execMultiple, execSql, queryAll, queryOne } from "./client";
 import {
@@ -13,10 +14,12 @@ import {
   MEMORIES_INDEXES_SQL,
   MEMORIES_SCHEMA_SQL,
   NAMESPACE_METADATA_SQL,
+  TIP_BLOBS_TABLE_SQL,
+  TIP_OUTBOX_TABLE_SQL,
 } from "./schema";
 import { batchWriteStatements } from "./transactions";
 
-export const MEMORIES_SCHEMA_VERSION = "0.8.0";
+export const MEMORIES_SCHEMA_VERSION = "0.9.0";
 
 const NS_PREFIX_COLUMNS = [
   "ns_prefix_1",
@@ -152,6 +155,25 @@ const migrations: Migration[] = [
     to: "0.8.0",
     name: "001-add-content-sha256-index",
     statements: [CONTENT_OUTBOX_CONTENT_SHA256_INDEX_SQL],
+  },
+  {
+    to: "0.9.0",
+    name: "001-add-tip-outbox",
+    up: async (db) => {
+      for (const stmt of [TIP_OUTBOX_TABLE_SQL, TIP_BLOBS_TABLE_SQL]) {
+        for (const part of stmt
+          .split(";")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)) {
+          await execSql(db.client, part);
+        }
+      }
+      for (const stmt of MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL.split(";")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)) {
+        await execSql(db.client, stmt);
+      }
+    },
   },
 ];
 

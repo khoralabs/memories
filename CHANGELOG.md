@@ -29,6 +29,7 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ### Changed
 
+- **@khoralabs/memories-node** — Unified `memory_tip_outbox` / `memory_tip_blobs` tables (facet-based tip replay); existing `memory_content_*` rows migrate automatically on schema 0.9.0.
 - **@khoralabs/memories-spec** — Document that search `asOf` bounds `memories._ts_created` only (membership filter); it does not replay indexed text/vectors at a provenance tip. Use content-at-tip / TipOutbox replay APIs for historical views.
 - **@khoralabs/memories-node** — Search time travel is `asOf: { gt|gte|lt|lte }` only (capability flag remains `asOfTimestampMsSearch`).
 - **@khoralabs/memories-node** — Namespace metadata upsert accepts `alias` only (DB column remains `display_name`).

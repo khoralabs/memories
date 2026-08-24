@@ -201,6 +201,8 @@ CREATE INDEX IF NOT EXISTS "idx_memory_content_outbox_content_sha256"
   ON "memory_content_outbox" ("content_sha256");
 `;
 
+export { TIP_BLOBS_TABLE_SQL, TIP_OUTBOX_TABLE_SQL } from "../../core/tip-outbox/schema-sql";
+
 export const NAMESPACE_METADATA_SQL = `
 CREATE TABLE IF NOT EXISTS "namespace_metadata" (
   "_id" TEXT PRIMARY KEY NOT NULL,
