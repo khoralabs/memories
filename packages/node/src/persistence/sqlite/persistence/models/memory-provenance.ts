@@ -22,6 +22,7 @@ import {
 } from "../../../../persistence/core/provenance";
 import { documentValidator } from "../_lib";
 import type { DbCtx } from "./context";
+import { appendProvenanceFacetOutbox } from "./tip-outbox";
 
 export {
   clampProvenanceListLimit,
@@ -117,5 +118,10 @@ export function appendProvenanceEvent(
     eventJson,
     intent_snapshot_id ?? null,
   );
+  appendProvenanceFacetOutbox(ctx, {
+    root_hex,
+    event_type,
+    eventJson,
+  });
   return { root_hex };
 }

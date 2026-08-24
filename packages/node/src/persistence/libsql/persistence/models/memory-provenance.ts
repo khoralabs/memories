@@ -23,6 +23,7 @@ import { documentValidator } from "../_lib";
 import type { DbCtx } from "../context";
 import type { LibsqlDatabase } from "../db";
 import { ctxExec, ctxQueryOne, readQueryAll, readQueryOne } from "../db";
+import { appendProvenanceFacetOutbox } from "./tip-outbox";
 
 export {
   clampProvenanceListLimit,
@@ -116,5 +117,6 @@ export async function appendProvenanceEvent(
     eventJson,
     intent_snapshot_id ?? null,
   ]);
+  await appendProvenanceFacetOutbox(ctx, { root_hex, event_type, eventJson });
   return { root_hex };
 }

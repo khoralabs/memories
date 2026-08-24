@@ -25,7 +25,15 @@ export const TIP_OUTBOX_FACET_CONFIG: Record<TipOutboxFacet, TipOutboxFacetConfi
   },
   provenance: {
     lwwKeyParts: [],
-    mergeEventTypes: ["MERGE_MEMORY", "DELETE_MEMORY", "SUPPRESS_MEMORY", "UNSUPPRESS_MEMORY"],
+    mergeEventTypes: [
+      "MERGE_MEMORY",
+      "DELETE_MEMORY",
+      "SUPPRESS_MEMORY",
+      "UNSUPPRESS_MEMORY",
+      "RENAME_NAMESPACE",
+      "SUPPRESS_NAMESPACE",
+      "UNSUPPRESS_NAMESPACE",
+    ],
     deleteClears: false,
   },
 };

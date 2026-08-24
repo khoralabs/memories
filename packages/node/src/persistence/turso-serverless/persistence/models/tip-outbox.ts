@@ -3,7 +3,7 @@ import {
   encodeTipGraphSnapshot,
   type TipGraphSnapshotV1,
 } from "../../../../persistence/core/tip-outbox/graph-snapshot";
-import { float32Bytes } from "../../../../persistence/core/tip-outbox/payload";
+import { float32Bytes, utf8Bytes } from "../../../../persistence/core/tip-outbox/payload";
 import {
   SQL_INSERT_TIP_BLOB_HOT,
   SQL_INSERT_TIP_OUTBOX,
@@ -176,4 +176,32 @@ export async function appendVectorFacetOutbox(
       built.outbox.payloadSha256,
     ]);
   }
+}
+
+export async function appendProvenanceFacetOutbox(
+  ctx: DbCtx,
+  input: { root_hex: string; event_type: TipOutboxEventType; eventJson: string },
+): Promise<void> {
+  const built = buildTipOutboxAppend({
+    rootHex: input.root_hex,
+    facet: "provenance",
+    eventType: input.event_type,
+    keys: {},
+    payload: utf8Bytes(input.eventJson),
+    now: ctx.now,
+    rowId: `${input.root_hex}:provenance`,
+  });
+  if (built.hotBlob) await upsertHotTipBlob(ctx, built.hotBlob.sha256, built.hotBlob.payload);
+  await ctxExec(ctx, SQL_INSERT_TIP_OUTBOX, [
+    built.outbox.id,
+    built.outbox.now,
+    built.outbox.rootHex,
+    built.outbox.facet,
+    built.outbox.eventType,
+    built.outbox.namespace,
+    built.outbox.memoryKey,
+    built.outbox.sourceKey,
+    built.outbox.edgeId,
+    built.outbox.payloadSha256,
+  ]);
 }

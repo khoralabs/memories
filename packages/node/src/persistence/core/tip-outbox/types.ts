@@ -7,7 +7,10 @@ export type TipOutboxEventType =
   | "MERGE_MEMORY"
   | "DELETE_MEMORY"
   | "SUPPRESS_MEMORY"
-  | "UNSUPPRESS_MEMORY";
+  | "UNSUPPRESS_MEMORY"
+  | "RENAME_NAMESPACE"
+  | "SUPPRESS_NAMESPACE"
+  | "UNSUPPRESS_NAMESPACE";
 
 export type TipOutboxKeys = {
   namespace?: string;

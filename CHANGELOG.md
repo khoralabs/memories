@@ -11,6 +11,7 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ### Added
 
+- **@khoralabs/memories-node** — Provenance `event_json` duplicated into TipOutbox `provenance` facet blobs on append (chain row unchanged; list APIs still read inline `event_json` until hydration lands).
 - **@khoralabs/memories-node** — Vector embedding arms at provenance tip (`vector` TipOutbox facet) on merge and delete.
 - **@khoralabs/memories-node** — Graph state at provenance tip (`graph` TipOutbox facet) on merge, delete, suppress, and unsuppress.
 - **@khoralabs/memories-node** — Content-addressed `memory_content_blobs` with thin `memory_content_outbox` tips (`content_sha256`); hot-window evacuation and optional Bun S3 cold store (sqlite / libsql / turso-serverless).
