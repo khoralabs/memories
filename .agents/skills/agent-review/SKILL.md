@@ -68,6 +68,7 @@ Default stop threshold matches config `blockOn` **and more severe** (e.g.
 | [commit-message/SKILL.md](commit-message/SKILL.md) | Spec + drafting via CLI |
 | [changelog/SKILL.md](changelog/SKILL.md) | Keep a Changelog 1.1.0 + SemVer release notes |
 | [history-walk/SKILL.md](history-walk/SKILL.md) | Commit-range walk + catalog |
+| [commit-chunks/SKILL.md](commit-chunks/SKILL.md) | Land scoped work groups as separate commits |
 
 Activated LLM skill for review remains `skills/agent-review/code-review` in `.agent-review.json`.
 Do **not** activate this operator skill for the review/analyst agents.
