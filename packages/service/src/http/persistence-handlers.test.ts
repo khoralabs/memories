@@ -1744,3 +1744,143 @@ describe("remote memories client over http", () => {
     }
   });
 });
+
+describe("memories service at-tip detail http handlers", () => {
+  test("memory-detail defaults rootHex to head and composes preview, atTip, events", async () => {
+    const stack = createTestStack();
+    const { service } = stack;
+    const database = { kind: "account", ownerKey: "owner-detail" };
+    await service.open(database);
+
+    await postJson(
+      "http://localhost/databases/merge",
+      {
+        database,
+        params: {
+          kind: "node",
+          key: "n1",
+          namespace: "ns/detail",
+          content: [{ key: "body", text: "hello detail" }],
+          labels: [],
+        },
+      },
+      stack,
+    );
+
+    const capsRes = await postJson("http://localhost/databases/capabilities", { database }, stack);
+    const capsBody = (await capsRes.json()) as { capabilities: { tipReplayAtRootHex?: boolean } };
+    expect(capsBody.capabilities.tipReplayAtRootHex).toBe(true);
+
+    const detailRes = await postJson(
+      "http://localhost/databases/memory-detail",
+      { database, namespace: "ns/detail", key: "n1" },
+      stack,
+    );
+    expect(detailRes.status).toBe(200);
+    const detail = (await detailRes.json()) as {
+      rootHex?: string;
+      preview: { key: string; content: unknown[] };
+      atTip: { content: { content: Array<{ sourceKey: string; text: string }> } | null };
+      events: { events: unknown[] };
+    };
+    expect(detail.preview.key).toBe("n1");
+    expect(detail.rootHex).toBeDefined();
+    expect(detail.atTip.content?.content.some((c) => c.text === "hello detail")).toBe(true);
+    expect(detail.events.events.length).toBeGreaterThan(0);
+  });
+
+  test("provenance graph and vectors return snapshots on sqlite", async () => {
+    const stack = createTestStack();
+    const { service } = stack;
+    const database = { kind: "account", ownerKey: "owner-graph-tip" };
+    await service.open(database);
+
+    await postJson(
+      "http://localhost/databases/merge",
+      {
+        database,
+        params: {
+          kind: "node",
+          key: "g1",
+          namespace: "ns/graph",
+          content: [{ key: "body", text: "graph tip" }],
+          labels: [],
+        },
+      },
+      stack,
+    );
+    const head = (await postJson(
+      "http://localhost/databases/provenance/head",
+      { database },
+      stack,
+    ).then((r) => r.json())) as { rootHex: string };
+
+    const graphRes = await postJson(
+      "http://localhost/databases/provenance/graph",
+      { database, rootHex: head.rootHex, namespace: "ns/graph", key: "g1" },
+      stack,
+    );
+    expect(graphRes.status).toBe(200);
+    const graphBody = (await graphRes.json()) as { graph: { v: number; memoryKey: string } | null };
+    expect(graphBody.graph?.memoryKey).toBe("g1");
+
+    const vectorsRes = await postJson(
+      "http://localhost/databases/provenance/vectors",
+      { database, rootHex: head.rootHex, namespace: "ns/graph", key: "g1" },
+      stack,
+    );
+    expect(vectorsRes.status).toBe(200);
+  });
+
+  test("memory-preview includeAtTip requires explicit rootHex", async () => {
+    const stack = createTestStack();
+    const { service } = stack;
+    const database = { kind: "account", ownerKey: "owner-preview-at-tip" };
+    await service.open(database);
+
+    await postJson(
+      "http://localhost/databases/merge",
+      {
+        database,
+        params: {
+          kind: "node",
+          key: "p1",
+          namespace: "ns/preview",
+          content: [{ key: "body", text: "preview at tip" }],
+          labels: [],
+        },
+      },
+      stack,
+    );
+    const head = (await postJson(
+      "http://localhost/databases/provenance/head",
+      { database },
+      stack,
+    ).then((r) => r.json())) as { rootHex: string };
+
+    const without = await postJson(
+      "http://localhost/databases/memory-preview",
+      { database, namespace: "ns/preview", key: "p1", includeAtTip: true },
+      stack,
+    );
+    expect(without.status).toBe(200);
+    expect(((await without.json()) as { atTip?: unknown }).atTip).toBeUndefined();
+
+    const withTip = await postJson(
+      "http://localhost/databases/memory-preview",
+      {
+        database,
+        namespace: "ns/preview",
+        key: "p1",
+        includeAtTip: true,
+        rootHex: head.rootHex,
+      },
+      stack,
+    );
+    expect(withTip.status).toBe(200);
+    const body = (await withTip.json()) as {
+      atTip?: { content?: { content: Array<{ text: string }> } };
+    };
+    expect(body.atTip?.content?.content.some((c) => c.text === "preview at tip")).toBe(true);
+  });
+});

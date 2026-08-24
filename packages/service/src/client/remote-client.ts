@@ -29,6 +29,7 @@ import { MemoriesServiceClient, type MemoriesServiceClientOptions } from "./clie
 import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
+  type DatabaseEdgeDetailResponse,
   type DatabaseEdgePreviewResponse,
   type DatabaseEffectiveSuppressionResponse,
   type DatabaseGraphCountsRequest,
@@ -36,6 +37,7 @@ import {
   type DatabaseGraphLayoutRequest,
   type DatabaseGraphStatsRequest,
   type DatabaseGraphStatsResponse,
+  type DatabaseMemoryDetailResponse,
   type DatabaseMemoryPreviewResponse,
   type DatabaseMergeRequest,
   type DatabaseNamespaceExistsUnderPrefixResponse,
@@ -46,8 +48,10 @@ import {
   type DatabaseProvenanceChainResponse,
   type DatabaseProvenanceContentResponse,
   type DatabaseProvenanceEventsResponse,
+  type DatabaseProvenanceGraphResponse,
   type DatabaseProvenanceHeadResponse,
   type DatabaseProvenanceTimestampResponse,
+  type DatabaseProvenanceVectorsResponse,
   type DatabaseSearchRequest,
   type DatabaseSearchResponse,
   type DatabaseSuppressMemoryRequest,
@@ -89,6 +93,7 @@ function createRemotePersistence(
     listProvenanceEvents: async (input: {
       namespace?: string;
       key?: string;
+      edgeId?: string;
       limit: number;
       before?: { createdAt: number; id: string };
     }): Promise<ProvenanceEventListItem[]> => {
@@ -98,6 +103,7 @@ function createRemotePersistence(
           database,
           ...(input.namespace !== undefined ? { namespace: input.namespace } : {}),
           ...(input.key !== undefined ? { key: input.key } : {}),
+          ...(input.edgeId !== undefined ? { edgeId: input.edgeId } : {}),
           limit: input.limit,
           ...(input.before !== undefined ? { before: input.before } : {}),
         },
@@ -546,13 +552,21 @@ export class RemoteMemoriesReadClient {
   async getEdgePreview(
     namespace: string,
     edgeId: string,
-    opts?: { includeSuppressed?: boolean },
+    opts?: {
+      includeSuppressed?: boolean;
+      rootHex?: string;
+      includeAtTip?: boolean;
+      includeVectors?: boolean;
+    },
   ): Promise<DatabaseEdgePreviewResponse> {
     return this.#client.postJson("/databases/edge-preview", {
       database: this.#database,
       namespace,
       edgeId,
       ...(opts?.includeSuppressed === true ? { includeSuppressed: true } : {}),
+      ...(opts?.rootHex !== undefined ? { rootHex: opts.rootHex } : {}),
+      ...(opts?.includeAtTip === true ? { includeAtTip: true } : {}),
+      ...(opts?.includeVectors === true ? { includeVectors: true } : {}),
     });
   }
 
@@ -560,12 +574,71 @@ export class RemoteMemoriesReadClient {
     namespace: string;
     key: string;
     maxChars?: number;
+    rootHex?: string;
+    includeAtTip?: boolean;
+    includeVectors?: boolean;
   }): Promise<DatabaseMemoryPreviewResponse> {
     return this.#client.postJson("/databases/memory-preview", {
       database: this.#database,
       namespace: input.namespace,
       key: input.key,
       ...(input.maxChars !== undefined ? { maxChars: input.maxChars } : {}),
+      ...(input.rootHex !== undefined ? { rootHex: input.rootHex } : {}),
+      ...(input.includeAtTip === true ? { includeAtTip: true } : {}),
+      ...(input.includeVectors === true ? { includeVectors: true } : {}),
+    });
+  }
+
+  async getMemoryDetail(input: {
+    namespace: string;
+    key: string;
+    rootHex?: string;
+    limit?: number;
+    before?: { createdAt: number; id: string };
+    includeVectors?: boolean;
+    maxChars?: number;
+  }): Promise<DatabaseMemoryDetailResponse> {
+    return this.#client.postJson("/databases/memory-detail", {
+      database: this.#database,
+      ...input,
+    });
+  }
+
+  async getEdgeDetail(input: {
+    namespace: string;
+    edgeId: string;
+    rootHex?: string;
+    limit?: number;
+    before?: { createdAt: number; id: string };
+    includeVectors?: boolean;
+    includeSuppressed?: boolean;
+  }): Promise<DatabaseEdgeDetailResponse> {
+    return this.#client.postJson("/databases/edge-detail", {
+      database: this.#database,
+      ...input,
+    });
+  }
+
+  async getProvenanceGraph(input: {
+    rootHex: string;
+    namespace: string;
+    key: string;
+  }): Promise<DatabaseProvenanceGraphResponse> {
+    return this.#client.postJson("/databases/provenance/graph", {
+      database: this.#database,
+      ...input,
+    });
+  }
+
+  async getProvenanceVectors(input: {
+    rootHex: string;
+    namespace: string;
+    key: string;
+    includeValues?: boolean;
+  }): Promise<DatabaseProvenanceVectorsResponse> {
+    return this.#client.postJson("/databases/provenance/vectors", {
+      database: this.#database,
+      ...input,
     });
   }
 

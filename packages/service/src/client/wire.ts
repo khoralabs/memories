@@ -192,6 +192,7 @@ export type DatabaseProvenanceTimestampResponse = { timestampMs: number | null }
 export type DatabaseProvenanceEventsRequest = DatabaseScopedBody<{
   namespace?: string;
   key?: string;
+  edgeId?: string;
   limit?: number;
   before?: { createdAt: number; id: string };
 }>;
@@ -323,11 +324,44 @@ export type DatabaseListEntry = {
 };
 export type DatabaseListResponse = { databases: DatabaseListEntry[] };
 
+export type TipGraphSnapshotWire = {
+  v: 1;
+  kind: "node" | "edge";
+  namespace: string;
+  memoryKey: string;
+  edgeId?: string;
+  suppressed: boolean;
+  labels: OntologyLabelWire[];
+  properties: Record<string, unknown> | null;
+  endpoints?: { fromKey: string; toKey: string };
+};
+
+export type DatabaseProvenanceGraphResponse = {
+  rootHex: string;
+  graph: TipGraphSnapshotWire | null;
+  database: { kind: string; ownerKey: string };
+};
+
+export type DatabaseProvenanceVectorsResponse = {
+  rootHex: string;
+  vectors: Array<{ sourceKey: string; dimensions: number; values?: number[] }>;
+  database: { kind: string; ownerKey: string };
+};
+
+export type TipAtRootWire = {
+  content: { rootHex: string; content: Array<{ sourceKey: string; text: string }> } | null;
+  graph: Omit<DatabaseProvenanceGraphResponse, "database"> | null;
+  vectors: Omit<DatabaseProvenanceVectorsResponse, "database"> | null;
+};
+
 export type DatabaseEdgePreviewRequest = DatabaseScopedBody<{
   namespace: string;
   edgeId: string;
   /** When true, return suppressed edges. Default excludes (404 when suppressed). */
   includeSuppressed?: boolean;
+  rootHex?: string;
+  includeAtTip?: boolean;
+  includeVectors?: boolean;
 }>;
 export type DatabaseEdgePreviewResponse = {
   edgeId: string;
@@ -337,12 +371,16 @@ export type DatabaseEdgePreviewResponse = {
   properties: Record<string, unknown> | null;
   /** Exact-path edge-memory suppressed flag. */
   suppressed: boolean;
+  atTip?: TipAtRootWire;
 };
 
 export type DatabaseMemoryPreviewRequest = DatabaseScopedBody<{
   namespace: string;
   key: string;
   maxChars?: number;
+  rootHex?: string;
+  includeAtTip?: boolean;
+  includeVectors?: boolean;
 }>;
 export type DatabaseMemoryPreviewResponse = {
   key: string;
@@ -361,7 +399,55 @@ export type DatabaseMemoryPreviewResponse = {
   properties: Record<string, unknown> | null;
   /** Exact-path `memories.suppressed` flag. */
   suppressed: boolean;
+  atTip?: TipAtRootWire;
 };
+
+export type DatabaseMemoryDetailRequest = DatabaseScopedBody<{
+  namespace: string;
+  key: string;
+  rootHex?: string;
+  limit?: number;
+  before?: { createdAt: number; id: string };
+  includeVectors?: boolean;
+  maxChars?: number;
+}>;
+export type DatabaseMemoryDetailResponse = {
+  rootHex?: string;
+  preview: DatabaseMemoryPreviewResponse;
+  atTip: TipAtRootWire;
+  events: Omit<DatabaseProvenanceEventsResponse, "database">;
+  database: { kind: string; ownerKey: string };
+};
+
+export type DatabaseEdgeDetailRequest = DatabaseScopedBody<{
+  namespace: string;
+  edgeId: string;
+  rootHex?: string;
+  limit?: number;
+  before?: { createdAt: number; id: string };
+  includeVectors?: boolean;
+  includeSuppressed?: boolean;
+}>;
+export type DatabaseEdgeDetailResponse = {
+  rootHex?: string;
+  preview: DatabaseEdgePreviewResponse;
+  atTip: TipAtRootWire;
+  events: Omit<DatabaseProvenanceEventsResponse, "database">;
+  database: { kind: string; ownerKey: string };
+};
+
+export type DatabaseProvenanceGraphRequest = DatabaseScopedBody<{
+  rootHex: string;
+  namespace: string;
+  key: string;
+}>;
+
+export type DatabaseProvenanceVectorsRequest = DatabaseScopedBody<{
+  rootHex: string;
+  namespace: string;
+  key: string;
+  includeValues?: boolean;
+}>;
 
 export type DatabaseSourceMapTextPreviewRequest = DatabaseScopedBody<{
   sourceMapId: string;

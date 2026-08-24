@@ -21,6 +21,12 @@ import type {
   MemoriesDatabaseOntologyStore,
 } from "../storage/core/index";
 import {
+  handleDatabaseEdgeDetail,
+  handleDatabaseMemoryDetail,
+  handleDatabaseProvenanceGraph,
+  handleDatabaseProvenanceVectors,
+} from "./at-tip-handlers";
+import {
   scopeDatabase,
   scopeFromMemoryBody,
   scopeFromNamespaceDelete,
@@ -432,6 +438,34 @@ export async function handleMemoriesServiceHttpRequest(
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProvenanceContent(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/provenance/graph") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseProvenanceGraph(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/provenance/vectors") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseProvenanceVectors(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/memory-detail") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseMemoryDetail(opts.service, body);
+    }
+
+    if (req.method === "POST" && url.pathname === "/databases/edge-detail") {
+      const { body } = await readJsonBody(req);
+      const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
+      await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
+      return await handleDatabaseEdgeDetail(opts.service, body);
     }
 
     if (req.method === "POST" && url.pathname === "/databases/capabilities") {

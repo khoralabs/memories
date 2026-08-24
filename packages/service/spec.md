@@ -253,14 +253,39 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 | `POST` | `/databases/provenance/events` | List provenance events (optional namespace/key filter, nested keyset cursor) | `read` |
 | `POST` | `/databases/provenance/chain` | List provenance chain links newest-first (keyset via `beforeRootHex`) | `read` |
 | `POST` | `/databases/provenance/content` | Per-arm LWW memory content at a tip (`rootHex` + namespace/key) | `read` |
+| `POST` | `/databases/provenance/graph` | Graph snapshot at tip (`tipReplayAtRootHex`; else 501) | `read` |
+| `POST` | `/databases/provenance/vectors` | Vector arms at tip (`tipReplayAtRootHex`; else 501) | `read` |
+| `POST` | `/databases/memory-detail` | Thin compose: live preview + at-tip slots + provenance events | `read` |
+| `POST` | `/databases/edge-detail` | Thin compose for edges (resolves edge memory key for content/vectors) | `read` |
 | `POST` | `/databases/capabilities` | Backend capabilities for database | `read` |
 
 **Wire naming:** public/HTTP memory identity is always `key` (not `memoryKey`). Persistence TS method parameters may still be named `memoryKey` when adjacent to `sourceKey` / graph fields; HTTP adapters map body `key` → that arg.
 
 **`POST /databases/provenance/events`**
 
-- Request: `{ database, namespace?, key?, limit?, before?: { createdAt, id } }` — `key` requires `namespace`
+- Request: `{ database, namespace?, key?, edgeId?, limit?, before?: { createdAt, id } }` — `key` requires `namespace`; `edgeId` requires `namespace`
 - Response: `{ events, nextBefore?: { createdAt, id }, database }` — `nextBefore` is set when the page is full; pass it as the next request's `before`
+
+**`POST /databases/provenance/graph`**
+
+- Request: `{ database, rootHex, namespace, key }`
+- Response: `{ rootHex, graph: TipGraphSnapshotV1 | null, database }`
+- Requires `capabilities.tipReplayAtRootHex`; otherwise **501**
+
+**`POST /databases/provenance/vectors`**
+
+- Request: `{ database, rootHex, namespace, key, includeValues?: boolean }`
+- Response: `{ rootHex, vectors: [{ sourceKey, dimensions, values? }], database }`
+- Requires `capabilities.tipReplayAtRootHex`; otherwise **501**
+
+**`POST /databases/memory-detail`** / **`POST /databases/edge-detail`**
+
+- Thin compose: `preview` (live), `atTip` (`content` always when head/`rootHex` known; `graph`/`vectors` null when `!tipReplayAtRootHex`), `events` (namespace+key or edgeId filter), resolved `rootHex` (explicit or chain head on detail routes only)
+- Optional `includeVectors` on detail (default false)
+
+**`POST /databases/memory-preview`** / **`POST /databases/edge-preview`**
+
+- Optional `rootHex` + `includeAtTip` (explicit `rootHex` only — no head default) adds optional `atTip` sibling; capability-gated graph/vector slots match detail
 
 **`POST /databases/provenance/content`**
 

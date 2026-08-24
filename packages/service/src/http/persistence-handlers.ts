@@ -54,6 +54,11 @@ import {
   type DatabaseVectorDimensionsRequest,
   serializeSearchHit,
 } from "../client/index";
+import type {
+  DatabaseEdgePreviewResponse,
+  DatabaseMemoryPreviewResponse,
+  DatabaseProvenanceEventsResponse,
+} from "../client/wire";
 import type { MemoriesDatabaseService } from "../service/index";
 import type {
   MemoriesDatabaseHandle,
@@ -61,7 +66,7 @@ import type {
   MemoriesDatabaseOntologyStore,
   StoredOntologyJsonSchema,
 } from "../storage/core/index";
-
+import { buildAtTipWire } from "./at-tip-wire";
 import { HttpError, type MemoriesServiceHttpOptions, parseDatabaseIdBody } from "./handlers";
 import { labelMapsFromStoredOntology } from "./stored-ontology-label-schema";
 import { assertHttpVectorPayload } from "./vector-payload";
@@ -217,7 +222,7 @@ function parseDatabaseScopedBody(body: unknown): {
   return { database, ...(record as object) };
 }
 
-async function getHandle(
+export async function getHandle(
   service: MemoriesDatabaseService,
   body: unknown,
 ): Promise<{
@@ -678,26 +683,21 @@ function parseProvenanceListLimit(raw: unknown, fallback = 50): number {
   return Math.min(Math.floor(raw), 100);
 }
 
-export async function handleDatabaseProvenanceEvents(
-  service: MemoriesDatabaseService,
-  body: unknown,
-): Promise<Response> {
-  const scoped = body as {
-    database?: unknown;
-    namespace?: unknown;
-    key?: unknown;
+export async function listProvenanceEventsForHandle(
+  handle: MemoriesDatabaseHandle,
+  scoped: {
+    namespace?: string;
+    key?: string;
+    edgeId?: string;
     limit?: unknown;
     before?: unknown;
-  };
-  const { database, handle } = await getHandle(service, scoped);
+  },
+): Promise<Omit<DatabaseProvenanceEventsResponse, "database">> {
   if (scoped.key !== undefined && scoped.namespace === undefined) {
     throw new HttpError("key requires namespace", 400);
   }
-  if (scoped.namespace !== undefined && typeof scoped.namespace !== "string") {
-    throw new HttpError("namespace must be a string", 400);
-  }
-  if (scoped.key !== undefined && typeof scoped.key !== "string") {
-    throw new HttpError("key must be a string", 400);
+  if (scoped.edgeId !== undefined && scoped.namespace === undefined) {
+    throw new HttpError("edgeId requires namespace", 400);
   }
   let before: { createdAt: number; id: string } | undefined;
   if (scoped.before !== undefined) {
@@ -712,27 +712,177 @@ export async function handleDatabaseProvenanceEvents(
     }
     before = { createdAt: b.createdAt, id: b.id };
   }
-  const fn = handle.persistence.listProvenanceEvents;
-  if (fn === undefined) {
-    return Response.json({ events: [], database });
+  const listFn = handle.persistence.listProvenanceEvents;
+  if (listFn === undefined) {
+    return { events: [] };
   }
   const limit = parseProvenanceListLimit(scoped.limit);
+  let edgeMemoryKey: string | undefined;
+  if (typeof scoped.edgeId === "string" && scoped.edgeId.trim().length > 0) {
+    const namespace = scoped.namespace?.trim() ?? "";
+    const edgeId = scoped.edgeId.trim();
+    const edgeKeyFn = handle.persistence.findMemoryKeyByEdgeId;
+    if (edgeKeyFn !== undefined) {
+      edgeMemoryKey = await Promise.resolve(edgeKeyFn.call(handle.persistence, namespace, edgeId));
+    }
+  }
   const events = await Promise.resolve(
-    fn.call(handle.persistence, {
-      ...(typeof scoped.namespace === "string" ? { namespace: scoped.namespace } : {}),
-      ...(typeof scoped.key === "string" ? { key: scoped.key } : {}),
+    listFn.call(handle.persistence, {
+      ...(scoped.namespace !== undefined ? { namespace: scoped.namespace } : {}),
+      ...(scoped.key !== undefined ? { key: scoped.key } : {}),
+      ...(typeof scoped.edgeId === "string" && scoped.edgeId.trim().length > 0
+        ? { edgeId: scoped.edgeId.trim(), edgeMemoryKey: edgeMemoryKey ?? "" }
+        : {}),
       limit,
       ...(before !== undefined ? { before } : {}),
     }),
   );
   const last = events.at(-1);
-  return Response.json({
+  return {
     events,
     ...(events.length === limit && last !== undefined
       ? { nextBefore: { createdAt: last.createdAt, id: last.id } }
       : {}),
-    database,
+  };
+}
+
+export async function memoryPreviewForHandle(
+  handle: MemoriesDatabaseHandle,
+  scoped: Pick<
+    DatabaseMemoryPreviewRequest,
+    "namespace" | "key" | "maxChars" | "rootHex" | "includeAtTip" | "includeVectors"
+  >,
+): Promise<DatabaseMemoryPreviewResponse> {
+  const namespace = scoped.namespace.trim();
+  const key = scoped.key.trim();
+  if (namespace.length === 0 || key.length === 0) {
+    throw new HttpError("namespace and key are required", 400);
+  }
+  const memoryId = await handle.persistence.findMemoryIdByKey(namespace, key);
+  if (memoryId === undefined) {
+    throw new HttpError("memory not found", 404);
+  }
+  const maxChars = scoped.maxChars ?? 2400;
+  const labels = await handle.persistence.loadNodeLabelsForMemory(namespace, key);
+  const inventory = await handle.persistence.listSourceMapInventoryForMemory(memoryId, 32);
+  const content = await Promise.all(
+    inventory.map(async (item) => {
+      const text = item.hasText
+        ? await handle.persistence.getSourceMapTextPreview(item.sourceMapId, maxChars)
+        : null;
+      return {
+        sourceKey: item.sourceKey,
+        sourceMapId: item.sourceMapId,
+        text,
+        hasText: item.hasText,
+        hasVector: item.hasVector,
+        ...(item.contentHash !== undefined ? { contentHash: item.contentHash } : {}),
+        createdAt: item.createdAt,
+      };
+    }),
+  );
+  const suppressed = await handle.persistence.isMemorySuppressed(memoryId);
+  const properties = await handle.persistence.loadNodePropertiesForMemory(namespace, key);
+  let atTip: Awaited<ReturnType<typeof buildAtTipWire>> | undefined;
+  if (
+    scoped.includeAtTip === true &&
+    typeof scoped.rootHex === "string" &&
+    scoped.rootHex.trim().length > 0
+  ) {
+    const rootHex = scoped.rootHex.trim();
+    if (!ROOT_HEX_RE.test(rootHex)) {
+      throw new HttpError("rootHex must be a 64-char hex string", 400);
+    }
+    atTip = await buildAtTipWire(handle, rootHex, namespace, key, scoped.includeVectors === true);
+  }
+  return {
+    key,
+    namespace,
+    labels,
+    content,
+    properties: properties ?? null,
+    suppressed,
+    ...(atTip !== undefined ? { atTip } : {}),
+  };
+}
+
+export async function edgePreviewForHandle(
+  handle: MemoriesDatabaseHandle,
+  scoped: Pick<
+    DatabaseEdgePreviewRequest,
+    "namespace" | "edgeId" | "includeSuppressed" | "rootHex" | "includeAtTip" | "includeVectors"
+  >,
+): Promise<DatabaseEdgePreviewResponse> {
+  const namespace = scoped.namespace.trim();
+  const edgeId = scoped.edgeId.trim();
+  if (namespace.length === 0 || edgeId.length === 0) {
+    throw new HttpError("namespace and edgeId are required", 400);
+  }
+  const link = await handle.persistence.loadGraphEdge(
+    namespace,
+    edgeId,
+    scoped.includeSuppressed === true ? { includeSuppressed: true } : undefined,
+  );
+  if (link === null) {
+    throw new HttpError("edge not found in namespace", 404);
+  }
+  let atTip: Awaited<ReturnType<typeof buildAtTipWire>> | undefined;
+  if (
+    scoped.includeAtTip === true &&
+    typeof scoped.rootHex === "string" &&
+    scoped.rootHex.trim().length > 0
+  ) {
+    const rootHex = scoped.rootHex.trim();
+    if (!ROOT_HEX_RE.test(rootHex)) {
+      throw new HttpError("rootHex must be a 64-char hex string", 400);
+    }
+    const edgeKeyFn = handle.persistence.findMemoryKeyByEdgeId;
+    const edgeKey =
+      edgeKeyFn === undefined
+        ? undefined
+        : await Promise.resolve(edgeKeyFn.call(handle.persistence, namespace, edgeId));
+    if (edgeKey !== undefined) {
+      atTip = await buildAtTipWire(
+        handle,
+        rootHex,
+        namespace,
+        edgeKey,
+        scoped.includeVectors === true,
+      );
+    }
+  }
+  return {
+    edgeId: link.edgeId,
+    fromKey: link.fromKey,
+    toKey: link.toKey,
+    labels: link.labels,
+    properties: link.properties ?? null,
+    suppressed: link.suppressed === true,
+    ...(atTip !== undefined ? { atTip } : {}),
+  };
+}
+
+export async function handleDatabaseProvenanceEvents(
+  service: MemoriesDatabaseService,
+  body: unknown,
+): Promise<Response> {
+  const scoped = body as {
+    database?: unknown;
+    namespace?: unknown;
+    key?: unknown;
+    edgeId?: unknown;
+    limit?: unknown;
+    before?: unknown;
+  };
+  const { database, handle } = await getHandle(service, scoped);
+  const payload = await listProvenanceEventsForHandle(handle, {
+    ...(typeof scoped.namespace === "string" ? { namespace: scoped.namespace } : {}),
+    ...(typeof scoped.key === "string" ? { key: scoped.key } : {}),
+    ...(typeof scoped.edgeId === "string" ? { edgeId: scoped.edgeId } : {}),
+    ...(scoped.limit !== undefined ? { limit: scoped.limit } : {}),
+    ...(scoped.before !== undefined ? { before: scoped.before } : {}),
   });
+  return Response.json({ ...payload, database });
 }
 
 export async function handleDatabaseProvenanceChain(
@@ -1136,23 +1286,8 @@ export async function handleDatabaseEdgePreview(
   if (typeof scoped.namespace !== "string" || typeof scoped.edgeId !== "string") {
     throw new HttpError("namespace and edgeId are required", 400);
   }
-  const link = await handle.persistence.loadGraphEdge(
-    scoped.namespace.trim(),
-    scoped.edgeId.trim(),
-    scoped.includeSuppressed === true ? { includeSuppressed: true } : undefined,
-  );
-  if (link === null) {
-    throw new HttpError("edge not found in namespace", 404);
-  }
-  return Response.json({
-    edgeId: link.edgeId,
-    fromKey: link.fromKey,
-    toKey: link.toKey,
-    labels: link.labels,
-    properties: link.properties ?? null,
-    suppressed: link.suppressed === true,
-    database,
-  });
+  const preview = await edgePreviewForHandle(handle, scoped);
+  return Response.json({ ...preview, database });
 }
 
 export async function handleDatabaseMemoryPreview(
@@ -1164,45 +1299,8 @@ export async function handleDatabaseMemoryPreview(
   if (typeof scoped.namespace !== "string" || typeof scoped.key !== "string") {
     throw new HttpError("namespace and key are required", 400);
   }
-  const namespace = scoped.namespace.trim();
-  const key = scoped.key.trim();
-  if (namespace.length === 0 || key.length === 0) {
-    throw new HttpError("namespace and key are required", 400);
-  }
-  const memoryId = await handle.persistence.findMemoryIdByKey(namespace, key);
-  if (memoryId === undefined) {
-    throw new HttpError("memory not found", 404);
-  }
-  const maxChars = scoped.maxChars ?? 2400;
-  const labels = await handle.persistence.loadNodeLabelsForMemory(namespace, key);
-  const inventory = await handle.persistence.listSourceMapInventoryForMemory(memoryId, 32);
-  const content = await Promise.all(
-    inventory.map(async (item) => {
-      const text = item.hasText
-        ? await handle.persistence.getSourceMapTextPreview(item.sourceMapId, maxChars)
-        : null;
-      return {
-        sourceKey: item.sourceKey,
-        sourceMapId: item.sourceMapId,
-        text,
-        hasText: item.hasText,
-        hasVector: item.hasVector,
-        ...(item.contentHash !== undefined ? { contentHash: item.contentHash } : {}),
-        createdAt: item.createdAt,
-      };
-    }),
-  );
-  const suppressed = await handle.persistence.isMemorySuppressed(memoryId);
-  const properties = await handle.persistence.loadNodePropertiesForMemory(namespace, key);
-  return Response.json({
-    key,
-    namespace,
-    labels,
-    content,
-    properties: properties ?? null,
-    suppressed,
-    database,
-  });
+  const preview = await memoryPreviewForHandle(handle, scoped);
+  return Response.json({ ...preview, database });
 }
 
 export async function handleDatabaseSourceMapTextPreview(
