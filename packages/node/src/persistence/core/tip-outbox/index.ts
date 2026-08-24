@@ -15,14 +15,11 @@ export {
   type TipGraphSnapshotV1,
 } from "./graph-snapshot";
 export {
-  buildLegacyContentLwwQuery,
+  buildContentLwwQuery,
   deleteEntryToAppendInput,
-  legacyContentOutboxInsertParams,
   mergeEntriesToAppendInputs,
-  SQL_INSERT_HOT_BLOB,
-  SQL_REHYDRATE_HOT_BLOB,
-  SQL_SELECT_BLOB_BY_SHA,
   tipOutboxRowToLwwArm,
+  unifiedContentOutboxInsertParams,
 } from "./legacy-content";
 export {
   float32Bytes,

@@ -87,13 +87,14 @@ Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../co
 - **`content_hash`:** Nullable column on **`source_maps`**, lowercase 64-char hex. After inserting text and/or vector features for that map, **`updateSourceMapContentHash`** sets `SHA-256(MEMORIES_SOURCE_BODY_v1 || NUL || UTF-8(canonical_json(descriptor)))` where the descriptor references `text_sha256` / `vector_sha256` of the materialized payloads (see `computeSourceMapContentHash` in persistence core). Merge provenance events may include optional **`content_hashes`** keyed by `source_key` for audit without re-reading blobs.
 - **Rollbacks:** Provenance and content-hash writes participate in the same **`withTransaction`** boundary as merge/delete; a failing append rolls back the whole mutation.
 
-### Content outbox (thin tips + content-addressed blobs)
+### Content at tip (TipOutbox `content` facet)
 
-- **`memory_content_outbox`:** Append-only **thin** tip log — one row per `(root_hex, source_key)` MERGE (or a DELETE tombstone). New rows store **`content_sha256`** only (`text` is null). Thin rows are **kept indefinitely** in the primary DB (no tip pruning of outbox pointers).
-- **`memory_content_blobs`:** Content-addressed UTF-8 bodies (`content_sha256 = sha256Hex(text)`). `location` is `hot` | `cold` | `dropped`; `cold_uri` set when cold.
-- **Reconstruction (LWW):** Per `(namespace, memory_key, source_key)`, take the latest MERGE at-or-before the target provenance tip; a later DELETE clears the memory. Resolve text from hot blob → cold store fetch (verify sha) → else omit. Sync SQLite reconstruct is hot-blob only; use async + cold store for evacuated bodies.
-- **Hot tip window:** `contentOutboxRetentionTips` (default **256**; `0` = never evacuate). Bodies whose newest referencing tip is outside the window are **evacuated**: uploaded via `contentBlobColdStore` when configured. Without a cold store, evacuate is a **no-op** unless `allowDropWithoutColdStore: true` (then permanently drop, `location = 'dropped'`). SQLite can auto-wire Bun `S3Client` when a bucket is configured (`createBunS3ContentBlobColdStore` / `S3_BUCKET` / `AWS_BUCKET`).
-- **Scale note:** Blob tiering bounds hot DB size. At extreme tip counts, further scale by **tiered thinning of the outbox itself** (segment old tip ranges into cold parquet/JSONL + a small catalog)—intentionally not implemented here.
+All content append, LWW replay, and blob evacuation use unified **`memory_tip_outbox`** (`facet='content'`) and **`memory_tip_blobs`**. Legacy `memory_content_outbox` / `memory_content_blobs` are frozen after schema **0.9.1** (idempotent re-sync migration); new code does not read or write them.
+
+- **Thin outbox:** one row per `(root_hex, source_key)` MERGE or DELETE tombstone; rows store **`payload_sha256`** only.
+- **Blobs:** content-addressed UTF-8 bodies in `memory_tip_blobs` (`hot` | `cold` | `dropped`).
+- **Reconstruction (LWW):** per `(namespace, memory_key, source_key)` at-or-before target tip; DELETE clears the memory. Hot blob → cold store fetch (verify sha) → else omit.
+- **Hot tip window:** `contentOutboxRetentionTips` (default **256**); evacuate targets `memory_tip_blobs` for content facet pointers outside the window.
 
 ### TipOutbox (unified tip replay — 0.7.7+)
 
@@ -111,7 +112,7 @@ All tip-bound replay (content, graph, vectors, provenance payloads) uses one **`
 - **Suppress:** `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` append `graph` facet snapshots (not content outbox today).
 - **W3C PROV:** Storage records hash-chained mutations + tip payloads. Hosts assemble interoperable PROV bundles; optional export maps chain events to PROV-O. Native PROV is not the write format.
 
-Legacy `memory_content_outbox` / `memory_content_blobs` migrate to TipOutbox facet `content` with `facet='content'`.
+Legacy `memory_content_outbox` / `memory_content_blobs` remain in schema for upgrade paths only; **0.9.1** re-syncs them into TipOutbox `content` facet rows.
 
 ### Future (out of scope here)
 

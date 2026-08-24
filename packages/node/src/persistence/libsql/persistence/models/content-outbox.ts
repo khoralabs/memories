@@ -6,19 +6,21 @@ import {
   type ContentAtRootHit,
   hitsFromHot,
   type LwwArmRow,
-  SQL_INSERT_CONTENT_OUTBOX,
 } from "../../../../persistence/core/models/content-outbox-sql";
 import type { ContentBlobColdStore } from "../../../../persistence/core/persistence/content-blob-cold-store";
 import {
-  buildLegacyContentLwwQuery,
+  buildContentLwwQuery,
   deleteEntryToAppendInput,
-  legacyContentOutboxInsertParams,
   mergeEntriesToAppendInputs,
-  SQL_INSERT_HOT_BLOB,
-  SQL_REHYDRATE_HOT_BLOB,
-  SQL_SELECT_BLOB_BY_SHA,
   tipOutboxRowToLwwArm,
-} from "../../../../persistence/core/tip-outbox";
+  unifiedContentOutboxInsertParams,
+} from "../../../../persistence/core/tip-outbox/legacy-content";
+import {
+  SQL_INSERT_TIP_BLOB_HOT,
+  SQL_INSERT_TIP_OUTBOX,
+  SQL_SELECT_TIP_BLOB,
+  SQL_UPSERT_TIP_BLOB_REHYDRATE,
+} from "../../../../persistence/core/tip-outbox/replay-sql";
 import type { TipOutboxLwwRow } from "../../../../persistence/core/tip-outbox/types";
 import { execSql } from "../client";
 import type { DbCtx } from "../context";
@@ -30,12 +32,8 @@ export type { ContentAtRootHit };
 /**
  * Append-only thin content outbox for point-in-time text reconstruction.
  *
- * Rows store `content_sha256` pointers (not inline text). Bodies live in
- * `memory_content_blobs` (hot) and optionally a cold store. This design keeps
- * **all thin outbox rows** in the primary DB indefinitely. At extreme tip
- * counts, scale further by **tiered thinning of the outbox itself** (segment
- * old tip ranges into cold parquet/JSONL + a small SQLite catalog)—blob
- * tiering is implemented; outbox segment thinning is intentionally not.
+ * Rows store `payload_sha256` pointers in `memory_tip_outbox` (`facet='content'`).
+ * Bodies live in `memory_tip_blobs` (hot) and optionally a cold store.
  */
 export async function appendMergeOutboxEntries(
   ctx: DbCtx,
@@ -47,9 +45,9 @@ export async function appendMergeOutboxEntries(
   },
 ): Promise<void> {
   for (const appendInput of mergeEntriesToAppendInputs(input, ctx.now)) {
-    const { outboxParams, hotBlob } = legacyContentOutboxInsertParams(appendInput);
-    if (hotBlob) await upsertHotBlob(ctx, hotBlob.sha256, hotBlob.text);
-    await ctxExec(ctx, SQL_INSERT_CONTENT_OUTBOX, outboxParams);
+    const { outboxParams, hotBlob } = unifiedContentOutboxInsertParams(appendInput);
+    if (hotBlob) await upsertHotTipBlob(ctx, hotBlob.sha256, hotBlob.payload);
+    await ctxExec(ctx, SQL_INSERT_TIP_OUTBOX, outboxParams);
   }
 }
 
@@ -57,24 +55,28 @@ export async function appendDeleteOutboxEntry(
   ctx: DbCtx,
   input: { root_hex: string; namespace: string; memoryKey: string },
 ): Promise<void> {
-  const { outboxParams } = legacyContentOutboxInsertParams(
+  const { outboxParams } = unifiedContentOutboxInsertParams(
     deleteEntryToAppendInput(input, ctx.now),
   );
-  await ctxExec(ctx, SQL_INSERT_CONTENT_OUTBOX, outboxParams);
+  await ctxExec(ctx, SQL_INSERT_TIP_OUTBOX, outboxParams);
 }
 
-async function upsertHotBlob(ctx: DbCtx, contentSha256: string, text: string): Promise<void> {
-  const existing = await ctxQueryOne<{ location: string; text: string | null }>(
+async function upsertHotTipBlob(
+  ctx: DbCtx,
+  contentSha256: string,
+  payload: Uint8Array,
+): Promise<void> {
+  const existing = await ctxQueryOne<{ location: string; payload: Uint8Array | null }>(
     ctx,
-    SQL_SELECT_BLOB_BY_SHA,
+    SQL_SELECT_TIP_BLOB,
     [contentSha256],
   );
   if (existing === undefined) {
-    await ctxExec(ctx, SQL_INSERT_HOT_BLOB, [contentSha256, text, ctx.now]);
+    await ctxExec(ctx, SQL_INSERT_TIP_BLOB_HOT, [contentSha256, payload, ctx.now]);
     return;
   }
-  if (existing.location !== "hot" || existing.text == null) {
-    await ctxExec(ctx, SQL_REHYDRATE_HOT_BLOB, [text, contentSha256]);
+  if (existing.location !== "hot" || existing.payload == null) {
+    await ctxExec(ctx, SQL_UPSERT_TIP_BLOB_REHYDRATE, [payload, contentSha256]);
   }
 }
 
@@ -83,7 +85,7 @@ async function queryLwwArms(
   rootHex: string,
   scope: { namespace: string; memoryKey: string } | null,
 ): Promise<LwwArmRow[]> {
-  const { sql, params } = buildLegacyContentLwwQuery(rootHex, scope);
+  const { sql, params } = buildContentLwwQuery(rootHex, scope);
   const rows = await readQueryAll<TipOutboxLwwRow>(db, sql, params);
   return rows.map(tipOutboxRowToLwwArm);
 }

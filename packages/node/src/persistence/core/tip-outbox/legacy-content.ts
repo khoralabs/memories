@@ -1,68 +1,60 @@
-import {
-  type LwwArmRow,
-  SQL_INSERT_CONTENT_OUTBOX,
-  SQL_INSERT_HOT_BLOB,
-  SQL_REHYDRATE_HOT_BLOB,
-  SQL_SELECT_BLOB_BY_SHA,
-} from "../models/content-outbox-sql";
+import type { LwwArmRow } from "../models/content-outbox-sql";
 import { buildTipOutboxAppend } from "./append";
 import { utf8Bytes, utf8Decode } from "./payload";
-import { buildTipOutboxLwwQuery, LEGACY_CONTENT_TABLES } from "./replay-sql";
+import { buildTipOutboxLwwQuery, UNIFIED_TIP_TABLES } from "./replay-sql";
 import type { TipOutboxLwwRow } from "./types";
 
-/** Bind params for legacy `memory_content_outbox` INSERT from TipOutbox append. */
-export function legacyContentOutboxInsertParams(
+/** Bind params for unified `memory_tip_outbox` INSERT (content facet) from TipOutbox append. */
+export function unifiedContentOutboxInsertParams(
   input: Parameters<typeof buildTipOutboxAppend>[0],
-): { outboxParams: unknown[]; hotBlob?: { sha256: string; text: string } } {
+): { outboxParams: unknown[]; hotBlob?: { sha256: string; payload: Uint8Array } } {
   const built = buildTipOutboxAppend(input);
   const outboxParams = [
     built.outbox.id,
     built.outbox.now,
     built.outbox.rootHex,
+    built.outbox.facet,
     built.outbox.eventType,
     built.outbox.namespace,
     built.outbox.memoryKey,
     built.outbox.sourceKey,
-    null,
+    built.outbox.edgeId,
     built.outbox.payloadSha256,
   ];
   if (built.hotBlob) {
     return {
       outboxParams,
-      hotBlob: { sha256: built.hotBlob.sha256, text: utf8Decode(built.hotBlob.payload) },
+      hotBlob: { sha256: built.hotBlob.sha256, payload: built.hotBlob.payload },
     };
   }
   return { outboxParams };
 }
 
-export {
-  SQL_INSERT_CONTENT_OUTBOX,
-  SQL_INSERT_HOT_BLOB,
-  SQL_REHYDRATE_HOT_BLOB,
-  SQL_SELECT_BLOB_BY_SHA,
-};
-
-export function buildLegacyContentLwwQuery(
+export function buildContentLwwQuery(
   rootHex: string,
   scope: { namespace: string; memoryKey: string } | null,
 ): { sql: string; params: unknown[] } {
   if (scope === null) {
-    return buildTipOutboxLwwQuery(rootHex, { facet: "content" }, LEGACY_CONTENT_TABLES);
+    return buildTipOutboxLwwQuery(rootHex, { facet: "content" }, UNIFIED_TIP_TABLES);
   }
   return buildTipOutboxLwwQuery(
     rootHex,
     { facet: "content", namespace: scope.namespace, memoryKey: scope.memoryKey },
-    LEGACY_CONTENT_TABLES,
+    UNIFIED_TIP_TABLES,
   );
 }
 
 export function tipOutboxRowToLwwArm(row: TipOutboxLwwRow): LwwArmRow {
+  let blobText = row.blobText;
+  if (blobText == null && row.blobBytes != null) {
+    blobText = utf8Decode(row.blobBytes);
+  }
   return {
     namespace: row.namespace,
     memoryKey: row.memoryKey,
     sourceKey: row.sourceKey ?? "",
     contentSha256: row.payloadSha256,
-    blobText: row.blobText,
+    blobText,
     location: row.location,
     coldUri: row.coldUri,
   };

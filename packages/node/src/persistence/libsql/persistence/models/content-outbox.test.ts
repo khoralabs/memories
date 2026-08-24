@@ -61,6 +61,22 @@ async function requireHead(persistence: MemoriesPersistenceAsync): Promise<strin
   return root;
 }
 
+async function tipBlobRow(
+  client: Parameters<typeof queryOne>[0],
+  contentSha256: string,
+): Promise<{ location: string; text: string | null } | undefined> {
+  const row = await queryOne<{ location: string; payload: Uint8Array | null }>(
+    client,
+    `SELECT location, payload FROM memory_tip_blobs WHERE content_sha256 = ?`,
+    [contentSha256],
+  );
+  if (row === undefined) return undefined;
+  return {
+    location: row.location,
+    text: row.payload != null ? new TextDecoder().decode(row.payload) : null,
+  };
+}
+
 describe("libsql content outbox", () => {
   test("thin append stores hash; evacuate drops bodies outside hot window", async () => {
     const { persistence, libsql } = await openLibsql({
@@ -94,17 +110,13 @@ describe("libsql content outbox", () => {
     await libsql.evacuateContentBlobs();
 
     const sha = sha256Hex("old-libsql");
-    const blob = await queryOne<{ location: string; text: string | null }>(
-      libsql.db.client,
-      `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      [sha],
-    );
+    const blob = await tipBlobRow(libsql.db.client, sha);
     expect(blob?.location).toBe("dropped");
     expect(blob?.text).toBeNull();
 
     const outboxText = await queryOne<{ n: number }>(
       libsql.db.client,
-      `SELECT COUNT(*) AS n FROM memory_content_outbox WHERE text IS NOT NULL`,
+      `SELECT COUNT(*) AS n FROM memory_tip_outbox WHERE facet = 'content' AND payload_sha256 IS NULL`,
     );
     expect(outboxText?.n).toBe(0);
 
@@ -242,11 +254,7 @@ describe("libsql content outbox", () => {
 
     await libsql.evacuateContentBlobs();
 
-    const row = await queryOne<{ location: string; text: string | null }>(
-      libsql.db.client,
-      `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      [sha256Hex("retain-me")],
-    );
+    const row = await tipBlobRow(libsql.db.client, sha256Hex("retain-me"));
     expect(row?.location).toBe("hot");
     expect(row?.text).toBe("retain-me");
     expect(await libsql.getMemoryContentAtRootHex(oldRoot, "ns", "m1")).toEqual([
@@ -269,11 +277,7 @@ describe("libsql content outbox", () => {
     );
     const root = await requireHead(persistence);
 
-    const blob = await queryOne<{ location: string; text: string | null }>(
-      libsql.db.client,
-      `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      [sha256Hex("")],
-    );
+    const blob = await tipBlobRow(libsql.db.client, sha256Hex(""));
     expect(blob?.location).toBe("hot");
     expect(blob?.text).toBe("");
 
@@ -312,11 +316,7 @@ describe("libsql content outbox", () => {
 
     await libsql.evacuateContentBlobs();
 
-    const row = await queryOne<{ location: string; text: string | null }>(
-      libsql.db.client,
-      `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      [sha256Hex("keep-me")],
-    );
+    const row = await tipBlobRow(libsql.db.client, sha256Hex("keep-me"));
     expect(row?.location).toBe("hot");
     expect(row?.text).toBe("keep-me");
     expect(await libsql.getMemoryContentAtRootHex(oldRoot, "ns", "m1")).toEqual([
@@ -353,11 +353,7 @@ describe("libsql content outbox", () => {
 
     await libsql.evacuateContentBlobs();
 
-    const row = await queryOne<{ location: string; text: string | null }>(
-      libsql.db.client,
-      `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      [sha256Hex("shared")],
-    );
+    const row = await tipBlobRow(libsql.db.client, sha256Hex("shared"));
     expect(row?.location).toBe("hot");
     expect(row?.text).toBe("shared");
   });
@@ -389,15 +385,7 @@ describe("libsql content outbox", () => {
       },
     );
     await libsql.evacuateContentBlobs();
-    expect(
-      (
-        await queryOne<{ location: string }>(
-          libsql.db.client,
-          `SELECT location FROM memory_content_blobs WHERE content_sha256 = ?`,
-          [sha256Hex("revive-me")],
-        )
-      )?.location,
-    ).toBe("dropped");
+    expect((await tipBlobRow(libsql.db.client, sha256Hex("revive-me")))?.location).toBe("dropped");
 
     await mergeMemoryAsync(
       { persistence },
@@ -410,11 +398,7 @@ describe("libsql content outbox", () => {
       },
     );
 
-    const row = await queryOne<{ location: string; text: string | null }>(
-      libsql.db.client,
-      `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      [sha256Hex("revive-me")],
-    );
+    const row = await tipBlobRow(libsql.db.client, sha256Hex("revive-me"));
     expect(row?.location).toBe("hot");
     expect(row?.text).toBe("revive-me");
   });

@@ -69,13 +69,13 @@ describe.skipIf(!integration)("turso content outbox smoke", () => {
     await turso.evacuateContentBlobs();
 
     const sha = sha256Hex(`old-turso-${suffix}`);
-    const blob = await queryOne<{ location: string; text: string | null }>(
+    const blobRow = await queryOne<{ location: string; payload: Uint8Array | null }>(
       turso.db.read,
-      `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
+      `SELECT location, payload FROM memory_tip_blobs WHERE content_sha256 = ?`,
       [sha],
     );
-    expect(blob?.location).toBe("dropped");
-    expect(blob?.text).toBeNull();
+    expect(blobRow?.location).toBe("dropped");
+    expect(blobRow?.payload).toBeNull();
 
     expect(await turso.getMemoryContentAtRootHex(oldRoot, ns, `m1-${suffix}`)).toEqual([]);
   });

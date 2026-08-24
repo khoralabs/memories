@@ -1,4 +1,6 @@
 import { DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS } from "../persistence/content-blob-cold-store";
+import { utf8Bytes } from "../tip-outbox/payload";
+import { SQL_UPSERT_TIP_BLOB_REHYDRATE } from "../tip-outbox/replay-sql";
 import {
   type ContentAtRootHit,
   type ContentOutboxSqlDeps,
@@ -7,7 +9,6 @@ import {
   SQL_EVACUATE_TO_COLD,
   SQL_EVACUATE_TO_DROPPED,
   SQL_HOT_PROVENANCE_TIPS,
-  SQL_REHYDRATE_HOT_BLOB,
   sqlEvacuateCandidates,
 } from "./content-outbox-sql";
 import { sha256Hex } from "./sha256";
@@ -25,7 +26,7 @@ export async function resolveLwwRows(
       const fetched = await coldStore.get(row.contentSha256);
       if (fetched !== null && sha256Hex(fetched) === row.contentSha256) {
         text = fetched;
-        await deps.exec(SQL_REHYDRATE_HOT_BLOB, [fetched, row.contentSha256]);
+        await deps.exec(SQL_UPSERT_TIP_BLOB_REHYDRATE, [utf8Bytes(fetched), row.contentSha256]);
       }
     }
     if (text == null) continue;
@@ -72,21 +73,22 @@ async function evacuateContentBlobsOutsideHotWindowInner(
   const hotTips = tipRows.map((r) => r.root_hex);
   if (hotTips.length === 0) return;
 
-  const candidates = await deps.queryAll<{ content_sha256: string; text: string | null }>(
-    sqlEvacuateCandidates(hotTips.length),
-    hotTips,
-  );
+  const candidates = await deps.queryAll<{
+    content_sha256: string;
+    payload: Uint8Array | null;
+  }>(sqlEvacuateCandidates(hotTips.length), hotTips);
 
   for (const row of candidates) {
-    if (row.text == null) continue;
+    if (row.payload == null) continue;
+    const text = new TextDecoder().decode(row.payload);
     if (coldStore !== undefined) {
-      if (sha256Hex(row.text) !== row.content_sha256) {
+      if (sha256Hex(text) !== row.content_sha256) {
         console.error(
           `evacuateContentBlobs: sha mismatch for ${row.content_sha256}; skipping cold put`,
         );
         continue;
       }
-      await coldStore.put(row.content_sha256, row.text);
+      await coldStore.put(row.content_sha256, text);
       const uri = coldStore.uriFor(row.content_sha256);
       await deps.exec(SQL_EVACUATE_TO_COLD, [uri, row.content_sha256]);
     } else {

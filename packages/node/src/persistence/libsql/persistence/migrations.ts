@@ -19,7 +19,7 @@ import {
 } from "./schema";
 import { batchWriteStatements } from "./transactions";
 
-export const MEMORIES_SCHEMA_VERSION = "0.9.0";
+export const MEMORIES_SCHEMA_VERSION = "0.9.1";
 
 const NS_PREFIX_COLUMNS = [
   "ns_prefix_1",
@@ -168,6 +168,17 @@ const migrations: Migration[] = [
           await execSql(db.client, part);
         }
       }
+      for (const stmt of MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL.split(";")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)) {
+        await execSql(db.client, stmt);
+      }
+    },
+  },
+  {
+    to: "0.9.1",
+    name: "001-resync-content-to-tip-outbox",
+    up: async (db) => {
       for (const stmt of MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL.split(";")
         .map((s) => s.trim())
         .filter((s) => s.length > 0)) {

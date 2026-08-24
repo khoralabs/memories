@@ -1,3 +1,4 @@
+import type { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { deleteMemory, mergeMemory, replaceMemoryFeature } from "../../../../core/index";
 import { sha256Hex } from "../../../../persistence/core/models/sha256";
@@ -13,6 +14,22 @@ function requireHead(persistence: { getProvenanceHeadRootHex(): string | undefin
   expect(root).toBeDefined();
   if (root === undefined) throw new Error("expected provenance head");
   return root;
+}
+
+function tipBlobRow(
+  db: Database,
+  contentSha256: string,
+): { location: string; text: string | null } | undefined {
+  const row = db
+    .query<{ location: string; payload: Uint8Array | null }, [string]>(
+      `SELECT location, payload FROM memory_tip_blobs WHERE content_sha256 = ?`,
+    )
+    .get(contentSha256);
+  if (row === null || row === undefined) return undefined;
+  return {
+    location: row.location,
+    text: row.payload != null ? new TextDecoder().decode(row.payload) : null,
+  };
 }
 
 describe("content outbox blobs + LWW", () => {
@@ -43,24 +60,19 @@ describe("content outbox blobs + LWW", () => {
         },
       );
 
-      const blobCount = db
-        .query<{ n: number }, []>(`SELECT COUNT(*) AS n FROM memory_content_blobs`)
-        .get()?.n;
-      expect(blobCount).toBe(1);
-
       const hash = sha256Hex("same-body");
-      const outboxNullText = db
-        .query<{ n: number }, []>(
-          `SELECT COUNT(*) AS n FROM memory_content_outbox WHERE text IS NOT NULL`,
-        )
-        .get()?.n;
-      expect(outboxNullText).toBe(0);
-      const hashed = db
+      const blobCount = db
         .query<{ n: number }, [string]>(
-          `SELECT COUNT(*) AS n FROM memory_content_outbox WHERE content_sha256 = ?`,
+          `SELECT COUNT(*) AS n FROM memory_tip_blobs WHERE content_sha256 = ?`,
         )
         .get(hash)?.n;
-      expect(hashed).toBe(2);
+      expect(blobCount).toBe(1);
+      const outboxRows = db
+        .query<{ n: number }, [string]>(
+          `SELECT COUNT(*) AS n FROM memory_tip_outbox WHERE facet = 'content' AND payload_sha256 = ?`,
+        )
+        .get(hash)?.n;
+      expect(outboxRows).toBe(2);
     },
     { timeout: 30_000 },
   );
@@ -161,16 +173,14 @@ describe("content outbox blobs + LWW", () => {
 
     await persistence.evacuateContentBlobs();
 
-    const dropped = db
-      .query<{ location: string; text: string | null }, [string]>(
-        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      )
-      .get(sha256Hex("old-text"));
+    const dropped = tipBlobRow(db, sha256Hex("old-text"));
     expect(dropped?.location).toBe("dropped");
     expect(dropped?.text).toBeNull();
 
     const outboxRows = db
-      .query<{ n: number }, []>(`SELECT COUNT(*) AS n FROM memory_content_outbox`)
+      .query<{ n: number }, []>(
+        `SELECT COUNT(*) AS n FROM memory_tip_outbox WHERE facet = 'content'`,
+      )
       .get()?.n;
     expect(outboxRows).toBeGreaterThanOrEqual(2);
 
@@ -210,11 +220,7 @@ describe("content outbox blobs + LWW", () => {
 
     await persistence.evacuateContentBlobs();
 
-    const row = db
-      .query<{ location: string; text: string | null }, [string]>(
-        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      )
-      .get(sha256Hex("retain-me"));
+    const row = tipBlobRow(db, sha256Hex("retain-me"));
     expect(row?.location).toBe("hot");
     expect(row?.text).toBe("retain-me");
     expect(persistence.getMemoryContentAtRootHex(oldRoot, "ns", "m1")).toEqual([
@@ -238,11 +244,7 @@ describe("content outbox blobs + LWW", () => {
     );
     const root = requireHead(persistence);
 
-    const blob = db
-      .query<{ location: string; text: string | null }, [string]>(
-        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      )
-      .get(sha256Hex(""));
+    const blob = tipBlobRow(db, sha256Hex(""));
     expect(blob?.location).toBe("hot");
     expect(blob?.text).toBe("");
 
@@ -282,11 +284,7 @@ describe("content outbox blobs + LWW", () => {
 
     await persistence.evacuateContentBlobs();
 
-    const row = db
-      .query<{ location: string; text: string | null }, [string]>(
-        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      )
-      .get(sha256Hex("keep-me"));
+    const row = tipBlobRow(db, sha256Hex("keep-me"));
     expect(row?.location).toBe("hot");
     expect(row?.text).toBe("keep-me");
     expect(persistence.getMemoryContentAtRootHex(oldRoot, "ns", "m1")).toEqual([
@@ -325,11 +323,7 @@ describe("content outbox blobs + LWW", () => {
 
     await persistence.evacuateContentBlobs();
 
-    const row = db
-      .query<{ location: string; text: string | null }, [string]>(
-        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      )
-      .get(sha256Hex("shared"));
+    const row = tipBlobRow(db, sha256Hex("shared"));
     expect(row?.location).toBe("hot");
     expect(row?.text).toBe("shared");
   });
@@ -363,13 +357,7 @@ describe("content outbox blobs + LWW", () => {
       },
     );
     await persistence.evacuateContentBlobs();
-    expect(
-      db
-        .query<{ location: string }, [string]>(
-          `SELECT location FROM memory_content_blobs WHERE content_sha256 = ?`,
-        )
-        .get(sha256Hex("revive-me"))?.location,
-    ).toBe("dropped");
+    expect(tipBlobRow(db, sha256Hex("revive-me"))?.location).toBe("dropped");
 
     mergeMemory(
       { persistence },
@@ -382,11 +370,7 @@ describe("content outbox blobs + LWW", () => {
       },
     );
 
-    const row = db
-      .query<{ location: string; text: string | null }, [string]>(
-        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      )
-      .get(sha256Hex("revive-me"));
+    const row = tipBlobRow(db, sha256Hex("revive-me"));
     expect(row?.location).toBe("hot");
     expect(row?.text).toBe("revive-me");
   });
@@ -427,11 +411,7 @@ describe("content outbox blobs + LWW", () => {
 
     const sha = sha256Hex("cold-body");
     expect(cold.map.has(sha)).toBe(true);
-    const loc = db
-      .query<{ location: string; text: string | null }, [string]>(
-        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      )
-      .get(sha);
+    const loc = tipBlobRow(db, sha);
     expect(loc?.location).toBe("cold");
     expect(loc?.text).toBeNull();
 
@@ -441,11 +421,7 @@ describe("content outbox blobs + LWW", () => {
       { namespace: "ns", memoryKey: "m1", sourceKey: "s", text: "cold-body" },
     ]);
 
-    const rehydrated = db
-      .query<{ location: string; text: string | null }, [string]>(
-        `SELECT location, text FROM memory_content_blobs WHERE content_sha256 = ?`,
-      )
-      .get(sha);
+    const rehydrated = tipBlobRow(db, sha);
     expect(rehydrated?.location).toBe("hot");
     expect(rehydrated?.text).toBe("cold-body");
   });

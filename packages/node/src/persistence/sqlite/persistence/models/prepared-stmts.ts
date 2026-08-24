@@ -27,9 +27,6 @@ export type MemoriesSqliteStmts = {
   // memory-provenance
   insertMemoryProvenance: Statement;
 
-  // memory-content-outbox
-  insertContentOutbox: Statement;
-
   // memory-search-meta (static parts; dynamic vec tables handled via getters below)
   deleteTextFeaturesFtsByTextFeatureId: Statement;
   deleteTextFeaturesFtsBySourceMapId: Statement;
@@ -126,11 +123,6 @@ export function prepareMemoriesSqliteStmts(db: Database): MemoriesSqliteStmts {
     insertMemoryProvenance: db.prepare(
       `INSERT INTO memory_provenance (_id, _ts_created, parent_root_hex, root_hex, event_type, event_json, intent_snapshot_id)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ),
-
-    insertContentOutbox: db.prepare(
-      `INSERT OR IGNORE INTO memory_content_outbox (_id, _ts_created, root_hex, event_type, namespace, memory_key, source_key, text, content_sha256)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
 
     deleteTextFeaturesFtsByTextFeatureId: db.prepare(

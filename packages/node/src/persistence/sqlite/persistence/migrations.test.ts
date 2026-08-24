@@ -52,6 +52,7 @@ describe("memories sqlite migrations", () => {
       { from_version: "0.6.0", to_version: "0.7.0", name: "001-add-content-blobs" },
       { from_version: "0.7.0", to_version: "0.8.0", name: "001-add-content-sha256-index" },
       { from_version: "0.8.0", to_version: "0.9.0", name: "001-add-tip-outbox" },
+      { from_version: "0.9.0", to_version: "0.9.1", name: "001-resync-content-to-tip-outbox" },
     ]);
 
     const nsIdx = db
