@@ -1006,6 +1006,8 @@ structure ListProvenanceEventsInput {
     namespace: String
     /// Wire/HTTP field name is `key` (same meaning as memory key).
     key: String
+    /// When set (with `namespace`), matches events for this edge id or edge memory key.
+    edgeId: String
     limit: Integer
     before: ProvenanceEventsBeforeCursor
 }

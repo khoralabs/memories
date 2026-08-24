@@ -711,6 +711,8 @@ export interface MemoriesPersistenceReads {
   listProvenanceEvents?(input: {
     namespace?: string;
     key?: string;
+    edgeId?: string;
+    edgeMemoryKey?: string;
     limit: number;
     before?: { createdAt: number; id: string };
   }): ProvenanceEventListItem[];

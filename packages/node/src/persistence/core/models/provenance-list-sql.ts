@@ -39,6 +39,25 @@ export const SQL_PROVENANCE_EVENTS = `SELECT _id, root_hex, parent_root_hex, eve
        ORDER BY _ts_created DESC, _id DESC
        LIMIT ?`;
 
+export const SQL_PROVENANCE_EVENTS_EDGE = `SELECT _id, root_hex, parent_root_hex, event_type, _ts_created, event_json, intent_snapshot_id
+       FROM memory_provenance
+       WHERE (
+         json_extract(event_json, '$.namespace') = ?
+         OR json_extract(event_json, '$.from_namespace') = ?
+         OR json_extract(event_json, '$.to_namespace') = ?
+       )
+         AND (
+           json_extract(event_json, '$.edge_id') = ?
+           OR json_extract(event_json, '$.memory_key') = ?
+         )
+         AND (
+           ? IS NULL
+           OR _ts_created < ?
+           OR (_ts_created = ? AND _id < ?)
+         )
+       ORDER BY _ts_created DESC, _id DESC
+       LIMIT ?`;
+
 export const SQL_PROVENANCE_CHAIN_TIP = `SELECT _ts_created, _id FROM memory_provenance WHERE root_hex = ? LIMIT 1`;
 
 export const SQL_PROVENANCE_CHAIN_BEFORE = `SELECT _id, root_hex, parent_root_hex, event_type, _ts_created
@@ -59,6 +78,9 @@ export const SQL_INSERT_MEMORY_PROVENANCE = `INSERT INTO memory_provenance (_id,
 export type ProvenanceEventsListInput = {
   namespace?: string;
   key?: string;
+  /** When set, requires `namespace`; matches `edge_id` or edge memory `memory_key` in event JSON. */
+  edgeId?: string;
+  edgeMemoryKey?: string;
   limit: number;
   before?: { createdAt: number; id: string };
 };
@@ -89,6 +111,9 @@ export function buildProvenanceEventsQuery(input: ProvenanceEventsListInput): {
   if (input.key !== undefined && input.namespace === undefined) {
     throw new RangeError("listProvenanceEvents: key requires namespace");
   }
+  if (input.edgeId !== undefined && input.namespace === undefined) {
+    throw new RangeError("listProvenanceEvents: edgeId requires namespace");
+  }
   const limit = clampProvenanceListLimit(input.limit);
   const ns = input.namespace ?? null;
   const key = input.key ?? null;
@@ -96,6 +121,25 @@ export function buildProvenanceEventsQuery(input: ProvenanceEventsListInput): {
   const beforeIdRaw = input.before?.id ?? null;
   if (beforeIdRaw !== null && !isValidProvenanceCursorId(beforeIdRaw)) {
     throw new RangeError("listProvenanceEvents: before.id is invalid");
+  }
+  if (input.edgeId !== undefined) {
+    const edgeId = input.edgeId;
+    const edgeMemoryKey = input.edgeMemoryKey ?? "";
+    return {
+      sql: SQL_PROVENANCE_EVENTS_EDGE,
+      params: [
+        ns,
+        ns,
+        ns,
+        edgeId,
+        edgeMemoryKey,
+        beforeCreated,
+        beforeCreated,
+        beforeCreated,
+        beforeIdRaw,
+        limit,
+      ],
+    };
   }
   return {
     sql: SQL_PROVENANCE_EVENTS,
