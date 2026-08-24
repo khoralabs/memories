@@ -20,6 +20,14 @@ export {
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
 } from "./memory-agent-defaults.js";
 export {
+  buildMemorySearchAgentSpec,
+  buildMemorySearchBudgetPrepareStep,
+  buildMemorySearchTools,
+  type MemorySearchAgentSpec,
+  type MemorySearchAgentSpecOptions,
+  type MemorySearchToolSet,
+} from "./memory-search-agent-spec.js";
+export {
   MEMORY_SEARCH_BUDGET_POLICY_ID,
   MEMORY_SEARCH_TOOL_NAME,
   type MemorySearchEnv,
@@ -37,7 +45,6 @@ export { elapsedMs } from "./timing.js";
 export {
   createMemorySearchToolLoopAgent,
   type MemorySearchToolLoopAgent,
-  type MemorySearchToolSet,
 } from "./tool-loop-from-affordances.js";
 export {
   attachMemorySearchSessionLayer,
