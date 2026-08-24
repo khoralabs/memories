@@ -32,6 +32,11 @@ export {
   utf8Decode,
 } from "./payload";
 export {
+  replayGraphSnapshotAtRootHex,
+  replayProvenanceEventJsonAtRootHex,
+  replayVectorArmsAtRootHex,
+} from "./replay";
+export {
   buildTipOutboxLwwQuery,
   LEGACY_CONTENT_TABLES,
   SQL_INSERT_TIP_BLOB_HOT,

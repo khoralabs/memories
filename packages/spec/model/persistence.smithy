@@ -1095,6 +1095,74 @@ structure GetMemoryContentAtRootHexOutput {
 }
 
 @documentation("""
+Graph snapshot (labels, properties, suppression) as of a provenance tip.
+Optional on implementors (`getMemoryGraphAtRootHex?` in TS).
+""")
+operation GetMemoryGraphAtRootHex {
+    input: GetMemoryGraphAtRootHexInput
+    output: GetMemoryGraphAtRootHexOutput
+}
+
+structure GetMemoryGraphAtRootHexInput {
+    rootHex: String
+    namespace: String
+    key: String
+}
+
+structure TipGraphSnapshotV1 {
+    v: Integer
+    kind: String
+    namespace: String
+    memoryKey: String
+    edgeId: String
+    suppressed: Boolean
+    labels: OntologyLabelInstanceList
+    properties: Document
+    endpoints: TipGraphEndpoints
+}
+
+structure TipGraphEndpoints {
+    fromKey: String
+    toKey: String
+}
+
+structure GetMemoryGraphAtRootHexOutput {
+    graph: TipGraphSnapshotV1
+}
+
+@documentation("""
+Vector embedding arms as of a provenance tip (per-arm LWW).
+Optional on implementors (`getMemoryVectorAtRootHex?` in TS).
+""")
+operation GetMemoryVectorAtRootHex {
+    input: GetMemoryVectorAtRootHexInput
+    output: GetMemoryVectorAtRootHexOutput
+}
+
+structure GetMemoryVectorAtRootHexInput {
+    rootHex: String
+    namespace: String
+    key: String
+}
+
+structure MemoryVectorAtRootItem {
+    sourceKey: String
+    vector: FloatList
+}
+
+list FloatList {
+    member: Float
+}
+
+list MemoryVectorAtRootItemList {
+    member: MemoryVectorAtRootItem
+}
+
+structure GetMemoryVectorAtRootHexOutput {
+    vectors: MemoryVectorAtRootItemList
+}
+
+@documentation("""
 Distinct embedding widths for vector indexes present in the store.
 Return empty `dimensions` when there are no indexed vectors or the backend cannot report widths.
 """)

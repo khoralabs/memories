@@ -70,9 +70,18 @@ export type ProvenanceChainLink = {
 };
 
 /** Lexical arm reconstructed as of a provenance tip. */
+import type { TipGraphSnapshotV1 } from "../tip-outbox/graph-snapshot";
+
 export type MemoryContentAtRootItem = {
   sourceKey: string;
   text: string;
+};
+
+export type MemoryGraphAtRoot = TipGraphSnapshotV1;
+
+export type MemoryVectorAtRootItem = {
+  sourceKey: string;
+  vector: number[];
 };
 
 /**
@@ -710,6 +719,23 @@ export interface MemoriesPersistenceReads {
     namespace: string,
     memoryKey: string,
   ): MemoryContentAtRootItem[];
+
+  /** Graph snapshot as of a provenance tip (TipOutbox `graph` facet). */
+  getMemoryGraphAtRootHexAsync?(
+    rootHex: string,
+    namespace: string,
+    memoryKey: string,
+  ): Promise<MemoryGraphAtRoot | null>;
+
+  /** Vector arms as of a provenance tip (TipOutbox `vector` facet). */
+  getMemoryVectorAtRootHexAsync?(
+    rootHex: string,
+    namespace: string,
+    memoryKey: string,
+  ): Promise<MemoryVectorAtRootItem[]>;
+
+  /** Canonical provenance event JSON at a tip (TipOutbox `provenance` facet). */
+  getProvenanceEventJsonAtRootHexAsync?(rootHex: string): Promise<string | null>;
 }
 
 /**

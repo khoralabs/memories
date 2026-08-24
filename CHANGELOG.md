@@ -11,6 +11,8 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ### Added
 
+- **@khoralabs/memories-spec** — `GetMemoryGraphAtRootHex` and `GetMemoryVectorAtRootHex` persistence ops for TipOutbox replay at a provenance tip.
+- **@khoralabs/memories-node** — `getMemoryGraphAtRootHexAsync`, `getMemoryVectorAtRootHexAsync`, and `getProvenanceEventJsonAtRootHexAsync` TipOutbox replay helpers.
 - **@khoralabs/memories-node** — Provenance `event_json` duplicated into TipOutbox `provenance` facet blobs on append (chain row unchanged; list APIs still read inline `event_json` until hydration lands).
 - **@khoralabs/memories-node** — Vector embedding arms at provenance tip (`vector` TipOutbox facet) on merge and delete.
 - **@khoralabs/memories-node** — Graph state at provenance tip (`graph` TipOutbox facet) on merge, delete, suppress, and unsuppress.
