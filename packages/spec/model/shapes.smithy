@@ -155,6 +155,7 @@ When a flag is false, the logic layer:
 - **multiNamespaceSearch:** core runs separate per-namespace retrieval and merges with RRF (no `IN` list required).
 - **unscopedSearch:** rejects `searchEntireDatabase` on SearchParams; unscoped scope is not used.
 - **asOfTimestampMsSearch:** when true, `SearchParams.asOf` is applied; when omitted/false, as-of search is rejected.
+- **tipReplayAtRootHex:** when true, graph/vector/provenance replay at a provenance tip is available; when omitted/false, those replay ops are unavailable (content facet replay is separate).
 
 Thin single-namespace adapters should set **multiNamespaceSearch** false; core still works via fallback.
 """)
@@ -177,6 +178,8 @@ structure MemoriesBackendCapabilities {
     unscopedSearch: Boolean
     /// When true, hybrid search honors `asOf` (memory `_ts_created` bounds).
     asOfTimestampMsSearch: Boolean
+    /// When true, graph/vector/provenance TipOutbox replay at a provenance tip is available.
+    tipReplayAtRootHex: Boolean
 }
 
 enum VectorSearchMethod {

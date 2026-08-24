@@ -159,6 +159,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
       multiNamespaceSearch: true,
       unscopedSearch: true,
       asOfTimestampMsSearch: true,
+      tipReplayAtRootHex: true,
     };
     this.stmts = prepareMemoriesSqliteStmts(db);
   }
@@ -423,6 +424,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   }
 
   async getMemoryGraphAtRootHexAsync(rootHex: string, namespace: string, memoryKey: string) {
+    if (!this.capabilities.tipReplayAtRootHex) return null;
     return getMemoryGraphAtRootHexAsyncQuery(
       this.db,
       rootHex,
@@ -433,6 +435,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   }
 
   async getMemoryVectorAtRootHexAsync(rootHex: string, namespace: string, memoryKey: string) {
+    if (!this.capabilities.tipReplayAtRootHex) return [];
     return getMemoryVectorAtRootHexAsyncQuery(
       this.db,
       rootHex,
@@ -443,6 +446,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   }
 
   async getProvenanceEventJsonAtRootHexAsync(rootHex: string) {
+    if (!this.capabilities.tipReplayAtRootHex) return null;
     return getProvenanceEventJsonAtRootHexAsyncQuery(this.db, rootHex, this.contentBlobColdStore);
   }
 

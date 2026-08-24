@@ -589,6 +589,57 @@ export function runMemoriesPersistenceContractTests(
         const prior = await persistence.getMemoryContentAtRootHex(mergeRoot, namespace, key);
         expect(prior.some((h) => h.sourceKey === "s" && h.text === "alive")).toBe(true);
       });
+
+      test("graph at tip replay when tipReplayAtRootHex", async () => {
+        const persistence = await create();
+        const caps = resolveMemoriesBackendCapabilities(persistence);
+        if (!caps.tipReplayAtRootHex) return;
+        if (persistence.getMemoryGraphAtRootHexAsync === undefined) return;
+
+        const namespace = uniqueNs("contract/graph-at-tip");
+        const key = "node1";
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            key,
+            namespace,
+            content: [{ key: "s", text: "body" }],
+            labels: [{ kind: "topic", props: {} }],
+            edges: [],
+            properties: { p: 1 },
+          },
+        );
+        const root = await persistence.getProvenanceHeadRootHex();
+        expect(root).toBeDefined();
+        if (root === undefined) throw new Error("expected tip");
+
+        const graph = await persistence.getMemoryGraphAtRootHexAsync(root, namespace, key);
+        expect(graph?.kind).toBe("node");
+        expect(graph?.memoryKey).toBe(key);
+        expect(graph?.labels.some((l) => l.kind === "topic")).toBe(true);
+
+        if (persistence.getMemoryVectorAtRootHexAsync !== undefined) {
+          const vectors = await persistence.getMemoryVectorAtRootHexAsync(root, namespace, key);
+          expect(vectors).toEqual([]);
+        }
+
+        if (persistence.getProvenanceEventJsonAtRootHexAsync !== undefined) {
+          const eventJson = await persistence.getProvenanceEventJsonAtRootHexAsync(root);
+          expect(eventJson).toBeTruthy();
+          expect(JSON.parse(eventJson as string).kind).toBe("MERGE_MEMORY");
+        }
+
+        await deleteMemoryAsync({ persistence }, { namespace, key });
+        const deleteRoot = await persistence.getProvenanceHeadRootHex();
+        expect(deleteRoot).toBeDefined();
+        if (deleteRoot === undefined) throw new Error("expected delete tip");
+        const afterDelete = await persistence.getMemoryGraphAtRootHexAsync(
+          deleteRoot,
+          namespace,
+          key,
+        );
+        expect(afterDelete).toBeNull();
+      });
     });
 
     describe("graph", () => {

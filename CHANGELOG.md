@@ -12,6 +12,8 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 ### Added
 
 - **@khoralabs/memories-node** — Content facet cutover: append, LWW replay, and evacuation use unified `memory_tip_outbox` / `memory_tip_blobs` only (`facet='content'`); schema **0.9.1** re-syncs legacy content tables.
+- **@khoralabs/memories-spec** — `tipReplayAtRootHex` capability flag for graph/vector/provenance replay at a provenance tip (SQLite reference backend).
+- **@khoralabs/memories-node** — `tipReplayAtRootHex` capability on SQLite persistence; graph/vector/provenance replay helpers gated by backend support.
 - **@khoralabs/memories-spec** — `GetMemoryGraphAtRootHex` and `GetMemoryVectorAtRootHex` persistence ops for TipOutbox replay at a provenance tip.
 - **@khoralabs/memories-node** — `getMemoryGraphAtRootHexAsync`, `getMemoryVectorAtRootHexAsync`, and `getProvenanceEventJsonAtRootHexAsync` TipOutbox replay helpers.
 - **@khoralabs/memories-node** — Provenance `event_json` duplicated into TipOutbox `provenance` facet blobs on append (chain row unchanged; list APIs still read inline `event_json` until hydration lands).

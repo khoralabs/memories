@@ -185,6 +185,11 @@ export type MemoriesBackendCapabilities = {
    * (memory `_ts_created` bounds). Backends that omit this key are treated as unsupported.
    */
   asOfTimestampMsSearch?: boolean;
+  /**
+   * When `true`, graph/vector/provenance TipOutbox replay at a provenance `rootHex` is available
+   * (`getMemoryGraphAtRootHexAsync`, etc.). Content replay is always via unified TipOutbox.
+   */
+  tipReplayAtRootHex?: boolean;
 };
 
 /** Vector retrieval algorithm: exact (`knn`) or approximate index (`ann`). */
@@ -235,6 +240,7 @@ export const DEFAULT_MEMORIES_BACKEND_CAPABILITIES: MemoriesBackendCapabilities 
   graphIndex: true,
   multiNamespaceSearch: true,
   unscopedSearch: false,
+  tipReplayAtRootHex: false,
 };
 
 /** Resolve effective capabilities for merge/search logic. */
