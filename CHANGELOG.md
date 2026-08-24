@@ -29,6 +29,7 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ### Changed
 
+- **@khoralabs/memories-spec** — Document that search `asOf` bounds `memories._ts_created` only (membership filter); it does not replay indexed text/vectors at a provenance tip. Use content-at-tip / TipOutbox replay APIs for historical views.
 - **@khoralabs/memories-node** — Search time travel is `asOf: { gt|gte|lt|lte }` only (capability flag remains `asOfTimestampMsSearch`).
 - **@khoralabs/memories-node** — Namespace metadata upsert accepts `alias` only (DB column remains `display_name`).
 - **@khoralabs/memories-node** — LWW reconstruct reads hot blobs (and cold store when configured); inline pre-blob `outbox.text` is no longer consulted. Ensure DBs have run the content-blob migration so tips carry `content_sha256`.

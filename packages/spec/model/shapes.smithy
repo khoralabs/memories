@@ -423,8 +423,11 @@ enum SearchScopeMode {
     EXACT_SCOPE
 }
 
+/// Bounds on `memories._ts_created` for hybrid search membership filtering.
+/// Not provenance-tip replay — indexed features are read from the current store.
+/// For lexical content at a tip, use `GetMemoryContentAtRootHex`.
 structure SearchAsOf {
-    /// `_ts_created > gt`
+    /// `_ts_created > gt` on the **memory row** (first upsert time; preserved across merges).
     gt: Long
     /// `_ts_created >= gte`
     gte: Long
@@ -443,6 +446,7 @@ structure SearchParams {
     content: SearchContent
     options: SearchOptions
     /// Bounds on `memories._ts_created` (`gt` / `gte` / `lt` / `lte`). Requires `asOfTimestampMsSearch`.
+    /// Membership filter only — does not replay indexed features at a provenance tip.
     asOf: SearchAsOf
 }
 

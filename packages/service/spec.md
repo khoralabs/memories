@@ -270,6 +270,8 @@ Database ids are passed in JSON bodies as `{ kind, ownerKey }` so path encoding 
 
 Client-supplied embeddings on `search`, `search-namespaces` (`vector`), and `merge` (`content[].vector`, `searchMetaVector`) must be **512–3072** float32 values.
 
+**Search `asOf`:** optional `params.asOf` bounds `memories._ts_created` (membership on memory row creation time). Hybrid search still ranks **current** indexed features. For lexical content at a provenance tip, use `POST /databases/provenance/content`. Graph/vector at tip replay is via TipOutbox-backed persistence ops (0.7.7+).
+
 Suppression: discovery endpoints exclude suppressed memories/namespaces by default. Pass `includeSuppressed: true` (on the body, or `params.options.includeSuppressed` for search) to include them. Responses that return namespaces or memories always include exact-path `suppressed: boolean` (`namespace_metadata.suppressed` / `memories.suppressed`, not ancestor-inferred). Use `POST /databases/effective-suppression` for ancestor-aware status (`effectivelySuppressed`, closest `suppressedBy` namespace).
 
 ### SQLite read endpoints

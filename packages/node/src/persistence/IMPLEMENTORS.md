@@ -95,6 +95,24 @@ Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../co
 - **Hot tip window:** `contentOutboxRetentionTips` (default **256**; `0` = never evacuate). Bodies whose newest referencing tip is outside the window are **evacuated**: uploaded via `contentBlobColdStore` when configured. Without a cold store, evacuate is a **no-op** unless `allowDropWithoutColdStore: true` (then permanently drop, `location = 'dropped'`). SQLite can auto-wire Bun `S3Client` when a bucket is configured (`createBunS3ContentBlobColdStore` / `S3_BUCKET` / `AWS_BUCKET`).
 - **Scale note:** Blob tiering bounds hot DB size. At extreme tip counts, further scale by **tiered thinning of the outbox itself** (segment old tip ranges into cold parquet/JSONL + a small catalog)—intentionally not implemented here.
 
+### TipOutbox (unified tip replay — 0.7.7+)
+
+All tip-bound replay (content, graph, vectors, provenance payloads) uses one **`TipOutbox`** abstraction in persistence core (`packages/node/src/persistence/core/tip-outbox/`).
+
+- **Ordering spine:** `memory_provenance` remains the append-only hash chain (`root_hex`, `event_type`, `intent_snapshot_id`). Mutations append a chain link, then append facet payloads keyed by that `root_hex`.
+- **Thin outbox:** `memory_tip_outbox` rows are `(root_hex, facet, event_type, key dimensions…, payload_sha256)`. Thin rows are kept indefinitely (same as legacy content outbox pointers).
+- **Blobs:** `memory_tip_blobs` stores content-addressed payloads (`hot` | `cold` | `dropped`). Binary-safe (UTF-8 text, JSON graph snapshots, float32 vectors, canonical `event_json`). Replaces `memory_content_blobs` after migration.
+- **Facets** (LWW replay per facet config):
+  - `content` — `(namespace, memory_key, source_key)` → text
+  - `graph` — `(namespace, memory_key | edge_id)` → labels, properties, endpoints, suppressed
+  - `vector` — `(namespace, memory_key, source_key)` → embedding bytes
+  - `provenance` — `(root_hex)` → canonical event JSON (chain row may hold `payload_sha256` only)
+- **Evacuation:** One `evacuateOutsideHotWindow()` for all facets; `contentOutboxRetentionTips` (default 256) + optional `ContentBlobColdStore` (Bun S3).
+- **Suppress:** `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` append `graph` facet snapshots (not content outbox today).
+- **W3C PROV:** Storage records hash-chained mutations + tip payloads. Hosts assemble interoperable PROV bundles; optional export maps chain events to PROV-O. Native PROV is not the write format.
+
+Legacy `memory_content_outbox` / `memory_content_blobs` migrate to TipOutbox facet `content` with `facet='content'`.
+
 ### Future (out of scope here)
 
 Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG are not part of this schema; only the linear mutation log + per-map digests are specified today.
