@@ -404,7 +404,7 @@ export interface MemoriesMutationCore {
       event_type: "MERGE_MEMORY" | "DELETE_MEMORY";
       namespace: string;
       memoryKey: string;
-      entries: ReadonlyArray<{ sourceKey: string; text?: string }>;
+      entries: ReadonlyArray<{ sourceKey: string; text?: string; vector?: Float32Array }>;
     },
   ): void;
 

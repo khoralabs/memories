@@ -11,6 +11,7 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ### Added
 
+- **@khoralabs/memories-node** — Vector embedding arms at provenance tip (`vector` TipOutbox facet) on merge and delete.
 - **@khoralabs/memories-node** — Graph state at provenance tip (`graph` TipOutbox facet) on merge, delete, suppress, and unsuppress.
 - **@khoralabs/memories-node** — Content-addressed `memory_content_blobs` with thin `memory_content_outbox` tips (`content_sha256`); hot-window evacuation and optional Bun S3 cold store (sqlite / libsql / turso-serverless).
 - **@khoralabs/memories-node** — `replaceMemoryFeature` / `replaceMemoryFeatureAsync` to upsert one content arm (text and/or vector) without clearing other arms or graph topology.

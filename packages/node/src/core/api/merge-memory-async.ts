@@ -109,7 +109,7 @@ async function mergeMemoryAsyncNode(
     await persistence.replaceMemoryScopes(op, { memoryId, scopeIds });
 
     const contentHashes: Record<string, string> = {};
-    const textEntries: Array<{ sourceKey: string; text?: string }> = [];
+    const textEntries: Array<{ sourceKey: string; text?: string; vector?: Float32Array }> = [];
     for (const raw of params.content) {
       const item = zMergeMemoryContentItem.parse(raw);
       const { sourceMapId } = await persistence.insertSourceMap(op, {
@@ -140,7 +140,7 @@ async function mergeMemoryAsyncNode(
         text: item.text,
         vector: vec,
       });
-      textEntries.push({ sourceKey: item.key, text: item.text });
+      textEntries.push({ sourceKey: item.key, text: item.text, vector: vec });
     }
 
     const labelByKind = new Map(params.labels.map((l) => [l.kind, l] as const));
@@ -332,7 +332,7 @@ async function mergeMemoryAsyncEdge(
     await persistence.replaceMemoryScopes(op, { memoryId, scopeIds });
 
     const contentHashes: Record<string, string> = {};
-    const textEntries: Array<{ sourceKey: string; text?: string }> = [];
+    const textEntries: Array<{ sourceKey: string; text?: string; vector?: Float32Array }> = [];
     for (const raw of params.content) {
       const item = zMergeMemoryContentItem.parse(raw);
       const { sourceMapId } = await persistence.insertSourceMap(op, {
@@ -363,7 +363,7 @@ async function mergeMemoryAsyncEdge(
         text: item.text,
         vector: vec,
       });
-      textEntries.push({ sourceKey: item.key, text: item.text });
+      textEntries.push({ sourceKey: item.key, text: item.text, vector: vec });
     }
 
     const edgeLabelId = await persistence.ensureEdgeLabel(op, {

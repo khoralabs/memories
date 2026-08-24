@@ -187,10 +187,10 @@ function insertContentItems(
 ): {
   contentHashes: Record<string, string>;
   sourceKeysSorted: string[];
-  textEntries: Array<{ sourceKey: string; text?: string }>;
+  textEntries: Array<{ sourceKey: string; text?: string; vector?: Float32Array }>;
 } {
   const contentHashes: Record<string, string> = {};
-  const textEntries: Array<{ sourceKey: string; text?: string }> = [];
+  const textEntries: Array<{ sourceKey: string; text?: string; vector?: Float32Array }> = [];
   for (const raw of content) {
     const item = zMergeMemoryContentItem.parse(raw);
     const { sourceMapId } = persistence.insertSourceMap(op, {
@@ -221,7 +221,7 @@ function insertContentItems(
       text: item.text,
       vector: vec,
     });
-    textEntries.push({ sourceKey: item.key, text: item.text });
+    textEntries.push({ sourceKey: item.key, text: item.text, vector: vec });
   }
   const sourceKeysSorted = content
     .map((raw) => zMergeMemoryContentItem.parse(raw).key)

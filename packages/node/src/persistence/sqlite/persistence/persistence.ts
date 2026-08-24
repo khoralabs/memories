@@ -113,7 +113,10 @@ import {
 } from "./models/search";
 import { insertSourceMap, updateSourceMapContentHash } from "./models/source-maps";
 import { insertLexicalFeature } from "./models/text-features";
-import { appendGraphFacetOutbox as appendGraphFacetOutboxRow } from "./models/tip-outbox";
+import {
+  appendGraphFacetOutbox as appendGraphFacetOutboxRow,
+  appendVectorFacetOutbox,
+} from "./models/tip-outbox";
 import { insertVectorFeature } from "./models/vector-features";
 import { listVectorEmbeddingIndexDimensions as listVectorEmbeddingIndexDimensionsQuery } from "./models/vector-index-dimensions";
 import { hasVectorAnnSearch } from "./search-indexes";
@@ -330,7 +333,7 @@ export class MemoriesPersistence implements IMemoriesPersistence {
       event_type: "MERGE_MEMORY" | "DELETE_MEMORY";
       namespace: string;
       memoryKey: string;
-      entries: ReadonlyArray<{ sourceKey: string; text?: string }>;
+      entries: ReadonlyArray<{ sourceKey: string; text?: string; vector?: Float32Array }>;
     },
   ): void {
     const ctx = this.ctx(op);
@@ -353,6 +356,13 @@ export class MemoriesPersistence implements IMemoriesPersistence {
       event_type: input.event_type,
       namespace: input.namespace,
       memoryKey: input.memoryKey,
+    });
+    appendVectorFacetOutbox(ctx, {
+      root_hex: input.root_hex,
+      event_type: input.event_type,
+      namespace: input.namespace,
+      memoryKey: input.memoryKey,
+      entries: input.entries,
     });
     // Defer evacuate until after commit when inside a transaction (sync or BEGIN).
     if (this.db.inTransaction) {

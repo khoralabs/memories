@@ -3,6 +3,7 @@ import {
   encodeTipGraphSnapshot,
   type TipGraphSnapshotV1,
 } from "../../../../persistence/core/tip-outbox/graph-snapshot";
+import { float32Bytes } from "../../../../persistence/core/tip-outbox/payload";
 import {
   SQL_INSERT_TIP_BLOB_HOT,
   SQL_INSERT_TIP_OUTBOX,
@@ -112,4 +113,67 @@ export async function appendGraphFacetOutbox(
     built.outbox.edgeId,
     built.outbox.payloadSha256,
   ]);
+}
+
+export async function appendVectorFacetOutbox(
+  ctx: DbCtx,
+  input: {
+    root_hex: string;
+    event_type: TipOutboxEventType;
+    namespace: string;
+    memoryKey: string;
+    entries: ReadonlyArray<{ sourceKey: string; vector?: Float32Array }>;
+  },
+): Promise<void> {
+  for (const entry of input.entries) {
+    if (input.event_type === "DELETE_MEMORY" || entry.vector === undefined) continue;
+    const built = buildTipOutboxAppend({
+      rootHex: input.root_hex,
+      facet: "vector",
+      eventType: "MERGE_MEMORY",
+      keys: {
+        namespace: input.namespace,
+        memoryKey: input.memoryKey,
+        sourceKey: entry.sourceKey,
+      },
+      payload: float32Bytes(Array.from(entry.vector)),
+      now: ctx.now,
+      rowId: `${input.root_hex}:vector:${entry.sourceKey}`,
+    });
+    if (built.hotBlob) await upsertHotTipBlob(ctx, built.hotBlob.sha256, built.hotBlob.payload);
+    await ctxExec(ctx, SQL_INSERT_TIP_OUTBOX, [
+      built.outbox.id,
+      built.outbox.now,
+      built.outbox.rootHex,
+      built.outbox.facet,
+      built.outbox.eventType,
+      built.outbox.namespace,
+      built.outbox.memoryKey,
+      built.outbox.sourceKey,
+      built.outbox.edgeId,
+      built.outbox.payloadSha256,
+    ]);
+  }
+  if (input.event_type === "DELETE_MEMORY") {
+    const built = buildTipOutboxAppend({
+      rootHex: input.root_hex,
+      facet: "vector",
+      eventType: "DELETE_MEMORY",
+      keys: { namespace: input.namespace, memoryKey: input.memoryKey },
+      now: ctx.now,
+      rowId: `${input.root_hex}:vector:__delete__`,
+    });
+    await ctxExec(ctx, SQL_INSERT_TIP_OUTBOX, [
+      built.outbox.id,
+      built.outbox.now,
+      built.outbox.rootHex,
+      built.outbox.facet,
+      built.outbox.eventType,
+      built.outbox.namespace,
+      built.outbox.memoryKey,
+      built.outbox.sourceKey,
+      built.outbox.edgeId,
+      built.outbox.payloadSha256,
+    ]);
+  }
 }
