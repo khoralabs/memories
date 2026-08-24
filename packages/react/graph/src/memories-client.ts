@@ -34,6 +34,41 @@ export type MemoryPreviewJson = {
   /** Freeform JSON from `nodes.properties` (not ontology label props). */
   properties: Record<string, unknown> | null;
   suppressed: boolean;
+  atTip?: TipAtRootJson;
+};
+
+export type TipAtRootJson = {
+  content: { rootHex: string; content: Array<{ sourceKey: string; text: string }> } | null;
+  graph: { rootHex: string; graph: Record<string, unknown> | null } | null;
+  vectors: {
+    rootHex: string;
+    vectors: Array<{ sourceKey: string; dimensions: number; values?: number[] }>;
+  } | null;
+};
+
+export type MemoryDetailJson = {
+  rootHex?: string;
+  preview: MemoryPreviewJson;
+  atTip: TipAtRootJson;
+  events: {
+    events: Array<{
+      id: string;
+      rootHex: string;
+      parentRootHex: string;
+      eventType: string;
+      createdAt: number;
+      event: Record<string, unknown>;
+      intentSnapshotId?: string;
+    }>;
+    nextBefore?: { createdAt: number; id: string };
+  };
+};
+
+export type EdgeDetailJson = {
+  rootHex?: string;
+  preview: EdgePreviewJson & { edgeId: string; fromKey: string; toKey: string };
+  atTip: TipAtRootJson;
+  events: MemoryDetailJson["events"];
 };
 
 /** Wire result from {@link ReactMemoriesClient.search} (before chrome maps to search state). */
@@ -160,6 +195,9 @@ export type ReactMemoriesClient = {
     namespace: string;
     edgeId: string;
     includeSuppressed?: boolean;
+    rootHex?: string;
+    includeAtTip?: boolean;
+    includeVectors?: boolean;
     signal?: AbortSignal;
   }): Promise<EdgePreviewJson>;
 
@@ -223,8 +261,56 @@ export type ReactMemoriesClient = {
     namespace: string;
     key: string;
     maxChars?: number;
+    rootHex?: string;
+    includeAtTip?: boolean;
+    includeVectors?: boolean;
     signal?: AbortSignal;
   }): Promise<MemoryPreviewJson>;
+
+  getMemoryDetail(input: {
+    namespace: string;
+    key: string;
+    rootHex?: string;
+    limit?: number;
+    before?: { createdAt: number; id: string };
+    includeVectors?: boolean;
+    maxChars?: number;
+    signal?: AbortSignal;
+  }): Promise<MemoryDetailJson>;
+
+  getEdgeDetail(input: {
+    namespace: string;
+    edgeId: string;
+    rootHex?: string;
+    limit?: number;
+    before?: { createdAt: number; id: string };
+    includeVectors?: boolean;
+    includeSuppressed?: boolean;
+    signal?: AbortSignal;
+  }): Promise<EdgeDetailJson>;
+
+  getProvenanceGraph(input: {
+    rootHex: string;
+    namespace: string;
+    key: string;
+    signal?: AbortSignal;
+  }): Promise<{ rootHex: string; graph: Record<string, unknown> | null }>;
+
+  getProvenanceVectors(input: {
+    rootHex: string;
+    namespace: string;
+    key: string;
+    includeValues?: boolean;
+    signal?: AbortSignal;
+  }): Promise<{
+    rootHex: string;
+    vectors: Array<{ sourceKey: string; dimensions: number; values?: number[] }>;
+  }>;
+
+  /** Backend capabilities (`tipReplayAtRootHex`, etc.). */
+  getBackendCapabilities(input?: {
+    signal?: AbortSignal;
+  }): Promise<Record<string, boolean | undefined>>;
 
   /** Full joined text for a source map (no truncation). */
   getSourceMapText(input: { sourceMapId: string; signal?: AbortSignal }): Promise<string | null>;
@@ -233,6 +319,7 @@ export type ReactMemoriesClient = {
   listProvenanceEvents(input: {
     namespace?: string;
     key?: string;
+    edgeId?: string;
     limit?: number;
     before?: { createdAt: number; id: string };
     signal?: AbortSignal;

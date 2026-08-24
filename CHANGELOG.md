@@ -33,7 +33,12 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 - **@khoralabs/memories-react-graph** — `NodeBillboard` / `EdgeBillboard` freeform properties, ontology/metadata compounds, and preview dock composition hooks.
 - **@khoralabs/memories-react-graph** — `MemoryDetailOntology`, `MemoryMetadata`, relation hover cards (`MemoryNodeHoverCard` / `MemoryEdgeHoverCard`), and `relation-chain` helpers.
 - **@khoralabs/memories-react-graph** — Client APIs: `replaceFeature`, `getGraphCounts`, `getGraphStats`, provenance events/chain/content helpers.
-- **@khoralabs/memories-spec** — Smithy shapes/docs for provenance listing, content-at-tip, graph counts/stats, and related persistence capabilities.
+- **@khoralabs/memories-node** — `findMemoryKeyByEdgeId` persistence helper (all backends).
+- **@khoralabs/memories-spec** — `edgeId` filter on `ListProvenanceEvents`.
+- **@khoralabs/memories-service** — HTTP: `POST /databases/provenance/graph`, `/databases/provenance/vectors`, `/databases/memory-detail`, `/databases/edge-detail`.
+- **@khoralabs/memories-service** — Remote client: `getMemoryDetail`, `getEdgeDetail`, `getProvenanceGraph`, `getProvenanceVectors`; provenance events accept `edgeId`.
+- **@khoralabs/memories-service** — `memory-preview` / `edge-preview` optional `rootHex` + `includeAtTip` overlay (explicit `rootHex` only).
+- **@khoralabs/memories-react-graph** — `getMemoryDetail`, `getEdgeDetail`, provenance graph/vectors client methods; `provenanceTimeline` on billboards with timeline scrub + at-tip panel.
 
 ### Changed
 

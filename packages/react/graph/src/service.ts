@@ -6,6 +6,7 @@
  */
 import {
   createRemoteMemoriesReadClient,
+  type DatabaseCapabilitiesResponse,
   type DatabaseSearchResponse,
   deserializeSearchHits,
   MemoriesServiceClient,
@@ -15,7 +16,9 @@ import {
 } from "@khoralabs/memories-service/client";
 
 import type {
+  EdgeDetailJson,
   EdgePreviewJson,
+  MemoryDetailJson,
   NamespaceSearchHitResult,
   ReactMemoriesClient,
 } from "./memories-client.js";
@@ -262,11 +265,12 @@ export function createServiceReactMemoriesClient(
     },
 
     async getEdgePreview(input) {
-      const preview = await reads.getEdgePreview(
-        input.namespace,
-        input.edgeId,
-        input.includeSuppressed === true ? { includeSuppressed: true } : undefined,
-      );
+      const preview = await reads.getEdgePreview(input.namespace, input.edgeId, {
+        ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
+        ...(input.rootHex !== undefined ? { rootHex: input.rootHex } : {}),
+        ...(input.includeAtTip === true ? { includeAtTip: true } : {}),
+        ...(input.includeVectors === true ? { includeVectors: true } : {}),
+      });
       return preview as EdgePreviewJson;
     },
 
@@ -371,7 +375,64 @@ export function createServiceReactMemoriesClient(
         namespace: input.namespace,
         key: input.key,
         ...(input.maxChars !== undefined ? { maxChars: input.maxChars } : {}),
+        ...(input.rootHex !== undefined ? { rootHex: input.rootHex } : {}),
+        ...(input.includeAtTip === true ? { includeAtTip: true } : {}),
+        ...(input.includeVectors === true ? { includeVectors: true } : {}),
       });
+    },
+
+    async getMemoryDetail(input) {
+      const body = {
+        database,
+        namespace: input.namespace,
+        key: input.key,
+        ...(input.rootHex !== undefined ? { rootHex: input.rootHex } : {}),
+        ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        ...(input.before !== undefined ? { before: input.before } : {}),
+        ...(input.includeVectors === true ? { includeVectors: true } : {}),
+        ...(input.maxChars !== undefined ? { maxChars: input.maxChars } : {}),
+      };
+      const response = await service.postJson<MemoryDetailJson>("/databases/memory-detail", body, {
+        ...(input.signal !== undefined ? { signal: input.signal } : {}),
+      });
+      return response;
+    },
+
+    async getEdgeDetail(input) {
+      const body = {
+        database,
+        namespace: input.namespace,
+        edgeId: input.edgeId,
+        ...(input.rootHex !== undefined ? { rootHex: input.rootHex } : {}),
+        ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        ...(input.before !== undefined ? { before: input.before } : {}),
+        ...(input.includeVectors === true ? { includeVectors: true } : {}),
+        ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
+      };
+      return service.postJson<EdgeDetailJson>("/databases/edge-detail", body, {
+        ...(input.signal !== undefined ? { signal: input.signal } : {}),
+      });
+    },
+
+    async getProvenanceGraph(input) {
+      const { signal: _signal, ...request } = input;
+      const response = await reads.getProvenanceGraph(request);
+      return { rootHex: response.rootHex, graph: response.graph as Record<string, unknown> | null };
+    },
+
+    async getProvenanceVectors(input) {
+      const { signal: _signal, ...request } = input;
+      const response = await reads.getProvenanceVectors(request);
+      return { rootHex: response.rootHex, vectors: response.vectors };
+    },
+
+    async getBackendCapabilities(input) {
+      const response = await service.postJson<DatabaseCapabilitiesResponse>(
+        "/databases/capabilities",
+        { database },
+        ...(input?.signal !== undefined ? [{ signal: input.signal }] : []),
+      );
+      return response.capabilities;
     },
 
     async getSourceMapText(input) {
@@ -389,13 +450,20 @@ export function createServiceReactMemoriesClient(
           event: Record<string, unknown>;
           intentSnapshotId?: string;
         }>;
-      }>("/databases/provenance/events", {
-        database,
-        ...(input.namespace !== undefined ? { namespace: input.namespace } : {}),
-        ...(input.key !== undefined ? { key: input.key } : {}),
-        ...(input.limit !== undefined ? { limit: input.limit } : {}),
-        ...(input.before !== undefined ? { before: input.before } : {}),
-      });
+      }>(
+        "/databases/provenance/events",
+        {
+          database,
+          ...(input.namespace !== undefined ? { namespace: input.namespace } : {}),
+          ...(input.key !== undefined ? { key: input.key } : {}),
+          ...(input.edgeId !== undefined ? { edgeId: input.edgeId } : {}),
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+          ...(input.before !== undefined ? { before: input.before } : {}),
+        },
+        {
+          ...(input.signal !== undefined ? { signal: input.signal } : {}),
+        },
+      );
       return response.events;
     },
 

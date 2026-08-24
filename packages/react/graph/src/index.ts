@@ -155,16 +155,19 @@ export {
   isBenignResizeObserverError,
 } from "./lib/suppress-benign-resize-observer-errors.js";
 export type {
+  EdgeDetailJson,
   EdgePreviewJson,
   GraphCountsResult,
   GraphSearchResult,
   GraphStatsResult,
   MemoriesDatabaseId,
+  MemoryDetailJson,
   MemoryPreviewJson,
   NamespaceSearchArms,
   NamespaceSearchClientResult,
   NamespaceSearchHitResult,
   ReactMemoriesClient,
+  TipAtRootJson,
 } from "./memories-client.js";
 export {
   MemoriesClientProvider,
@@ -232,6 +235,12 @@ export {
 } from "./node-billboard.js";
 export * from "./projection-types.js";
 export {
+  AtTipPanel,
+  type AtTipPanelProps,
+  ProvenanceTimeline,
+  type ProvenanceTimelineProps,
+} from "./provenance-timeline.js";
+export {
   RelationChain,
   RelationEdgeBadge,
   relationEdgeSegmentText,
@@ -245,6 +254,7 @@ export type {
   GraphSceneResolvedOverlay,
 } from "./scene.js";
 export { GraphScene, resolveGraphSceneOverlay } from "./scene.js";
+export { useEdgeDetail } from "./use-edge-detail.js";
 export {
   type GraphMemoriesSearchValue,
   type GraphNamespacesSearchValue,
@@ -253,6 +263,7 @@ export {
   useGraphMemoriesSearch,
   useGraphNamespacesSearch,
 } from "./use-graph-search.js";
+export { useMemoryDetail } from "./use-memory-detail.js";
 export type {
   GraphProjectionProviderProps,
   GraphScope,

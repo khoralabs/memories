@@ -11,12 +11,14 @@ import { cn } from "@/lib/utils";
 import type { MemoryPreviewJson } from "./memories-client.js";
 import { useMemoriesClient } from "./memories-client-provider.js";
 import { MemoryMetadata } from "./memory-metadata.js";
+import { NodeBillboardProvenance } from "./node-billboard-provenance.js";
 import {
   type GraphOntologyLabelMap,
   graphLabelFingerprint,
   type TypedGraphLabelInstance,
   type TypedProjectionPoint,
 } from "./projection-types.js";
+import { useMemoryDetail } from "./use-memory-detail.js";
 import { useProjection } from "./use-projection.js";
 
 type NodeBillboardContextValue = {
@@ -61,6 +63,8 @@ export type NodeBillboardProps<TNode extends GraphOntologyLabelMap = GraphOntolo
    * (`nodes.properties`). Pass `null` for “loaded, empty”.
    */
   properties?: Record<string, unknown> | null;
+  /** When true, fetch memory-detail and show provenance timeline + at-tip panel. */
+  provenanceTimeline?: boolean;
   children?: ReactNode | ((node: TypedProjectionPoint<TNode>) => ReactNode);
 };
 
@@ -74,17 +78,24 @@ function NodeBillboardRoot<TNode extends GraphOntologyLabelMap = GraphOntologyLa
   open,
   className,
   properties: propertiesProp,
+  provenanceTimeline = false,
   children,
 }: NodeBillboardProps<TNode>) {
   const { namespace, onMemoryPreviewPointerEnter, onMemoryPreviewPointerLeave } = useProjection();
   const client = useMemoriesClient();
   const injectProperties = propertiesProp !== undefined;
+  const useDetail = provenanceTimeline;
+  const memoryDetail = useMemoryDetail({
+    namespace,
+    key: point.key,
+    open: open && useDetail,
+  });
 
   const [detail, setDetail] = useState<MemoryPreviewJson | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!open || injectProperties) {
+    if (!open || injectProperties || useDetail) {
       setDetail(null);
       setLoading(false);
       return;
@@ -108,25 +119,30 @@ function NodeBillboardRoot<TNode extends GraphOntologyLabelMap = GraphOntologyLa
         if (!ac.signal.aborted) setLoading(false);
       });
     return () => ac.abort();
-  }, [open, injectProperties, client, namespace, point.key]);
+  }, [open, injectProperties, useDetail, client, namespace, point.key]);
+
+  const resolvedDetail = useDetail ? (memoryDetail.detail?.preview ?? null) : detail;
+  const resolvedLoading = useDetail ? memoryDetail.loading : loading;
 
   const ontologyLabels = useMemo(() => {
     const m = new Map<string, TypedGraphLabelInstance<GraphOntologyLabelMap>>();
     for (const lb of point.labels) {
       m.set(graphLabelFingerprint(lb), lb);
     }
-    if (detail?.labels) {
-      for (const lb of detail.labels) {
+    if (resolvedDetail?.labels) {
+      for (const lb of resolvedDetail.labels) {
         m.set(graphLabelFingerprint(lb), lb);
       }
     }
     return [...m.values()].sort((a, b) => a.kind.localeCompare(b.kind));
-  }, [point.labels, detail?.labels]);
+  }, [point.labels, resolvedDetail?.labels]);
 
   if (!open) return null;
 
   const fetchedProperties =
-    detail?.properties && Object.keys(detail.properties).length > 0 ? detail.properties : null;
+    resolvedDetail?.properties && Object.keys(resolvedDetail.properties).length > 0
+      ? resolvedDetail.properties
+      : null;
   const properties = injectProperties
     ? propertiesProp && Object.keys(propertiesProp).length > 0
       ? propertiesProp
@@ -135,8 +151,8 @@ function NodeBillboardRoot<TNode extends GraphOntologyLabelMap = GraphOntologyLa
 
   const value: NodeBillboardContextValue = {
     point,
-    loading: injectProperties ? false : loading,
-    detail,
+    loading: injectProperties && !useDetail ? false : resolvedLoading,
+    detail: resolvedDetail,
     ontologyLabels,
     properties,
     namespace,
@@ -152,6 +168,13 @@ function NodeBillboardRoot<TNode extends GraphOntologyLabelMap = GraphOntologyLa
               <NodeBillboardLoading />
               <NodeBillboardLabels />
               <NodeBillboardMetadata />
+              {useDetail ? (
+                <NodeBillboardProvenance
+                  memoryDetail={memoryDetail}
+                  namespace={namespace}
+                  memoryKey={point.key}
+                />
+              ) : null}
             </div>
           </>
         ));

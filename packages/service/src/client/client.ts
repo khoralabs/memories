@@ -110,20 +110,30 @@ export class MemoriesServiceClient {
     await this.request("DELETE", "/databases", id);
   }
 
-  async postJson<T>(path: string, body: unknown): Promise<T> {
-    const response = await this.requestJson("POST", path, body);
+  async postJson<T>(path: string, body: unknown, opts?: { signal?: AbortSignal }): Promise<T> {
+    const response = await this.requestJson("POST", path, body, opts);
     return (await response.json()) as T;
   }
 
-  async postBinaryResponse(path: string, body: unknown): Promise<Response> {
-    return this.requestJson("POST", path, body);
+  async postBinaryResponse(
+    path: string,
+    body: unknown,
+    opts?: { signal?: AbortSignal },
+  ): Promise<Response> {
+    return this.requestJson("POST", path, body, opts);
   }
 
-  private async requestJson(method: string, path: string, body?: unknown): Promise<Response> {
+  private async requestJson(
+    method: string,
+    path: string,
+    body?: unknown,
+    opts?: { signal?: AbortSignal },
+  ): Promise<Response> {
     const init = await this.auth.applyAuth({
       method,
       headers: { "content-type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
+      ...(opts?.signal !== undefined ? { signal: opts.signal } : {}),
     });
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
     if (!response.ok) {

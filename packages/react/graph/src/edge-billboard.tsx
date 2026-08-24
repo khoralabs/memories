@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/utils";
+import { EdgeBillboardProvenance } from "./edge-billboard-provenance.js";
 import type { EdgePreviewJson } from "./memories-client.js";
 import { useMemoriesClient } from "./memories-client-provider.js";
 import { MemoryMetadata } from "./memory-metadata.js";
@@ -17,6 +18,7 @@ import {
   type TypedGraphLabelInstance,
   type TypedSceneEdge,
 } from "./projection-types.js";
+import { useEdgeDetail } from "./use-edge-detail.js";
 import { useProjection } from "./use-projection.js";
 
 type EdgeBillboardContextValue = {
@@ -56,6 +58,7 @@ export type EdgeBillboardProps<TEdge extends GraphOntologyLabelMap = GraphOntolo
   edge: TypedSceneEdge<TEdge>;
   open: boolean;
   className?: string;
+  provenanceTimeline?: boolean;
   children?: ReactNode | ((edge: TypedSceneEdge<TEdge>) => ReactNode);
 };
 
@@ -68,16 +71,23 @@ function EdgeBillboardRoot<TEdge extends GraphOntologyLabelMap = GraphOntologyLa
   edge,
   open,
   className,
+  provenanceTimeline = false,
   children,
 }: EdgeBillboardProps<TEdge>) {
   const { namespace, onMemoryPreviewPointerEnter, onMemoryPreviewPointerLeave } = useProjection();
   const client = useMemoriesClient();
+  const useDetail = provenanceTimeline;
+  const edgeDetail = useEdgeDetail({
+    namespace,
+    edgeId: edge.edgeId,
+    open: open && useDetail,
+  });
 
   const [detail, setDetail] = useState<EdgePreviewJson | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || useDetail) {
       setDetail(null);
       setLoading(false);
       return;
@@ -101,30 +111,35 @@ function EdgeBillboardRoot<TEdge extends GraphOntologyLabelMap = GraphOntologyLa
         if (!ac.signal.aborted) setLoading(false);
       });
     return () => ac.abort();
-  }, [open, client, namespace, edge.edgeId]);
+  }, [open, useDetail, client, namespace, edge.edgeId]);
+
+  const resolvedDetail = useDetail ? (edgeDetail.detail?.preview ?? null) : detail;
+  const resolvedLoading = useDetail ? edgeDetail.loading : loading;
 
   const ontologyLabels = useMemo(() => {
     const m = new Map<string, TypedGraphLabelInstance<GraphOntologyLabelMap>>();
     for (const lb of edge.labels) {
       m.set(graphLabelFingerprint(lb), lb);
     }
-    if (detail?.labels) {
-      for (const lb of detail.labels) {
+    if (resolvedDetail?.labels) {
+      for (const lb of resolvedDetail.labels) {
         m.set(graphLabelFingerprint(lb), lb);
       }
     }
     return [...m.values()].sort((a, b) => a.kind.localeCompare(b.kind));
-  }, [edge.labels, detail?.labels]);
+  }, [edge.labels, resolvedDetail?.labels]);
 
   if (!open) return null;
 
   const properties =
-    detail?.properties && Object.keys(detail.properties).length > 0 ? detail.properties : null;
+    resolvedDetail?.properties && Object.keys(resolvedDetail.properties).length > 0
+      ? resolvedDetail.properties
+      : null;
 
   const value: EdgeBillboardContextValue = {
     edge,
-    loading,
-    detail,
+    loading: resolvedLoading,
+    detail: resolvedDetail,
     ontologyLabels,
     properties,
     namespace,
@@ -140,6 +155,13 @@ function EdgeBillboardRoot<TEdge extends GraphOntologyLabelMap = GraphOntologyLa
               <EdgeBillboardLoading />
               <EdgeBillboardLabels />
               <EdgeBillboardMetadata />
+              {useDetail ? (
+                <EdgeBillboardProvenance
+                  edgeDetail={edgeDetail}
+                  namespace={namespace}
+                  edgeId={edge.edgeId}
+                />
+              ) : null}
             </div>
           </>
         ));
