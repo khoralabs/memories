@@ -21,6 +21,11 @@ export {
 } from "./client.js";
 export type { AdapterPipelineGeneration } from "./create-adapter-agent.js";
 export {
+  type BuildMemoryAdapterAgentSpecArgs,
+  buildMemoryAdapterAgentSpec,
+  createMemoryAdapterAgent,
+} from "./create-adapter-agent.js";
+export {
   buildMemoryAdapterAgentId,
   type DefineMemoryAdapterIdentityOptions,
   defineMemoryAdapterIdentity,

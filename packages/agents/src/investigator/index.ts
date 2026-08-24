@@ -4,7 +4,11 @@ export {
   type MemoryInvestigatorInvestigateOverrides,
 } from "./client.js";
 export type { InvestigatorPipelineGeneration } from "./create-investigator-agent.js";
-export { createMemoryInvestigatorAgent } from "./create-investigator-agent.js";
+export {
+  type BuildMemoryInvestigatorAgentSpecArgs,
+  buildMemoryInvestigatorAgentSpec,
+  createMemoryInvestigatorAgent,
+} from "./create-investigator-agent.js";
 export {
   buildMemoryInvestigatorAgentId,
   type DefineMemoryInvestigatorIdentityOptions,

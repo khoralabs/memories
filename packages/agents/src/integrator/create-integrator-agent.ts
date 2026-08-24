@@ -7,8 +7,10 @@ import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
 import { type generateObject, type LanguageModel, Output } from "ai";
 import z from "zod";
 import {
+  buildMemorySearchAgentSpec,
   createMemorySearchToolLoopAgent,
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
+  type MemorySearchAgentSpec,
   type MemorySearchEnv,
   type MemorySearchToolLoopAgent,
   type MemorySearchToolSet,
@@ -44,17 +46,17 @@ function createIntegratorSearchCompleteOutput(): ReturnType<typeof Output.object
   });
 }
 
-/** Phase 1: tool loop for memory_search only; accumulates keys in {@link MemorySearchEnv.discoveredMemoryKeys}. */
-export function createMemoryIntegratorSearchAgent<
-  _TNode extends LabelSchemaMap = LabelSchemaMap,
-  _TEdge extends LabelSchemaMap = LabelSchemaMap,
->(args: {
+export type BuildMemoryIntegratorSearchAgentSpecArgs = {
   model: LanguageModel;
   identity: RegisteredAgent;
   affordances: RegisteredAgentAffordances;
   runtime: ToolRuntimeContext<MemorySearchEnv>;
   maxSteps?: number;
-}): MemoryIntegratorSearchAgent {
+};
+
+export function buildMemoryIntegratorSearchAgentSpec(
+  args: BuildMemoryIntegratorSearchAgentSpecArgs,
+): MemorySearchAgentSpec<IntegratorSearchStructuredOutput> {
   const {
     model,
     identity,
@@ -62,18 +64,34 @@ export function createMemoryIntegratorSearchAgent<
     runtime,
     maxSteps = DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
   } = args;
-  const output = createIntegratorSearchCompleteOutput();
   const searchInstructions = [
     ...(affordances.instructions.trim().length > 0 ? [affordances.instructions.trim()] : []),
     memoryIntegratorSearchPhaseInstruction,
   ].join("\n\n");
-  return createMemorySearchToolLoopAgent<IntegratorSearchStructuredOutput>({
+  return buildMemorySearchAgentSpec<IntegratorSearchStructuredOutput>({
     model,
     identity,
     affordances: { ...affordances, instructions: searchInstructions },
     runtime,
     maxSteps,
     memorySearchBudgetPerStep: true,
-    output,
+    output: createIntegratorSearchCompleteOutput(),
+  });
+}
+
+/** Phase 1: tool loop for memory_search only; accumulates keys in {@link MemorySearchEnv.discoveredMemoryKeys}. */
+export function createMemoryIntegratorSearchAgent<
+  _TNode extends LabelSchemaMap = LabelSchemaMap,
+  _TEdge extends LabelSchemaMap = LabelSchemaMap,
+>(args: BuildMemoryIntegratorSearchAgentSpecArgs): MemoryIntegratorSearchAgent {
+  const spec = buildMemoryIntegratorSearchAgentSpec(args);
+  return createMemorySearchToolLoopAgent<IntegratorSearchStructuredOutput>({
+    model: spec.model,
+    identity: args.identity,
+    affordances: { ...args.affordances, instructions: spec.instructions ?? "" },
+    runtime: args.runtime,
+    maxSteps: spec.maxSteps,
+    memorySearchBudgetPerStep: true,
+    output: spec.output,
   });
 }

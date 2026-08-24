@@ -8,7 +8,11 @@ export type {
   IntegratorPlanGeneration,
   IntegratorSearchGeneration,
 } from "./create-integrator-agent.js";
-export { createMemoryIntegratorSearchAgent } from "./create-integrator-agent.js";
+export {
+  type BuildMemoryIntegratorSearchAgentSpecArgs,
+  buildMemoryIntegratorSearchAgentSpec,
+  createMemoryIntegratorSearchAgent,
+} from "./create-integrator-agent.js";
 export {
   buildMemoryIntegratorAgentId,
   type DefineMemoryIntegratorIdentityOptions,
