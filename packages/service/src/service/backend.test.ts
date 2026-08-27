@@ -40,6 +40,7 @@ describe("resolveStrategyCapabilities", () => {
       graphIndex: true,
       multiNamespaceSearch: true,
       unscopedSearch: false,
+      tipReplayAtRootHex: false,
     });
   });
 
@@ -59,6 +60,7 @@ describe("resolveStrategyCapabilities", () => {
       graphIndex: false,
       multiNamespaceSearch: true,
       unscopedSearch: false,
+      tipReplayAtRootHex: false,
     });
   });
 });

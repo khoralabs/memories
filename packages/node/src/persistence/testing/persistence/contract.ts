@@ -667,13 +667,21 @@ export function runMemoriesPersistenceContractTests(
             namespace,
             content: [{ key: "b", text: "b" }],
             labels: [],
-            edges: [
-              {
-                peer_memory_id: ids.memory(namespace, "a"),
-                direction: "out",
-                label: { kind: "rel", props: {} },
-              },
-            ],
+            edges: [],
+          },
+        );
+        await mergeMemoryAsync(
+          { persistence },
+          {
+            kind: "edge",
+            key: "em-b-a",
+            namespace,
+            content: [{ key: "body", text: "edge body" }],
+            edge: {
+              from_memory_id: ids.memory(namespace, "b"),
+              to_memory_id: ids.memory(namespace, "a"),
+              label: { kind: "rel", props: {} },
+            },
           },
         );
 
@@ -706,7 +714,7 @@ export function runMemoriesPersistenceContractTests(
           const edgeKey = await Promise.resolve(
             persistence.findMemoryKeyByEdgeId(namespace, edgeId),
           );
-          expect(edgeKey).toBe("b");
+          expect(edgeKey).toBe("em-b-a");
           expect(
             await Promise.resolve(persistence.findMemoryKeyByEdgeId(namespace, "missing-edge")),
           ).toBeUndefined();
