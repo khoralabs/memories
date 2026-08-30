@@ -2,6 +2,11 @@ import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
+  MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL,
+  TIP_BLOBS_TABLE_SQL,
+  TIP_OUTBOX_TABLE_SQL,
+} from "../../core/tip-outbox/schema-sql";
+import {
   MEMORIES_SCHEMA_VERSION as LIBSQL_VERSION,
   migrations as libsqlMigrations,
 } from "../../libsql/persistence/migrations";
@@ -9,11 +14,6 @@ import {
   MEMORIES_SCHEMA_VERSION as TURSO_VERSION,
   migrations as tursoMigrations,
 } from "../../turso-serverless/persistence/migrations";
-import {
-  MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL,
-  TIP_BLOBS_TABLE_SQL,
-  TIP_OUTBOX_TABLE_SQL,
-} from "./schema-sql";
 
 function runSqlParts(db: Database, sql: string): void {
   for (const part of sql
