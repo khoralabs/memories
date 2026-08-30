@@ -31,7 +31,7 @@
     }
   },
   "scripts": {
-    "build": "bun run ../../../scripts/build-package.ts .",
+    "build": "bun run ../../../scripts/build.ts .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

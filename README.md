@@ -139,7 +139,7 @@ Search fuses BM25 and KNN with **RRF**; arm weights are tunable. Graph neighbors
 | Script | Description |
 |--------|-------------|
 | `bun run typecheck` | Typecheck primary packages |
-| `bun run assert:no-bun-sqlite-leak` | Fail if `bun:sqlite` imports leak outside Bun-only entrypoints |
+| `bun run assert` | Entrypoint isolation checks (`bun:sqlite` leaks, storage entry, browser entry) |
 | `bun test` | Run tests across the repo |
 | `bun run check` | Biome lint + format check |
 | `bun run format` | Auto-fix with Biome |
@@ -165,14 +165,14 @@ Local helpers:
 
 ```bash
 bun run build                              # bun bundle JS + tsc declarations into dist/
-bun run release:bump 0.5.0
-bun run release:publish --dry-run
-bun run release:publish                    # build + publish; requires NPM_CONFIG_TOKEN or NPM_TOKEN
+bun run release bump 0.5.0
+bun run release publish --dry-run
+bun run release publish                    # build + publish; requires NPM_CONFIG_TOKEN or NPM_TOKEN
 ```
 
 Publish ships `dist/` (JavaScript from `bun build`, `.d.ts` from `tsc --emitDeclarationOnly`). Workspace `exports` still point at `src/` for local Bun; the publish script rewrites them to `dist/` for npm.
 
-Publish order is defined in [`scripts/publishable-packages.ts`](scripts/publishable-packages.ts) (node → service → agents → react-graph → spec).
+Publish order is defined by `PUBLISH_ORDER` in [`scripts/build.ts`](scripts/build.ts) (node → service → agents → react-graph → spec).
 
 ## License
 

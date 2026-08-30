@@ -1,7 +1,9 @@
 /**
- * Build a memories package for npm:
+ * Build memories packages for npm:
  * - JS: bun bundler (export entries, packages external)
  * - types: tsc --emitDeclarationOnly
+ *
+ * Usage: bun run scripts/build.ts [pkgDir]   (default: every publishable package)
  */
 import {
   existsSync,
@@ -13,6 +15,23 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+
+export type PublishablePackage = {
+  name: string;
+  dir: string;
+  /** No TypeScript build step; published as-is. */
+  noBuild?: boolean;
+};
+
+/** Publishable packages in dependency order (build + publish order). */
+export const PUBLISH_ORDER: PublishablePackage[] = [
+  { name: "@khoralabs/memories-node", dir: "packages/node" },
+  { name: "@khoralabs/memories-otel", dir: "packages/otel" },
+  { name: "@khoralabs/memories-service", dir: "packages/service" },
+  { name: "@khoralabs/memories-agents", dir: "packages/agents" },
+  { name: "@khoralabs/memories-react-graph", dir: "packages/react/graph" },
+  { name: "@khoralabs/memories-spec", dir: "packages/spec", noBuild: true },
+];
 
 export type ExportTarget = {
   types?: string;
@@ -190,8 +209,30 @@ export function applyPublishedPackageJson(pkgDir: string): () => void {
   return () => writeFileSync(pkgPath, original);
 }
 
+/** Build every publishable package that has a TypeScript build. */
+export async function buildAllPackages(): Promise<void> {
+  const root = path.join(import.meta.dir, "..");
+  let built = 0;
+  for (const pkg of PUBLISH_ORDER) {
+    if (pkg.noBuild) {
+      console.log(`skip ${pkg.name} (no TS build)`);
+      continue;
+    }
+    console.log(`→ building ${pkg.name}`);
+    await buildPackage(path.join(root, pkg.dir));
+    console.log(`  ok ${pkg.dir}/dist`);
+    built += 1;
+  }
+  console.log(`\nBuilt ${built} package(s).`);
+}
+
 if (import.meta.main) {
-  const pkgDir = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
-  await buildPackage(pkgDir);
-  console.log(`built ${path.join(pkgDir, "dist")}`);
+  const target = process.argv[2];
+  if (target) {
+    const pkgDir = path.resolve(target);
+    await buildPackage(pkgDir);
+    console.log(`built ${path.join(pkgDir, "dist")}`);
+  } else {
+    await buildAllPackages();
+  }
 }

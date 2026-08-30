@@ -53,14 +53,8 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $V"
 
-      - name: Assert no bun:sqlite leaks
-        run: bun run assert:no-bun-sqlite-leak
-
-      - name: Assert storage entry isolation
-        run: bun run assert:storage-entry-isolation
-
-      - name: Assert react-graph browser entry isolation
-        run: bun run assert:react-graph-browser-entry
+      - name: Assert entrypoint isolation
+        run: bun run assert
 
       - name: Typecheck
         run: bun run typecheck
@@ -68,16 +62,13 @@ jobs:
       - name: Build packages
         run: bun run build
 
-      - name: Assert storage entry isolation (built dist)
-        run: bun run assert:storage-entry-isolation
-
-      - name: Assert react-graph browser entry isolation (built dist)
-        run: bun run assert:react-graph-browser-entry
+      - name: Assert entrypoint isolation (built dist)
+        run: bun run assert
 
       - name: Bump package versions
-        run: bun run release:bump "${{ steps.ver.outputs.version }}"
+        run: bun run release bump "${{ steps.ver.outputs.version }}"
 
-      # release:publish refreshes bun.lock (workspace versions) and asserts packed deps
+      # `release publish` refreshes bun.lock (workspace versions) and asserts packed deps
       # before bun publish, so workspace:* rewrites match the bumped package.json versions.
       - name: Publish packages
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
@@ -86,11 +77,11 @@ jobs:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           test -n "$NPM_CONFIG_TOKEN" || (echo "NPM_TOKEN secret is required" && exit 1)
-          bun run release:publish
+          bun run release publish
 
       - name: Dry-run publish preview
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
-        run: bun run release:publish --dry-run
+        run: bun run release publish --dry-run
 
       - name: Commit version bumps and tag
         if: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run }}

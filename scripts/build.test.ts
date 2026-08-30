@@ -7,7 +7,7 @@ import {
   fixDeclarationSpecifiers,
   srcPathToDistPaths,
   toPublishedExports,
-} from "./build-package";
+} from "./build";
 
 describe("srcPathToDistPaths", () => {
   test("maps ts entry to js + d.ts", () => {

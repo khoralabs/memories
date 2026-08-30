@@ -26,7 +26,7 @@
     }
   },
   "scripts": {
-    "build": "bun run ../../scripts/build-package.ts .",
+    "build": "bun run ../../scripts/build.ts .",
     "test": "bun test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
