@@ -11,15 +11,17 @@ description: >-
 # Commit chunks
 
 Operator loop: one scoped chunk per commit. Load
-[commit-message/SKILL.md](../commit-message/SKILL.md) when drafting the
-message and [remediate-all/SKILL.md](../remediate-all/SKILL.md) if the hook
+[commit-message/SKILL.md](../../commit/commit-message/SKILL.md) when drafting the
+message and [remediate-all/SKILL.md](../../remediation/remediate-all/SKILL.md) if the hook
 blocks. For clearing findings **without** committing, use
-[complete-feature/SKILL.md](../complete-feature/SKILL.md).
+[complete-feature/SKILL.md](../../remediation/complete-feature/SKILL.md).
 
 ## When to use
 
 - User asked to land several independent groups over multiple commits
 - A plan lists commit groups (skill/config first, then work chunks)
+- A workstream is active: drive from that workstream’s `chunks.json` / `todo.md`
+  when `workstreams.autoCommit` is true (or the user asked to commit)
 - After finishing one chunk, before starting the next
 
 ## Do not start
@@ -27,6 +29,14 @@ blocks. For clearing findings **without** committing, use
 Do **not** implement work that cannot be proven without user intervention in a
 browser (layout, toast vs chat overlap, visual banners). Leave those items
 unchecked and skip the chunk.
+
+## Workstream source of truth
+
+When `active-workstream` is set (or the user names a workstream id), treat
+`workstreams/<id>/chunks.json` as the chunk list and check off matching items in
+`todo.md` ([workstream/todo](../../workstream/todo/SKILL.md)). Update chunk
+`status` as each lands. Log progress with
+`bunx agent-review workstream log …`.
 
 ## Stop condition
 
@@ -59,7 +69,7 @@ Threshold = config `blockOn` and more severe. Do **not** pass
    git commit -m "$(…message from stdout…)"
    ```
 
-   Follow Conventional Commits ([commit-message/SKILL.md](../commit-message/SKILL.md)).
+   Follow Conventional Commits ([commit-message/SKILL.md](../../commit/commit-message/SKILL.md)).
    If `commit-message` fails (gateway), draft the message yourself from the
    staged diff. Do **not** set `"skip": true` in `.agent-review.json`.
 
@@ -67,7 +77,7 @@ Threshold = config `blockOn` and more severe. Do **not** pass
    is enough to continue. If the hook failed or listed remediations, the commit
    was **cancelled** — remediate findings, then **re-run step 3** (`git commit`)
    after `status` is clean. Follow
-   [remediate-all/SKILL.md](../remediate-all/SKILL.md) (status → implement
+   [remediate-all/SKILL.md](../../remediation/remediate-all/SKILL.md) (status → implement
    `plan.md` → commit → status).
 
 5. **Next chunk.** Only after status is clean (or the hook succeeded with no
