@@ -42,6 +42,11 @@
       "import": "./src/core/helpers/index.ts",
       "default": "./src/core/helpers/index.ts"
     },
+    "./helpers/agent": {
+      "types": "./src/core/helpers/agent/index.ts",
+      "import": "./src/core/helpers/agent/index.ts",
+      "default": "./src/core/helpers/agent/index.ts"
+    },
     "./telemetry": {
       "types": "./src/telemetry/index.ts",
       "import": "./src/telemetry/index.ts",
