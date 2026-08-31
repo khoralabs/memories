@@ -1,6 +1,6 @@
 import { decodeTipGraphSnapshot, type TipGraphSnapshotV1 } from "./graph-snapshot";
 import { float32FromBytes } from "./payload";
-import { buildTipOutboxLwwQuery, UNIFIED_TIP_TABLES } from "./replay-sql";
+import { buildTipOutboxLwwQuery } from "./replay-sql";
 import { resolveTipPayloadRows } from "./resolve-payload";
 import type { TipOutboxLwwRow, TipOutboxSqlDeps } from "./types";
 
@@ -10,11 +10,11 @@ export async function replayGraphSnapshotAtRootHex(
   namespace: string,
   memoryKey: string,
 ): Promise<TipGraphSnapshotV1 | null> {
-  const { sql, params } = buildTipOutboxLwwQuery(
-    rootHex,
-    { facet: "graph", namespace, memoryKey },
-    UNIFIED_TIP_TABLES,
-  );
+  const { sql, params } = buildTipOutboxLwwQuery(rootHex, {
+    facet: "graph",
+    namespace,
+    memoryKey,
+  });
   const rows = (await deps.queryAll<TipOutboxLwwRow>(sql, params)) as TipOutboxLwwRow[];
   const resolved = await resolveTipPayloadRows(deps, rows);
   const first = resolved[0];
@@ -28,11 +28,11 @@ export async function replayVectorArmsAtRootHex(
   namespace: string,
   memoryKey: string,
 ): Promise<Array<{ sourceKey: string; vector: number[] }>> {
-  const { sql, params } = buildTipOutboxLwwQuery(
-    rootHex,
-    { facet: "vector", namespace, memoryKey },
-    UNIFIED_TIP_TABLES,
-  );
+  const { sql, params } = buildTipOutboxLwwQuery(rootHex, {
+    facet: "vector",
+    namespace,
+    memoryKey,
+  });
   const rows = (await deps.queryAll<TipOutboxLwwRow & { sourceKey: string }>(sql, params)) as Array<
     TipOutboxLwwRow & { sourceKey: string }
   >;
@@ -51,11 +51,7 @@ export async function replayProvenanceEventJsonAtRootHex(
   deps: TipOutboxSqlDeps,
   rootHex: string,
 ): Promise<string | null> {
-  const { sql, params } = buildTipOutboxLwwQuery(
-    rootHex,
-    { facet: "provenance" },
-    UNIFIED_TIP_TABLES,
-  );
+  const { sql, params } = buildTipOutboxLwwQuery(rootHex, { facet: "provenance" });
   const rows = (await deps.queryAll<TipOutboxLwwRow>(sql, params)) as TipOutboxLwwRow[];
   const resolved = await resolveTipPayloadRows(deps, rows);
   const first = resolved[0];

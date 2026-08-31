@@ -1,7 +1,7 @@
 import type { LwwArmRow } from "../models/content-outbox-sql";
 import { buildTipOutboxAppend } from "./append";
 import { utf8Bytes, utf8Decode } from "./payload";
-import { buildTipOutboxLwwQuery, UNIFIED_TIP_TABLES } from "./replay-sql";
+import { buildTipOutboxLwwQuery } from "./replay-sql";
 import type { TipOutboxLwwRow } from "./types";
 
 /** Bind params for unified `memory_tip_outbox` INSERT (content facet) from TipOutbox append. */
@@ -35,13 +35,13 @@ export function buildContentLwwQuery(
   scope: { namespace: string; memoryKey: string } | null,
 ): { sql: string; params: unknown[] } {
   if (scope === null) {
-    return buildTipOutboxLwwQuery(rootHex, { facet: "content" }, UNIFIED_TIP_TABLES);
+    return buildTipOutboxLwwQuery(rootHex, { facet: "content" });
   }
-  return buildTipOutboxLwwQuery(
-    rootHex,
-    { facet: "content", namespace: scope.namespace, memoryKey: scope.memoryKey },
-    UNIFIED_TIP_TABLES,
-  );
+  return buildTipOutboxLwwQuery(rootHex, {
+    facet: "content",
+    namespace: scope.namespace,
+    memoryKey: scope.memoryKey,
+  });
 }
 
 export function tipOutboxRowToLwwArm(row: TipOutboxLwwRow): LwwArmRow {

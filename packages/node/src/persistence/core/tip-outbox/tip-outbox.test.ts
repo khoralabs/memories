@@ -2,12 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { buildTipOutboxAppend } from "./append";
 import { validateKeysForFacet } from "./facets";
 import { float32Bytes, float32FromBytes, payloadSha256, utf8Bytes } from "./payload";
-import {
-  buildTipOutboxLwwQuery,
-  LEGACY_CONTENT_TABLES,
-  SQL_SELECT_TIP_BLOB,
-  UNIFIED_TIP_TABLES,
-} from "./replay-sql";
+import { buildTipOutboxLwwQuery, SQL_SELECT_TIP_BLOB } from "./replay-sql";
 import { resolveTipPayloadRows } from "./resolve-payload";
 import type { TipOutboxLwwRow, TipOutboxSqlDeps } from "./types";
 
@@ -52,44 +47,30 @@ describe("TipOutbox core", () => {
   });
 
   test("buildTipOutboxLwwQuery binds scope params twice for delete and merge CTEs", () => {
-    const { sql, params } = buildTipOutboxLwwQuery(
-      "aa".repeat(32),
-      { facet: "content", namespace: "ns", memoryKey: "k" },
-      UNIFIED_TIP_TABLES,
-    );
+    const { sql, params } = buildTipOutboxLwwQuery("aa".repeat(32), {
+      facet: "content",
+      namespace: "ns",
+      memoryKey: "k",
+    });
     const placeholders = sql.match(/\?/g)?.length ?? 0;
     expect(params).toEqual(["aa".repeat(32), "ns", "k", "ns", "k"]);
     expect(placeholders).toBe(params.length);
     expect(sql).toContain("o.namespace = lm.namespace");
     expect(sql).toContain("o.source_key = lm.source_key");
+    expect(sql).toContain("o.payload_sha256 AS payloadSha256");
+    expect(sql).toContain("memory_tip_outbox");
   });
 
   test("buildTipOutboxLwwQuery groups graph by edge_id", () => {
-    const { sql } = buildTipOutboxLwwQuery("bb".repeat(32), { facet: "graph" }, UNIFIED_TIP_TABLES);
+    const { sql } = buildTipOutboxLwwQuery("bb".repeat(32), { facet: "graph" });
     expect(sql).toContain("o.namespace, o.memory_key, o.edge_id");
     expect(sql).toContain("o.edge_id = lm.edge_id");
   });
 
   test("buildTipOutboxLwwQuery provenance delete uses root_hex", () => {
-    const { sql } = buildTipOutboxLwwQuery(
-      "cc".repeat(32),
-      { facet: "provenance" },
-      UNIFIED_TIP_TABLES,
-    );
+    const { sql } = buildTipOutboxLwwQuery("cc".repeat(32), { facet: "provenance" });
     expect(sql).toContain("ld.root_hex = lm.root_hex");
     expect(sql).not.toContain("ld.namespace");
-  });
-
-  test("buildTipOutboxLwwQuery legacy tables use content_sha256", () => {
-    const { sql } = buildTipOutboxLwwQuery(
-      "dd".repeat(32),
-      { facet: "content", namespace: "ns", memoryKey: "k" },
-      LEGACY_CONTENT_TABLES,
-    );
-    expect(sql).toContain("o.content_sha256 AS payloadSha256");
-    expect(sql).not.toContain("o.payload_sha256");
-    expect(sql).not.toContain("o.facet");
-    expect(sql).not.toContain("o.edge_id");
   });
 
   test("resolveTipPayloadRows reads hot payload from DB", async () => {

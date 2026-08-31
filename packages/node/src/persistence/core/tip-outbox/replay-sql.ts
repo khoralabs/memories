@@ -1,8 +1,11 @@
 import { TIP_OUTBOX_FACET_CONFIG } from "./facets";
-import type { TipOutboxFacet, TipOutboxReplayScope, TipOutboxTableNames } from "./types";
+import type { TipOutboxFacet, TipOutboxReplayScope } from "./types";
 
-function facetFilter(table: TipOutboxTableNames, facet: TipOutboxFacet): string {
-  return table.hasFacetColumn ? ` AND o.facet = '${facet}'` : "";
+const OUTBOX = "memory_tip_outbox";
+const BLOBS = "memory_tip_blobs";
+
+function facetFilter(facet: TipOutboxFacet): string {
+  return ` AND o.facet = '${facet}'`;
 }
 
 function scopeWhere(
@@ -84,10 +87,9 @@ function deleteNotExistsClause(facet: TipOutboxFacet): string {
 export function buildTipOutboxLwwQuery(
   rootHex: string,
   scope: TipOutboxReplayScope,
-  tables: TipOutboxTableNames,
 ): { sql: string; params: unknown[] } {
   const facet = scope.facet;
-  const facetSql = facetFilter(tables, facet);
+  const facetSql = facetFilter(facet);
   const mergeScope = scopeWhere(scope);
   const deleteScope = scopeWhere(scope, { includeEdgeId: false });
   const mergeGroup = mergeGroupForFacet(facet);
@@ -95,17 +97,6 @@ export function buildTipOutboxLwwQuery(
   const mergeJoin = mergeJoinOn(facet);
   const deleteClause = deleteNotExistsClause(facet);
   const mergeEvents = mergeEventsSql(facet);
-
-  const isLegacy = !tables.hasFacetColumn;
-  const facetSelect = isLegacy ? `'content' AS facet` : "o.facet AS facet";
-  const edgeSelect = isLegacy ? "NULL AS edgeId" : "o.edge_id AS edgeId";
-  const payloadSelect = isLegacy
-    ? "o.content_sha256 AS payloadSha256"
-    : "o.payload_sha256 AS payloadSha256";
-  const legacyFacetSql = isLegacy ? "" : facetSql;
-
-  const blobTextCol = tables.blobs === "memory_content_blobs" ? "b.text" : "NULL";
-  const blobBytesCol = tables.blobs === "memory_tip_blobs" ? "b.payload" : "NULL";
 
   const sql = `
   WITH target AS (
@@ -118,32 +109,32 @@ export function buildTipOutboxLwwQuery(
   ),
   last_delete AS (
     SELECT ${deleteGroup}, MAX(e.prov_rowid) AS del_rowid
-    FROM ${tables.outbox} o
+    FROM ${OUTBOX} o
     JOIN eligible e ON e.root_hex = o.root_hex
-    WHERE o.event_type = 'DELETE_MEMORY'${legacyFacetSql}${deleteScope.sql}
+    WHERE o.event_type = 'DELETE_MEMORY'${facetSql}${deleteScope.sql}
     GROUP BY ${deleteGroup}
   ),
   last_merge AS (
     SELECT ${mergeGroup}, MAX(e.prov_rowid) AS merge_rowid
-    FROM ${tables.outbox} o
+    FROM ${OUTBOX} o
     JOIN eligible e ON e.root_hex = o.root_hex
-    WHERE ${mergeEvents}${mergeSourceKeyClause(facet)}${legacyFacetSql}${mergeScope.sql}
+    WHERE ${mergeEvents}${mergeSourceKeyClause(facet)}${facetSql}${mergeScope.sql}
     GROUP BY ${mergeGroup}
   ),
   picked AS (
     SELECT
-      ${facetSelect},
+      o.facet AS facet,
       o.namespace AS namespace,
       o.memory_key AS memoryKey,
       o.source_key AS sourceKey,
-      ${edgeSelect},
-      ${payloadSelect}
+      o.edge_id AS edgeId,
+      o.payload_sha256 AS payloadSha256
     FROM last_merge lm
     JOIN eligible e ON e.prov_rowid = lm.merge_rowid
-    JOIN ${tables.outbox} o
+    JOIN ${OUTBOX} o
       ON o.root_hex = e.root_hex
      AND ${mergeJoin}
-     AND ${mergeEvents}${legacyFacetSql}
+     AND ${mergeEvents}${facetSql}
     WHERE ${deleteClause}
   )
   SELECT
@@ -153,12 +144,12 @@ export function buildTipOutboxLwwQuery(
     p.sourceKey,
     p.edgeId,
     p.payloadSha256,
-    ${blobTextCol} AS blobText,
-    ${blobBytesCol} AS blobBytes,
+    NULL AS blobText,
+    b.payload AS blobBytes,
     b.location AS location,
     b.cold_uri AS coldUri
   FROM picked p
-  LEFT JOIN ${tables.blobs} b ON b.content_sha256 = p.payloadSha256
+  LEFT JOIN ${BLOBS} b ON b.content_sha256 = p.payloadSha256
 `;
 
   const params: unknown[] = [rootHex, ...deleteScope.extraParams, ...mergeScope.extraParams];
@@ -179,15 +170,3 @@ export const SQL_INSERT_TIP_BLOB_HOT = `INSERT INTO memory_tip_blobs (content_sh
 export const SQL_UPSERT_TIP_BLOB_REHYDRATE = `UPDATE memory_tip_blobs SET payload = ?, location = 'hot', cold_uri = NULL WHERE content_sha256 = ?`;
 
 export const SQL_SELECT_TIP_BLOB = `SELECT location, payload FROM memory_tip_blobs WHERE content_sha256 = ?`;
-
-export const LEGACY_CONTENT_TABLES: TipOutboxTableNames = {
-  outbox: "memory_content_outbox",
-  blobs: "memory_content_blobs",
-  hasFacetColumn: false,
-};
-
-export const UNIFIED_TIP_TABLES: TipOutboxTableNames = {
-  outbox: "memory_tip_outbox",
-  blobs: "memory_tip_blobs",
-  hasFacetColumn: true,
-};

@@ -56,10 +56,3 @@ export type TipOutboxSqlDeps = {
   coldStore?: ContentBlobColdStore;
   isClosedDatabaseError?(err: unknown): boolean;
 };
-
-export type TipOutboxTableNames = {
-  outbox: string;
-  blobs: string;
-  /** When false, outbox has no `facet` column (legacy content-only table). */
-  hasFacetColumn: boolean;
-};

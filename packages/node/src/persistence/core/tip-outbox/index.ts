@@ -35,12 +35,10 @@ export {
 } from "./replay";
 export {
   buildTipOutboxLwwQuery,
-  LEGACY_CONTENT_TABLES,
   SQL_INSERT_TIP_BLOB_HOT,
   SQL_INSERT_TIP_OUTBOX,
   SQL_SELECT_TIP_BLOB,
   SQL_UPSERT_TIP_BLOB_REHYDRATE,
-  UNIFIED_TIP_TABLES,
 } from "./replay-sql";
 export {
   type ResolvedTipPayload,
@@ -55,5 +53,4 @@ export type {
   TipOutboxLwwRow,
   TipOutboxReplayScope,
   TipOutboxSqlDeps,
-  TipOutboxTableNames,
 } from "./types";
