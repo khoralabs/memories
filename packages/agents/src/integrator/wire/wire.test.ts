@@ -91,6 +91,52 @@ describe("parseIntegrateMemoryEvent", () => {
     });
     expect(event.features.lexical).toEqual(["hello"]);
   });
+
+  test("rejects missing features even when text is present", () => {
+    expect(() =>
+      parseIntegrateMemoryEvent({
+        kind: "interaction",
+        ownerKey: "did:key:abc",
+        namespace: "notes",
+        correlationId: "c1",
+        occurredAtMs: 1,
+        payload: {},
+        text: "legacy body",
+        instructions: "",
+      }),
+    ).toThrow(/features is required/);
+  });
+
+  test("ignores contextRefs; only memoriesContextRefs is accepted", () => {
+    const event = parseIntegrateMemoryEvent({
+      kind: "interaction",
+      ownerKey: "did:key:abc",
+      namespace: "notes",
+      correlationId: "c1",
+      occurredAtMs: 1,
+      payload: {},
+      features: { lexical: ["hello"], vector: [] },
+      instructions: "",
+      contextRefs: { old: true },
+      memoriesContextRefs: { new: true },
+    });
+    expect(event.memoriesContextRefs).toEqual({ new: true });
+  });
+
+  test("omits memoriesContextRefs when only contextRefs is provided", () => {
+    const event = parseIntegrateMemoryEvent({
+      kind: "interaction",
+      ownerKey: "did:key:abc",
+      namespace: "notes",
+      correlationId: "c1",
+      occurredAtMs: 1,
+      payload: {},
+      features: { lexical: ["hello"], vector: [] },
+      instructions: "",
+      contextRefs: { old: true },
+    });
+    expect(event.memoriesContextRefs).toBeUndefined();
+  });
 });
 
 describe("joinIntegrateLexical", () => {

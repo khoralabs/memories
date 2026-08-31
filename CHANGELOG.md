@@ -9,6 +9,15 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ## [Unreleased]
 
+### Changed
+
+- **@khoralabs/memories-node** — Schema **0.10.0**: final re-sync then `DROP` of `memory_content_outbox` / `memory_content_blobs`; tip-only LWW SQL; content-facet adapter renamed from `legacy-content`.
+- **@khoralabs/memories-service** — Turso principal wipe clears `memory_tip_outbox` / `memory_tip_blobs` (replaces dropped content outbox).
+
+### Removed
+
+- **@khoralabs/memories-agents** — Integrate-memory wire no longer accepts `text` as a `features` fallback or `contextRefs` as an alias for `memoriesContextRefs` (breaking for producers still emitting those fields).
+
 ### Added
 
 - **@khoralabs/memories-node** — Content facet cutover: append, LWW replay, and evacuation use unified `memory_tip_outbox` / `memory_tip_blobs` only (`facet='content'`); schema **0.9.1** re-syncs legacy content tables.
