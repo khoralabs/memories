@@ -122,7 +122,8 @@ Reference backend: [`node/src/persistence/sqlite/`](node/src/persistence/sqlite/
 | `node_label_assignments`, `edge_label_assignments` | Instance props |
 | `scopes`, `scope_edges`, `scope_closure`, `memory_scopes` | DAG visibility |
 | `memory_provenance` | Append-only mutation chain (hash-linked) |
-| `memory_content_outbox` | Raw text per source key per merge/delete event, keyed by `root_hex` |
+| `memory_tip_outbox` | Thin tip pointers per facet (`content`, `graph`, `vector`, `provenance`), keyed by `root_hex` |
+| `memory_tip_blobs` | Content-addressed tip payloads (`hot` / `cold` / `dropped`) |
 
 ### Virtual / index tables
 
@@ -151,7 +152,10 @@ Reference backend: [`node/src/persistence/sqlite/`](node/src/persistence/sqlite/
 | Migration | Change |
 |-----------|--------|
 | `0.0.0-0.1.0/001-initial` | Initial schema, indexes, FTS5 (`porter unicode61`) |
-| `0.1.0-0.2.0/001-add-content-outbox` | `memory_content_outbox` for point-in-time text reconstruction |
+| `0.1.0-0.2.0/001-add-content-outbox` | Historical `memory_content_outbox` (upgrade path; DROPped in 0.10.0) |
+| `0.8.0-0.9.0/001-add-tip-outbox` | Unified `memory_tip_outbox` / `memory_tip_blobs`; migrate content → tip |
+| `0.9.0-0.9.1/001-resync-content-to-tip-outbox` | Idempotent re-sync of content tables into tip |
+| `0.9.1-0.10.0/001-drop-content-outbox` | DROP legacy `memory_content_outbox` / `memory_content_blobs` |
 
 ---
 

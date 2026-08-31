@@ -89,7 +89,7 @@ Merge callers pass structured `{ kind, props }` (see [`MergeMemoryParams`](../co
 
 ### Content at tip (TipOutbox `content` facet)
 
-All content append, LWW replay, and blob evacuation use unified **`memory_tip_outbox`** (`facet='content'`) and **`memory_tip_blobs`**. Legacy `memory_content_outbox` / `memory_content_blobs` are frozen after schema **0.9.1** (idempotent re-sync migration); new code does not read or write them.
+All content append, LWW replay, and blob evacuation use unified **`memory_tip_outbox`** (`facet='content'`) and **`memory_tip_blobs`**. Legacy `memory_content_outbox` / `memory_content_blobs` are migrated into tip tables at **0.9.0** / **0.9.1**, then **DROPped** at schema **0.10.0**. Runtime code reads and writes tip tables only.
 
 - **Thin outbox:** one row per `(root_hex, source_key)` MERGE or DELETE tombstone; rows store **`payload_sha256`** only.
 - **Blobs:** content-addressed UTF-8 bodies in `memory_tip_blobs` (`hot` | `cold` | `dropped`).
@@ -101,8 +101,8 @@ All content append, LWW replay, and blob evacuation use unified **`memory_tip_ou
 All tip-bound replay (content, graph, vectors, provenance payloads) uses one **`TipOutbox`** abstraction in persistence core (`packages/node/src/persistence/core/tip-outbox/`).
 
 - **Ordering spine:** `memory_provenance` remains the append-only hash chain (`root_hex`, `event_type`, `intent_snapshot_id`). Mutations append a chain link, then append facet payloads keyed by that `root_hex`.
-- **Thin outbox:** `memory_tip_outbox` rows are `(root_hex, facet, event_type, key dimensions…, payload_sha256)`. Thin rows are kept indefinitely (same as legacy content outbox pointers).
-- **Blobs:** `memory_tip_blobs` stores content-addressed payloads (`hot` | `cold` | `dropped`). Binary-safe (UTF-8 text, JSON graph snapshots, float32 vectors, canonical `event_json`). Replaces `memory_content_blobs` after migration.
+- **Thin outbox:** `memory_tip_outbox` rows are `(root_hex, facet, event_type, key dimensions…, payload_sha256)`. Thin rows are kept indefinitely.
+- **Blobs:** `memory_tip_blobs` stores content-addressed payloads (`hot` | `cold` | `dropped`). Binary-safe (UTF-8 text, JSON graph snapshots, float32 vectors, canonical `event_json`).
 - **Facets** (LWW replay per facet config):
   - `content` — `(namespace, memory_key, source_key)` → text
   - `graph` — `(namespace, memory_key | edge_id)` → labels, properties, endpoints, suppressed
@@ -112,7 +112,7 @@ All tip-bound replay (content, graph, vectors, provenance payloads) uses one **`
 - **Suppress:** `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` append `graph` facet snapshots (not content outbox today).
 - **W3C PROV:** Storage records hash-chained mutations + tip payloads. Hosts assemble interoperable PROV bundles; optional export maps chain events to PROV-O. Native PROV is not the write format.
 
-Legacy `memory_content_outbox` / `memory_content_blobs` remain in schema for upgrade paths only; **0.9.1** re-syncs them into TipOutbox `content` facet rows.
+Upgrade path: **0.9.0** / **0.9.1** copy `memory_content_*` into TipOutbox `content` facet rows; **0.10.0** drops the legacy tables.
 
 ### Future (out of scope here)
 
