@@ -1,5 +1,5 @@
 import type { ContentBlobColdStore } from "../persistence/content-blob-cold-store";
-import { buildContentLwwQuery } from "../tip-outbox/legacy-content";
+import { buildContentLwwQuery } from "../tip-outbox/content-facet";
 
 export type ContentAtRootHit = {
   namespace: string;

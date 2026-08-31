@@ -1,4 +1,11 @@
 export { buildTipOutboxAppend, type TipOutboxInsertParams } from "./append";
+export {
+  buildContentLwwQuery,
+  deleteEntryToAppendInput,
+  mergeEntriesToAppendInputs,
+  tipOutboxRowToLwwArm,
+  unifiedContentOutboxInsertParams,
+} from "./content-facet";
 export type { EvacuateContentBlobsOpts } from "./evacuate";
 export {
   evacuateContentBlobsOutsideHotWindowWith,
@@ -14,13 +21,6 @@ export {
   encodeTipGraphSnapshot,
   type TipGraphSnapshotV1,
 } from "./graph-snapshot";
-export {
-  buildContentLwwQuery,
-  deleteEntryToAppendInput,
-  mergeEntriesToAppendInputs,
-  tipOutboxRowToLwwArm,
-  unifiedContentOutboxInsertParams,
-} from "./legacy-content";
 export {
   float32Bytes,
   float32FromBytes,

@@ -14,7 +14,7 @@ import {
   mergeEntriesToAppendInputs,
   tipOutboxRowToLwwArm,
   unifiedContentOutboxInsertParams,
-} from "../../../../persistence/core/tip-outbox/legacy-content";
+} from "../../../../persistence/core/tip-outbox/content-facet";
 import {
   SQL_INSERT_TIP_BLOB_HOT,
   SQL_INSERT_TIP_OUTBOX,
