@@ -17,7 +17,8 @@ import { resolveTursoCredentials } from "./resolve-credentials";
 
 /** Tables cleared by {@link deleteTursoPrincipalData}; order respects FK dependencies. */
 const DELETE_TABLES_IN_ORDER = [
-  "memory_content_outbox",
+  "memory_tip_outbox",
+  "memory_tip_blobs",
   "memory_provenance",
   "edge_label_assignments",
   "node_label_assignments",
