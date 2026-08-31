@@ -15,6 +15,7 @@ import m001AddContentBlobs from "./migrations/0.6.0-0.7.0/001-add-content-blobs"
 import m001AddContentSha256Index from "./migrations/0.7.0-0.8.0/001-add-content-sha256-index";
 import m001AddTipOutbox from "./migrations/0.8.0-0.9.0/001-add-tip-outbox";
 import m001ResyncContentToTipOutbox from "./migrations/0.9.0-0.9.1/001-resync-content-to-tip-outbox";
+import m001DropContentOutbox from "./migrations/0.9.1-0.10.0/001-drop-content-outbox";
 import { backfillVectorFeaturesVecTables } from "./search-indexes";
 
 const memoriesMigrations = [
@@ -28,6 +29,7 @@ const memoriesMigrations = [
   m001AddContentSha256Index,
   m001AddTipOutbox,
   m001ResyncContentToTipOutbox,
+  m001DropContentOutbox,
 ];
 
 export function loadSqliteVec(db: Database): void {

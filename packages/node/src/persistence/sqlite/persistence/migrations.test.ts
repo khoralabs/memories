@@ -53,6 +53,7 @@ describe("memories sqlite migrations", () => {
       { from_version: "0.7.0", to_version: "0.8.0", name: "001-add-content-sha256-index" },
       { from_version: "0.8.0", to_version: "0.9.0", name: "001-add-tip-outbox" },
       { from_version: "0.9.0", to_version: "0.9.1", name: "001-resync-content-to-tip-outbox" },
+      { from_version: "0.9.1", to_version: "0.10.0", name: "001-drop-content-outbox" },
     ]);
 
     const nsIdx = db
@@ -62,22 +63,19 @@ describe("memories sqlite migrations", () => {
       .get();
     expect(nsIdx?.name).toBe("idx_memories_namespace");
 
-    const contentShaIdx = db
+    const contentOutboxGone = db
       .query<{ name: string }, []>(
-        `SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_memory_content_outbox_content_sha256'`,
+        `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'memory_content_outbox'`,
       )
       .get();
-    expect(contentShaIdx?.name).toBe("idx_memory_content_outbox_content_sha256");
+    expect(contentOutboxGone).toBeNull();
 
-    const outbox = tableColumns(db, "memory_content_outbox");
-    expect(outbox.has("root_hex")).toBe(true);
-    expect(outbox.has("text")).toBe(true);
-    expect(outbox.has("content_sha256")).toBe(true);
-
-    const blobs = tableColumns(db, "memory_content_blobs");
-    expect(blobs.has("content_sha256")).toBe(true);
-    expect(blobs.has("location")).toBe(true);
-    expect(blobs.has("cold_uri")).toBe(true);
+    const contentBlobsGone = db
+      .query<{ name: string }, []>(
+        `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'memory_content_blobs'`,
+      )
+      .get();
+    expect(contentBlobsGone).toBeNull();
 
     const tipOutbox = tableColumns(db, "memory_tip_outbox");
     expect(tipOutbox.has("facet")).toBe(true);

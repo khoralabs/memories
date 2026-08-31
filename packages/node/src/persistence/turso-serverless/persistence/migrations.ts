@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import { MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL } from "../../core/tip-outbox/schema-sql";
+import {
+  DROP_CONTENT_OUTBOX_TABLES_SQL,
+  MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL,
+} from "../../core/tip-outbox/schema-sql";
 import { execMultiple, execSql, queryAll, queryOne } from "./client";
 import type { TursoDatabase } from "./db";
 import {
@@ -19,7 +22,7 @@ import {
   TURSO_PRAGMAS_SQL,
 } from "./turso-schema";
 
-export const MEMORIES_SCHEMA_VERSION = "0.9.1";
+export const MEMORIES_SCHEMA_VERSION = "0.10.0";
 
 const NS_PREFIX_COLUMNS = [
   "ns_prefix_1",
@@ -180,6 +183,22 @@ const migrations: Migration[] = [
     name: "001-resync-content-to-tip-outbox",
     up: async (db) => {
       for (const stmt of MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL.split(";")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)) {
+        await execSql(db.write, stmt);
+      }
+    },
+  },
+  {
+    to: "0.10.0",
+    name: "001-drop-content-outbox",
+    up: async (db) => {
+      for (const stmt of MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL.split(";")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)) {
+        await execSql(db.write, stmt);
+      }
+      for (const stmt of DROP_CONTENT_OUTBOX_TABLES_SQL.split(";")
         .map((s) => s.trim())
         .filter((s) => s.length > 0)) {
         await execSql(db.write, stmt);

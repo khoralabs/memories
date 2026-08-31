@@ -72,9 +72,9 @@ CREATE TABLE memory_content_blobs (
     expect(tip?.payload_sha256).toBe(hash);
   });
 
-  test("libsql and turso migrations register schema 0.9.1 tip outbox", () => {
-    expect(LIBSQL_VERSION).toBe("0.9.1");
-    expect(TURSO_VERSION).toBe("0.9.1");
+  test("libsql and turso migrations register schema 0.10.0 tip outbox and content drop", () => {
+    expect(LIBSQL_VERSION).toBe("0.10.0");
+    expect(TURSO_VERSION).toBe("0.10.0");
     expect(libsqlMigrations.some((m) => m.to === "0.9.0" && m.name === "001-add-tip-outbox")).toBe(
       true,
     );
@@ -90,6 +90,12 @@ CREATE TABLE memory_content_blobs (
       tursoMigrations.some(
         (m) => m.to === "0.9.1" && m.name === "001-resync-content-to-tip-outbox",
       ),
+    ).toBe(true);
+    expect(
+      libsqlMigrations.some((m) => m.to === "0.10.0" && m.name === "001-drop-content-outbox"),
+    ).toBe(true);
+    expect(
+      tursoMigrations.some((m) => m.to === "0.10.0" && m.name === "001-drop-content-outbox"),
     ).toBe(true);
   });
 });

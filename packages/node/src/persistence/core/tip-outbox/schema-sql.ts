@@ -58,3 +58,9 @@ SELECT
   _ts_created
 FROM memory_content_blobs;
 `.trim();
+
+/** Drop frozen legacy content tables after tip sync (schema 0.10.0). */
+export const DROP_CONTENT_OUTBOX_TABLES_SQL = `
+DROP TABLE IF EXISTS memory_content_outbox;
+DROP TABLE IF EXISTS memory_content_blobs;
+`.trim();
