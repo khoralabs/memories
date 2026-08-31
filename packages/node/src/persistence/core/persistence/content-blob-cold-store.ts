@@ -7,7 +7,7 @@
 export type ContentBlobColdStore = {
   put(contentSha256: string, text: string): Promise<void>;
   get(contentSha256: string): Promise<string | null>;
-  /** Stable URI/key stored in `memory_content_blobs.cold_uri`. */
+  /** Stable URI/key stored in `memory_tip_blobs.cold_uri`. */
   uriFor(contentSha256: string): string;
 };
 
