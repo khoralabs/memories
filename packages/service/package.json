@@ -32,6 +32,11 @@
       "import": "./src/client/index.ts",
       "default": "./src/client/index.ts"
     },
+    "./client/agent": {
+      "types": "./src/client/agent.ts",
+      "import": "./src/client/agent.ts",
+      "default": "./src/client/agent.ts"
+    },
     "./http": {
       "types": "./src/http/index.ts",
       "import": "./src/http/index.ts",
@@ -66,7 +71,8 @@
   "dependencies": {
     "@khoralabs/memories-node": "workspace:*",
     "ajv": "^8",
-    "lru-cache": "^11.5.1"
+    "lru-cache": "^11.5.1",
+    "zod": "^4"
   },
   "peerDependencies": {
     "@khoralabs/sqlite-crypto": "^0.1.0",
