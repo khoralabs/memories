@@ -34,6 +34,11 @@
       "import": "./src/integrator/index.ts",
       "default": "./src/integrator/index.ts"
     },
+    "./integrator/wire": {
+      "types": "./src/integrator/wire/index.ts",
+      "import": "./src/integrator/wire/index.ts",
+      "default": "./src/integrator/wire/index.ts"
+    },
     "./investigator": {
       "types": "./src/investigator/index.ts",
       "import": "./src/investigator/index.ts",

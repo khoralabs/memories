@@ -9,6 +9,7 @@ Memory agents built on `@khoralabs/memories-node` and [`@khoralabs/agent-capabil
 | `./tools` | `memorySearchToolkit`, session helpers, telemetry, embedding re-exports |
 | `./adapter` | `MemoryAdapterClient` — domain payload → ontology-aware memory draft |
 | `./integrator` | `MemoryIntegratorClient` — decompose, embed, merge logical memories |
+| `./integrator/wire` | Durable integrate-memory event wire + write-scope policy |
 | `./investigator` | `MemoryInvestigatorClient` — multi-step Q&A over namespaces |
 
 ## Tools
