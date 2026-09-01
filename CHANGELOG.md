@@ -9,6 +9,8 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-01
+
 ### Changed
 
 - **@khoralabs/memories-node** — Schema **0.10.0**: final re-sync then `DROP` of `memory_content_outbox` / `memory_content_blobs`; tip-only LWW SQL; content-facet adapter renamed from `legacy-content`.
@@ -80,5 +82,6 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 Changelog tracking begins after this release. See git tag `v0.7.6` for the prior tree.
 
-[Unreleased]: https://github.com/khoralabs/memories/compare/v0.7.6...HEAD
+[Unreleased]: https://github.com/khoralabs/memories/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/khoralabs/memories/compare/v0.7.6...v0.8.0
 [0.7.6]: https://github.com/khoralabs/memories/releases/tag/v0.7.6
