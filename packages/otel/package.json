@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/memories-otel",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "OpenTelemetry and Pino adapter for @khoralabs/memories-node telemetry.",
   "license": "MIT",
   "type": "module",

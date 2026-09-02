@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/memories-spec",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Smithy wire model for memories persistence.",
   "license": "MIT",
   "type": "module",
