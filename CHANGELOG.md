@@ -9,6 +9,12 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-02
+
+### Changed
+
+- **@khoralabs/memories-agents** — `./ai-sdk` host-facing `model` / `chatModel` fields are `string` model IDs (breaking type narrowing from AI SDK `LanguageModel`). Prefer serializable ids in durable host step args; resolve provider instances inside the host step when needed.
+
 ## [0.8.0] - 2026-09-01
 
 ### Changed
@@ -82,6 +88,7 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 Changelog tracking begins after this release. See git tag `v0.7.6` for the prior tree.
 
-[Unreleased]: https://github.com/khoralabs/memories/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/khoralabs/memories/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/khoralabs/memories/compare/v0.8.0...v0.10.0
 [0.8.0]: https://github.com/khoralabs/memories/compare/v0.7.6...v0.8.0
 [0.7.6]: https://github.com/khoralabs/memories/releases/tag/v0.7.6

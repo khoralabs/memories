@@ -17,6 +17,14 @@ Layout mirrors [`memories-node` persistence](../node/src/persistence/IMPLEMENTOR
 
 **Optional peers** (install when importing `./ai-sdk`): `ai` ^7, `@khoralabs/agent-capabilities-ai-sdk` ^0.2.
 
+`./ai-sdk` host-facing `model` / `chatModel` args are **`string` model IDs** (serializable). Pass a gateway/provider id such as `"openai/gpt-5"` — do not put AI SDK Gateway class instances in durable Workflow step args; resolve provider models inside the host step when you need an instance.
+
+## Migration (0.10)
+
+| Was | Now |
+|-----|-----|
+| `model: LanguageModel` / `chatModel: LanguageModel` on `./ai-sdk` clients, specs, sessions | `model: string` / `chatModel: string` |
+
 ## Migration (0.8)
 
 | Was | Now |
@@ -61,7 +69,7 @@ import {
 const investigator = new MemoryInvestigatorClient({
   registry,
   namespace: "app/user-1",
-  model,
+  model: "openai/gpt-5", // string model id (serializable)
   client,
   embeddingModel,
 });
@@ -121,4 +129,4 @@ Lower-level wiring:
 - `./ai-sdk` — `buildMemory*AgentSpec`, `toolLoopMemorySearchExecutor`, clients
 - `./integrator` — `mergeSearchPhaseMessages` moved to `./ai-sdk`
 
-**Serialization constraint:** `MemorySearchEnv` holds non-serializable handles (`memoriesClient`, `Map`/`Set` caches, live tool closures). Durable workflow steps that mark tool `execute` with `'use step'` must rehydrate clients from serializable `toolsContext` / `runtimeContext`, or run tools without step durability (durable agent loop, in-memory tool calls). That rehydration is host responsibility — not provided here.
+**Serialization constraint:** `MemorySearchEnv` holds non-serializable handles (`memoriesClient`, `Map`/`Set` caches, live tool closures). Durable workflow steps that mark tool `execute` with durable step directives must rehydrate clients from serializable `toolsContext` / `runtimeContext`, or run tools without step durability (durable agent loop, in-memory tool calls). That rehydration is host responsibility — not provided here. Keep `model` as a string id in serializable step args; resolve provider/`LanguageModel` instances inside the host step if required.
