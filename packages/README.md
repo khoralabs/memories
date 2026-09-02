@@ -242,9 +242,10 @@ Use `defineOntology` / `mergeOntologies`. Prefer composing families for your app
 | Surface | Role |
 |---------|------|
 | `@khoralabs/memories-agents/tools` | `memorySearchToolkit` — hybrid search + provenance snapshot |
-| `@khoralabs/memories-agents/investigator` | Multi-step Q&A over one or many namespaces |
-| `@khoralabs/memories-agents/integrator` | Decompose + embed + merge logical memories |
-| `@khoralabs/memories-agents/adapter` | Domain payload → memory draft |
+| `@khoralabs/memories-agents/investigator` | Zod answer wire, identity, instructions (clients on `./ai-sdk`) |
+| `@khoralabs/memories-agents/integrator` | Zod plan wire, identity, merge helpers (clients on `./ai-sdk`) |
+| `@khoralabs/memories-agents/adapter` | Zod expanded-memory wire, identity (clients on `./ai-sdk`) |
+| `@khoralabs/memories-agents/ai-sdk` | ToolLoop clients, `Output` wrappers, AI-shaped specs (optional `ai` peer) |
 | `@khoralabs/memories-node/autolink` | `runAutolinkIntegrate` — search, link patch, merge |
 | `@khoralabs/memories-service` | Multi-tenant open/list/delete, placement, HTTP, auth |
 | `@khoralabs/memories-react-graph` | React 3D graph: search, namespaces, memory preview |
