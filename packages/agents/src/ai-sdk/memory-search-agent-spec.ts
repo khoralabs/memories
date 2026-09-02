@@ -4,7 +4,7 @@ import type {
   ToolRuntimeContext,
 } from "@khoralabs/agent-capabilities";
 import { toolMapToAiTools } from "@khoralabs/agent-capabilities-ai-sdk";
-import type { LanguageModel, Tool, ToolLoopAgent, ToolSet } from "ai";
+import type { Tool, ToolLoopAgent, ToolSet } from "ai";
 import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "../tools/memory-agent-defaults.js";
 import type { MemorySearchEnv } from "../tools/memory-search-toolkit.js";
 
@@ -19,7 +19,7 @@ type ToolLoopPrepareStep = NonNullable<
 /** Runner-agnostic memory-search agent configuration (model, tools, instructions, output). */
 export type MemorySearchAgentSpec<OUTPUT extends ToolLoopOutputSpec = ToolLoopOutputSpec> = {
   id: string;
-  model: LanguageModel;
+  model: string;
   tools: MemorySearchToolSet;
   instructions?: string;
   prepareStep?: ToolLoopPrepareStep;
@@ -29,7 +29,7 @@ export type MemorySearchAgentSpec<OUTPUT extends ToolLoopOutputSpec = ToolLoopOu
 
 /** Options for {@link buildMemorySearchAgentSpec} and {@link createMemorySearchToolLoopAgent}. */
 export type MemorySearchAgentSpecOptions<OUTPUT extends ToolLoopOutputSpec = ToolLoopOutputSpec> = {
-  model: LanguageModel;
+  model: string;
   identity: RegisteredAgent;
   affordances: RegisteredAgentAffordances;
   runtime: ToolRuntimeContext<MemorySearchEnv>;

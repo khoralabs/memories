@@ -13,7 +13,6 @@ import {
   type ProcessedLogicalMemory,
 } from "@khoralabs/memories-node/helpers";
 import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
-import type { LanguageModel } from "ai";
 import type { DefineMemoryIntegratorIdentityOptions } from "../../integrator/identity.js";
 import type { IntegratorPlanWire } from "../../integrator/integrator-output.js";
 import { integratorWireToMergeSlice } from "../../integrator/to-merge-slice.js";
@@ -90,7 +89,7 @@ export async function processLogicalMemoryWithIntegrator<
 >(args: {
   client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
   logicalMemory: LogicalMemoryInput;
-  chatModel: LanguageModel;
+  chatModel: string;
   embeddingModel: EmbeddingModel;
   maxSteps?: number;
   multimodal?: boolean;

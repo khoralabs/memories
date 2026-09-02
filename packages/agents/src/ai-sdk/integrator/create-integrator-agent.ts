@@ -4,7 +4,7 @@ import type {
   ToolRuntimeContext,
 } from "@khoralabs/agent-capabilities";
 import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
-import { type generateObject, type LanguageModel, Output } from "ai";
+import { type generateObject, Output } from "ai";
 import z from "zod";
 import { memoryIntegratorSearchPhaseInstruction } from "../../integrator/instructions.js";
 import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "../../tools/memory-agent-defaults.js";
@@ -48,7 +48,7 @@ function createIntegratorSearchCompleteOutput(): ReturnType<typeof Output.object
 }
 
 export type BuildMemoryIntegratorSearchAgentSpecArgs = {
-  model: LanguageModel;
+  model: string;
   identity: RegisteredAgent;
   affordances: RegisteredAgentAffordances;
   runtime: ToolRuntimeContext<MemorySearchEnv>;

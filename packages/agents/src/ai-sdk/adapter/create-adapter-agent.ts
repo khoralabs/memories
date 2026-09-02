@@ -4,7 +4,6 @@ import type {
   ToolRuntimeContext,
 } from "@khoralabs/agent-capabilities";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
-import type { LanguageModel } from "ai";
 import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS, type MemorySearchEnv } from "../../tools/index.js";
 import type { MemorySearchAgentRunResult } from "../../tools/memory-search-agent-executor.js";
 import {
@@ -29,7 +28,7 @@ export type BuildMemoryAdapterAgentSpecArgs<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
 > = {
-  model: LanguageModel;
+  model: string;
   identity: RegisteredAgent;
   affordances: RegisteredAgentAffordances;
   runtime: ToolRuntimeContext<MemorySearchEnv>;

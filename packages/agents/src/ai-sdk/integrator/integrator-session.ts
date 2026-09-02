@@ -7,7 +7,6 @@ import type {
 } from "@khoralabs/agent-capabilities";
 import {
   generateObject,
-  type LanguageModel,
   type ModelMessage,
   NoObjectGeneratedError,
   NoOutputGeneratedError,
@@ -45,7 +44,7 @@ export type MemoryIntegratorSessionContext<
   TEdge extends ZodLabelMap,
 > = SessionContext &
   MemorySearchSessionContextSlice<TNode, TEdge> & {
-    model: LanguageModel;
+    model: string;
   };
 
 export type MemoryIntegratorSessionInput = {

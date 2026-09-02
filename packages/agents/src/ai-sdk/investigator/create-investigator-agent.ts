@@ -3,7 +3,6 @@ import type {
   RegisteredAgentAffordances,
   ToolRuntimeContext,
 } from "@khoralabs/agent-capabilities";
-import type { LanguageModel } from "ai";
 import { DEFAULT_INVESTIGATOR_MAX_STEPS } from "../../tools/memory-agent-defaults.js";
 import type { MemorySearchAgentRunResult } from "../../tools/memory-search-agent-executor.js";
 import type { MemorySearchEnv } from "../../tools/memory-search-toolkit.js";
@@ -25,7 +24,7 @@ export type MemoryInvestigatorAgent = MemorySearchToolLoopAgent<InvestigatorStru
 export type InvestigatorPipelineGeneration = MemorySearchAgentRunResult;
 
 export type BuildMemoryInvestigatorAgentSpecArgs = {
-  model: LanguageModel;
+  model: string;
   identity: RegisteredAgent;
   affordances: RegisteredAgentAffordances;
   runtime: ToolRuntimeContext<MemorySearchEnv>;

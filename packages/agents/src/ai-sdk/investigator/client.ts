@@ -3,7 +3,6 @@ import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type { MemoriesClient, MemoriesClientAsync } from "@khoralabs/memories-node";
 import type { EmbeddingModel } from "@khoralabs/memories-node/helpers";
 import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
-import type { LanguageModel } from "ai";
 import {
   buildMemoryInvestigatorAgentId,
   type DefineMemoryInvestigatorIdentityOptions,
@@ -25,7 +24,7 @@ export type MemoryInvestigatorClientOptions<
   registry?: AgentRegistry;
   /** Primary namespace subtree root for search (see `@khoralabs/memories-node` SearchParams). */
   namespace: string;
-  model: LanguageModel;
+  model: string;
   client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
   embeddingModel: EmbeddingModel;
   defaultMaxSteps?: number;
@@ -40,7 +39,7 @@ export type MemoryInvestigatorInvestigateOverrides<
   namespace?: string;
   additionalNamespaces?: readonly string[];
   memorySearchExtensions?: Record<string, unknown>;
-  model?: LanguageModel;
+  model?: string;
   client?: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
   embeddingModel?: EmbeddingModel;
   registry?: AgentRegistry;
@@ -55,7 +54,7 @@ export class MemoryInvestigatorClient<
 > {
   readonly registry: AgentRegistry | undefined;
   readonly namespace: string;
-  readonly model: LanguageModel;
+  readonly model: string;
   readonly client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
   readonly embeddingModel: EmbeddingModel;
   readonly identityContext: Record<string, unknown> | undefined;

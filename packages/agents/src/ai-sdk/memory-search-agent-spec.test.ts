@@ -36,7 +36,7 @@ test("buildMemorySearchAgentSpec wires tools, instructions, and maxSteps", async
     schema: z.object({ ok: z.boolean() }),
   });
   const spec = buildMemorySearchAgentSpec({
-    model: { modelId: "mock", provider: "mock" } as never,
+    model: "mock-model",
     identity: { agentId: "test-agent", staticHash: "abc" } as never,
     affordances: {
       tools,

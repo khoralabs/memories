@@ -5,7 +5,7 @@ import type {
   SessionContext,
   SessionRunner,
 } from "@khoralabs/agent-capabilities";
-import { type LanguageModel, NoObjectGeneratedError, NoOutputGeneratedError } from "ai";
+import { NoObjectGeneratedError, NoOutputGeneratedError } from "ai";
 import {
   buildMemoryInvestigatorAgentId,
   type DefineMemoryInvestigatorIdentityOptions,
@@ -30,7 +30,7 @@ export type MemoryInvestigatorSessionContext<
   TEdge extends ZodLabelMap,
 > = SessionContext &
   MemorySearchSessionContextSlice<TNode, TEdge> & {
-    model: LanguageModel;
+    model: string;
   };
 
 export type MemoryInvestigatorSessionInput = {

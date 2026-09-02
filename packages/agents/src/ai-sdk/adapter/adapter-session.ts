@@ -5,7 +5,6 @@ import type {
   SessionContext,
   SessionRunner,
 } from "@khoralabs/agent-capabilities";
-import type { LanguageModel } from "ai";
 import { parseAdapterGenerationToExpandedMemoryWire } from "../../adapter/adapter-output.js";
 import {
   buildMemoryAdapterAgentId,
@@ -28,7 +27,7 @@ export type MemoryAdapterSessionContext<
   TEdge extends ZodLabelMap,
 > = SessionContext &
   MemorySearchSessionContextSlice<TNode, TEdge> & {
-    model: LanguageModel;
+    model: string;
   };
 
 /** Domain payload is app-defined; validate at the host before calling the adapter. */

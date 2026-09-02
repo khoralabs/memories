@@ -3,7 +3,6 @@ import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type { MemoriesClient, MemoriesClientAsync } from "@khoralabs/memories-node";
 import type { EmbeddingModel } from "@khoralabs/memories-node/helpers";
 import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
-import type { LanguageModel } from "ai";
 import {
   buildMemoryIntegratorAgentId,
   type DefineMemoryIntegratorIdentityOptions,
@@ -25,7 +24,7 @@ export type MemoryIntegratorClientOptions<
   /** Omitted if every {@link MemoryIntegratorClient.integrate} supplies {@code overrides.registry} (e.g. fresh registry per run). */
   registry?: AgentRegistry;
   namespace: string;
-  model: LanguageModel;
+  model: string;
   client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
   embeddingModel: EmbeddingModel;
   /**
@@ -42,7 +41,7 @@ export type MemoryIntegratorIntegrateOverrides<
   maxSteps?: number;
   memorySearchBudgetMax?: number;
   namespace?: string;
-  model?: LanguageModel;
+  model?: string;
   client?: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
   embeddingModel?: EmbeddingModel;
   registry?: AgentRegistry;
@@ -57,7 +56,7 @@ export class MemoryIntegratorClient<
 > {
   readonly registry: AgentRegistry | undefined;
   readonly namespace: string;
-  readonly model: LanguageModel;
+  readonly model: string;
   readonly client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
   readonly embeddingModel: EmbeddingModel;
   readonly identityContext: Record<string, unknown> | undefined;
