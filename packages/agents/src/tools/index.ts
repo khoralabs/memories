@@ -19,21 +19,11 @@ export {
   DEFAULT_INVESTIGATOR_MAX_STEPS,
   DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
 } from "./memory-agent-defaults.js";
-export {
-  type MemorySearchAgentExecutor,
-  type MemorySearchAgentRunResult,
-  toolLoopGenerationToRunResult,
-  toolLoopMemorySearchExecutor,
-  toolLoopStepMessages,
+export type {
+  MemorySearchAgentExecutor,
+  MemorySearchAgentMessage,
+  MemorySearchAgentRunResult,
 } from "./memory-search-agent-executor.js";
-export {
-  buildMemorySearchAgentSpec,
-  buildMemorySearchBudgetPrepareStep,
-  buildMemorySearchTools,
-  type MemorySearchAgentSpec,
-  type MemorySearchAgentSpecOptions,
-  type MemorySearchToolSet,
-} from "./memory-search-agent-spec.js";
 export {
   MEMORY_SEARCH_BUDGET_POLICY_ID,
   MEMORY_SEARCH_TOOL_NAME,
@@ -49,11 +39,6 @@ export {
 export type { MemoriesLogPayloadMap } from "./telemetry.js";
 export { memoriesLog, memoriesLogToolBodies } from "./telemetry.js";
 export { elapsedMs } from "./timing.js";
-export {
-  createMemorySearchToolLoopAgent,
-  createMemorySearchToolLoopAgentFromSpec,
-  type MemorySearchToolLoopAgent,
-} from "./tool-loop-from-affordances.js";
 export {
   attachMemorySearchSessionLayer,
   buildMemorySearchToolkitAndRuntime,

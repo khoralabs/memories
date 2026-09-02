@@ -6,17 +6,19 @@ import type {
 import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
 import { type generateObject, type LanguageModel, Output } from "ai";
 import z from "zod";
+import { memoryIntegratorSearchPhaseInstruction } from "../../integrator/instructions.js";
+import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "../../tools/memory-agent-defaults.js";
+import type { MemorySearchAgentRunResult } from "../../tools/memory-search-agent-executor.js";
+import type { MemorySearchEnv } from "../../tools/memory-search-toolkit.js";
 import {
   buildMemorySearchAgentSpec,
-  createMemorySearchToolLoopAgentFromSpec,
-  DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
-  type MemorySearchAgentRunResult,
   type MemorySearchAgentSpec,
-  type MemorySearchEnv,
-  type MemorySearchToolLoopAgent,
   type MemorySearchToolSet,
-} from "../tools/index";
-import { memoryIntegratorSearchPhaseInstruction } from "./instructions.js";
+} from "../memory-search-agent-spec.js";
+import {
+  createMemorySearchToolLoopAgentFromSpec,
+  type MemorySearchToolLoopAgent,
+} from "../tool-loop-from-affordances.js";
 
 export type MemoryIntegratorToolSet = MemorySearchToolSet;
 

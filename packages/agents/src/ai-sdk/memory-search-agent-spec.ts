@@ -5,8 +5,8 @@ import type {
 } from "@khoralabs/agent-capabilities";
 import { toolMapToAiTools } from "@khoralabs/agent-capabilities-ai-sdk";
 import type { LanguageModel, Tool, ToolLoopAgent, ToolSet } from "ai";
-import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "./memory-agent-defaults.js";
-import type { MemorySearchEnv } from "./memory-search-toolkit.js";
+import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "../tools/memory-agent-defaults.js";
+import type { MemorySearchEnv } from "../tools/memory-search-toolkit.js";
 
 /** Tool map shape used by memory-search agents (aligns with adapter/integrator {@code *ToolSet} aliases). */
 export type MemorySearchToolSet = Record<string, Tool<unknown, unknown>> & ToolSet;

@@ -3,13 +3,13 @@ import { evaluateComposable } from "@khoralabs/agent-capabilities";
 import type { EmbeddingModel } from "@khoralabs/memories-node/helpers";
 import { Output } from "ai";
 import z from "zod";
+import { memorySearchToolkit } from "../tools/memory-search-toolkit.js";
+import { toMemorySearchEnv } from "../tools/toolkit-context.js";
 import {
   buildMemorySearchAgentSpec,
   buildMemorySearchBudgetPrepareStep,
   buildMemorySearchTools,
 } from "./memory-search-agent-spec.js";
-import { memorySearchToolkit } from "./memory-search-toolkit.js";
-import { toMemorySearchEnv } from "./toolkit-context.js";
 
 const mockEmbeddingModel = {
   model: "mock-embed-model",

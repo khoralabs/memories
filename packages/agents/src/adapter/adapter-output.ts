@@ -1,5 +1,4 @@
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
-import { Output } from "ai";
 import z from "zod";
 import { zFlatJsonProperties } from "../flat-json-properties.js";
 
@@ -158,23 +157,6 @@ export function zExpandedMemoryWireFromOntology<
       "Expanded memory wire: required plaintext; optional key suggestion and ontology-aware label hints for downstream merge.",
     );
 }
-
-export function memoryAdapterExpandedOutput<
-  TNode extends LabelSchemaMap,
-  TEdge extends LabelSchemaMap,
->(
-  ontology: OntologyDefinition<TNode, TEdge>,
-  options?: ExpandedMemoryWireOptions,
-): ReturnType<typeof Output.object> {
-  return Output.object({
-    name: "ExpandedMemory",
-    description:
-      "Expanded domain content as plaintext plus optional memory key and ontology-aware node/edge label hints for ingestion.",
-    schema: zExpandedMemoryWireFromOntology(ontology, options),
-  });
-}
-
-export type MemoryAdapterStructuredOutput = ReturnType<typeof memoryAdapterExpandedOutput>;
 
 /** Parsed expanded wire (ontology-specific keys inside hints are still `unknown` at the type level). */
 export type ExpandedMemoryWire = {

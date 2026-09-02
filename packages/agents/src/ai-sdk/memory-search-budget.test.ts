@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 import { evaluateComposable } from "@khoralabs/agent-capabilities";
 import { toolMapToAiTools } from "@khoralabs/agent-capabilities-ai-sdk";
 import type { EmbeddingModel } from "@khoralabs/memories-node/helpers";
-import { memorySearchToolkit } from "./memory-search-toolkit.js";
-import { toMemorySearchEnv } from "./toolkit-context.js";
+import { memorySearchToolkit } from "../tools/memory-search-toolkit.js";
+import { toMemorySearchEnv } from "../tools/toolkit-context.js";
 
 test("memory_search budget denies after max completed searches", async () => {
   const embeddingModel = {

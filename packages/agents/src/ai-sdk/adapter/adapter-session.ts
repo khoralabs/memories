@@ -6,22 +6,22 @@ import type {
   SessionRunner,
 } from "@khoralabs/agent-capabilities";
 import type { LanguageModel } from "ai";
-import {
-  attachMemorySearchSessionLayer,
-  type MemorySearchSessionContextSlice,
-  toolLoopMemorySearchExecutor,
-  type ZodLabelMap,
-} from "../tools/index";
-import { parseAdapterGenerationToExpandedMemoryWire } from "./adapter-output.js";
-import type { AdapterPipelineGeneration } from "./create-adapter-agent.js";
-import { buildMemoryAdapterAgentSpec } from "./create-adapter-agent.js";
+import { parseAdapterGenerationToExpandedMemoryWire } from "../../adapter/adapter-output.js";
 import {
   buildMemoryAdapterAgentId,
   type DefineMemoryAdapterIdentityOptions,
   defineMemoryAdapterIdentity,
-} from "./identity.js";
-import { buildMemoryAdapterUserMessage } from "./messages.js";
-import type { AdapterIngestContext, ExpandedMemoryDraft } from "./types.js";
+} from "../../adapter/identity.js";
+import { buildMemoryAdapterUserMessage } from "../../adapter/messages.js";
+import type { AdapterIngestContext, ExpandedMemoryDraft } from "../../adapter/types.js";
+import {
+  attachMemorySearchSessionLayer,
+  type MemorySearchSessionContextSlice,
+  type ZodLabelMap,
+} from "../../tools/index.js";
+import { toolLoopMemorySearchExecutor } from "../memory-search-agent-executor.js";
+import type { AdapterPipelineGeneration } from "./create-adapter-agent.js";
+import { buildMemoryAdapterAgentSpec } from "./create-adapter-agent.js";
 
 export type MemoryAdapterSessionContext<
   TNode extends ZodLabelMap,

@@ -14,12 +14,12 @@ import {
 } from "@khoralabs/memories-node/helpers";
 import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
 import type { LanguageModel } from "ai";
-import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "../tools/index";
+import type { DefineMemoryIntegratorIdentityOptions } from "../../integrator/identity.js";
+import type { IntegratorPlanWire } from "../../integrator/integrator-output.js";
+import { integratorWireToMergeSlice } from "../../integrator/to-merge-slice.js";
+import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS } from "../../tools/memory-agent-defaults.js";
 import { MemoryIntegratorClient } from "./client.js";
 import type { IntegratorPipelineGeneration } from "./create-integrator-agent.js";
-import type { DefineMemoryIntegratorIdentityOptions } from "./identity.js";
-import type { IntegratorPlanWire } from "./integrator-output.js";
-import { integratorWireToMergeSlice } from "./to-merge-slice.js";
 
 function buildIntegratorContent(processed: ProcessedLogicalMemory): string {
   if (processed.plaintext?.trim()) {

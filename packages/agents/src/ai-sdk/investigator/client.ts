@@ -1,16 +1,17 @@
 import type { AgentRegistry } from "@khoralabs/agent-capabilities";
 import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type { MemoriesClient, MemoriesClientAsync } from "@khoralabs/memories-node";
+import type { EmbeddingModel } from "@khoralabs/memories-node/helpers";
 import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
 import type { LanguageModel } from "ai";
-import type { EmbeddingModel } from "../tools/index";
-import { DEFAULT_INVESTIGATOR_MAX_STEPS, memoryAgentSessionHooks } from "../tools/index";
-import type { InvestigatorPipelineGeneration } from "./create-investigator-agent.js";
 import {
   buildMemoryInvestigatorAgentId,
   type DefineMemoryInvestigatorIdentityOptions,
-} from "./identity.js";
-import type { InvestigatorAnswerWire } from "./investigator-output.js";
+} from "../../investigator/identity.js";
+import type { InvestigatorAnswerWire } from "../../investigator/investigator-output.js";
+import { memoryAgentSessionHooks } from "../../tools/agent-telemetry.js";
+import { DEFAULT_INVESTIGATOR_MAX_STEPS } from "../../tools/memory-agent-defaults.js";
+import type { InvestigatorPipelineGeneration } from "./create-investigator-agent.js";
 import {
   ensureMemoryInvestigatorAgentRegistered,
   type MemoryInvestigatorSessionInput,

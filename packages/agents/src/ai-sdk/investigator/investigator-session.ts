@@ -7,20 +7,23 @@ import type {
 } from "@khoralabs/agent-capabilities";
 import { type LanguageModel, NoObjectGeneratedError, NoOutputGeneratedError } from "ai";
 import {
-  attachMemorySearchSessionLayer,
-  type MemorySearchSessionContextSlice,
-  toolLoopMemorySearchExecutor,
-  type ZodLabelMap,
-} from "../tools/index";
-import type { InvestigatorPipelineGeneration } from "./create-investigator-agent.js";
-import { buildMemoryInvestigatorAgentSpec } from "./create-investigator-agent.js";
-import {
   buildMemoryInvestigatorAgentId,
   type DefineMemoryInvestigatorIdentityOptions,
   defineMemoryInvestigatorIdentity,
-} from "./identity.js";
-import { type InvestigatorAnswerWire, parseInvestigatorAnswerWire } from "./investigator-output.js";
-import { buildMemoryInvestigatorUserMessage } from "./messages.js";
+} from "../../investigator/identity.js";
+import {
+  type InvestigatorAnswerWire,
+  parseInvestigatorAnswerWire,
+} from "../../investigator/investigator-output.js";
+import { buildMemoryInvestigatorUserMessage } from "../../investigator/messages.js";
+import {
+  attachMemorySearchSessionLayer,
+  type MemorySearchSessionContextSlice,
+  type ZodLabelMap,
+} from "../../tools/toolkit-context.js";
+import { toolLoopMemorySearchExecutor } from "../memory-search-agent-executor.js";
+import type { InvestigatorPipelineGeneration } from "./create-investigator-agent.js";
+import { buildMemoryInvestigatorAgentSpec } from "./create-investigator-agent.js";
 
 export type MemoryInvestigatorSessionContext<
   TNode extends ZodLabelMap,

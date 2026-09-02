@@ -5,20 +5,18 @@ import type {
 } from "@khoralabs/agent-capabilities";
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
 import type { LanguageModel } from "ai";
+import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS, type MemorySearchEnv } from "../../tools/index.js";
+import type { MemorySearchAgentRunResult } from "../../tools/memory-search-agent-executor.js";
 import {
   buildMemorySearchAgentSpec,
-  createMemorySearchToolLoopAgentFromSpec,
-  DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS,
-  type MemorySearchAgentRunResult,
   type MemorySearchAgentSpec,
-  type MemorySearchEnv,
-  type MemorySearchToolLoopAgent,
   type MemorySearchToolSet,
-} from "../tools/index";
+} from "../memory-search-agent-spec.js";
+import { type MemoryAdapterStructuredOutput, memoryAdapterExpandedOutput } from "../output.js";
 import {
-  type MemoryAdapterStructuredOutput,
-  memoryAdapterExpandedOutput,
-} from "./adapter-output.js";
+  createMemorySearchToolLoopAgentFromSpec,
+  type MemorySearchToolLoopAgent,
+} from "../tool-loop-from-affordances.js";
 
 /** AI SDK tool map for the memory adapter (search only). */
 export type MemoryAdapterToolSet = MemorySearchToolSet;

@@ -3,38 +3,38 @@ import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import type { MemoriesClient, MemoriesClientAsync } from "@khoralabs/memories-node";
 import type { LabelSchemaMap } from "@khoralabs/memories-node/ontology";
 import type { LanguageModel } from "ai";
-import type { EmbeddingModel } from "../tools/index";
-import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS, memoryAgentSessionHooks } from "../tools/index";
-import type { IntegratorPipelineGeneration } from "./create-integrator-agent.js";
 import {
-  buildMemoryIntegratorAgentId,
-  type DefineMemoryIntegratorIdentityOptions,
-} from "./identity.js";
-import type { IntegratorPlanWire } from "./integrator-output.js";
+  buildMemoryAdapterAgentId,
+  type DefineMemoryAdapterIdentityOptions,
+} from "../../adapter/identity.js";
+import type { AdapterIngestContext } from "../../adapter/types.js";
+import type { EmbeddingModel } from "../../tools/index.js";
+import { DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS, memoryAgentSessionHooks } from "../../tools/index.js";
 import {
-  ensureMemoryIntegratorAgentRegistered,
-  type MemoryIntegratorSessionInput,
-  type MemoryIntegratorSessionOutput,
-} from "./integrator-session.js";
+  ensureMemoryAdapterAgentRegistered,
+  type MemoryAdapterSessionInput,
+  type MemoryAdapterSessionOutput,
+} from "./adapter-session.js";
 
-export type MemoryIntegratorClientOptions<
+export type MemoryAdapterClientOptions<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
-> = DefineMemoryIntegratorIdentityOptions & {
-  /** Omitted if every {@link MemoryIntegratorClient.integrate} supplies {@code overrides.registry} (e.g. fresh registry per run). */
+> = DefineMemoryAdapterIdentityOptions & {
+  /** Omitted if every {@link expand} supplies {@code overrides.registry} (e.g. fresh registry per run). */
   registry?: AgentRegistry;
   namespace: string;
   model: LanguageModel;
   client: MemoriesClient<TNode, TEdge> | MemoriesClientAsync<TNode, TEdge>;
   embeddingModel: EmbeddingModel;
   /**
-   * When a given {@link integrate} call does not set {@code maxSteps} or {@code overrides.maxSteps},
+   * When a given {@link expand} call does not set {@code maxSteps} or {@code overrides.maxSteps},
    * this value is used, then the package default ({@link DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS}).
    */
   defaultMaxSteps?: number;
 };
 
-export type MemoryIntegratorIntegrateOverrides<
+/** Optional per-{@link MemoryAdapterClient["expand"]} values; when set, override the constructor. */
+export type MemoryAdapterExpandOverrides<
   TNode extends LabelSchemaMap,
   TEdge extends LabelSchemaMap,
 > = {
@@ -48,9 +48,9 @@ export type MemoryIntegratorIntegrateOverrides<
 };
 
 /**
- * Host-facing integrator: durable registry/model/client/namespace wiring + {@link integrate} for each run.
+ * Host-facing adapter: durable registry/model/client/namespace wiring + {@link expand} for each ingest run.
  */
-export class MemoryIntegratorClient<
+export class MemoryAdapterClient<
   TNode extends LabelSchemaMap = LabelSchemaMap,
   TEdge extends LabelSchemaMap = LabelSchemaMap,
 > {
@@ -63,7 +63,7 @@ export class MemoryIntegratorClient<
   readonly instructions: string[] | undefined;
   readonly defaultMaxSteps: number | undefined;
 
-  constructor(options: MemoryIntegratorClientOptions<TNode, TEdge>) {
+  constructor(options: MemoryAdapterClientOptions<TNode, TEdge>) {
     this.registry = options.registry;
     this.namespace = options.namespace;
     this.model = options.model;
@@ -74,19 +74,16 @@ export class MemoryIntegratorClient<
     this.defaultMaxSteps = options.defaultMaxSteps;
   }
 
-  async integrate(args: {
-    content: string;
+  async expand<TDomain = unknown>(args: {
+    ingest: AdapterIngestContext;
+    domainPayload: TDomain;
     maxSteps?: number;
     memorySearchBudgetMax?: number;
     /** Per-call override of any constructor field (e.g. different registry/namespace in a loop). */
-    overrides?: MemoryIntegratorIntegrateOverrides<TNode, TEdge>;
+    overrides?: MemoryAdapterExpandOverrides<TNode, TEdge>;
     telemetry?: AgentTelemetry;
     signal?: AbortSignal;
-  }): Promise<{
-    plan: IntegratorPlanWire;
-    generation: IntegratorPipelineGeneration;
-    discoveredMemoryKeys: string[];
-  }> {
+  }): Promise<MemoryAdapterSessionOutput> {
     const o = args.overrides ?? {};
     const maxSteps =
       o.maxSteps ?? args.maxSteps ?? this.defaultMaxSteps ?? DEFAULT_MEMORY_TOOL_LOOP_MAX_STEPS;
@@ -94,7 +91,7 @@ export class MemoryIntegratorClient<
     const registry = o.registry ?? this.registry;
     if (registry === undefined) {
       throw new Error(
-        "MemoryIntegratorClient: pass registry in the constructor or in integrate({ overrides: { registry } })",
+        "MemoryAdapterClient: pass registry in the constructor or in expand({ overrides: { registry } })",
       );
     }
     const namespace = o.namespace ?? this.namespace;
@@ -102,7 +99,7 @@ export class MemoryIntegratorClient<
     const client = o.client ?? this.client;
     const embeddingModel = o.embeddingModel ?? this.embeddingModel;
 
-    const { identity } = await ensureMemoryIntegratorAgentRegistered(registry, namespace, {
+    const { identity } = await ensureMemoryAdapterAgentRegistered(registry, namespace, {
       ...(this.identityContext !== undefined ? { identityContext: this.identityContext } : {}),
       ...(this.instructions !== undefined ? { instructions: this.instructions } : {}),
     });
@@ -121,19 +118,14 @@ export class MemoryIntegratorClient<
         : {}),
     });
 
-    return session
-      .start<MemoryIntegratorSessionInput, MemoryIntegratorSessionOutput>({
-        content: args.content,
-        maxSteps,
-      })
-      .then((result) => ({
-        plan: result.plan,
-        generation: result.generation,
-        discoveredMemoryKeys: result.discoveredMemoryKeys,
-      }));
+    return session.start<MemoryAdapterSessionInput<TDomain>, MemoryAdapterSessionOutput>({
+      ingest: args.ingest,
+      domainPayload: args.domainPayload,
+      maxSteps,
+    });
   }
 
-  static integratorAgentId(namespace: string): string {
-    return buildMemoryIntegratorAgentId(namespace);
+  static adapterAgentId(namespace: string): string {
+    return buildMemoryAdapterAgentId(namespace);
   }
 }
