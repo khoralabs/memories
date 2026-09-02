@@ -1,4 +1,3 @@
-import { Output } from "ai";
 import z from "zod";
 
 const zCitation = z.object({
@@ -19,17 +18,6 @@ export const zInvestigatorAnswerWire = z.object({
 });
 
 export type InvestigatorAnswerWire = z.infer<typeof zInvestigatorAnswerWire>;
-
-export function investigatorAnswerOutput(): ReturnType<typeof Output.object> {
-  return Output.object({
-    name: "MemoryInvestigatorAnswer",
-    description:
-      "Structured answer after memory_search: main answer text, optional citations (memory_key + rationale), optional follow-up queries.",
-    schema: zInvestigatorAnswerWire,
-  });
-}
-
-export type InvestigatorStructuredOutput = ReturnType<typeof investigatorAnswerOutput>;
 
 export function parseInvestigatorAnswerWire(data: unknown): InvestigatorAnswerWire {
   return zInvestigatorAnswerWire.parse(data);

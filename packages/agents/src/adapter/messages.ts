@@ -1,5 +1,5 @@
-import type { ModelMessage } from "ai";
 import { fenceUntrustedText } from "../prompt-fence.js";
+import type { MemorySearchAgentMessage } from "../tools/memory-search-agent-executor.js";
 import type { AdapterIngestContext } from "./types.js";
 
 function formatIngestContext(ctx: AdapterIngestContext): string {
@@ -16,7 +16,7 @@ function formatIngestContext(ctx: AdapterIngestContext): string {
 export function buildMemoryAdapterUserMessage<TDomain = unknown>(input: {
   ingest: AdapterIngestContext;
   domainPayload: TDomain;
-}): ModelMessage {
+}): MemorySearchAgentMessage {
   const payloadJson = JSON.stringify(input.domainPayload, null, 2);
   const fencedPayload = fenceUntrustedText(payloadJson, "domain_payload");
   const body = [

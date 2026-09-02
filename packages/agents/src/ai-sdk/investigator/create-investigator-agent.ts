@@ -4,20 +4,19 @@ import type {
   ToolRuntimeContext,
 } from "@khoralabs/agent-capabilities";
 import type { LanguageModel } from "ai";
+import { DEFAULT_INVESTIGATOR_MAX_STEPS } from "../../tools/memory-agent-defaults.js";
+import type { MemorySearchAgentRunResult } from "../../tools/memory-search-agent-executor.js";
+import type { MemorySearchEnv } from "../../tools/memory-search-toolkit.js";
 import {
   buildMemorySearchAgentSpec,
-  createMemorySearchToolLoopAgentFromSpec,
-  DEFAULT_INVESTIGATOR_MAX_STEPS,
-  type MemorySearchAgentRunResult,
   type MemorySearchAgentSpec,
-  type MemorySearchEnv,
-  type MemorySearchToolLoopAgent,
   type MemorySearchToolSet,
-} from "../tools/index";
+} from "../memory-search-agent-spec.js";
+import { type InvestigatorStructuredOutput, investigatorAnswerOutput } from "../output.js";
 import {
-  type InvestigatorStructuredOutput,
-  investigatorAnswerOutput,
-} from "./investigator-output.js";
+  createMemorySearchToolLoopAgentFromSpec,
+  type MemorySearchToolLoopAgent,
+} from "../tool-loop-from-affordances.js";
 
 export type MemoryInvestigatorToolSet = MemorySearchToolSet;
 

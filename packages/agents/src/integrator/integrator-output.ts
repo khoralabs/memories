@@ -1,5 +1,4 @@
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
-import { Output } from "ai";
 import z from "zod";
 import { zFlatJsonProperties } from "../flat-json-properties.js";
 
@@ -185,26 +184,6 @@ export type IntegratorPlanWire = {
   edges: IntegratorEdgeWire[];
   properties?: Record<string, string | number | boolean | null>;
 };
-
-export function integratorPlanOutputFromOntology<
-  TNode extends LabelSchemaMap,
-  TEdge extends LabelSchemaMap,
->(
-  ontology: OntologyDefinition<TNode, TEdge>,
-  options?: IntegratorPlanWireOptions,
-): ReturnType<typeof Output.object> {
-  return Output.object({
-    name: "MemoryIntegratorPlan",
-    description:
-      "MemoryIntegratorPlan: nodeLabels is an object with optional keys per ontology node kind; each edge row sets memory, direction, and exactly one optional field named for an ontology edge kind (that field's value is the payload).",
-    schema: zIntegratorPlanWire(ontology, options),
-  });
-}
-
-/** Alias for phase-2 plan generation with search-derived neighbor keys. */
-export const buildIntegratorPlanOutput = integratorPlanOutputFromOntology;
-
-export type IntegratorPlanStructuredOutput = ReturnType<typeof integratorPlanOutputFromOntology>;
 
 export function parseIntegratorPlanWire<TNode extends LabelSchemaMap, TEdge extends LabelSchemaMap>(
   ontology: OntologyDefinition<TNode, TEdge>,

@@ -43,15 +43,17 @@
       "types": "./src/investigator/index.ts",
       "import": "./src/investigator/index.ts",
       "default": "./src/investigator/index.ts"
+    },
+    "./ai-sdk": {
+      "types": "./src/ai-sdk/index.ts",
+      "import": "./src/ai-sdk/index.ts",
+      "default": "./src/ai-sdk/index.ts"
     }
   },
   "dependencies": {
-    "@ai-sdk/provider-utils": "^5.0.2",
     "@khoralabs/agent-capabilities": "^0.2.0",
-    "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
     "@khoralabs/agent-capabilities-otel": "^0.2.0",
     "@khoralabs/memories-node": "workspace:*",
-    "ai": "^7.0.77",
     "zod": "^4"
   },
   "scripts": {
@@ -59,9 +61,21 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
+    "@types/bun": "latest",
+    "ai": "^7.0.77"
   },
   "peerDependencies": {
+    "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
+    "ai": "^7.0.77",
     "typescript": "^5"
+  },
+  "peerDependenciesMeta": {
+    "@khoralabs/agent-capabilities-ai-sdk": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    }
   }
 }

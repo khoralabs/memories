@@ -13,32 +13,32 @@ import {
   NoOutputGeneratedError,
 } from "ai";
 import {
+  buildMemoryIntegratorAgentId,
+  type DefineMemoryIntegratorIdentityOptions,
+  defineMemoryIntegratorIdentity,
+} from "../../integrator/identity.js";
+import { memoryIntegratorPlanPhaseInstruction } from "../../integrator/instructions.js";
+import {
+  type IntegratorPlanWire,
+  parseIntegratorPlanWire,
+  zIntegratorPlanWire,
+} from "../../integrator/integrator-output.js";
+import {
+  buildMemoryIntegratorPlanUserMessage,
+  buildMemoryIntegratorUserMessage,
+} from "../../integrator/messages.js";
+import type { MemorySearchAgentRunResult } from "../../tools/memory-search-agent-executor.js";
+import {
   attachMemorySearchSessionLayer,
-  type MemorySearchAgentRunResult,
   type MemorySearchSessionContextSlice,
-  toolLoopMemorySearchExecutor,
   type ZodLabelMap,
-} from "../tools/index";
+} from "../../tools/toolkit-context.js";
+import { toolLoopMemorySearchExecutor } from "../memory-search-agent-executor.js";
 import type {
   IntegratorPlanGeneration,
   IntegratorSearchGeneration,
 } from "./create-integrator-agent.js";
 import { buildMemoryIntegratorSearchAgentSpec } from "./create-integrator-agent.js";
-import {
-  buildMemoryIntegratorAgentId,
-  type DefineMemoryIntegratorIdentityOptions,
-  defineMemoryIntegratorIdentity,
-} from "./identity.js";
-import { memoryIntegratorPlanPhaseInstruction } from "./instructions.js";
-import {
-  type IntegratorPlanWire,
-  parseIntegratorPlanWire,
-  zIntegratorPlanWire,
-} from "./integrator-output.js";
-import {
-  buildMemoryIntegratorPlanUserMessage,
-  buildMemoryIntegratorUserMessage,
-} from "./messages.js";
 
 export type MemoryIntegratorSessionContext<
   TNode extends ZodLabelMap,
@@ -67,7 +67,7 @@ export function mergeSearchPhaseMessages(
   userMessage: ModelMessage,
   searchResult: MemorySearchAgentRunResult,
 ): ModelMessage[] {
-  return [userMessage, ...searchResult.messages];
+  return [userMessage, ...(searchResult.messages as ModelMessage[])];
 }
 
 /**

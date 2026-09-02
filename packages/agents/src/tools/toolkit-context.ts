@@ -46,7 +46,7 @@ export type MemorySearchSessionContextSlice<
   toolkitCtx?: ToolkitContext<MemorySearchEnv>;
   runtime?: ToolRuntimeContext<MemorySearchEnv>;
   affordances?: RegisteredAgentAffordances;
-  /** Custom agent runner; defaults to {@link toolLoopMemorySearchExecutor}. */
+  /** Custom agent runner (required for core hosts; AI SDK default lives on `./ai-sdk`). */
   executor?: MemorySearchAgentExecutor;
 };
 

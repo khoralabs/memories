@@ -1,18 +1,34 @@
 # @khoralabs/memories-agents
 
-Memory agents built on `@khoralabs/memories-node` and [`@khoralabs/agent-capabilities`](https://github.com/khoralabs/agent-capabilities). There is no package root export — import the agent you need.
+Memory agents built on `@khoralabs/memories-node` and [`@khoralabs/agent-capabilities`](https://github.com/khoralabs/agent-capabilities). There is no package root export — import the surface you need.
 
 ## Entrypoints
 
-| Export | Role |
-|--------|------|
-| `./tools` | `memorySearchToolkit`, session helpers, telemetry, embedding re-exports |
-| `./adapter` | `MemoryAdapterClient` — domain payload → ontology-aware memory draft |
-| `./integrator` | `MemoryIntegratorClient` — decompose, embed, merge logical memories |
-| `./integrator/wire` | Durable integrate-memory event wire + write-scope policy |
-| `./investigator` | `MemoryInvestigatorClient` — multi-step Q&A over namespaces |
+| Export | Role | AI SDK? |
+|--------|------|---------|
+| `./tools` | `memorySearchToolkit`, session helpers, framework-free `MemorySearchAgentExecutor` type, embedding re-exports | No |
+| `./adapter` | Zod expanded-memory wire, identity, instructions, message builders | No |
+| `./integrator` | Zod plan wire, identity, instructions, merge-slice helpers | No |
+| `./integrator/wire` | Durable integrate-memory event wire + write-scope policy | No |
+| `./investigator` | Zod answer wire, identity, instructions, message builders | No |
+| `./ai-sdk` | ToolLoop clients/sessions, `Output` wrappers, `toolLoopMemorySearchExecutor`, AI-shaped specs | **Yes** (optional peers) |
 
-## Tools
+Layout mirrors [`memories-node` persistence](../node/src/persistence/IMPLEMENTORS.md): core contracts on the first entrypoints; optional runtime adapter on `./ai-sdk`.
+
+**Optional peers** (install when importing `./ai-sdk`): `ai` ^7, `@khoralabs/agent-capabilities-ai-sdk` ^0.2.
+
+## Migration (0.8)
+
+| Was | Now |
+|-----|-----|
+| `MemoryAdapterClient` from `./adapter` | `@khoralabs/memories-agents/ai-sdk` |
+| `MemoryIntegratorClient` / `processLogicalMemoryWithIntegrator` from `./integrator` | `./ai-sdk` |
+| `MemoryInvestigatorClient` from `./investigator` | `./ai-sdk` |
+| `toolLoopMemorySearchExecutor`, `buildMemorySearchAgentSpec`, `createMemorySearchToolLoopAgent*` from `./tools` | `./ai-sdk` |
+| `memoryAdapterExpandedOutput`, `investigatorAnswerOutput`, `integratorPlanOutputFromOntology` | `./ai-sdk` |
+| Zod schemas / `parse*` / identities / instructions / wire | unchanged on core entrypoints |
+
+## Tools (core)
 
 `memorySearchToolkit` is an `@khoralabs/agent-capabilities` toolkit. Session env (client, namespace, embeddings) is injected via context helpers — not constructor args:
 
@@ -33,12 +49,14 @@ const toolkitCtx = buildMemorySearchToolkitContext({
 
 `memory_search` runs hybrid lexical + vector search (via node helpers) and can attach a provenance `root_hex` snapshot for cited answers.
 
-## Agents
+## Agents (AI SDK)
 
 ```ts
-import { MemoryInvestigatorClient } from "@khoralabs/memories-agents/investigator";
-import { MemoryIntegratorClient } from "@khoralabs/memories-agents/integrator";
-import { MemoryAdapterClient } from "@khoralabs/memories-agents/adapter";
+import {
+  MemoryInvestigatorClient,
+  MemoryIntegratorClient,
+  MemoryAdapterClient,
+} from "@khoralabs/memories-agents/ai-sdk";
 
 const investigator = new MemoryInvestigatorClient({
   registry,
@@ -60,27 +78,31 @@ Wire sessions with `createAgentRegistry` and tool loops from `@khoralabs/agent-c
 
 ## Custom runners (WorkflowAgent)
 
-Built-in clients and session runners default to AI SDK `ToolLoopAgent` via `toolLoopMemorySearchExecutor`. For durable, resumable loops ([WorkflowAgent](https://ai-sdk.dev/docs/agents/workflow-agent)), build a spec and supply a custom executor — this package does not depend on `@ai-sdk/workflow`.
+Built-in AI SDK clients default to `ToolLoopAgent` via `toolLoopMemorySearchExecutor` from `./ai-sdk`. For durable, resumable loops ([WorkflowAgent](https://ai-sdk.dev/docs/agents/workflow-agent)), build a spec and supply a custom executor — this package does not depend on `@ai-sdk/workflow`.
 
 ```ts
 import { WorkflowAgent, isStepCount } from "@ai-sdk/workflow"; // host dependency
 import { getWritable } from "workflow";
-import { buildMemoryInvestigatorAgentSpec } from "@khoralabs/memories-agents/investigator";
+import {
+  buildMemoryInvestigatorAgentSpec,
+  type MemorySearchAgentSpec,
+} from "@khoralabs/memories-agents/ai-sdk";
 import type { MemorySearchAgentExecutor } from "@khoralabs/memories-agents/tools";
 
 const workflowExecutor: MemorySearchAgentExecutor = {
   async run(spec, { messages, abortSignal }) {
+    const s = spec as MemorySearchAgentSpec;
     const agent = new WorkflowAgent({
-      id: spec.id,
-      model: spec.model,
-      tools: spec.tools,
-      instructions: spec.instructions,
-      prepareStep: spec.prepareStep,
+      id: s.id,
+      model: s.model,
+      tools: s.tools,
+      instructions: s.instructions,
+      prepareStep: s.prepareStep,
     });
     const result = await agent.stream({
       messages,
-      output: spec.output,
-      stopWhen: isStepCount(spec.maxSteps),
+      output: s.output,
+      stopWhen: isStepCount(s.maxSteps),
       writable: getWritable(),
       abortSignal,
     });
@@ -90,23 +112,13 @@ const workflowExecutor: MemorySearchAgentExecutor = {
     };
   },
 };
-
-// Pass via registry session ctx (ToolLoop remains the default when omitted)
-registry.createSession(agentId, {
-  ctx: {
-    model,
-    client,
-    embeddingModel,
-    namespace,
-    executor: workflowExecutor,
-  },
-});
 ```
 
-Lower-level wiring without clients:
+Use `buildMemoryInvestigatorAgentSpec` (or adapter/integrator equivalents) from `./ai-sdk` when constructing the AI-shaped spec for the session.
+Lower-level wiring:
 
-- `./tools` — `buildMemorySearchAgentSpec`, `MemorySearchAgentExecutor`, `toolLoopMemorySearchExecutor`
-- `./investigator` — `buildMemoryInvestigatorAgentSpec` (same pattern on `./adapter` and `./integrator`)
-- `./integrator` — `mergeSearchPhaseMessages` for the plan phase after search
+- `./tools` — `MemorySearchAgentExecutor`, toolkit + session context helpers
+- `./ai-sdk` — `buildMemory*AgentSpec`, `toolLoopMemorySearchExecutor`, clients
+- `./integrator` — `mergeSearchPhaseMessages` moved to `./ai-sdk`
 
 **Serialization constraint:** `MemorySearchEnv` holds non-serializable handles (`memoriesClient`, `Map`/`Set` caches, live tool closures). Durable workflow steps that mark tool `execute` with `'use step'` must rehydrate clients from serializable `toolsContext` / `runtimeContext`, or run tools without step durability (durable agent loop, in-memory tool calls). That rehydration is host responsibility — not provided here.
