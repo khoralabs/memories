@@ -1,4 +1,9 @@
 export {
+  MEMORIES_SERVICE_PROTOCOL_VERSION,
+  type MemoriesServiceDiscovery,
+  zMemoriesServiceDiscovery,
+} from "../http/contracts/discovery";
+export {
   MEMORIES_ERROR_CODE,
   type MemoriesErrorCode,
   type MemoriesErrorEnvelope,
@@ -22,6 +27,10 @@ export {
   type MemoriesServiceClientOptions,
   type MemoriesServiceFetch,
 } from "./client";
+export {
+  type DiscoverMemoriesServiceOptions,
+  discoverMemoriesService,
+} from "./discover";
 export {
   type EnsureDatabaseOntologyLinkOptions,
   ensureDatabaseOntologyLink,

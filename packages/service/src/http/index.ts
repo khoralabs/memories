@@ -1,4 +1,11 @@
 export {
+  buildMemoriesServiceDiscovery,
+  MEMORIES_SERVICE_PROTOCOL_VERSION,
+  type MemoriesServiceDiscovery,
+  zMemoriesServiceAuthScheme,
+  zMemoriesServiceDiscovery,
+} from "./contracts/discovery";
+export {
   MEMORIES_ERROR_CODE,
   type MemoriesErrorCode,
   type MemoriesErrorEnvelope,

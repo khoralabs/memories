@@ -11,6 +11,7 @@ import {
   AuthStrategyError,
   type DatabaseAction,
   type MemoriesDatabaseAccessStrategy,
+  type MemoriesServiceAuthScheme,
 } from "../auth/index";
 import type { MemoriesDatabaseService } from "../service/index";
 import type {
@@ -34,6 +35,7 @@ import {
   scopeFromPrefixBody,
   scopeFromRename,
 } from "./authorize-scope";
+import { buildMemoriesServiceDiscovery } from "./contracts/discovery";
 import {
   MEMORIES_ERROR_CODE,
   type MemoriesErrorCode,
@@ -142,6 +144,8 @@ export type MemoriesServiceHttpOptions = {
     handle: MemoriesDatabaseHandle;
   }) => GraphProjectionSource | Promise<GraphProjectionSource | undefined>;
   attribution?: HttpAttributionOptions;
+  /** Published on `GET /.well-known/memories` when set. */
+  discoveryAuthScheme?: MemoriesServiceAuthScheme;
 };
 
 function requireOntology(opts: MemoriesServiceHttpOptions): MemoriesDatabaseOntologyStore {
@@ -229,6 +233,20 @@ export async function handleMemoriesServiceHttpRequest(
   const url = new URL(req.url);
 
   try {
+    if (req.method === "GET" && url.pathname === MEMORIES_HTTP_PATH.health) {
+      return jsonResponse({ ok: true as const });
+    }
+
+    if (req.method === "GET" && url.pathname === MEMORIES_HTTP_PATH.wellKnown) {
+      return jsonResponse(
+        buildMemoriesServiceDiscovery({
+          ...(opts.discoveryAuthScheme !== undefined
+            ? { authScheme: opts.discoveryAuthScheme }
+            : {}),
+        }),
+      );
+    }
+
     if (req.method === "GET" && url.pathname === MEMORIES_HTTP_PATH.databases) {
       await authorize(opts.auth, req, "manage");
       const kind = url.searchParams.get("kind") ?? undefined;

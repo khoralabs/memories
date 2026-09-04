@@ -53,6 +53,43 @@ function createTestStack() {
 }
 
 describe("memories service http handlers", () => {
+  test("GET /health returns ok JSON without auth", async () => {
+    const { service } = createTestStack();
+    const response = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/health"),
+      {
+        service,
+        auth: createNoneAuthStrategy(),
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+  });
+
+  test("GET /.well-known/memories returns discovery with optional authScheme", async () => {
+    const { service } = createTestStack();
+    const plain = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/.well-known/memories"),
+      { service, auth: createNoneAuthStrategy() },
+    );
+    expect(plain.status).toBe(200);
+    expect(await plain.json()).toEqual({
+      version: 1,
+      endpoints: { health: "/health", wellKnown: "/.well-known/memories" },
+    });
+
+    const withAuth = await handleMemoriesServiceHttpRequest(
+      new Request("http://localhost/.well-known/memories"),
+      {
+        service,
+        auth: createNoneAuthStrategy(),
+        discoveryAuthScheme: "none",
+      },
+    );
+    expect(withAuth.status).toBe(200);
+    expect(await withAuth.json()).toMatchObject({ version: 1, authScheme: "none" });
+  });
+
   test("lists databases with none auth", async () => {
     const { service, catalog } = createTestStack();
     await service.open({ kind: "account", ownerKey: "owner-a" });
