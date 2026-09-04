@@ -1,45 +1,14 @@
-export {
-  MEMORIES_SERVICE_PROTOCOL_VERSION,
-  type MemoriesServiceDiscovery,
-  zMemoriesServiceDiscovery,
-} from "../http/contracts/discovery";
-export {
-  MEMORIES_ERROR_CODE,
-  type MemoriesErrorCode,
-  type MemoriesErrorEnvelope,
-  memoriesErrorCodeForStatus,
-  zMemoriesErrorCode,
-  zMemoriesErrorEnvelope,
-} from "../http/contracts/error-codes";
-export { MEMORIES_HTTP_PATH, type MemoriesHttpPathKey } from "../http/contracts/routes";
-export type {
-  MemoriesDatabaseId,
-  StoredOntologyJsonSchema,
-  StoredOntologyJsonSchemaMetadata,
-} from "../storage/core/index";
-export {
-  createBearerTokenAuthProvider,
-  createNoAuthProvider,
-  type MemoriesDatabaseListEntry,
-  MemoriesServiceClient,
-  type MemoriesServiceClientAuthProvider,
-  MemoriesServiceClientError,
-  type MemoriesServiceClientOptions,
-  type MemoriesServiceFetch,
-} from "./client";
+/**
+ * Node/operator barrel: lean HTTP client + ontology + remote clients.
+ * Prefer `@khoralabs/memories-service/client/http` in browser/Next client code.
+ */
+
 export {
   type DiscoverMemoriesServiceOptions,
   discoverMemoriesService,
 } from "./discover";
-export {
-  type EnsureDatabaseOntologyLinkOptions,
-  ensureDatabaseOntologyLink,
-  hashOntologyDefinition,
-  MemoriesOntologyClient,
-  type MemoriesOntologyClientOptions,
-  type StoredOntologyFromDefinitionMetadata,
-  storedOntologyFromDefinition,
-} from "./ontology-client";
+export * from "./http";
+export * from "./ontology";
 export {
   createDeferredRemoteMemoriesClientAsync,
   createRemoteMemoriesClientAsync,

@@ -9,8 +9,12 @@ Depends on [`@khoralabs/memories-node`](../node) for the data plane.
 | Export | Contents |
 |--------|----------|
 | `.` | Lifecycle service, database ids, placement/ontology store interfaces, composite backend factory |
-| `./client` | Management client, `RemoteMemoriesClientAsync`, `RemoteMemoriesReadClient`, `MemoriesOntologyClient` |
-| `./http` | `createMemoriesServiceHttpServer` / request handler (lifecycle, persistence, reads, ontology, attribution) |
+| `./client` | Node/operator barrel: management client, remote clients, ontology helpers |
+| `./client/http` | Lean HTTP client + `MemoriesServiceClientError` + path/error constants (browser-safe) |
+| `./client/ontology` | Ontology register/hash helpers (Node-oriented) |
+| `./client/agent` | Agent memories client helpers |
+| `./http` | Server: `createMemoriesServiceHttpServer` / request handler (+ re-exports contracts) |
+| `./http/contracts` | Paths, error codes, discovery, wire types only (no handlers; browser-safe) |
 | `./auth` | `none`, `server-admin`, `app-policy`, `did-principal` (+ env factory for `none` / `server-admin`) |
 | `./storage/sqlite` | Local SQLite backend (optional SQLCipher), placement + ontology + database catalog registries, `createLocalSqliteServiceStack` (**Bun**; sqlite-only by default — compose libsql/turso via `backendFactory`) |
 | `./storage/libsql` | Local libSQL backend factory; Node-safe |

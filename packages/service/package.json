@@ -32,6 +32,16 @@
       "import": "./src/client/index.ts",
       "default": "./src/client/index.ts"
     },
+    "./client/http": {
+      "types": "./src/client/http.ts",
+      "import": "./src/client/http.ts",
+      "default": "./src/client/http.ts"
+    },
+    "./client/ontology": {
+      "types": "./src/client/ontology.ts",
+      "import": "./src/client/ontology.ts",
+      "default": "./src/client/ontology.ts"
+    },
     "./client/agent": {
       "types": "./src/client/agent.ts",
       "import": "./src/client/agent.ts",
@@ -41,6 +51,11 @@
       "types": "./src/http/index.ts",
       "import": "./src/http/index.ts",
       "default": "./src/http/index.ts"
+    },
+    "./http/contracts": {
+      "types": "./src/http/contracts/index.ts",
+      "import": "./src/http/contracts/index.ts",
+      "default": "./src/http/contracts/index.ts"
     },
     "./auth": {
       "types": "./src/auth/index.ts",
