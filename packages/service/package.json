@@ -42,6 +42,11 @@
       "import": "./src/http/index.ts",
       "default": "./src/http/index.ts"
     },
+    "./http/contracts": {
+      "types": "./src/http/contracts/index.ts",
+      "import": "./src/http/contracts/index.ts",
+      "default": "./src/http/contracts/index.ts"
+    },
     "./auth": {
       "types": "./src/auth/index.ts",
       "import": "./src/auth/index.ts",

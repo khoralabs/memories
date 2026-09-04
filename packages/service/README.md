@@ -10,7 +10,8 @@ Depends on [`@khoralabs/memories-node`](../node) for the data plane.
 |--------|----------|
 | `.` | Lifecycle service, database ids, placement/ontology store interfaces, composite backend factory |
 | `./client` | Management client, `RemoteMemoriesClientAsync`, `RemoteMemoriesReadClient`, `MemoriesOntologyClient` |
-| `./http` | `createMemoriesServiceHttpServer` / request handler (lifecycle, persistence, reads, ontology, attribution) |
+| `./http` | Server: `createMemoriesServiceHttpServer` / request handler (+ re-exports contracts) |
+| `./http/contracts` | Paths, error codes, discovery, wire types only (no handlers; browser-safe) |
 | `./auth` | `none`, `server-admin`, `app-policy`, `did-principal` (+ env factory for `none` / `server-admin`) |
 | `./storage/sqlite` | Local SQLite backend (optional SQLCipher), placement + ontology + database catalog registries, `createLocalSqliteServiceStack` (**Bun**; sqlite-only by default — compose libsql/turso via `backendFactory`) |
 | `./storage/libsql` | Local libSQL backend factory; Node-safe |
