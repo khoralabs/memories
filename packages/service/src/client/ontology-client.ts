@@ -1,4 +1,5 @@
 import type { LabelSchemaMap, OntologyDefinition } from "@khoralabs/memories-node/ontology";
+import { MEMORIES_HTTP_PATH } from "../http/contracts/routes";
 import { ontologyToStoredJsonSchema } from "../service/ontology";
 import {
   hashStoredOntology,
@@ -44,19 +45,21 @@ export class MemoriesOntologyClient {
   }
 
   async registerOntology(schema: StoredOntologyJsonSchema): Promise<{ hash: string }> {
-    return this.#client.postJson<{ hash: string }>("/ontologies/register", { schema });
+    return this.#client.postJson<{ hash: string }>(MEMORIES_HTTP_PATH.ontologiesRegister, {
+      schema,
+    });
   }
 
   async getOntology(hash: string): Promise<{ hash: string; schema: StoredOntologyJsonSchema }> {
     return this.#client.postJson<{ hash: string; schema: StoredOntologyJsonSchema }>(
-      "/ontologies/get",
+      MEMORIES_HTTP_PATH.ontologiesGet,
       { hash },
     );
   }
 
   async listDatabasesByOntologyHash(hash: string): Promise<MemoriesDatabaseId[]> {
     const response = await this.#client.postJson<{ databases: MemoriesDatabaseId[] }>(
-      "/ontologies/databases",
+      MEMORIES_HTTP_PATH.ontologiesDatabases,
       { hash },
     );
     return response.databases;
@@ -67,14 +70,14 @@ export class MemoriesOntologyClient {
     edgeKinds?: string[];
   }): Promise<MemoriesDatabaseId[]> {
     const response = await this.#client.postJson<{ databases: MemoriesDatabaseId[] }>(
-      "/ontologies/databases",
+      MEMORIES_HTTP_PATH.ontologiesDatabases,
       filter ?? {},
     );
     return response.databases;
   }
 
   async linkDatabase(database: MemoriesDatabaseId, hash: string): Promise<void> {
-    await this.#client.postJson("/databases/ontology/link", { database, hash });
+    await this.#client.postJson(MEMORIES_HTTP_PATH.databasesOntologyLink, { database, hash });
   }
 
   async getCurrentLink(
@@ -82,20 +85,23 @@ export class MemoriesOntologyClient {
   ): Promise<{ hash: string; linkedAtMs: number } | undefined> {
     const response = await this.#client.postJson<{
       link: { hash: string; linkedAtMs: number } | null;
-    }>("/databases/ontology/current", { database });
+    }>(MEMORIES_HTTP_PATH.databasesOntologyCurrent, { database });
     return response.link ?? undefined;
   }
 
   async getDatabaseHash(database: MemoriesDatabaseId): Promise<string | undefined> {
     const body: DatabaseHashRequest = { database };
-    const response = await this.#client.postJson<DatabaseHashResponse>("/databases/hash", body);
+    const response = await this.#client.postJson<DatabaseHashResponse>(
+      MEMORIES_HTTP_PATH.databasesHash,
+      body,
+    );
     return response.hash ?? undefined;
   }
 
   async listLinkHistory(database: MemoriesDatabaseId) {
     const response = await this.#client.postJson<{
       history: Array<{ hash: string; linkedAtMs: number; linkId: number }>;
-    }>("/databases/ontology/history", { database });
+    }>(MEMORIES_HTTP_PATH.databasesOntologyHistory, { database });
     return response.history;
   }
 }

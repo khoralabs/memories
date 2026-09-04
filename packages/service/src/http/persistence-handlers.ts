@@ -28,20 +28,31 @@ import {
   type ProjectionInputScope,
 } from "@khoralabs/memories-node/projections/projection-input";
 import type { MemoryMutationAttribution } from "@khoralabs/memories-node/provenance";
+import type { MemoriesDatabaseService } from "../service/index";
+import type {
+  MemoriesDatabaseHandle,
+  MemoriesDatabaseId,
+  MemoriesDatabaseOntologyStore,
+  StoredOntologyJsonSchema,
+} from "../storage/core/index";
+import { buildAtTipWire } from "./at-tip-wire";
 import {
   type DatabaseCapabilitiesResponse,
   type DatabaseDeleteMemoryRequest,
   type DatabaseEdgePreviewRequest,
+  type DatabaseEdgePreviewResponse,
   type DatabaseEffectiveSuppressionRequest,
   type DatabaseGraphCountsRequest,
   type DatabaseGraphLayoutRequest,
   type DatabaseGraphStatsRequest,
   type DatabaseMemoryPreviewRequest,
+  type DatabaseMemoryPreviewResponse,
   type DatabaseMergeRequest,
   type DatabaseNamespaceExistsUnderPrefixRequest,
   type DatabaseNamespacesRequest,
   type DatabaseNamespacesUnderPrefixRequest,
   type DatabaseProjectionInputRequest,
+  type DatabaseProvenanceEventsResponse,
   type DatabaseSearchNamespacesRequest,
   type DatabaseSearchRequest,
   type DatabaseSourceMapReplaceRequest,
@@ -53,20 +64,7 @@ import {
   type DatabaseUnsuppressNamespaceRequest,
   type DatabaseVectorDimensionsRequest,
   serializeSearchHit,
-} from "../client/index";
-import type {
-  DatabaseEdgePreviewResponse,
-  DatabaseMemoryPreviewResponse,
-  DatabaseProvenanceEventsResponse,
-} from "../client/wire";
-import type { MemoriesDatabaseService } from "../service/index";
-import type {
-  MemoriesDatabaseHandle,
-  MemoriesDatabaseId,
-  MemoriesDatabaseOntologyStore,
-  StoredOntologyJsonSchema,
-} from "../storage/core/index";
-import { buildAtTipWire } from "./at-tip-wire";
+} from "./contracts/wire";
 import { HttpError, type MemoriesServiceHttpOptions, parseDatabaseIdBody } from "./handlers";
 import { labelMapsFromStoredOntology } from "./stored-ontology-label-schema";
 import { assertHttpVectorPayload } from "./vector-payload";

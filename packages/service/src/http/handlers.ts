@@ -34,6 +34,7 @@ import {
   scopeFromPrefixBody,
   scopeFromRename,
 } from "./authorize-scope";
+import { MEMORIES_HTTP_PATH } from "./contracts/routes";
 import {
   handleDatabaseHash,
   handleDatabaseOntologyCurrent,
@@ -221,7 +222,7 @@ export async function handleMemoriesServiceHttpRequest(
   const url = new URL(req.url);
 
   try {
-    if (req.method === "GET" && url.pathname === "/databases") {
+    if (req.method === "GET" && url.pathname === MEMORIES_HTTP_PATH.databases) {
       await authorize(opts.auth, req, "manage");
       const kind = url.searchParams.get("kind") ?? undefined;
       const ids = await opts.service.list(kind ? { kind } : undefined);
@@ -238,7 +239,7 @@ export async function handleMemoriesServiceHttpRequest(
       return jsonResponse({ databases });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/open") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesOpen) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "read", id);
@@ -255,7 +256,7 @@ export async function handleMemoriesServiceHttpRequest(
       return jsonResponse({ ok: true, database: id });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/metadata/get") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesMetadataGet) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database ?? body);
       await authorize(opts.auth, req, "read", id);
@@ -268,7 +269,7 @@ export async function handleMemoriesServiceHttpRequest(
       });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/metadata/upsert") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesMetadataUpsert) {
       const { body } = await readJsonBody(req);
       const record = body as Record<string, unknown>;
       const id = parseDatabaseIdBody(record.database ?? body);
@@ -283,7 +284,7 @@ export async function handleMemoriesServiceHttpRequest(
       return jsonResponse({ ...meta, database: id });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/exists") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesExists) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "read", id);
@@ -291,7 +292,7 @@ export async function handleMemoriesServiceHttpRequest(
       return jsonResponse({ exists, database: id });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/checkpoint") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesCheckpoint) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "write", id);
@@ -299,7 +300,7 @@ export async function handleMemoriesServiceHttpRequest(
       return jsonResponse({ ok: true, database: id });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/close") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesClose) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "manage", id);
@@ -307,7 +308,7 @@ export async function handleMemoriesServiceHttpRequest(
       return jsonResponse({ ok: true, database: id });
     }
 
-    if (req.method === "DELETE" && url.pathname === "/databases") {
+    if (req.method === "DELETE" && url.pathname === MEMORIES_HTTP_PATH.databases) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody(body);
       await authorize(opts.auth, req, "manage", id);
@@ -318,21 +319,21 @@ export async function handleMemoriesServiceHttpRequest(
       return jsonResponse({ ok: true, database: id });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/search") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesSearch) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseSearch(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/search-namespaces") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesSearchNamespaces) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseSearchNamespaces(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/merge") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesMerge) {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
@@ -350,7 +351,7 @@ export async function handleMemoriesServiceHttpRequest(
       );
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/delete-memory") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesDeleteMemory) {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
@@ -361,7 +362,7 @@ export async function handleMemoriesServiceHttpRequest(
       return handleDatabaseDeleteMemory(opts.service, body, attribution);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/suppress-memory") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesSuppressMemory) {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
@@ -372,7 +373,7 @@ export async function handleMemoriesServiceHttpRequest(
       return handleDatabaseSuppressMemory(opts.service, body, attribution);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/unsuppress-memory") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesUnsuppressMemory) {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
@@ -383,7 +384,7 @@ export async function handleMemoriesServiceHttpRequest(
       return handleDatabaseUnsuppressMemory(opts.service, body, attribution);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/suppress-namespace") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesSuppressNamespace) {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
@@ -394,7 +395,7 @@ export async function handleMemoriesServiceHttpRequest(
       return handleDatabaseSuppressNamespace(opts.service, body, attribution);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/unsuppress-namespace") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesUnsuppressNamespace) {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
@@ -405,105 +406,111 @@ export async function handleMemoriesServiceHttpRequest(
       return handleDatabaseUnsuppressNamespace(opts.service, body, attribution);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/provenance/head") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesProvenanceHead) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProvenanceHead(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/provenance/timestamp") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesProvenanceTimestamp) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProvenanceTimestamp(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/provenance/events") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesProvenanceEvents) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProvenanceEvents(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/provenance/chain") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesProvenanceChain) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProvenanceChain(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/provenance/content") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesProvenanceContent) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProvenanceContent(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/provenance/graph") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesProvenanceGraph) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProvenanceGraph(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/provenance/vectors") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesProvenanceVectors) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProvenanceVectors(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/memory-detail") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesMemoryDetail) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseMemoryDetail(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/edge-detail") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesEdgeDetail) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseEdgeDetail(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/capabilities") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesCapabilities) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseCapabilities(opts.service, body, namespacePathPolicyFromHttpOpts(opts));
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/namespaces") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesNamespaces) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseNamespaces(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/namespaces/under-prefix") {
+    if (
+      req.method === "POST" &&
+      url.pathname === MEMORIES_HTTP_PATH.databasesNamespacesUnderPrefix
+    ) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromPrefixBody(body));
       return await handleDatabaseNamespacesUnderPrefix(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/namespaces/exists-under-prefix") {
+    if (
+      req.method === "POST" &&
+      url.pathname === MEMORIES_HTTP_PATH.databasesNamespacesExistsUnderPrefix
+    ) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromPrefixBody(body));
       return await handleDatabaseNamespaceExistsUnderPrefix(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/namespaces/get") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesNamespacesGet) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromNamespaceMutation(body));
       return handleDatabaseNamespaceGet(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/namespaces/upsert") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesNamespacesUpsert) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, scopeFromNamespaceMutation(body));
@@ -515,14 +522,14 @@ export async function handleMemoriesServiceHttpRequest(
       );
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/namespaces/delete") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesNamespacesDelete) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, scopeFromNamespaceDelete(body));
       return await handleDatabaseNamespaceDelete(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/namespaces/rename") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesNamespacesRename) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, scopeFromRename(body));
@@ -534,21 +541,24 @@ export async function handleMemoriesServiceHttpRequest(
       );
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/edge-preview") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesEdgePreview) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseEdgePreview(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/memory-preview") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesMemoryPreview) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseMemoryPreview(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/source-map/text-preview") {
+    if (
+      req.method === "POST" &&
+      url.pathname === MEMORIES_HTTP_PATH.databasesSourceMapTextPreview
+    ) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await opts.auth.authenticate(req);
@@ -562,7 +572,7 @@ export async function handleMemoriesServiceHttpRequest(
       });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/source-map/text") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesSourceMapText) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await opts.auth.authenticate(req);
@@ -576,7 +586,7 @@ export async function handleMemoriesServiceHttpRequest(
       });
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/source-map/replace") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesSourceMapReplace) {
       const { body, bodySha256 } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const actor = await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
@@ -592,56 +602,59 @@ export async function handleMemoriesServiceHttpRequest(
       );
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/vector-dimensions") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesVectorDimensions) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseVectorDimensions(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/graph-layout") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesGraphLayout) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseGraphLayout(opts.service, opts.projectionSource, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/graph-counts") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesGraphCounts) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseGraphCounts(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/graph-stats") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesGraphStats) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseGraphStats(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/projections/projection-input") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesProjectionInput) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return await handleDatabaseProjectionInput(opts.service, opts.projectionSource, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/ensure-scope-chain") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesEnsureScopeChain) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, scopeFromMemoryBody(body));
       return handleDatabaseEnsureScopeChain(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/find-memory-id") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesFindMemoryId) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseFindMemoryId(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/effective-suppression") {
+    if (
+      req.method === "POST" &&
+      url.pathname === MEMORIES_HTTP_PATH.databasesEffectiveSuppression
+    ) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       const record = body as { key?: unknown };
@@ -657,53 +670,56 @@ export async function handleMemoriesServiceHttpRequest(
       return await handleDatabaseEffectiveSuppression(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/load-memory-namespace-key") {
+    if (
+      req.method === "POST" &&
+      url.pathname === MEMORIES_HTTP_PATH.databasesLoadMemoryNamespaceKey
+    ) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeFromMemoryBody(body));
       return handleDatabaseLoadMemoryNamespaceKey(opts.service, body);
     }
 
-    if (req.method === "POST" && url.pathname === "/ontologies/register") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.ontologiesRegister) {
       await authorize(opts.auth, req, "manage");
       const { body } = await readJsonBody(req);
       return handleOntologyRegister(requireOntology(opts), body);
     }
 
-    if (req.method === "POST" && url.pathname === "/ontologies/get") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.ontologiesGet) {
       await authorize(opts.auth, req, "read");
       const { body } = await readJsonBody(req);
       return handleOntologyGet(requireOntology(opts), body);
     }
 
-    if (req.method === "POST" && url.pathname === "/ontologies/databases") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.ontologiesDatabases) {
       await authorize(opts.auth, req, "manage");
       const { body } = await readJsonBody(req);
       return handleOntologyListDatabases(requireOntology(opts), body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/ontology/link") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesOntologyLink) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "write", id, scopeDatabase());
       return handleDatabaseOntologyLink(requireOntology(opts), body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/ontology/current") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesOntologyCurrent) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseOntologyCurrent(requireOntology(opts), body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/hash") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesHash) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());
       return handleDatabaseHash(requireOntology(opts), body);
     }
 
-    if (req.method === "POST" && url.pathname === "/databases/ontology/history") {
+    if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesOntologyHistory) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
       await authorize(opts.auth, req, "read", id, scopeDatabase());

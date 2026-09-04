@@ -1,4 +1,9 @@
 export {
+  MEMORIES_HTTP_PATH,
+  type MemoriesHttpPathKey,
+} from "./contracts/routes";
+export * from "./contracts/wire";
+export {
   type CreateMemoriesServiceHttpServerOptions,
   createMemoriesServiceHttpServer,
   type DatabaseIdBody,

@@ -1,3 +1,4 @@
+import { MEMORIES_HTTP_PATH } from "../http/contracts/routes";
 import type {
   DatabaseListFilter,
   MemoriesDatabaseId,
@@ -58,7 +59,7 @@ export class MemoriesServiceClient {
 
   async listDatabases(filter?: DatabaseListFilter): Promise<MemoriesDatabaseListEntry[]> {
     const qs = filter?.kind ? `?kind=${encodeURIComponent(filter.kind)}` : "";
-    const response = await this.request("GET", `/databases${qs}`);
+    const response = await this.request("GET", `${MEMORIES_HTTP_PATH.databases}${qs}`);
     const body = (await response.json()) as { databases?: MemoriesDatabaseListEntry[] };
     return body.databases ?? [];
   }
@@ -67,7 +68,7 @@ export class MemoriesServiceClient {
     id: MemoriesDatabaseId,
     metadata?: { name?: string; description?: string },
   ): Promise<void> {
-    await this.request("POST", "/databases/open", {
+    await this.request("POST", MEMORIES_HTTP_PATH.databasesOpen, {
       ...id,
       ...(metadata?.name !== undefined ? { name: metadata.name } : {}),
       ...(metadata?.description !== undefined ? { description: metadata.description } : {}),
@@ -75,7 +76,9 @@ export class MemoriesServiceClient {
   }
 
   async getDatabaseMetadata(id: MemoriesDatabaseId): Promise<MemoriesDatabaseMetadata> {
-    const response = await this.requestJson("POST", "/databases/metadata/get", { database: id });
+    const response = await this.requestJson("POST", MEMORIES_HTTP_PATH.databasesMetadataGet, {
+      database: id,
+    });
     const body = (await response.json()) as MemoriesDatabaseMetadata;
     return { name: body.name ?? "", description: body.description ?? "" };
   }
@@ -84,7 +87,7 @@ export class MemoriesServiceClient {
     id: MemoriesDatabaseId,
     patch: { name?: string; description?: string },
   ): Promise<MemoriesDatabaseMetadata> {
-    const response = await this.requestJson("POST", "/databases/metadata/upsert", {
+    const response = await this.requestJson("POST", MEMORIES_HTTP_PATH.databasesMetadataUpsert, {
       database: id,
       ...patch,
     });
@@ -93,21 +96,21 @@ export class MemoriesServiceClient {
   }
 
   async databaseExists(id: MemoriesDatabaseId): Promise<boolean> {
-    const response = await this.request("POST", "/databases/exists", id);
+    const response = await this.request("POST", MEMORIES_HTTP_PATH.databasesExists, id);
     const body = (await response.json()) as { exists?: boolean };
     return body.exists === true;
   }
 
   async checkpointDatabase(id: MemoriesDatabaseId): Promise<void> {
-    await this.request("POST", "/databases/checkpoint", id);
+    await this.request("POST", MEMORIES_HTTP_PATH.databasesCheckpoint, id);
   }
 
   async closeDatabase(id: MemoriesDatabaseId): Promise<void> {
-    await this.request("POST", "/databases/close", id);
+    await this.request("POST", MEMORIES_HTTP_PATH.databasesClose, id);
   }
 
   async deleteDatabase(id: MemoriesDatabaseId): Promise<void> {
-    await this.request("DELETE", "/databases", id);
+    await this.request("DELETE", MEMORIES_HTTP_PATH.databases, id);
   }
 
   async postJson<T>(path: string, body: unknown, opts?: { signal?: AbortSignal }): Promise<T> {
