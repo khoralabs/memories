@@ -23,6 +23,7 @@ import {
   PROJECTION_INPUT_ENCODING_HEADER,
   type ProjectionInputCompression,
 } from "@khoralabs/memories-node/projections/projection-input";
+import { MEMORIES_HTTP_PATH } from "../http/contracts/routes";
 import type { MemoriesDatabaseId } from "../storage/core/index";
 
 import { MemoriesServiceClient, type MemoriesServiceClientOptions } from "./client";
@@ -78,14 +79,14 @@ function createRemotePersistence(
     withTransaction: async <T>(fn: () => Promise<T>) => fn(),
     getProvenanceHeadRootHex: async () => {
       const response = await client.postJson<DatabaseProvenanceHeadResponse>(
-        "/databases/provenance/head",
+        MEMORIES_HTTP_PATH.databasesProvenanceHead,
         { database },
       );
       return response.rootHex.length > 0 ? response.rootHex : undefined;
     },
     getProvenanceTimestampMsForRootHex: async (rootHex: string) => {
       const response = await client.postJson<DatabaseProvenanceTimestampResponse>(
-        "/databases/provenance/timestamp",
+        MEMORIES_HTTP_PATH.databasesProvenanceTimestamp,
         { database, rootHex },
       );
       return response.timestampMs ?? undefined;
@@ -98,7 +99,7 @@ function createRemotePersistence(
       before?: { createdAt: number; id: string };
     }): Promise<ProvenanceEventListItem[]> => {
       const response = await client.postJson<DatabaseProvenanceEventsResponse>(
-        "/databases/provenance/events",
+        MEMORIES_HTTP_PATH.databasesProvenanceEvents,
         {
           database,
           ...(input.namespace !== undefined ? { namespace: input.namespace } : {}),
@@ -115,7 +116,7 @@ function createRemotePersistence(
       beforeRootHex?: string;
     }): Promise<ProvenanceChainLink[]> => {
       const response = await client.postJson<DatabaseProvenanceChainResponse>(
-        "/databases/provenance/chain",
+        MEMORIES_HTTP_PATH.databasesProvenanceChain,
         {
           database,
           limit: input.limit,
@@ -130,7 +131,7 @@ function createRemotePersistence(
       memoryKey: string,
     ): Promise<MemoryContentAtRootItem[]> => {
       const response = await client.postJson<DatabaseProvenanceContentResponse>(
-        "/databases/provenance/content",
+        MEMORIES_HTTP_PATH.databasesProvenanceContent,
         { database, rootHex, namespace, key: memoryKey },
       );
       return response.content;
@@ -185,7 +186,10 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
 
   override async search(params: SearchParams): Promise<SearchOutput> {
     const body: DatabaseSearchRequest = { database: this.#database, params };
-    const response = await this.#client.postJson<DatabaseSearchResponse>("/databases/search", body);
+    const response = await this.#client.postJson<DatabaseSearchResponse>(
+      MEMORIES_HTTP_PATH.databasesSearch,
+      body,
+    );
     return {
       hits: deserializeSearchHits(response.hits) as unknown as SearchHit[],
       ...(response.vectorSearchMethod !== undefined
@@ -207,7 +211,10 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         ? { intentSnapshotId: attribution.intentSnapshotId }
         : {}),
     };
-    const response = await this.#client.postJson<{ memoryIds: string[] }>("/databases/merge", body);
+    const response = await this.#client.postJson<{ memoryIds: string[] }>(
+      MEMORIES_HTTP_PATH.databasesMerge,
+      body,
+    );
     return response.memoryIds;
   }
 
@@ -231,7 +238,7 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         : {}),
     };
     return this.#client.postJson<{ sourceMapId: string; rootHex: string }>(
-      "/databases/source-map/replace",
+      MEMORIES_HTTP_PATH.databasesSourceMapReplace,
       body,
     );
   }
@@ -248,7 +255,7 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         ? { intentSnapshotId: attribution.intentSnapshotId }
         : {}),
     };
-    await this.#client.postJson("/databases/delete-memory", body);
+    await this.#client.postJson(MEMORIES_HTTP_PATH.databasesDeleteMemory, body);
   }
 
   override async suppressMemory(params: SuppressMemoryParams): Promise<void> {
@@ -263,7 +270,7 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         ? { intentSnapshotId: attribution.intentSnapshotId }
         : {}),
     };
-    await this.#client.postJson("/databases/suppress-memory", body);
+    await this.#client.postJson(MEMORIES_HTTP_PATH.databasesSuppressMemory, body);
   }
 
   override async unsuppressMemory(params: SuppressMemoryParams): Promise<void> {
@@ -278,7 +285,7 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         ? { intentSnapshotId: attribution.intentSnapshotId }
         : {}),
     };
-    await this.#client.postJson("/databases/unsuppress-memory", body);
+    await this.#client.postJson(MEMORIES_HTTP_PATH.databasesUnsuppressMemory, body);
   }
 
   override async suppressNamespace(params: SuppressNamespaceParams): Promise<void> {
@@ -292,7 +299,7 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         ? { intentSnapshotId: attribution.intentSnapshotId }
         : {}),
     };
-    await this.#client.postJson("/databases/suppress-namespace", body);
+    await this.#client.postJson(MEMORIES_HTTP_PATH.databasesSuppressNamespace, body);
   }
 
   override async unsuppressNamespace(params: SuppressNamespaceParams): Promise<void> {
@@ -306,7 +313,7 @@ export class RemoteMemoriesClientAsync extends MemoriesClientAsync<LabelSchemaMa
         ? { intentSnapshotId: attribution.intentSnapshotId }
         : {}),
     };
-    await this.#client.postJson("/databases/unsuppress-namespace", body);
+    await this.#client.postJson(MEMORIES_HTTP_PATH.databasesUnsuppressNamespace, body);
   }
 }
 
@@ -315,7 +322,7 @@ export async function createRemoteMemoriesClientAsync(
 ): Promise<RemoteMemoriesClientAsync> {
   const serviceClient = new MemoriesServiceClient(opts);
   const { capabilities } = await serviceClient.postJson<DatabaseCapabilitiesResponse>(
-    "/databases/capabilities",
+    MEMORIES_HTTP_PATH.databasesCapabilities,
     { database: opts.database },
   );
   return new RemoteMemoriesClientAsync(opts, capabilities as MemoriesBackendCapabilities);
@@ -448,7 +455,7 @@ export class RemoteMemoriesReadClient {
     includeSuppressed?: boolean;
   }): Promise<DatabaseNamespaceMetadata[]> {
     const response = await this.#client.postJson<DatabaseNamespacesResponse>(
-      "/databases/namespaces",
+      MEMORIES_HTTP_PATH.databasesNamespaces,
       {
         database: this.#database,
         ...(opts?.includeSuppressed === true ? { includeSuppressed: true } : {}),
@@ -463,7 +470,7 @@ export class RemoteMemoriesReadClient {
     opts?: { includeSuppressed?: boolean },
   ): Promise<DatabaseNamespaceMetadata[]> {
     const response = await this.#client.postJson<DatabaseNamespacesUnderPrefixResponse>(
-      "/databases/namespaces/under-prefix",
+      MEMORIES_HTTP_PATH.databasesNamespacesUnderPrefix,
       {
         database: this.#database,
         prefix,
@@ -479,7 +486,7 @@ export class RemoteMemoriesReadClient {
     opts?: { includeSuppressed?: boolean },
   ): Promise<boolean> {
     const response = await this.#client.postJson<DatabaseNamespaceExistsUnderPrefixResponse>(
-      "/databases/namespaces/exists-under-prefix",
+      MEMORIES_HTTP_PATH.databasesNamespacesExistsUnderPrefix,
       {
         database: this.#database,
         prefix,
@@ -492,7 +499,7 @@ export class RemoteMemoriesReadClient {
   async getNamespaceMetadata(namespace: string): Promise<DatabaseNamespaceMetadata | null> {
     const response = await this.#client.postJson<{
       namespace: DatabaseNamespaceMetadata | null;
-    }>("/databases/namespaces/get", {
+    }>(MEMORIES_HTTP_PATH.databasesNamespacesGet, {
       database: this.#database,
       namespace,
     });
@@ -505,7 +512,7 @@ export class RemoteMemoriesReadClient {
     key?: string;
   }): Promise<DatabaseEffectiveSuppressionResponse> {
     return this.#client.postJson<DatabaseEffectiveSuppressionResponse>(
-      "/databases/effective-suppression",
+      MEMORIES_HTTP_PATH.databasesEffectiveSuppression,
       {
         database: this.#database,
         namespace: input.namespace,
@@ -520,7 +527,7 @@ export class RemoteMemoriesReadClient {
     description?: string;
   }): Promise<DatabaseNamespaceMetadata> {
     const response = await this.#client.postJson<{ namespace: DatabaseNamespaceMetadata }>(
-      "/databases/namespaces/upsert",
+      MEMORIES_HTTP_PATH.databasesNamespacesUpsert,
       {
         database: this.#database,
         ...input,
@@ -533,7 +540,7 @@ export class RemoteMemoriesReadClient {
     namespace: string;
     recursive?: boolean;
   }): Promise<{ namespaces: string[]; deletedMemories: number }> {
-    return this.#client.postJson("/databases/namespaces/delete", {
+    return this.#client.postJson(MEMORIES_HTTP_PATH.databasesNamespacesDelete, {
       database: this.#database,
       ...input,
     });
@@ -543,7 +550,7 @@ export class RemoteMemoriesReadClient {
     namespaces: Array<{ from: string; to: string }>;
     renamedMemories: number;
   }> {
-    return this.#client.postJson("/databases/namespaces/rename", {
+    return this.#client.postJson(MEMORIES_HTTP_PATH.databasesNamespacesRename, {
       database: this.#database,
       ...input,
     });
@@ -559,7 +566,7 @@ export class RemoteMemoriesReadClient {
       includeVectors?: boolean;
     },
   ): Promise<DatabaseEdgePreviewResponse> {
-    return this.#client.postJson("/databases/edge-preview", {
+    return this.#client.postJson(MEMORIES_HTTP_PATH.databasesEdgePreview, {
       database: this.#database,
       namespace,
       edgeId,
@@ -578,7 +585,7 @@ export class RemoteMemoriesReadClient {
     includeAtTip?: boolean;
     includeVectors?: boolean;
   }): Promise<DatabaseMemoryPreviewResponse> {
-    return this.#client.postJson("/databases/memory-preview", {
+    return this.#client.postJson(MEMORIES_HTTP_PATH.databasesMemoryPreview, {
       database: this.#database,
       namespace: input.namespace,
       key: input.key,
@@ -598,7 +605,7 @@ export class RemoteMemoriesReadClient {
     includeVectors?: boolean;
     maxChars?: number;
   }): Promise<DatabaseMemoryDetailResponse> {
-    return this.#client.postJson("/databases/memory-detail", {
+    return this.#client.postJson(MEMORIES_HTTP_PATH.databasesMemoryDetail, {
       database: this.#database,
       ...input,
     });
@@ -613,7 +620,7 @@ export class RemoteMemoriesReadClient {
     includeVectors?: boolean;
     includeSuppressed?: boolean;
   }): Promise<DatabaseEdgeDetailResponse> {
-    return this.#client.postJson("/databases/edge-detail", {
+    return this.#client.postJson(MEMORIES_HTTP_PATH.databasesEdgeDetail, {
       database: this.#database,
       ...input,
     });
@@ -624,7 +631,7 @@ export class RemoteMemoriesReadClient {
     namespace: string;
     key: string;
   }): Promise<DatabaseProvenanceGraphResponse> {
-    return this.#client.postJson("/databases/provenance/graph", {
+    return this.#client.postJson(MEMORIES_HTTP_PATH.databasesProvenanceGraph, {
       database: this.#database,
       ...input,
     });
@@ -636,7 +643,7 @@ export class RemoteMemoriesReadClient {
     key: string;
     includeValues?: boolean;
   }): Promise<DatabaseProvenanceVectorsResponse> {
-    return this.#client.postJson("/databases/provenance/vectors", {
+    return this.#client.postJson(MEMORIES_HTTP_PATH.databasesProvenanceVectors, {
       database: this.#database,
       ...input,
     });
@@ -644,7 +651,7 @@ export class RemoteMemoriesReadClient {
 
   async getSourceMapTextPreview(sourceMapId: string, maxChars = 2400): Promise<string | null> {
     const response = await this.#client.postJson<{ text: string | null }>(
-      "/databases/source-map/text-preview",
+      MEMORIES_HTTP_PATH.databasesSourceMapTextPreview,
       { database: this.#database, sourceMapId, maxChars },
     );
     return response.text;
@@ -652,7 +659,7 @@ export class RemoteMemoriesReadClient {
 
   async getSourceMapText(sourceMapId: string): Promise<string | null> {
     const response = await this.#client.postJson<{ text: string | null }>(
-      "/databases/source-map/text",
+      MEMORIES_HTTP_PATH.databasesSourceMapText,
       { database: this.#database, sourceMapId },
     );
     return response.text;
@@ -660,7 +667,7 @@ export class RemoteMemoriesReadClient {
 
   async listVectorDimensions(): Promise<number[]> {
     const response = await this.#client.postJson<{ dimensions: number[] }>(
-      "/databases/vector-dimensions",
+      MEMORIES_HTTP_PATH.databasesVectorDimensions,
       { database: this.#database },
     );
     return response.dimensions;
@@ -686,7 +693,7 @@ export class RemoteMemoriesReadClient {
       ...(input.includeSuppressed === true ? { includeSuppressed: true } : {}),
     };
     const response = await this.#client.postBinaryResponse(
-      "/databases/projections/projection-input",
+      MEMORIES_HTTP_PATH.databasesProjectionInput,
       body,
     );
     const responseCompression =
@@ -714,7 +721,7 @@ export class RemoteMemoriesReadClient {
     const response = await this.#client.postJson<{
       layout: NamespaceGraphLayout;
       database: MemoriesDatabaseId;
-    }>("/databases/graph-layout", body);
+    }>(MEMORIES_HTTP_PATH.databasesGraphLayout, body);
     return response.layout;
   }
 
@@ -732,7 +739,7 @@ export class RemoteMemoriesReadClient {
     };
     const response = await this.#client.postJson<
       DatabaseGraphCountsResponse & { database: MemoriesDatabaseId }
-    >("/databases/graph-counts", body);
+    >(MEMORIES_HTTP_PATH.databasesGraphCounts, body);
     return {
       namespace: response.namespace,
       scope: response.scope,
@@ -755,7 +762,7 @@ export class RemoteMemoriesReadClient {
     };
     const response = await this.#client.postJson<
       DatabaseGraphStatsResponse & { database: MemoriesDatabaseId }
-    >("/databases/graph-stats", body);
+    >(MEMORIES_HTTP_PATH.databasesGraphStats, body);
     return {
       namespace: response.namespace,
       scope: response.scope,
@@ -768,7 +775,7 @@ export class RemoteMemoriesReadClient {
   }
 
   async ensureScopeChain(scopePaths: readonly string[]): Promise<void> {
-    await this.#client.postJson("/databases/ensure-scope-chain", {
+    await this.#client.postJson(MEMORIES_HTTP_PATH.databasesEnsureScopeChain, {
       database: this.#database,
       scopePaths,
     });
@@ -776,7 +783,7 @@ export class RemoteMemoriesReadClient {
 
   async findMemoryIdByKey(namespace: string, key: string): Promise<string | undefined> {
     const response = await this.#client.postJson<{ memoryId: string | null }>(
-      "/databases/find-memory-id",
+      MEMORIES_HTTP_PATH.databasesFindMemoryId,
       { database: this.#database, namespace, key },
     );
     return response.memoryId ?? undefined;
@@ -787,7 +794,7 @@ export class RemoteMemoriesReadClient {
   ): Promise<{ namespace: string; key: string } | undefined> {
     const response = await this.#client.postJson<{
       record: { namespace: string; key: string } | null;
-    }>("/databases/load-memory-namespace-key", { database: this.#database, memoryId });
+    }>(MEMORIES_HTTP_PATH.databasesLoadMemoryNamespaceKey, { database: this.#database, memoryId });
     return response.record ?? undefined;
   }
 }

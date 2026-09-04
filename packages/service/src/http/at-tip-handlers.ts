@@ -1,4 +1,6 @@
 import type { MemoriesBackendCapabilities } from "@khoralabs/memories-node";
+import type { MemoriesDatabaseService } from "../service/index";
+import { buildAtTipWire } from "./at-tip-wire";
 import type {
   DatabaseEdgeDetailResponse,
   DatabaseMemoryDetailResponse,
@@ -6,9 +8,7 @@ import type {
   DatabaseProvenanceVectorsResponse,
   TipAtRootWire,
   TipGraphSnapshotWire,
-} from "../client/wire";
-import type { MemoriesDatabaseService } from "../service/index";
-import { buildAtTipWire } from "./at-tip-wire";
+} from "./contracts/wire";
 import { HttpError } from "./handlers";
 import {
   edgePreviewForHandle,

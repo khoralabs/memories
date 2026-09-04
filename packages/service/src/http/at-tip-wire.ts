@@ -1,5 +1,5 @@
 import type { MemoriesBackendCapabilities } from "@khoralabs/memories-node";
-import type { TipAtRootWire, TipGraphSnapshotWire } from "../client/wire";
+import type { TipAtRootWire, TipGraphSnapshotWire } from "./contracts/wire";
 import type { getHandle } from "./persistence-handlers";
 
 function tipReplayEnabled(caps: MemoriesBackendCapabilities | undefined): boolean {

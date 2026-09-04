@@ -1,3 +1,17 @@
+export {
+  MEMORIES_SERVICE_PROTOCOL_VERSION,
+  type MemoriesServiceDiscovery,
+  zMemoriesServiceDiscovery,
+} from "../http/contracts/discovery";
+export {
+  MEMORIES_ERROR_CODE,
+  type MemoriesErrorCode,
+  type MemoriesErrorEnvelope,
+  memoriesErrorCodeForStatus,
+  zMemoriesErrorCode,
+  zMemoriesErrorEnvelope,
+} from "../http/contracts/error-codes";
+export { MEMORIES_HTTP_PATH, type MemoriesHttpPathKey } from "../http/contracts/routes";
 export type {
   MemoriesDatabaseId,
   StoredOntologyJsonSchema,
@@ -9,9 +23,14 @@ export {
   type MemoriesDatabaseListEntry,
   MemoriesServiceClient,
   type MemoriesServiceClientAuthProvider,
+  MemoriesServiceClientError,
   type MemoriesServiceClientOptions,
   type MemoriesServiceFetch,
 } from "./client";
+export {
+  type DiscoverMemoriesServiceOptions,
+  discoverMemoriesService,
+} from "./discover";
 export {
   type EnsureDatabaseOntologyLinkOptions,
   ensureDatabaseOntologyLink,
