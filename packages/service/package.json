@@ -32,6 +32,16 @@
       "import": "./src/client/index.ts",
       "default": "./src/client/index.ts"
     },
+    "./client/http": {
+      "types": "./src/client/http.ts",
+      "import": "./src/client/http.ts",
+      "default": "./src/client/http.ts"
+    },
+    "./client/ontology": {
+      "types": "./src/client/ontology.ts",
+      "import": "./src/client/ontology.ts",
+      "default": "./src/client/ontology.ts"
+    },
     "./client/agent": {
       "types": "./src/client/agent.ts",
       "import": "./src/client/agent.ts",
