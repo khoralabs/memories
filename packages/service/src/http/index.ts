@@ -1,4 +1,12 @@
 export {
+  MEMORIES_ERROR_CODE,
+  type MemoriesErrorCode,
+  type MemoriesErrorEnvelope,
+  memoriesErrorCodeForStatus,
+  zMemoriesErrorCode,
+  zMemoriesErrorEnvelope,
+} from "./contracts/error-codes";
+export {
   MEMORIES_HTTP_PATH,
   type MemoriesHttpPathKey,
 } from "./contracts/routes";

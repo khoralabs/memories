@@ -1,3 +1,8 @@
+import {
+  type MemoriesErrorCode,
+  memoriesErrorCodeForStatus,
+  zMemoriesErrorCode,
+} from "../http/contracts/error-codes";
 import { MEMORIES_HTTP_PATH } from "../http/contracts/routes";
 import type {
   DatabaseListFilter,
@@ -45,6 +50,44 @@ export type MemoriesDatabaseListEntry = {
   name: string;
   description: string;
 };
+
+export class MemoriesServiceClientError extends Error {
+  readonly status: number;
+  readonly code?: MemoriesErrorCode;
+  readonly bodyText?: string;
+
+  constructor(message: string, status: number, bodyText?: string, code?: MemoriesErrorCode) {
+    super(message);
+    this.name = "MemoriesServiceClientError";
+    this.status = status;
+    this.bodyText = bodyText;
+    if (code !== undefined) this.code = code;
+  }
+}
+
+async function throwFromFailedResponse(response: Response): Promise<never> {
+  const bodyText = await response.text().catch(() => undefined);
+  let message = `Request failed with status ${response.status}`;
+  let code: MemoriesErrorCode | undefined;
+  if (bodyText !== undefined && bodyText.length > 0) {
+    try {
+      const parsed = JSON.parse(bodyText) as { error?: unknown; code?: unknown };
+      if (typeof parsed.error === "string" && parsed.error.length > 0) {
+        message = parsed.error;
+      }
+      const parsedCode = zMemoriesErrorCode.safeParse(parsed.code);
+      if (parsedCode.success) code = parsedCode.data;
+    } catch {
+      // keep default message
+    }
+  }
+  throw new MemoriesServiceClientError(
+    message,
+    response.status,
+    bodyText,
+    code ?? memoriesErrorCodeForStatus(response.status),
+  );
+}
 
 export class MemoriesServiceClient {
   private readonly baseUrl: string;
@@ -140,8 +183,7 @@ export class MemoriesServiceClient {
     });
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
     if (!response.ok) {
-      const errorBody = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(errorBody.error ?? `Request failed with status ${response.status}`);
+      await throwFromFailedResponse(response);
     }
     return response;
   }
@@ -154,8 +196,7 @@ export class MemoriesServiceClient {
     });
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
     if (!response.ok) {
-      const errorBody = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(errorBody.error ?? `Request failed with status ${response.status}`);
+      await throwFromFailedResponse(response);
     }
     return response;
   }

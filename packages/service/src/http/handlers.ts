@@ -34,6 +34,11 @@ import {
   scopeFromPrefixBody,
   scopeFromRename,
 } from "./authorize-scope";
+import {
+  MEMORIES_ERROR_CODE,
+  type MemoriesErrorCode,
+  memoriesErrorCodeForStatus,
+} from "./contracts/error-codes";
 import { MEMORIES_HTTP_PATH } from "./contracts/routes";
 import {
   handleDatabaseHash,
@@ -101,10 +106,12 @@ export function parseDatabaseIdBody(body: unknown): MemoriesDatabaseId {
 
 export class HttpError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  readonly code: MemoriesErrorCode;
+  constructor(message: string, status: number, code?: MemoriesErrorCode) {
     super(message);
     this.name = "HttpError";
     this.status = status;
+    this.code = code ?? memoriesErrorCodeForStatus(status);
   }
 }
 
@@ -726,16 +733,22 @@ export async function handleMemoriesServiceHttpRequest(
       return handleDatabaseOntologyHistory(requireOntology(opts), body);
     }
 
-    return jsonResponse({ error: "Not found" }, 404);
+    return jsonResponse({ error: "Not found", code: MEMORIES_ERROR_CODE.not_found }, 404);
   } catch (error) {
     if (error instanceof HttpError) {
-      return jsonResponse({ error: error.message }, error.status);
+      return jsonResponse({ error: error.message, code: error.code }, error.status);
     }
     if (error instanceof AuthStrategyError) {
-      return jsonResponse({ error: error.message }, error.status);
+      return jsonResponse(
+        {
+          error: error.message,
+          code: memoriesErrorCodeForStatus(error.status),
+        },
+        error.status,
+      );
     }
     const message = error instanceof Error ? error.message : String(error);
-    return jsonResponse({ error: message }, 400);
+    return jsonResponse({ error: message, code: MEMORIES_ERROR_CODE.internal_error }, 500);
   }
 }
 
