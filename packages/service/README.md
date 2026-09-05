@@ -99,6 +99,22 @@ const server = createMemoriesServiceHttpServer({
 
 Bun-only for `./storage/sqlite`. Omit `sqlCipherKey` for plaintext SQLite; set `SQLCIPHER_KEY` (or pass `sqlCipherKey`) to enable SQLCipher. Use libSQL / Turso storage entrypoints on Node.
 
+## Bun + Next
+
+SQLite storage (`./storage/sqlite`) and `@khoralabs/memories-node/sqlite` require Bun. Keep them off the default package root graph.
+
+For Next apps running on Bun, externalize the memories packages (and otel follower) so the bundler does not try to parse `bun:sqlite` / `sqlite-vec`:
+
+```js
+serverExternalPackages: [
+  "@khoralabs/memories-node",
+  "@khoralabs/memories-service",
+  "@khoralabs/memories-otel",
+],
+```
+
+If Bun’s isolated install places those packages in Next’s hashed external island, declare runtime peers the island needs as **direct** deps of the app.
+
 ### App policy auth
 
 When `MEMORIES_SERVICE_AUTH=app-policy`, construct the strategy at server creation (env alone cannot build it):

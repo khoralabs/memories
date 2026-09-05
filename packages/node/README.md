@@ -92,6 +92,27 @@ mergeMemory({ persistence, telemetry }, params);
 
 Helpers: `noopMemoriesTelemetry`, `bindMemoriesTelemetry` (stamp static attrs onto every emit) from `@khoralabs/memories-node/telemetry`. Span names and attribute catalog: [`../otel/README.md`](../otel/README.md).
 
+## Bun + Next
+
+`./sqlite` uses `bun:sqlite` and optionally `sqlite-vec`. Those stay behind that subpath — do not import them via the package root.
+
+When embedding under **Bun + Next.js**, put natives outside the bundler island:
+
+```js
+// next.config.js
+const nextConfig = {
+  serverExternalPackages: [
+    "@khoralabs/memories-node",
+    "@khoralabs/memories-service",
+    "@khoralabs/memories-otel",
+  ],
+};
+```
+
+Why: Next’s server graph otherwise tries to analyze/bundle `bun:sqlite`, optional `sqlite-vec`, and `createRequire`-style loaders. Externalizing keeps them as runtime `require`s under Bun.
+
+With Bun’s isolated installs, Next may resolve externals into a hashed island that does not see transitive deps. If you hit missing modules at runtime, declare those peers as **direct** dependencies of the Next app (same pattern as relay/`zod` for vellum hosts).
+
 ## Attestation and autolink
 
 - **Attestation** — signed contributor envelopes stored on provenance events (`khora.direct-principal-v1`, `khora.http-request-v1`). Used by the service HTTP attribution path.
