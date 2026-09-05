@@ -81,6 +81,16 @@
       "types": "./src/testing/index.ts",
       "import": "./src/testing/index.ts",
       "default": "./src/testing/index.ts"
+    },
+    "./react-client": {
+      "types": "./src/react-client.ts",
+      "import": "./src/react-client.ts",
+      "default": "./src/react-client.ts"
+    },
+    "./react-client/service": {
+      "types": "./src/react-client-service.ts",
+      "import": "./src/react-client-service.ts",
+      "default": "./src/react-client-service.ts"
     }
   },
   "dependencies": {

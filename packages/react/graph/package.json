@@ -37,6 +37,7 @@
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "@chenglou/pretext": "^0.0.6",
+    "@khoralabs/memories-service": "workspace:*",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -45,22 +46,15 @@
     "tailwind-merge": "^3.3.1"
   },
   "peerDependencies": {
-    "@khoralabs/memories-service": "workspace:*",
     "@react-three/drei": "^10",
     "@react-three/fiber": "^9",
     "@react-three/postprocessing": "^3",
     "react": "^19",
     "react-dom": "^19",
-    "three": "^0.183",
+    "three": "^0.185",
     "typescript": "^5"
   },
-  "peerDependenciesMeta": {
-    "@khoralabs/memories-service": {
-      "optional": true
-    }
-  },
   "devDependencies": {
-    "@khoralabs/memories-service": "workspace:*",
     "@react-three/drei": "^10",
     "@react-three/fiber": "^9",
     "@react-three/postprocessing": "^3",
@@ -69,10 +63,10 @@
     "@types/bun": "latest",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/three": "^0.183.1",
+    "@types/three": "^0.185.4",
     "happy-dom": "^20.11.1",
     "react": "^19",
     "react-dom": "^19",
-    "three": "^0.183"
+    "three": "^0.185"
   }
 }

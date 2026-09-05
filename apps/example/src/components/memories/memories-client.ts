@@ -1,7 +1,3 @@
-/**
- * Re-exports the React graph client port from `@khoralabs/memories-service/react-client`.
- * Prefer importing from the service package directly in new hosts.
- */
 export type {
   EdgeDetailJson,
   EdgePreviewJson,

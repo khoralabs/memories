@@ -102,17 +102,21 @@ const ASSERTIONS: Assertion[] = [
     name: "react-graph-browser",
     hint:
       "Main `@khoralabs/memories-react-graph` must stay browser-safe.\n" +
-      "Put createServiceReactMemoriesClient on `@khoralabs/memories-react-graph/service`.",
+      "Types may come from `@khoralabs/memories-service/react-client` only.\n" +
+      "Put createServiceReactMemoriesClient on `@khoralabs/memories-service/react-client/service` " +
+      "(re-exported as `@khoralabs/memories-react-graph/service`).",
     run: () =>
       scan(
         [
           join(ROOT, "packages/react/graph/src/index.ts"),
           join(ROOT, "packages/react/graph/src/memories-client-provider.tsx"),
           join(ROOT, "packages/react/graph/src/memories-client.ts"),
+          join(ROOT, "packages/react/graph/src/memories-database-id.ts"),
           join(ROOT, "packages/react/graph/dist/index.js"),
         ],
         [
-          /(?:from|import\()\s*["']@khoralabs\/memories-service(?:\/[^"']*)?["']/,
+          /(?:from|import\()\s*["']@khoralabs\/memories-service["']/,
+          /(?:from|import\()\s*["']@khoralabs\/memories-service\/(?!react-client["'])[^"']*["']/,
           /(?:from|import\()\s*["']node:crypto["']/,
           /(?:from|import\()\s*["']node:path["']/,
           /(?:^|\n)\s*export\s*\{[^}]*\bcreateServiceReactMemoriesClient\b/,
