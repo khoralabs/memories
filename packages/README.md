@@ -23,7 +23,7 @@ Deep dive for this workspace: mental model, package map, merge/search pipelines,
 ┌───────────▼────────────┐
 │ memories-otel          │  OTel/Pino adapter (BYO Tracer/Meter)
 └────────────────────────┘
-        optional: memories-react-graph, memories-spec
+        optional: memories-spec
 ```
 
 | Package | Path | Role |
@@ -32,7 +32,6 @@ Deep dive for this workspace: mental model, package map, merge/search pipelines,
 | `@khoralabs/memories-otel` | [`otel/`](otel) | Maps `MemoriesTelemetry` → OTel spans/metrics + optional Pino |
 | `@khoralabs/memories-service` | [`service/`](service) | Multi-tenant lifecycle, placement, HTTP, auth |
 | `@khoralabs/memories-agents` | [`agents/`](agents) | `memory_search` toolkit + adapter / integrator / investigator |
-| `@khoralabs/memories-react-graph` | [`react/graph/`](react/graph) | Host-injected 3D graph UI |
 | `@khoralabs/memories-spec` | [`spec/`](spec) | Smithy capability modules (IDL only) |
 
 **Rationale for the split**
@@ -40,7 +39,7 @@ Deep dive for this workspace: mental model, package map, merge/search pipelines,
 - **Node** owns merge/search semantics and storage adapters so embedders never need HTTP.
 - **Service** owns principal identity, placement routing, and auth — control plane separate from the node data plane.
 - **Agents** sit on top of the client API via `@khoralabs/agent-capabilities`.
-- **React graph** stays transport-agnostic: hosts supply layout + search.
+- **React UI** lives in [`khoralabs/react`](https://github.com/khoralabs/react) (`memories` items); hosts use `@khoralabs/memories-service/react-client`.
 - **Spec** documents capability modules for implementors; TypeScript does not depend on it at runtime.
 
 ### Mental model
@@ -248,7 +247,7 @@ Use `defineOntology` / `mergeOntologies`. Prefer composing families for your app
 | `@khoralabs/memories-agents/ai-sdk` | ToolLoop clients, `Output` wrappers, AI-shaped specs (optional `ai` peer) |
 | `@khoralabs/memories-node/autolink` | `runAutolinkIntegrate` — search, link patch, merge |
 | `@khoralabs/memories-service` | Multi-tenant open/list/delete, placement, HTTP, auth |
-| `@khoralabs/memories-react-graph` | React 3D graph: search, namespaces, memory preview |
+| `khoralabs/react/memories` | React 3D graph UI (shadcn registry) |
 
 Wire agents with `@khoralabs/agent-capabilities` (`createAgentRegistry`, tool loops). Each package README has package-specific usage.
 
@@ -275,4 +274,4 @@ Service architecture: [`service/spec.md`](service/spec.md). Planned work: [`serv
 
 ## Summary
 
-`@khoralabs/memories-node` owns merge/search semantics and the `MemoriesPersistence` contract; `./sqlite` is the reference Bun backend (libSQL / Turso are async peers). **Source maps** bridge indexed projections to optional external content via `@khoralabs/sourcemaps`. Indexing is transactional on merge: one source map per chunk, lexical + vector indexes, plus system meta chunks. Agents, autolink, the multi-tenant service, and `memories-react-graph` are the primary consumers.
+`@khoralabs/memories-node` owns merge/search semantics and the `MemoriesPersistence` contract; `./sqlite` is the reference Bun backend (libSQL / Turso are async peers). **Source maps** bridge indexed projections to optional external content via `@khoralabs/sourcemaps`. Indexing is transactional on merge: one source map per chunk, lexical + vector indexes, plus system meta chunks. Agents, autolink, the multi-tenant service, and the `khoralabs/react` memories UI are the primary consumers.

@@ -3,7 +3,6 @@
  * Usage: bun run scripts/assert.ts [name…]   (default: all)
  *   no-bun-sqlite-leak      bun:sqlite stays inside Bun-only entrypoint trees
  *   storage-entry-isolation ./storage/sqlite never pulls sibling backends
- *   react-graph-browser     the react-graph main entry stays browser-safe
  *
  * Run again after `bun run build` to cover emitted dist/ files.
  */
@@ -62,12 +61,7 @@ const ASSERTIONS: Assertion[] = [
         "packages/node/src/persistence/sqlite/",
         "packages/service/src/storage/sqlite/",
       ];
-      const files = [
-        "packages/node/src",
-        "packages/service/src",
-        "packages/agents",
-        "packages/react/graph",
-      ]
+      const files = ["packages/node/src", "packages/service/src", "packages/agents"]
         .flatMap((root) => walk(join(ROOT, root)))
         .filter((file) => !allowed.some((prefix) => rel(file).startsWith(prefix)));
       return scan(files, [/(?:from|require\()\s*["']bun:sqlite["']/], true);
@@ -97,31 +91,6 @@ const ASSERTIONS: Assertion[] = [
         true,
       );
     },
-  },
-  {
-    name: "react-graph-browser",
-    hint:
-      "Main `@khoralabs/memories-react-graph` must stay browser-safe.\n" +
-      "Types may come from `@khoralabs/memories-service/react-client` only.\n" +
-      "Put createServiceReactMemoriesClient on `@khoralabs/memories-service/react-client/service` " +
-      "(re-exported as `@khoralabs/memories-react-graph/service`).",
-    run: () =>
-      scan(
-        [
-          join(ROOT, "packages/react/graph/src/index.ts"),
-          join(ROOT, "packages/react/graph/src/memories-client-provider.tsx"),
-          join(ROOT, "packages/react/graph/src/memories-client.ts"),
-          join(ROOT, "packages/react/graph/src/memories-database-id.ts"),
-          join(ROOT, "packages/react/graph/dist/index.js"),
-        ],
-        [
-          /(?:from|import\()\s*["']@khoralabs\/memories-service["']/,
-          /(?:from|import\()\s*["']@khoralabs\/memories-service\/(?!react-client["'])[^"']*["']/,
-          /(?:from|import\()\s*["']node:crypto["']/,
-          /(?:from|import\()\s*["']node:path["']/,
-          /(?:^|\n)\s*export\s*\{[^}]*\bcreateServiceReactMemoriesClient\b/,
-        ],
-      ),
   },
 ];
 

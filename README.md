@@ -20,8 +20,9 @@ The design keeps a **single-database node** (`@khoralabs/memories-node`) indepen
 | [`@khoralabs/memories-node`](packages/node) | `packages/node` | Single memory node: client, ontology, persistence contracts, backends, projections, attestation, autolink |
 | [`@khoralabs/memories-service`](packages/service) | `packages/service` | Multi-tenant service: lifecycle, placement, HTTP, auth, storage stacks |
 | [`@khoralabs/memories-agents`](packages/agents) | `packages/agents` | Agent toolkit + adapter / integrator / investigator |
-| [`@khoralabs/memories-react-graph`](packages/react/graph) | `packages/react/graph` | React 3D graph UI (host-injected projection/search) |
 | [`@khoralabs/memories-spec`](packages/spec) | `packages/spec` | Smithy IDL for persistence + public API capability modules |
+
+React UI: install from the [`khoralabs/react`](https://github.com/khoralabs/react) registry (`bunx shadcn@latest add khoralabs/react/memories`). Host port: `@khoralabs/memories-service/react-client` (factory: `…/react-client/service`).
 
 ### Layering
 
@@ -32,8 +33,8 @@ memories-node          Single DB: client, ontology, backends, attestation, autol
         ├──────────────┬─────────────────────┐
         ▼              ▼                     ▼
 memories-service   memories-agents      host apps
-  multi-DB + HTTP    tools / agents     memories-react-graph
-  placement + auth                      (host injects layout/search)
+  multi-DB + HTTP    tools / agents     (khoralabs/react registry)
+  placement + auth
 ```
 
 `./sqlite` and `./storage/sqlite` use `bun:sqlite` and require [Bun](https://bun.sh). Shared roots (`.`, `./client`, `./ontology`, agents) are Bun-free — use `./libsql` or `./turso-serverless` on Node.
@@ -172,7 +173,7 @@ bun run release publish                    # build + publish; requires NPM_CONFI
 
 Publish ships `dist/` (JavaScript from `bun build`, `.d.ts` from `tsc --emitDeclarationOnly`). Workspace `exports` still point at `src/` for local Bun; the publish script rewrites them to `dist/` for npm.
 
-Publish order is defined by `PUBLISH_ORDER` in [`scripts/build.ts`](scripts/build.ts) (node → otel → service → agents → spec). `@khoralabs/memories-react-graph` stays in-repo but is not published — prefer `khoralabs/react` registry items.
+Publish order is defined by `PUBLISH_ORDER` in [`scripts/build.ts`](scripts/build.ts) (node → otel → service → agents → spec). React UI lives in the [`khoralabs/react`](https://github.com/khoralabs/react) registry.
 
 ## License
 
