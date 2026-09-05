@@ -172,7 +172,7 @@ bun run release publish                    # build + publish; requires NPM_CONFI
 
 Publish ships `dist/` (JavaScript from `bun build`, `.d.ts` from `tsc --emitDeclarationOnly`). Workspace `exports` still point at `src/` for local Bun; the publish script rewrites them to `dist/` for npm.
 
-Publish order is defined by `PUBLISH_ORDER` in [`scripts/build.ts`](scripts/build.ts) (node → service → agents → react-graph → spec).
+Publish order is defined by `PUBLISH_ORDER` in [`scripts/build.ts`](scripts/build.ts) (node → otel → service → agents → spec). `@khoralabs/memories-react-graph` stays in-repo but is not published — prefer `khoralabs/react` registry items.
 
 ## License
 
