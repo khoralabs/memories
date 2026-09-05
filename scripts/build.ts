@@ -133,6 +133,32 @@ function walkDts(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+function walkJs(dir: string, out: string[] = []): string[] {
+  if (!existsSync(dir)) return out;
+  for (const name of readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (statSync(full).isDirectory()) walkJs(full, out);
+    else if (name.endsWith(".js")) out.push(full);
+  }
+  return out;
+}
+
+/** Fail if dist still imports the development JSX runtime (breaks NODE_ENV=production hosts). */
+export function assertDistNoJsxDevRuntime(distDir: string): void {
+  const offenders: string[] = [];
+  for (const file of walkJs(distDir)) {
+    const src = readFileSync(file, "utf8");
+    if (src.includes("jsx-dev-runtime")) {
+      offenders.push(path.relative(distDir, file));
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(
+      `dist contains react/jsx-dev-runtime (use bun build --production): ${offenders.join(", ")}`,
+    );
+  }
+}
+
 export async function buildPackage(pkgDir: string): Promise<void> {
   const distDir = path.join(pkgDir, "dist");
   const tsconfigPath = path.join(pkgDir, "tsconfig.build.json");
@@ -145,13 +171,14 @@ export async function buildPackage(pkgDir: string): Promise<void> {
 
   const entries = collectExportEntries(pkgDir);
   const js =
-    await Bun.$`bun build ${entries} --outdir=dist --root=src --target=node --format=esm --packages=external`
+    await Bun.$`bun build ${entries} --outdir=dist --root=src --target=node --format=esm --packages=external --production`
       .cwd(pkgDir)
       .nothrow();
   if (js.exitCode !== 0) {
     console.error(js.stderr.toString() || js.stdout.toString());
     throw new Error(`bun build failed: ${pkgDir}`);
   }
+  assertDistNoJsxDevRuntime(distDir);
 
   const dts = await Bun.$`tsc -p ${tsconfigPath} --emitDeclarationOnly`.cwd(pkgDir).nothrow();
   if (dts.exitCode !== 0) {
