@@ -1,13 +1,13 @@
 import type { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
-import type { MemoriesPersistence } from "@khoralabs/memories-node/persistence";
-import { wrapSyncMemoriesPersistenceAsAsync } from "@khoralabs/memories-node/persistence";
 import {
   createMemoriesPersistence,
   ensureCustomSqliteForExtensions,
   getMemoriesSqliteDatabase,
+  MemoriesPersistence,
   openMemoriesDatabase,
+  wrapMemoriesPersistenceAsAsync,
 } from "@khoralabs/memories-node/sqlite";
 import type {
   DatabaseListFilter,
@@ -27,6 +27,7 @@ import {
   validateMemoriesDatabaseId,
 } from "../../storage/core/index";
 
+/** Always the SQLite class from `createMemoriesPersistence` (not the core interface). */
 type OpenedLocalDatabase = {
   persistence: MemoriesPersistence;
   db: Database;
@@ -77,7 +78,9 @@ function openLocalDatabase(
 function createHandle(opened: OpenedLocalDatabase): MemoriesDatabaseHandle {
   let closed = false;
   return {
-    persistence: wrapSyncMemoriesPersistenceAsAsync(opened.persistence),
+    // Prefer wrapMemoriesPersistenceAsAsync (BEGIN/COMMIT) over wrapSync… which
+    // throws on withTransaction — required by host search indexing / mergeMemoryAsync.
+    persistence: wrapMemoriesPersistenceAsAsync(opened.persistence, opened.db),
     sync: { syncPersistence: opened.persistence },
     async close() {
       if (closed) return;
