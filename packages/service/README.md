@@ -146,20 +146,35 @@ Host matching rules: [`src/auth/HOST_POLICY.md`](./src/auth/HOST_POLICY.md).
 
 ### DID principal auth
 
-Host-wired only (env cannot construct it). Proof verify is injected — memories does not depend on khora:
+Host-wired only (env cannot construct it). Prefer the built-in did:key verifier (X-Agent-* wire, same as khora/relay/chat), or inject a custom `verify`:
 
 ```ts
-import { createDidPrincipalAuthStrategy } from "@khoralabs/memories-service/auth";
-// Host typically adapts @khoralabs/khora-auth verifySignedAgentRequest:
+import {
+  createDidPrincipalAuthStrategy,
+  createDidKeyPrincipalVerifier,
+} from "@khoralabs/memories-service/auth";
+import { createAgentMemoriesClient, agentMemoriesDatabase } from "@khoralabs/memories-service/client/agent";
+
 const auth = createDidPrincipalAuthStrategy({
-  verify: {
-    async verify({ request }) {
-      const { did } = await hostVerifySignedRequest(request);
-      return { did };
-    },
-  },
+  verify: createDidKeyPrincipalVerifier(),
   // optional: resolveGrants: ({ actor, database }) => hostGrants,
+});
+
+// Agent client (no admin Bearer):
+await createAgentMemoriesClient({
+  baseUrl,
+  database: agentMemoriesDatabase(signer.did),
+  ontology: appOntology,
+  signer,
 });
 ```
 
-Authorize: owner when `actor.subject === database.ownerKey`; else optional `resolveGrants` matched with `authorizeScopeAgainstGrants`. Attribution: `principalForActor: (actor) => actor.subject`. Details: [`spec.md`](./spec.md#did-principal).
+Authorize:
+
+- With `database`: owner when `actor.subject === database.ownerKey`; else optional `resolveGrants`.
+- **Unscoped** (no `database`): any authenticated DID may `manage`/`read` (ontology register/get; list DBs).
+- **`GET /databases`:** results filtered to `ownerKey === actor.subject` when scheme is `did-principal`.
+
+Attribution: `principalForActor: (actor) => actor.subject`. See [`docs/adr/0001-did-principal-agent-path.md`](./docs/adr/0001-did-principal-agent-path.md) and [`spec.md`](./spec.md#did-principal).
+
+**Exposure:** a public `did-principal` host lets any `did:key` open their own account DB and register ontology. Prefer private network, or run `server-admin` for closed deployments.

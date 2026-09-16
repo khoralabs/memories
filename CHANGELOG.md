@@ -9,6 +9,15 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ## [Unreleased]
 
+### Added
+
+- **@khoralabs/memories-service** — DID principal agent path: X-Agent-* wire, `createDidKeyPrincipalVerifier`, `createDidSignedRequestAuthProvider`, agent clients with optional `signer` (no required admin Bearer). See `packages/service/docs/adr/0001-did-principal-agent-path.md`.
+- **@khoralabs/memories-service** — Under `did-principal`, unscoped authorize allowed; `GET /databases` filtered to caller’s `ownerKey`.
+
+### Changed
+
+- **@khoralabs/memories-service** — `MemoriesServiceClientAuthProvider.applyAuth` accepts optional `{ path }` for request signing.
+
 ## [0.10.0] - 2026-09-02
 
 ### Changed

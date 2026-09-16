@@ -379,7 +379,7 @@ One scheme per service instance.
 
 ### `did-principal`
 
-Proof verification is **host-injected**. Memories does not depend on khora/relay and does not parse `X-Agent-*` headers.
+Proof verification is **host-injected** (or use built-in `createDidKeyPrincipalVerifier` for X-Agent-* / did:key). Memories does not depend on khora/relay packages.
 
 ```ts
 type PrincipalProofVerifier = {
@@ -399,9 +399,12 @@ createDidPrincipalAuthStrategy({
 ```
 
 - **authenticate:** `verify` → `{ scheme: "did-principal", subject: did }` (401 on failure).
-- **authorize:** requires `database`; allow if `actor.subject === database.ownerKey` (full `manage` ⊇ write ⊇ read); else match `resolveGrants` via `authorizeScopeAgainstGrants`; else 403.
+- **authorize with `database`:** allow if `actor.subject === database.ownerKey` (full `manage` ⊇ write ⊇ read); else match `resolveGrants` via `authorizeScopeAgainstGrants`; else 403.
+- **authorize without `database` (unscoped):** allow authenticated principal for `manage`/`read` (ontology routes; list gate). HTTP `GET /databases` then **filters** entries to `ownerKey === actor.subject`.
 
-Hosts typically adapt `@khoralabs/khora-auth` `verifySignedAgentRequest` into `PrincipalProofVerifier`. For HTTP attribution, use `principalForActor: (actor) => actor.subject`.
+Built-in verifier: `createDidKeyPrincipalVerifier({ nonceStore? })`. Client: `createDidSignedRequestAuthProvider(signer)` or `createAgentMemoriesClient({ signer, … })` without `adminToken`.
+
+For HTTP attribution, use `principalForActor: (actor) => actor.subject`.
 
 HTTP always passes a typed `scope` into `authorize`:
 
@@ -418,7 +421,13 @@ Host matching rules and reference helpers (`authorizeScopeAgainstGrants`, etc.):
 
 ## Client
 
-`MemoriesServiceClient` wraps the management HTTP API. Auth providers: `createNoAuthProvider()`, `createBearerTokenAuthProvider(token)`.
+`MemoriesServiceClient` wraps the management HTTP API. Auth providers:
+
+- `createNoAuthProvider()`
+- `createBearerTokenAuthProvider(token)` — `server-admin` deployments
+- `createDidSignedRequestAuthProvider(signer)` — `did-principal` deployments (X-Agent-*)
+
+Agent helpers (`./client/agent`): `createAgentMemoriesClient` / `createDeferredAgentMemoriesClient` accept `adminToken` **and/or** `signer` / `auth` (at least one required).
 
 - `listDatabases()` → `{ id, name, description }[]`
 - `getDatabaseMetadata` / `upsertDatabaseMetadata`

@@ -2,6 +2,12 @@
 
 HTTP always calls `authorize` with a typed `scope` (`AuthorizeScope`). Hosts using `app-policy` should interpret it as below. Reference helpers: `actionAllowed`, `namespaceCovered`, `authorizeScopeAgainstGrants` from `@khoralabs/memories-service/auth`.
 
+## `did-principal` notes
+
+- **With `database`:** owner (`actor.subject === database.ownerKey`) gets full `manage`; else use `resolveGrants` / `authorizeScopeAgainstGrants`.
+- **Without `database` (unscoped routes):** authenticated DID is allowed for `manage`/`read` (ontology; list gate). The HTTP layer filters `GET /databases` to the caller’s `ownerKey`.
+- Built-in verify: `createDidKeyPrincipalVerifier()` (X-Agent-* / did:key). Custom verifiers remain supported.
+
 ## Actions
 
 Convention for helpers: **`manage` ⊇ `write` ⊇ `read`**.
