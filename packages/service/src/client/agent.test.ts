@@ -72,4 +72,26 @@ describe("createDeferredAgentMemoriesClient", () => {
     expect(client).toBeDefined();
     expect(typeof client.persistence.findMemoryIdByKey).toBe("function");
   });
+
+  test("accepts signer without adminToken", async () => {
+    const { generateIdentity } = await import("@khoralabs/did-key-identity");
+    const signer = await generateIdentity();
+    const client = createDeferredAgentMemoriesClient({
+      baseUrl: "http://127.0.0.1:9",
+      database: agentMemoriesDatabase(signer.did),
+      ontology: defineOntology({ nodeLabels: {}, edgeLabels: {} }),
+      signer,
+    });
+    expect(client).toBeDefined();
+  });
+
+  test("requires adminToken, signer, or auth", () => {
+    expect(() =>
+      createDeferredAgentMemoriesClient({
+        baseUrl: "http://127.0.0.1:9",
+        database: agentMemoriesDatabase("did:key:agent"),
+        ontology: defineOntology({ nodeLabels: {}, edgeLabels: {} }),
+      }),
+    ).toThrow(/adminToken, signer, or auth/);
+  });
 });

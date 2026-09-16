@@ -1,3 +1,5 @@
+import type { Signer } from "@khoralabs/did-key-identity";
+import { signAgentRequest } from "../auth/agent-request-wire";
 import {
   type MemoriesErrorCode,
   memoriesErrorCodeForStatus,
@@ -11,7 +13,10 @@ import type {
 } from "../storage/core/index";
 
 export type MemoriesServiceClientAuthProvider = {
-  applyAuth(req: RequestInit): RequestInit | Promise<RequestInit>;
+  /**
+   * Apply auth headers. `meta.path` is the request path (incl. query) for DID signing.
+   */
+  applyAuth(req: RequestInit, meta?: { path: string }): RequestInit | Promise<RequestInit>;
 };
 
 export function createNoAuthProvider(): MemoriesServiceClientAuthProvider {
@@ -29,6 +34,35 @@ export function createBearerTokenAuthProvider(token: string): MemoriesServiceCli
     applyAuth(req) {
       const headers = new Headers(req.headers);
       headers.set("authorization", `Bearer ${trimmed}`);
+      return { ...req, headers };
+    },
+  };
+}
+
+/** DID X-Agent-* request signing (khora/relay/chat wire). */
+export function createDidSignedRequestAuthProvider(
+  signer: Signer,
+): MemoriesServiceClientAuthProvider {
+  return {
+    async applyAuth(req, meta) {
+      const method = (req.method ?? "GET").toUpperCase();
+      const path = meta?.path ?? "/";
+      const bodyText =
+        typeof req.body === "string"
+          ? req.body
+          : req.body === undefined || req.body === null
+            ? ""
+            : String(req.body);
+      const { headers: signed } = await signAgentRequest({
+        method,
+        path,
+        bodyText,
+        signer,
+      });
+      const headers = new Headers(req.headers);
+      for (const [k, v] of Object.entries(signed)) {
+        headers.set(k, v);
+      }
       return { ...req, headers };
     },
   };
@@ -175,12 +209,15 @@ export class MemoriesServiceClient {
     body?: unknown,
     opts?: { signal?: AbortSignal },
   ): Promise<Response> {
-    const init = await this.auth.applyAuth({
-      method,
-      headers: { "content-type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      ...(opts?.signal !== undefined ? { signal: opts.signal } : {}),
-    });
+    const init = await this.auth.applyAuth(
+      {
+        method,
+        headers: { "content-type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        ...(opts?.signal !== undefined ? { signal: opts.signal } : {}),
+      },
+      { path },
+    );
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
     if (!response.ok) {
       await throwFromFailedResponse(response);
@@ -189,11 +226,14 @@ export class MemoriesServiceClient {
   }
 
   private async request(method: string, path: string, body?: unknown): Promise<Response> {
-    const init = await this.auth.applyAuth({
-      method,
-      headers: body === undefined ? undefined : { "content-type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    const init = await this.auth.applyAuth(
+      {
+        method,
+        headers: body === undefined ? undefined : { "content-type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
+      { path },
+    );
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
     if (!response.ok) {
       await throwFromFailedResponse(response);

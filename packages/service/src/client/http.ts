@@ -23,6 +23,7 @@ export type {
 } from "../storage/core/index";
 export {
   createBearerTokenAuthProvider,
+  createDidSignedRequestAuthProvider,
   createNoAuthProvider,
   type MemoriesDatabaseListEntry,
   MemoriesServiceClient,

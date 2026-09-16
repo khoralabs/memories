@@ -1,10 +1,16 @@
+import type { Signer } from "@khoralabs/did-key-identity";
 import {
   type LabelSchemaMap,
   mergeOntologies,
   type OntologyDefinition,
 } from "@khoralabs/memories-node/ontology";
 import type { MemoriesDatabaseId } from "../storage/core/index.ts";
-import { createBearerTokenAuthProvider, type MemoriesServiceFetch } from "./client.ts";
+import {
+  createBearerTokenAuthProvider,
+  createDidSignedRequestAuthProvider,
+  type MemoriesServiceClientAuthProvider,
+  type MemoriesServiceFetch,
+} from "./client.ts";
 import { minimalAgentMemoriesOntology } from "./minimal-agent-ontology.ts";
 import {
   createDeferredRemoteMemoriesClientAsync,
@@ -29,7 +35,7 @@ export function resolveAgentMemoriesOntology(
 
 let installedFetch: MemoriesServiceFetch | undefined;
 
-/** Host-provided signed fetch (RFC 9421). */
+/** Host-provided fetch override (e.g. signed transport). */
 export function installMemoriesServiceFetch(fetchFn: MemoriesServiceFetch | undefined): void {
   installedFetch = fetchFn;
 }
@@ -38,39 +44,46 @@ export function memoriesServiceFetch(): MemoriesServiceFetch {
   return installedFetch ?? fetch;
 }
 
-function remoteClientOptions(opts: {
+export type AgentMemoriesClientAuthOptions = {
   baseUrl: string;
   database: MemoriesDatabaseId;
   ontology: AgentMemoriesOntology;
-  adminToken: string;
+  /** Shared-secret admin Bearer. Provide `adminToken` and/or `auth`/`signer`. */
+  adminToken?: string;
+  /** Explicit auth provider (wins over adminToken/signer). */
+  auth?: MemoriesServiceClientAuthProvider;
+  /** DID signer for X-Agent-* HTTP auth. */
+  signer?: Signer;
   fetch?: MemoriesServiceFetch;
-}) {
+};
+
+function resolveAgentAuth(opts: AgentMemoriesClientAuthOptions): MemoriesServiceClientAuthProvider {
+  if (opts.auth !== undefined) return opts.auth;
+  if (opts.signer !== undefined) return createDidSignedRequestAuthProvider(opts.signer);
+  const token = opts.adminToken?.trim() ?? "";
+  if (token.length > 0) return createBearerTokenAuthProvider(token);
+  throw new Error("createAgentMemoriesClient requires adminToken, signer, or auth");
+}
+
+function remoteClientOptions(opts: AgentMemoriesClientAuthOptions) {
   return {
     baseUrl: opts.baseUrl.replace(/\/$/, ""),
     database: opts.database,
     ontology: resolveAgentMemoriesOntology(opts.ontology),
-    auth: createBearerTokenAuthProvider(opts.adminToken),
+    auth: resolveAgentAuth(opts),
     fetch: opts.fetch ?? memoriesServiceFetch(),
   };
 }
 
-export async function createAgentMemoriesClient(opts: {
-  baseUrl: string;
-  database: MemoriesDatabaseId;
-  ontology: AgentMemoriesOntology;
-  adminToken: string;
-  fetch?: MemoriesServiceFetch;
-}): Promise<RemoteMemoriesClientAsync> {
+export async function createAgentMemoriesClient(
+  opts: AgentMemoriesClientAuthOptions,
+): Promise<RemoteMemoriesClientAsync> {
   return createRemoteMemoriesClientAsync(remoteClientOptions(opts));
 }
 
-export function createDeferredAgentMemoriesClient(opts: {
-  baseUrl: string;
-  database: MemoriesDatabaseId;
-  ontology: AgentMemoriesOntology;
-  adminToken: string;
-  fetch?: MemoriesServiceFetch;
-}): RemoteMemoriesClientAsync {
+export function createDeferredAgentMemoriesClient(
+  opts: AgentMemoriesClientAuthOptions,
+): RemoteMemoriesClientAsync {
   return createDeferredRemoteMemoriesClientAsync(remoteClientOptions(opts));
 }
 
