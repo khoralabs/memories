@@ -1,7 +1,27 @@
 export {
+  AGENT_REQUEST_FRESHNESS_WINDOW_MS,
+  AGENT_REQUEST_HEADER,
+  type AgentRequestEnvelope,
+  AgentRequestVerifyError,
+  canonicalAgentRequestMessage,
+  canonicalAgentRequestPath,
+  createMemoryNonceStore,
+  type MemoriesNonceStore,
+  parseAgentRequestEnvelopeFromHeaders,
+  randomAgentRequestNonce,
+  type SignAgentRequestInput,
+  signAgentRequest,
+  type VerifyAgentRequestOptions,
+  verifyAgentRequest,
+} from "./agent-request-wire";
+export {
   type AppPolicyAuthStrategyOptions,
   createAppPolicyAuthStrategy,
 } from "./app-policy";
+export {
+  type CreateDidKeyPrincipalVerifierOptions,
+  createDidKeyPrincipalVerifier,
+} from "./did-key-verifier";
 export {
   type CreateDidPrincipalAuthStrategyOptions,
   createDidPrincipalAuthStrategy,
