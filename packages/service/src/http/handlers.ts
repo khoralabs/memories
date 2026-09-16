@@ -165,10 +165,15 @@ function requireCatalog(opts: MemoriesServiceHttpOptions): MemoriesDatabaseCatal
 type ParsedJsonRequest = {
   body: unknown;
   bodySha256: string;
+  /** Raw request text (for DID request signature verify after body consume). */
+  bodyText: string;
 };
+
+const requestBodyText = new WeakMap<Request, string>();
 
 async function readJsonBody(req: Request): Promise<ParsedJsonRequest> {
   const text = await req.text();
+  requestBodyText.set(req, text);
   const normalized = text.trim().length === 0 ? "{}" : text;
   let body: unknown;
   try {
@@ -181,7 +186,7 @@ async function readJsonBody(req: Request): Promise<ParsedJsonRequest> {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/u, "");
-  return { body, bodySha256 };
+  return { body, bodySha256, bodyText: text };
 }
 
 async function authorize(
@@ -191,7 +196,8 @@ async function authorize(
   database?: MemoriesDatabaseId,
   scope: AuthorizeScope = scopeDatabase(),
 ): Promise<AuthenticatedActor> {
-  const actor = await auth.authenticate(req);
+  const bodyText = requestBodyText.get(req);
+  const actor = await auth.authenticate(req, bodyText !== undefined ? { bodyText } : undefined);
   await auth.authorize({
     actor,
     action,
@@ -248,9 +254,13 @@ export async function handleMemoriesServiceHttpRequest(
     }
 
     if (req.method === "GET" && url.pathname === MEMORIES_HTTP_PATH.databases) {
-      await authorize(opts.auth, req, "manage");
+      const actor = await authorize(opts.auth, req, "manage");
       const kind = url.searchParams.get("kind") ?? undefined;
-      const ids = await opts.service.list(kind ? { kind } : undefined);
+      const listed = await opts.service.list(kind ? { kind } : undefined);
+      const ids =
+        actor.scheme === "did-principal"
+          ? listed.filter((id) => id.ownerKey === actor.subject)
+          : listed;
       const databases = await Promise.all(
         ids.map(async (id) => {
           const meta = opts.catalog !== undefined ? await opts.catalog.get(id) : undefined;
@@ -586,7 +596,10 @@ export async function handleMemoriesServiceHttpRequest(
     ) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      const actor = await opts.auth.authenticate(req);
+      const actor = await opts.auth.authenticate(
+        req,
+        requestBodyText.has(req) ? { bodyText: requestBodyText.get(req) } : undefined,
+      );
       return await handleDatabaseSourceMapTextPreview(opts.service, body, async (namespace) => {
         await opts.auth.authorize({
           actor,
@@ -600,7 +613,10 @@ export async function handleMemoriesServiceHttpRequest(
     if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.databasesSourceMapText) {
       const { body } = await readJsonBody(req);
       const id = parseDatabaseIdBody((body as Record<string, unknown>).database);
-      const actor = await opts.auth.authenticate(req);
+      const actor = await opts.auth.authenticate(
+        req,
+        requestBodyText.has(req) ? { bodyText: requestBodyText.get(req) } : undefined,
+      );
       return await handleDatabaseSourceMapText(opts.service, body, async (namespace) => {
         await opts.auth.authorize({
           actor,
@@ -706,20 +722,20 @@ export async function handleMemoriesServiceHttpRequest(
     }
 
     if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.ontologiesRegister) {
-      await authorize(opts.auth, req, "manage");
       const { body } = await readJsonBody(req);
+      await authorize(opts.auth, req, "manage");
       return handleOntologyRegister(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.ontologiesGet) {
-      await authorize(opts.auth, req, "read");
       const { body } = await readJsonBody(req);
+      await authorize(opts.auth, req, "read");
       return handleOntologyGet(requireOntology(opts), body);
     }
 
     if (req.method === "POST" && url.pathname === MEMORIES_HTTP_PATH.ontologiesDatabases) {
-      await authorize(opts.auth, req, "manage");
       const { body } = await readJsonBody(req);
+      await authorize(opts.auth, req, "manage");
       return handleOntologyListDatabases(requireOntology(opts), body);
     }
 

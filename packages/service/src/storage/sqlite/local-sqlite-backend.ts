@@ -5,7 +5,7 @@ import {
   createMemoriesPersistence,
   ensureCustomSqliteForExtensions,
   getMemoriesSqliteDatabase,
-  MemoriesPersistence,
+  type MemoriesPersistence,
   openMemoriesDatabase,
   wrapMemoriesPersistenceAsAsync,
 } from "@khoralabs/memories-node/sqlite";

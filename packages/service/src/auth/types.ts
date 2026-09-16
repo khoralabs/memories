@@ -24,7 +24,7 @@ export type AuthorizeInput = {
 };
 
 export type MemoriesDatabaseAccessStrategy = {
-  authenticate(req: Request): Promise<AuthenticatedActor>;
+  authenticate(req: Request, opts?: { bodyText?: string }): Promise<AuthenticatedActor>;
   authorize(input: AuthorizeInput): Promise<void>;
 };
 

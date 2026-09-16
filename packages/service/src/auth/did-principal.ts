@@ -9,7 +9,12 @@ import {
 
 /** Host-injected DID proof verify. Memories does not know wire format or DID methods. */
 export type PrincipalProofVerifier = {
-  verify(input: { method: string; request: Request }): Promise<{ did: string; keyId?: string }>;
+  verify(input: {
+    method: string;
+    request: Request;
+    /** When the handler already consumed the body, pass the raw text used for signing. */
+    bodyText?: string;
+  }): Promise<{ did: string; keyId?: string }>;
 };
 
 export type CreateDidPrincipalAuthStrategyOptions = {
@@ -37,10 +42,14 @@ export function createDidPrincipalAuthStrategy(
   }
 
   return {
-    async authenticate(req: Request) {
+    async authenticate(req: Request, authOpts?: { bodyText?: string }) {
       let proved: { did: string; keyId?: string };
       try {
-        proved = await opts.verify.verify({ method: req.method, request: req });
+        proved = await opts.verify.verify({
+          method: req.method,
+          request: req,
+          ...(authOpts?.bodyText !== undefined ? { bodyText: authOpts.bodyText } : {}),
+        });
       } catch (e) {
         if (e instanceof AuthStrategyError) throw e;
         throw new AuthStrategyError(e instanceof Error ? e.message : String(e), 401);
@@ -58,8 +67,13 @@ export function createDidPrincipalAuthStrategy(
 
     async authorize(input: AuthorizeInput) {
       const { actor, action, database, scope } = input;
+
+      // Unscoped catalog/ontology: any authenticated DID with sufficient action rank.
       if (database === undefined) {
-        throw new AuthStrategyError("database required for did-principal authorize", 403);
+        if (!actionAllowed([...OWNER_ACTIONS], action)) {
+          throw new AuthStrategyError(`unscoped action ${action} not allowed`, 403);
+        }
+        return;
       }
 
       if (actor.subject === database.ownerKey) {

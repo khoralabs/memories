@@ -68,12 +68,11 @@ describe("createDidPrincipalAuthStrategy", () => {
     ).rejects.toMatchObject({ status: 403 });
   });
 
-  test("authorize without database is 403", async () => {
+  test("authorize without database allows authenticated principal", async () => {
     const auth = createDidPrincipalAuthStrategy({ verify: verifier(ownerDid) });
     const actor = await auth.authenticate(new Request("http://localhost/x"));
-    await expect(
-      auth.authorize({ actor, action: "manage", scope: { kind: "database" } }),
-    ).rejects.toMatchObject({ status: 403 });
+    await auth.authorize({ actor, action: "manage", scope: { kind: "database" } });
+    await auth.authorize({ actor, action: "read", scope: { kind: "database" } });
   });
 
   test("resolveGrants allows namespace-scoped delegate", async () => {
