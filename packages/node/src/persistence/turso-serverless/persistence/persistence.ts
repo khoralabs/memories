@@ -114,6 +114,11 @@ import {
   appendGraphFacetOutbox as appendGraphFacetOutboxRow,
   appendVectorFacetOutbox,
 } from "./models/tip-outbox";
+import {
+  getMemoryGraphAtRootHexAsync as getMemoryGraphAtRootHexAsyncQuery,
+  getMemoryVectorAtRootHexAsync as getMemoryVectorAtRootHexAsyncQuery,
+  getProvenanceEventJsonAtRootHexAsync as getProvenanceEventJsonAtRootHexAsyncQuery,
+} from "./models/tip-outbox-replay";
 import { insertVectorFeature } from "./models/vector-features";
 import { listVectorEmbeddingIndexDimensions as listVectorEmbeddingIndexDimensionsQuery } from "./models/vector-index-dimensions";
 import { withWriteTransaction } from "./transactions";
@@ -165,6 +170,7 @@ export class MemoriesTursoServerlessPersistence {
       multiNamespaceSearch: true,
       unscopedSearch: true,
       asOfTimestampMsSearch: true,
+      tipReplayAtRootHex: true,
     };
   }
 
@@ -436,6 +442,33 @@ export class MemoriesTursoServerlessPersistence {
       memoryKey,
       this.contentBlobColdStore,
     );
+  }
+
+  async getMemoryGraphAtRootHexAsync(rootHex: string, namespace: string, memoryKey: string) {
+    if (!this.capabilities.tipReplayAtRootHex) return null;
+    return getMemoryGraphAtRootHexAsyncQuery(
+      this.db,
+      rootHex,
+      namespace,
+      memoryKey,
+      this.contentBlobColdStore,
+    );
+  }
+
+  async getMemoryVectorAtRootHexAsync(rootHex: string, namespace: string, memoryKey: string) {
+    if (!this.capabilities.tipReplayAtRootHex) return [];
+    return getMemoryVectorAtRootHexAsyncQuery(
+      this.db,
+      rootHex,
+      namespace,
+      memoryKey,
+      this.contentBlobColdStore,
+    );
+  }
+
+  async getProvenanceEventJsonAtRootHexAsync(rootHex: string) {
+    if (!this.capabilities.tipReplayAtRootHex) return null;
+    return getProvenanceEventJsonAtRootHexAsyncQuery(this.db, rootHex, this.contentBlobColdStore);
   }
 
   async reconstructStoreAtRootHex(rootHex: string): Promise<ContentAtRootHit[]> {

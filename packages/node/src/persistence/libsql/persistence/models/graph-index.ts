@@ -205,37 +205,41 @@ export async function listIncidentGraphEdgesForMemory(
   return links;
 }
 
+function isDbCtx(dbOrCtx: LibsqlDatabase | DbCtx): dbOrCtx is DbCtx {
+  return "now" in dbOrCtx;
+}
+
 export async function loadNodeLabelsForMemory(
-  db: LibsqlDatabase,
+  dbOrCtx: LibsqlDatabase | DbCtx,
   namespace: string,
   memoryKey: string,
 ): Promise<OntologyLabelInstance[]> {
   const nodeId = ids.node(namespace, memoryKey);
-  const rows = await readQueryAll<{ kind: string; propsJson: string | null }>(
-    db,
-    `SELECT nl.kind AS kind, nla.props AS propsJson
+  const sql = `SELECT nl.kind AS kind, nla.props AS propsJson
      FROM node_label_assignments nla
      JOIN node_labels nl ON nl._id = nla.label_id
      WHERE nla.node_id = ?
-     ORDER BY nl.kind ASC`,
-    [nodeId],
-  );
+     ORDER BY nl.kind ASC`;
+  const args = [nodeId];
+  const rows = isDbCtx(dbOrCtx)
+    ? await ctxQueryAll<{ kind: string; propsJson: string | null }>(dbOrCtx, sql, args)
+    : await readQueryAll<{ kind: string; propsJson: string | null }>(dbOrCtx, sql, args);
   return rows.map((r) => ({ kind: r.kind, props: parsePropsColumn(r.propsJson) }));
 }
 
 export async function loadNodePropertiesForMemory(
-  db: LibsqlDatabase,
+  dbOrCtx: LibsqlDatabase | DbCtx,
   namespace: string,
   memoryKey: string,
 ): Promise<Record<string, unknown> | null> {
-  const row = await readQueryAll<{ propertiesJson: string | null }>(
-    db,
-    `SELECT n.properties AS propertiesJson
+  const sql = `SELECT n.properties AS propertiesJson
      FROM memories m
      LEFT JOIN nodes n ON n.value = m.key
-     WHERE m.namespace = ? AND m.key = ?`,
-    [namespace, memoryKey],
-  );
+     WHERE m.namespace = ? AND m.key = ?`;
+  const args = [namespace, memoryKey];
+  const row = isDbCtx(dbOrCtx)
+    ? await ctxQueryAll<{ propertiesJson: string | null }>(dbOrCtx, sql, args)
+    : await readQueryAll<{ propertiesJson: string | null }>(dbOrCtx, sql, args);
   const first = row[0];
   if (!first) return null;
   if (!first.propertiesJson) return null;
@@ -251,21 +255,22 @@ export async function loadNodePropertiesForMemory(
 }
 
 export async function loadGraphNode(
-  db: LibsqlDatabase,
+  dbOrCtx: LibsqlDatabase | DbCtx,
   namespace: string,
   memoryKey: string,
   opts?: IncludeSuppressedOpts,
 ): Promise<GraphNode | null> {
-  const mem = await readQueryAll<{ suppressed: number }>(
-    db,
-    `SELECT suppressed FROM memories WHERE namespace = ? AND key = ? LIMIT 1`,
-    [namespace, memoryKey],
-  );
+  const db = isDbCtx(dbOrCtx) ? dbOrCtx.db : dbOrCtx;
+  const sql = `SELECT suppressed FROM memories WHERE namespace = ? AND key = ? LIMIT 1`;
+  const args = [namespace, memoryKey];
+  const mem = isDbCtx(dbOrCtx)
+    ? await ctxQueryAll<{ suppressed: number }>(dbOrCtx, sql, args)
+    : await readQueryAll<{ suppressed: number }>(dbOrCtx, sql, args);
   const first = mem[0];
   if (!first) return null;
   const nodeId = ids.node(namespace, memoryKey);
-  const labels = await loadNodeLabelsForMemory(db, namespace, memoryKey);
-  const properties = await loadNodePropertiesForMemory(db, namespace, memoryKey);
+  const labels = await loadNodeLabelsForMemory(dbOrCtx, namespace, memoryKey);
+  const properties = await loadNodePropertiesForMemory(dbOrCtx, namespace, memoryKey);
   const node: GraphNode = { namespace, memoryKey, nodeId, labels, properties };
   if (
     opts?.includeSuppressed === true &&

@@ -40,7 +40,7 @@ export async function captureGraphSnapshot(
   if (assoc === undefined) return null;
   const suppressed = await isMemorySuppressed(ctx, assoc.memoryId);
   if (assoc.kind === "node") {
-    const node = await loadGraphNode(ctx.db, namespace, memoryKey, { includeSuppressed: true });
+    const node = await loadGraphNode(ctx, namespace, memoryKey, { includeSuppressed: true });
     if (!node) return null;
     return {
       v: 1,
@@ -52,7 +52,7 @@ export async function captureGraphSnapshot(
       properties: node.properties ?? null,
     };
   }
-  const edge = await loadGraphEdge(ctx.db, namespace, assoc.edgeId, { includeSuppressed: true });
+  const edge = await loadGraphEdge(ctx, namespace, assoc.edgeId, { includeSuppressed: true });
   if (!edge) return null;
   return {
     v: 1,
