@@ -19,6 +19,8 @@ structure NamespaceMetadata {
     alias: String
     @required
     description: String
+    /// Exact-path flag from `namespace_metadata.suppressed` (not ancestor-inferred).
+    suppressed: Boolean
 }
 
 list NamespaceMetadataList {
@@ -36,6 +38,8 @@ structure MemoryRow {
     kind: String
     /// Empty unless `kind` is `edge`; stable `edges` row id.
     edgeId: String
+    /// When true, hidden from search/graph discovery; rows remain. Storage may use 0/1.
+    suppressed: Boolean
 }
 
 structure SourceMapRow {
@@ -257,6 +261,7 @@ enum EdgeDirection {
 }
 
 /// Discriminated merge: **node** (primary graph node + optional incident edges) vs **edge** (content on one graph edge).
+/// TS binding uses `kind?: "node"` / `kind: "edge"` instead of Smithy union tags.
 union MergeMemoryParams {
     node: MergeMemoryParamsNode
     edge: MergeMemoryParamsEdge
@@ -361,6 +366,42 @@ structure UnsuppressNamespaceParams {
 
 structure UnsuppressNamespaceOutput {}
 
+/// Literal path rename with bulk id rematerialization. Default `recursive` is true in TS.
+structure RenameNamespaceParams {
+    from: MemoryNamespace
+    to: MemoryNamespace
+    /// When true (default in TS), rename `from` and all descendant paths.
+    recursive: Boolean
+    attribution: MemoryMutationAttribution
+}
+
+structure RenameNamespacePathPair {
+    from: MemoryNamespace
+    to: MemoryNamespace
+}
+
+list RenameNamespacePathPairList {
+    member: RenameNamespacePathPair
+}
+
+structure RenameNamespaceOutput {
+    namespaces: RenameNamespacePathPairList
+    renamedMemories: Integer
+}
+
+/// Deletes memories under a namespace (and descendants when recursive), then metadata rows.
+structure DeleteNamespaceParams {
+    namespace: MemoryNamespace
+    /// When true (default in TS), delete `namespace` and all descendant paths.
+    recursive: Boolean
+    attribution: MemoryMutationAttribution
+}
+
+structure DeleteNamespaceOutput {
+    namespaces: MemoryNamespaceList
+    deletedMemories: Integer
+}
+
 structure SearchContent {
     text: String
     vector: DoubleList
@@ -413,6 +454,9 @@ structure SearchOptions {
     maxVectorDistance: Double
     /// Select `knn` or `ann`; omit = ANN if available else KNN. Unsupported selection is a noop.
     vectorSearchMethod: VectorSearchMethod
+    /// When true, include suppressed memories/namespaces in discovery and neighbor expansion.
+    /// Default excludes them. Exact-path `memory.suppressed` is still populated on hits when known.
+    includeSuppressed: Boolean
 }
 
 enum SearchScopeMode {
@@ -510,6 +554,8 @@ structure MemoryOpContext {
 }
 
 /// Provenance event stored as canonical JSON in `memory_provenance.event_json`.
+/// Hashed leaves include an explicit `kind` field (TS source of truth); Smithy union tags
+/// mirror that discriminant for typing.
 union MemoryProvenanceEvent {
     MERGE_MEMORY: MergeMemoryProvenanceEvent
     DELETE_MEMORY: DeleteMemoryProvenanceEvent
@@ -523,6 +569,9 @@ union MemoryProvenanceEvent {
 structure MergeMemoryProvenanceEvent {
     /// Schema version; TS requires literal `1`.
     v: Integer
+    /// Required in stored JSON; must be `MERGE_MEMORY`.
+    @required
+    kind: String
     namespace: String
     memory_key: String
     memory_id: String
@@ -536,6 +585,9 @@ structure MergeMemoryProvenanceEvent {
 structure DeleteMemoryProvenanceEvent {
     /// Schema version; TS requires literal `1`.
     v: Integer
+    /// Required in stored JSON; must be `DELETE_MEMORY`.
+    @required
+    kind: String
     namespace: String
     memory_key: String
     memory_id: String
@@ -546,6 +598,9 @@ structure DeleteMemoryProvenanceEvent {
 structure SuppressMemoryProvenanceEvent {
     /// Schema version; TS requires literal `1`.
     v: Integer
+    /// Required in stored JSON; must be `SUPPRESS_MEMORY`.
+    @required
+    kind: String
     namespace: String
     memory_key: String
     memory_id: String
@@ -556,6 +611,9 @@ structure SuppressMemoryProvenanceEvent {
 structure UnsuppressMemoryProvenanceEvent {
     /// Schema version; TS requires literal `1`.
     v: Integer
+    /// Required in stored JSON; must be `UNSUPPRESS_MEMORY`.
+    @required
+    kind: String
     namespace: String
     memory_key: String
     memory_id: String
@@ -566,6 +624,9 @@ structure UnsuppressMemoryProvenanceEvent {
 structure RenameNamespaceProvenanceEvent {
     /// Schema version; TS requires literal `1`.
     v: Integer
+    /// Required in stored JSON; must be `RENAME_NAMESPACE`.
+    @required
+    kind: String
     from_namespace: String
     to_namespace: String
     recursive: Boolean
@@ -576,6 +637,9 @@ structure RenameNamespaceProvenanceEvent {
 structure SuppressNamespaceProvenanceEvent {
     /// Schema version; TS requires literal `1`.
     v: Integer
+    /// Required in stored JSON; must be `SUPPRESS_NAMESPACE`.
+    @required
+    kind: String
     namespace: String
     contributor: ContributorAttestation
     intent_snapshot_id: String
@@ -584,6 +648,9 @@ structure SuppressNamespaceProvenanceEvent {
 structure UnsuppressNamespaceProvenanceEvent {
     /// Schema version; TS requires literal `1`.
     v: Integer
+    /// Required in stored JSON; must be `UNSUPPRESS_NAMESPACE`.
+    @required
+    kind: String
     namespace: String
     contributor: ContributorAttestation
     intent_snapshot_id: String
@@ -603,6 +670,9 @@ structure GraphEdgeLink {
     properties: Document
     /// When true, the stored link is treated as directed (`fromKey` → `toKey`). Omitted when false/absent.
     directed: Boolean
+    /// When true, the edge memory and/or an endpoint node memory is suppressed.
+    /// Only set when loaders were called with `includeSuppressed: true`.
+    suppressed: Boolean
 }
 
 list GraphEdgeLinkList {
@@ -617,6 +687,8 @@ structure GraphNode {
     labels: OntologyLabelInstanceList
     /// Parsed `nodes.properties`; use empty object when null in storage.
     properties: Document
+    /// When true, the memory is suppressed. Set when loaded with `includeSuppressed: true`.
+    suppressed: Boolean
 }
 
 /// One memory key’s node labels (bulk graph read).
@@ -644,6 +716,8 @@ structure GraphMemoryEmbedding {
     memoryKey: String
     memoryId: String
     embedding: DoubleList
+    /// When true, the memory is suppressed. Set when loaded with `includeSuppressed: true`.
+    suppressed: Boolean
 }
 
 structure EdgePreviewPayload {

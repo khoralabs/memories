@@ -7,10 +7,14 @@ Logical client API: validates content and ontology at the app layer, then drives
 Label kinds are opaque strings here (Zod / closed enums live in app packages).
 
 Merge returns stable memory ids touched by the operation (primary + neighbors whose search-meta was synced).
-Attribution (`contributor` / `intentSnapshotId`) is optional on merge, delete, replace-feature, suppress, and unsuppress and feeds provenance.
+Attribution (`contributor` / `intentSnapshotId`) is optional on merge, delete, replace-feature, suppress,
+unsuppress, rename-namespace, and delete-namespace and feeds provenance.
+
+**TS binding:** `MergeMemoryParams` is a Smithy union (`node` / `edge`); TypeScript uses a `kind` discriminant
+(`"node"` default / `"edge"`) on the same fields — see `@khoralabs/memories-node` `merge-memory.ts`.
 """)
 service MemoriesPublic {
-    version: "2026-07-21"
+    version: "2026-10-28"
     operations: [
         MergeMemory
         Search
@@ -20,6 +24,8 @@ service MemoriesPublic {
         UnsuppressMemory
         SuppressNamespace
         UnsuppressNamespace
+        RenameNamespace
+        DeleteNamespace
     ]
 }
 
@@ -61,4 +67,14 @@ operation SuppressNamespace {
 operation UnsuppressNamespace {
     input: UnsuppressNamespaceParams
     output: UnsuppressNamespaceOutput
+}
+
+operation RenameNamespace {
+    input: RenameNamespaceParams
+    output: RenameNamespaceOutput
+}
+
+operation DeleteNamespace {
+    input: DeleteNamespaceParams
+    output: DeleteNamespaceOutput
 }
