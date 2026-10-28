@@ -26,11 +26,11 @@ The reference SQLite strategy defines on-disk tables in [`./sqlite/persistence/s
 
 | Smithy service | Role | TypeScript (approx.) | When omitted / `MemoriesBackendCapabilities` |
 | ---------------- | ---- | -------------------- | --------------------------------------------- |
-| `MemoriesPersistenceCore` | Lexical mutation, catalog, edges, search-meta text path, lexical search, hydrate | [`MemoriesMutation`](./core/persistence/types.ts) (minus vector + optional label-props sync) + lexical half of [`MemoriesRetrieval`](./core/persistence/types.ts) | Baseline for any storage implementation. |
+| `MemoriesPersistenceCore` | Lexical mutation, catalog, edges, suppress flags, search-meta text path, lexical search, hydrate, `clearSourceMapFeatures`, content/graph facet outbox | [`MemoriesMutation`](./core/persistence/types.ts) (minus vector + optional label-props sync) + lexical half of [`MemoriesRetrieval`](./core/persistence/types.ts) | Baseline for any storage implementation. |
 | `MemoriesPersistenceVector` | Vector features, meta-vector upsert, vector search, embedding dimensions | Vector methods on mutation/retrieval + `listVectorEmbeddingIndexDimensions` | Omit when `vectorSearch` is `false`. |
 | `MemoriesPersistenceNeighbors` | Neighbor listing for search | [`MemoriesNeighborIndex`](./core/persistence/types.ts) | Omit when `neighborIndex` is `false`. |
 | `MemoriesPersistenceLabelProps` | `SyncLabelPropsSearchFeatures` | Optional `syncLabelPropsSearchFeatures?` on mutation | Omit if label-props search chunks are unsupported. |
-| `MemoriesPersistenceReads` | Prefetch / export reads | [`MemoriesPersistenceReads`](./core/persistence/types.ts) except `listVectorEmbeddingIndexDimensions` (that method is grouped under **Vector** in Smithy) | Thin stores may skip; most backends implement with Core. |
+| `MemoriesPersistenceReads` | Prefetch / export reads + optional tipReplay | [`MemoriesPersistenceReads`](./core/persistence/types.ts) except `listVectorEmbeddingIndexDimensions` (that method is grouped under **Vector** in Smithy) | Thin stores may skip; tip graph/vector/event-json gated by `tipReplayAtRootHex`. |
 | *(graph topology)* | Namespace edge lists, node labels/properties, incident edges; per-memory labels/properties; load edge by id; load full graph node; node/edge label writes | [`MemoriesGraph`](./core/persistence/types.ts) = [`MemoriesGraphIndex`](./core/persistence/types.ts) + [`MemoriesGraphMutation`](./core/persistence/types.ts) on [`MemoriesPersistence`](./core/persistence/types.ts) | Reads return empty when `graphIndex` is `false`. Per-entity reads: `loadNodeLabelsForMemory`, `loadNodePropertiesForMemory`, `loadGraphEdge`, [`loadGraphNode`](./core/persistence/types.ts). |
 
 **`loadGraphNode`** is the preferred single-call read for one memory’s graph node (labels, parsed `nodes.properties`, and stable `nodeId`). The split helpers `loadNodeLabelsForMemory` / `loadNodePropertiesForMemory` remain for narrow call sites that only need one piece.
@@ -111,6 +111,16 @@ All tip-bound replay (content, graph, vectors, provenance payloads) uses one **`
 - **Evacuation:** One `evacuateOutsideHotWindow()` for all facets; `contentOutboxRetentionTips` (default 256) + optional `ContentBlobColdStore` (Bun S3).
 - **Suppress:** `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` append `graph` facet snapshots (not content outbox today).
 - **W3C PROV:** Storage records hash-chained mutations + tip payloads. Hosts assemble interoperable PROV bundles; optional export maps chain events to PROV-O. Native PROV is not the write format.
+
+#### Adapter matrix (SQL backends)
+
+| Concern | sqlite | libsql | turso-serverless |
+| ------- | ------ | ------ | ---------------- |
+| `tipReplayAtRootHex` | `true` | `true` | `true` |
+| Graph/vector/provenance-json at tip | `getMemory*AtRootHexAsync` | same | same |
+| Content at tip | sync hot-only + `getMemoryContentAtRootHexAsync` for cold | single async method (optional cold store) | same as libsql |
+| Lexical FTS cleanup in `clearSourceMapFeatures` | `text_features_fts` + per-dim vec indexes | FTS + bulk vector delete | no FTS table (column `fts_match`); text + vector rows |
+| Graph snapshot during merge tx | `ctx.db` visible in Bun transaction | **must** load graph via `DbCtx` / tx (not outer client) | same as libsql |
 
 Upgrade path: **0.9.0** / **0.9.1** copy `memory_content_*` into TipOutbox `content` facet rows; **0.10.0** drops the legacy tables.
 

@@ -13,10 +13,13 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 - **@khoralabs/memories-service** — DID principal agent path: X-Agent-* wire, `createDidKeyPrincipalVerifier`, `createDidSignedRequestAuthProvider`, agent clients with optional `signer` (no required admin Bearer). See `packages/service/docs/adr/0001-did-principal-agent-path.md`.
 - **@khoralabs/memories-service** — Under `did-principal`, unscoped authorize allowed; `GET /databases` filtered to caller’s `ownerKey`.
+- **@khoralabs/memories-node** — libsql and turso-serverless advertise `tipReplayAtRootHex` and implement tip graph/vector/provenance-json readers (parity with sqlite).
 
 ### Changed
 
 - **@khoralabs/memories-service** — `MemoriesServiceClientAuthProvider.applyAuth` accepts optional `{ path }` for request signing.
+- **@khoralabs/memories-spec** — Rebased logical Spec on TypeScript: public rename/delete namespace, suppress flag persistence ops, tipReplay reads on Reads/aggregate, `includeSuppressed` / `suppressed` fields, provenance `kind` in event shapes, content/graph facet outbox split.
+- **@khoralabs/memories-node** — Graph snapshot capture on libsql/turso uses the write transaction (`DbCtx`) so tip graph facets are populated during merge.
 
 ## [0.10.0] - 2026-09-02
 

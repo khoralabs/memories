@@ -10,7 +10,7 @@ This package is **not** the HTTP wire model for `@khoralabs/memories-service` (l
 |------|----------|
 | `model/persistence.smithy` | `MemoriesPersistenceService` and capability modules (`MemoriesPersistenceCore`, `MemoriesPersistenceVector`, …) |
 | `model/shapes.smithy` | Shared shapes (rows, search/merge, provenance events, capabilities) |
-| `model/public.smithy` | Public service surface (`MergeMemory`, `Search`, `DeleteMemory`, `ReplaceMemoryFeature`, suppress/unsuppress) |
+| `model/public.smithy` | Public service surface (`MergeMemory`, `Search`, `DeleteMemory`, `ReplaceMemoryFeature`, suppress/unsuppress, rename/delete namespace) |
 | `smithy-build.json` | Smithy build config |
 
 ## Capability modules
@@ -19,11 +19,15 @@ Use modules to see what a minimal backend can omit; use the aggregate `MemoriesP
 
 | Smithy service | Approximate TypeScript |
 |----------------|------------------------|
-| `MemoriesPersistenceCore` | Lexical mutation + catalog + lexical search + provenance |
+| `MemoriesPersistenceCore` | Lexical mutation + catalog + suppress flags + lexical search + provenance + `ClearSourceMapFeatures` / graph facet outbox |
 | `MemoriesPersistenceVector` | Vector features + vector search |
 | `MemoriesPersistenceNeighbors` | `MemoriesNeighborIndex` |
 | `MemoriesPersistenceLabelProps` | `syncLabelPropsSearchFeatures` |
-| `MemoriesPersistenceReads` | Prefetch / export reads |
+| `MemoriesPersistenceReads` | Prefetch / export reads + optional tipReplay ops (`GetMemoryGraph/Vector/ProvenanceEventJsonAtRootHex`) |
+
+**`tipReplayAtRootHex`:** when true, Reads tip graph/vector/provenance-json ops are available (TS names end in `Async`). Reference SQL adapters (sqlite, libsql, turso-serverless) all set this and implement the readers.
+
+**Encoding note:** Spec uses Smithy tagged unions for request discriminants; TypeScript uses `kind` / `memoryKind` fields. Provenance `event_json` always includes an explicit `kind` (hashed).
 
 Operational semantics: [`../node/src/persistence/IMPLEMENTORS.md`](../node/src/persistence/IMPLEMENTORS.md).
 
