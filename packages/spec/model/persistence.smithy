@@ -8,13 +8,18 @@ use smithy.api#Unit
 @documentation("""
 Lexical mutation + catalog + edges + search-meta (text path) + lexical retrieval + hydrate.
 Minimum profile for a lexical-only backend: typically **Core** + **MemoriesPersistenceReads**.
+
+Also includes suppress flag setters/readers (public Suppress*/Unsuppress*), ClearSourceMapFeatures
+(for ReplaceMemoryFeature), and AppendGraphFacetOutbox (suppress/unsuppress tip snapshots).
+**TS binding:** clear/delete subtree targets use `memoryKind: "node" | "edge"` instead of Smithy unions.
 """)
 service MemoriesPersistenceCore {
-    version: "2026-07-21"
+    version: "2026-10-28"
     operations: [
         WithTransaction
         ListNeighborMemoriesForNode
         ClearMemorySubtree
+        ClearSourceMapFeatures
         UpsertMemory
         UpsertNodeForMemoryKey
         LoadMemoryNamespaceKey
@@ -32,6 +37,7 @@ service MemoriesPersistenceCore {
         InsertNodeLabelAssignment
         FindMemoryIdByKey
         FindMemoryAssociation
+        FindMemoryKeyByEdgeId
         NodeExists
         InsertEdge
         EnsureEdgeLabel
@@ -39,9 +45,15 @@ service MemoriesPersistenceCore {
         SyncMemorySearchMeta
         BuildCanonicalMemorySearchMetaText
         DeleteMemoryRootRows
+        IsMemorySuppressed
+        SetMemorySuppressed
+        IsNamespaceSuppressed
+        FindClosestSuppressedNamespace
+        SetNamespaceSuppressed
         GetProvenanceHeadRootHex
         AppendProvenanceEvent
         AppendContentOutbox
+        AppendGraphFacetOutbox
         UpdateSourceMapContentHash
         SearchLexicalSourceMapIds
         HydrateSourceMapHits
@@ -85,15 +97,20 @@ service MemoriesPersistenceLabelProps {
 
 @documentation("""
 Prefetch and export reads (not required for minimal in-process stores, but common for tooling).
+TipReplay reads (**GetMemoryGraphAtRootHex**, **GetMemoryVectorAtRootHex**, **GetProvenanceEventJsonAtRootHex**)
+are optional and gated by `tipReplayAtRootHex` (TS method names end in `Async`).
 """)
 service MemoriesPersistenceReads {
-    version: "2026-08-11"
+    version: "2026-10-28"
     operations: [
         ListMemoryNamespaces
         ListNamespacesWithMetadata
+        ListNamespacesWithMetadataUnderPrefix
+        NamespaceExistsUnderPrefix
         GetNamespaceMetadata
         ListMemoryKeysInNamespace
         ListSourceMapsForMemory
+        ListSourceMapInventoryForMemory
         ListTextFeatureExportRowsForMemory
         GetSourceMapTextPreview
         GetSourceMapText
@@ -103,6 +120,9 @@ service MemoriesPersistenceReads {
         ListProvenanceEvents
         ListProvenanceChain
         GetMemoryContentAtRootHex
+        GetMemoryGraphAtRootHex
+        GetMemoryVectorAtRootHex
+        GetProvenanceEventJsonAtRootHex
     ]
 }
 
@@ -117,13 +137,14 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 `MemoriesPersistence` (and capability slices) in `@khoralabs/memories-node`; public API in `@khoralabs/memories-node`.
 
 **Capability matrix (modules ↔ `MemoriesBackendCapabilities`):**
-- **MemoriesPersistenceCore** — baseline for merge/delete + lexical search + hydrate.
+- **MemoriesPersistenceCore** — baseline for merge/delete + lexical search + hydrate + suppress flags + ClearSourceMapFeatures.
 - **MemoriesPersistenceVector** — omit when `vectorSearch` is `false`.
 - **MemoriesPersistenceNeighbors** — omit when `neighborIndex` is `false`.
-- **Graph topology reads** (`MemoriesGraphIndex` in TS on `MemoriesPersistence`) — **LoadGraphEdgesForNamespace**, **LoadNodeLabelsForNamespace**, **LoadNodePropertiesForNamespace**, **ListIncidentGraphEdges**, **LoadNodeLabelsForMemory**, **LoadNodePropertiesForMemory**, **LoadGraphEdge**, **LoadGraphNode**, **CountGraphForNamespace**, **StatsGraphForNamespace** — omit when `graphIndex` is `false`.
+- **Graph topology reads** (`MemoriesGraphIndex` in TS on `MemoriesPersistence`) — **LoadGraphEdgesForNamespace**, **LoadNodeLabelsForNamespace**, **LoadNodePropertiesForNamespace**, **ListIncidentGraphEdges**, **LoadNodeLabelsForMemory**, **LoadNodePropertiesForMemory**, **LoadGraphEdge**, **LoadGraphNode**, **CountGraphForNamespace**, **StatsGraphForNamespace**, **ListSuppressedNodeKeysForNamespace** — omit when `graphIndex` is `false`.
 - **MemoriesPersistenceLabelProps** — optional (`syncLabelPropsSearchFeatures?` in TS).
 - **MemoriesPersistenceReads** — prefetch/export; commonly implemented with Core.
-- **AppendContentOutbox** / **GetProvenanceTimestampMsForRootHex** / **ListProvenanceEvents** / **ListProvenanceChain** / **GetMemoryContentAtRootHex** — optional methods in TS (`?`).
+- **AppendContentOutbox** / **AppendGraphFacetOutbox** / **GetProvenanceTimestampMsForRootHex** / **ListProvenanceEvents** / **ListProvenanceChain** / **GetMemoryContentAtRootHex** / tipReplay reads — optional methods in TS (`?`).
+- **tipReplayAtRootHex** — when true, **GetMemoryGraphAtRootHex**, **GetMemoryVectorAtRootHex**, **GetProvenanceEventJsonAtRootHex** are available (TS `*Async` names).
 
 `multiNamespaceSearch`, `unscopedSearch`, and `asOfTimestampMsSearch` constrain search **behavior**, not operation membership.
 
@@ -139,14 +160,15 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 
 **Read helpers:** **ListMemoryNamespaces**, **ListNamespacesWithMetadata**, **GetNamespaceMetadata**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**, **GetSourceMapText**, **GetSourceMapVector**, **ResolveSourceMapMemory**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable. Public **ReplaceMemoryFeature** (sibling-arm preserve) is modeled on `MemoriesPublic` and implemented in `@khoralabs/memories-node` / HTTP `POST /databases/source-map/replace`; provenance is recorded as **MERGE_MEMORY** (no separate event kind).
 
-**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox**, **GetProvenanceTimestampMsForRootHex**, **ListProvenanceEvents**, **ListProvenanceChain**, **GetMemoryContentAtRootHex**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete + suppress/unsuppress + rename) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** (`MERGE_MEMORY` / `DELETE_MEMORY` / `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` / `RENAME_NAMESPACE`). Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide). Content-at-root is per-arm LWW (not a full tip snapshot); cold-evacuated bodies are resolved when a cold store is configured.
+**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox** (merge/delete), optional **AppendGraphFacetOutbox** (merge/delete/suppress), tipReplay reads, **GetProvenanceTimestampMsForRootHex**, **ListProvenanceEvents**, **ListProvenanceChain**, **GetMemoryContentAtRootHex**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete + suppress/unsuppress + rename + namespace suppress) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** with required in-JSON `kind`. Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide). Content-at-root is per-arm LWW (not a full tip snapshot); cold-evacuated bodies are resolved when a cold store is configured.
 """)
 service MemoriesPersistenceService {
-    version: "2026-08-11"
+    version: "2026-10-28"
     operations: [
         WithTransaction
         ListNeighborMemoriesForNode
         ClearMemorySubtree
+        ClearSourceMapFeatures
         UpsertMemory
         UpsertNodeForMemoryKey
         LoadMemoryNamespaceKey
@@ -165,6 +187,7 @@ service MemoriesPersistenceService {
         InsertNodeLabelAssignment
         FindMemoryIdByKey
         FindMemoryAssociation
+        FindMemoryKeyByEdgeId
         NodeExists
         InsertEdge
         EnsureEdgeLabel
@@ -174,9 +197,15 @@ service MemoriesPersistenceService {
         BuildCanonicalMemorySearchMetaText
         UpsertMemorySearchMetaVector
         DeleteMemoryRootRows
+        IsMemorySuppressed
+        SetMemorySuppressed
+        IsNamespaceSuppressed
+        FindClosestSuppressedNamespace
+        SetNamespaceSuppressed
         GetProvenanceHeadRootHex
         AppendProvenanceEvent
         AppendContentOutbox
+        AppendGraphFacetOutbox
         UpdateSourceMapContentHash
         SearchLexicalSourceMapIds
         SearchVectorSourceMapIds
@@ -185,9 +214,12 @@ service MemoriesPersistenceService {
         ListNeighborsForEdgeMemory
         ListMemoryNamespaces
         ListNamespacesWithMetadata
+        ListNamespacesWithMetadataUnderPrefix
+        NamespaceExistsUnderPrefix
         GetNamespaceMetadata
         ListMemoryKeysInNamespace
         ListSourceMapsForMemory
+        ListSourceMapInventoryForMemory
         ListTextFeatureExportRowsForMemory
         GetSourceMapTextPreview
         GetSourceMapText
@@ -197,6 +229,9 @@ service MemoriesPersistenceService {
         ListProvenanceEvents
         ListProvenanceChain
         GetMemoryContentAtRootHex
+        GetMemoryGraphAtRootHex
+        GetMemoryVectorAtRootHex
+        GetProvenanceEventJsonAtRootHex
         ListVectorEmbeddingIndexDimensions
         LoadGraphEdgesForNamespace
         LoadNodeLabelsForNamespace
@@ -206,6 +241,7 @@ service MemoriesPersistenceService {
         LoadNodePropertiesForMemory
         LoadGraphEdge
         LoadGraphNode
+        ListSuppressedNodeKeysForNamespace
         CountGraphForNamespace
         StatsGraphForNamespace
     ]
@@ -279,6 +315,23 @@ structure ClearMemorySubtreeInput {
 }
 
 structure ClearMemorySubtreeOutput {}
+
+@documentation("""
+Delete features (text/FTS/vector/vec-index) and the source_maps row for one source map.
+Idempotent when the map is already absent. Does not touch other arms or graph topology.
+Used by public **ReplaceMemoryFeature**.
+""")
+operation ClearSourceMapFeatures {
+    input: ClearSourceMapFeaturesInput
+    output: ClearSourceMapFeaturesOutput
+}
+
+structure ClearSourceMapFeaturesInput {
+    op: MemoryOpContext
+    sourceMapId: String
+}
+
+structure ClearSourceMapFeaturesOutput {}
 
 operation UpsertMemory {
     input: UpsertMemoryInput
@@ -386,8 +439,8 @@ operation RenameNamespacePaths {
 
 structure RenameNamespacePathsInput {
     op: MemoryOpContext
-    /// JSON object map of old namespace path → new namespace path.
-    nsMapJson: String
+    /// Old namespace path → new namespace path (TS: `ReadonlyMap<string, string>`).
+    nsMap: StringStringMap
 }
 
 structure RenameNamespacePathsOutput {
@@ -578,6 +631,25 @@ structure FindMemoryAssociationOutput {
     association: MemoryAssociation
 }
 
+@documentation("""
+Edge memory `key` for a graph edge id in a namespace, when present.
+Optional on implementors (`findMemoryKeyByEdgeId?` in TS).
+""")
+operation FindMemoryKeyByEdgeId {
+    input: FindMemoryKeyByEdgeIdInput
+    output: FindMemoryKeyByEdgeIdOutput
+}
+
+structure FindMemoryKeyByEdgeIdInput {
+    namespace: MemoryNamespace
+    edgeId: String
+}
+
+structure FindMemoryKeyByEdgeIdOutput {
+    /// Omitted when no edge memory exists for the edge id.
+    key: String
+}
+
 operation NodeExists {
     input: NodeExistsInput
     output: NodeExistsOutput
@@ -725,6 +797,74 @@ structure DeleteMemoryRootRowsInput {
 
 structure DeleteMemoryRootRowsOutput {}
 
+operation IsMemorySuppressed {
+    input: IsMemorySuppressedInput
+    output: IsMemorySuppressedOutput
+}
+
+structure IsMemorySuppressedInput {
+    memoryId: String
+}
+
+structure IsMemorySuppressedOutput {
+    /// `false` if the memory is absent.
+    suppressed: Boolean
+}
+
+operation SetMemorySuppressed {
+    input: SetMemorySuppressedInput
+    output: SetMemorySuppressedOutput
+}
+
+structure SetMemorySuppressedInput {
+    op: MemoryOpContext
+    memoryId: String
+    suppressed: Boolean
+}
+
+structure SetMemorySuppressedOutput {}
+
+operation IsNamespaceSuppressed {
+    input: IsNamespaceSuppressedInput
+    output: IsNamespaceSuppressedOutput
+}
+
+structure IsNamespaceSuppressedInput {
+    namespace: MemoryNamespace
+}
+
+structure IsNamespaceSuppressedOutput {
+    /// True when the namespace or any ancestor path is suppressed.
+    suppressed: Boolean
+}
+
+operation FindClosestSuppressedNamespace {
+    input: FindClosestSuppressedNamespaceInput
+    output: FindClosestSuppressedNamespaceOutput
+}
+
+structure FindClosestSuppressedNamespaceInput {
+    namespace: MemoryNamespace
+}
+
+structure FindClosestSuppressedNamespaceOutput {
+    /// Longest matching suppressed `namespace_metadata` path, or omitted when none.
+    namespace: MemoryNamespace
+}
+
+operation SetNamespaceSuppressed {
+    input: SetNamespaceSuppressedInput
+    output: SetNamespaceSuppressedOutput
+}
+
+structure SetNamespaceSuppressedInput {
+    op: MemoryOpContext
+    namespace: MemoryNamespace
+    suppressed: Boolean
+}
+
+structure SetNamespaceSuppressedOutput {}
+
 @documentation("Returns rank-ordered source_map ids (best first); RRF consumes rank only, not scores.")
 operation SearchLexicalSourceMapIds {
     input: SearchLexicalSourceMapIdsInput
@@ -738,6 +878,8 @@ structure SearchLexicalSourceMapIdsInput {
     memoryIds: StringList
     /// Bounds on `memories._ts_created` (backend-dependent).
     asOf: SearchAsOf
+    /// When true, include suppressed memories/namespaces. Default excludes.
+    includeSuppressed: Boolean
 }
 
 structure SearchLexicalSourceMapIdsOutput {
@@ -761,6 +903,8 @@ structure SearchVectorSourceMapIdsInput {
     asOf: SearchAsOf
     /// Resolved method from core (`knn` or `ann`). Unsupported → empty ids.
     method: VectorSearchMethod
+    /// When true, include suppressed memories/namespaces. Default excludes.
+    includeSuppressed: Boolean
 }
 
 structure SearchVectorSourceMapIdsOutput {
@@ -791,6 +935,8 @@ structure ListNeighborsForMemoryInput {
     namespace: MemoryNamespace
     key: String
     filters: NeighborFilter
+    /// When true, include suppressed neighbor memories/edges. Default excludes.
+    includeSuppressed: Boolean
 }
 
 structure ListNeighborsForMemoryOutput {
@@ -809,6 +955,8 @@ structure ListNeighborsForEdgeMemoryInput {
     namespace: MemoryNamespace
     edgeId: String
     filters: NeighborFilter
+    /// When true, include suppressed neighbor memories/edges. Default excludes.
+    includeSuppressed: Boolean
 }
 
 structure ListNeighborsForEdgeMemoryOutput {
@@ -826,13 +974,47 @@ structure ListMemoryNamespacesOutput {
 }
 
 operation ListNamespacesWithMetadata {
-    input: Unit
+    input: ListNamespacesWithMetadataInput
     output: ListNamespacesWithMetadataOutput
+}
+
+structure ListNamespacesWithMetadataInput {
+    includeSuppressed: Boolean
 }
 
 structure ListNamespacesWithMetadataOutput {
     /// Union of namespaces with memories and/or metadata rows, sorted by path.
     namespaces: NamespaceMetadataList
+}
+
+operation ListNamespacesWithMetadataUnderPrefix {
+    input: ListNamespacesWithMetadataUnderPrefixInput
+    output: ListNamespacesWithMetadataUnderPrefixOutput
+}
+
+structure ListNamespacesWithMetadataUnderPrefixInput {
+    @required
+    prefix: MemoryNamespace
+    includeSuppressed: Boolean
+}
+
+structure ListNamespacesWithMetadataUnderPrefixOutput {
+    namespaces: NamespaceMetadataList
+}
+
+operation NamespaceExistsUnderPrefix {
+    input: NamespaceExistsUnderPrefixInput
+    output: NamespaceExistsUnderPrefixOutput
+}
+
+structure NamespaceExistsUnderPrefixInput {
+    @required
+    prefix: MemoryNamespace
+    includeSuppressed: Boolean
+}
+
+structure NamespaceExistsUnderPrefixOutput {
+    exists: Boolean
 }
 
 operation GetNamespaceMetadata {
@@ -878,6 +1060,37 @@ structure ListSourceMapsForMemoryOutput {
     sourceMaps: SourceMapRowList
 }
 
+@documentation("""
+Feature inventory for a memory (newest first, capped at `limit`): ids, hashes, and
+text/vector presence — no payloads.
+""")
+operation ListSourceMapInventoryForMemory {
+    input: ListSourceMapInventoryForMemoryInput
+    output: ListSourceMapInventoryForMemoryOutput
+}
+
+structure ListSourceMapInventoryForMemoryInput {
+    memoryId: String
+    limit: Integer
+}
+
+structure SourceMapInventoryItem {
+    sourceKey: String
+    sourceMapId: String
+    contentHash: String
+    createdAt: Long
+    hasText: Boolean
+    hasVector: Boolean
+}
+
+list SourceMapInventoryItemList {
+    member: SourceMapInventoryItem
+}
+
+structure ListSourceMapInventoryForMemoryOutput {
+    items: SourceMapInventoryItemList
+}
+
 operation ListTextFeatureExportRowsForMemory {
     input: ListTextFeatureExportRowsForMemoryInput
     output: ListTextFeatureExportRowsForMemoryOutput
@@ -908,7 +1121,7 @@ structure GetSourceMapTextPreviewOutput {
 }
 
 @documentation("""
-Full joined text for one source map (all text_features, newline-joined, no truncation).
+Full joined text for one source map (all text_features, `\\n\\n`-joined, no truncation).
 Null when there are no text features.
 """)
 operation GetSourceMapText {
@@ -1006,8 +1219,10 @@ structure ListProvenanceEventsInput {
     namespace: String
     /// Wire/HTTP field name is `key` (same meaning as memory key).
     key: String
-    /// When set (with `namespace`), matches events for this edge id or edge memory key.
+    /// When set (with `namespace`), matches events for this edge id.
     edgeId: String
+    /// Alternate edge filter by edge memory key (TS `edgeMemoryKey`).
+    edgeMemoryKey: String
     limit: Integer
     before: ProvenanceEventsBeforeCursor
 }
@@ -1069,6 +1284,8 @@ memory deleted at tip, or bodies unavailable (evacuated and not resolvable — e
 or permanently dropped when `allowDropWithoutColdStore` was used). Without a cold store,
 evacuate is a no-op by default (hot bodies retained).
 Optional on implementors (`getMemoryContentAtRootHex?` in TS).
+**Binding:** cold resolution may require an async path (sqlite exposes sync hot-only plus
+`getMemoryContentAtRootHexAsync`; libsql/turso fold cold into the async method).
 """)
 operation GetMemoryContentAtRootHex {
     input: GetMemoryContentAtRootHexInput
@@ -1098,7 +1315,7 @@ structure GetMemoryContentAtRootHexOutput {
 
 @documentation("""
 Graph snapshot (labels, properties, suppression) as of a provenance tip.
-Optional on implementors (`getMemoryGraphAtRootHex?` in TS).
+Optional; requires `tipReplayAtRootHex`. TS: `getMemoryGraphAtRootHexAsync?`.
 """)
 operation GetMemoryGraphAtRootHex {
     input: GetMemoryGraphAtRootHexInput
@@ -1134,7 +1351,7 @@ structure GetMemoryGraphAtRootHexOutput {
 
 @documentation("""
 Vector embedding arms as of a provenance tip (per-arm LWW).
-Optional on implementors (`getMemoryVectorAtRootHex?` in TS).
+Optional; requires `tipReplayAtRootHex`. TS: `getMemoryVectorAtRootHexAsync?`.
 """)
 operation GetMemoryVectorAtRootHex {
     input: GetMemoryVectorAtRootHexInput
@@ -1149,11 +1366,7 @@ structure GetMemoryVectorAtRootHexInput {
 
 structure MemoryVectorAtRootItem {
     sourceKey: String
-    vector: FloatList
-}
-
-list FloatList {
-    member: Float
+    vector: DoubleList
 }
 
 list MemoryVectorAtRootItemList {
@@ -1162,6 +1375,24 @@ list MemoryVectorAtRootItemList {
 
 structure GetMemoryVectorAtRootHexOutput {
     vectors: MemoryVectorAtRootItemList
+}
+
+@documentation("""
+Canonical provenance event JSON at a tip (TipOutbox `provenance` facet).
+Optional; requires `tipReplayAtRootHex`. TS: `getProvenanceEventJsonAtRootHexAsync?`.
+""")
+operation GetProvenanceEventJsonAtRootHex {
+    input: GetProvenanceEventJsonAtRootHexInput
+    output: GetProvenanceEventJsonAtRootHexOutput
+}
+
+structure GetProvenanceEventJsonAtRootHexInput {
+    rootHex: String
+}
+
+structure GetProvenanceEventJsonAtRootHexOutput {
+    /// Omitted when unknown or unavailable.
+    eventJson: String
 }
 
 @documentation("""
@@ -1189,6 +1420,7 @@ operation LoadGraphEdgesForNamespace {
 
 structure LoadGraphEdgesForNamespaceInput {
     namespace: MemoryNamespace
+    includeSuppressed: Boolean
 }
 
 structure LoadGraphEdgesForNamespaceOutput {
@@ -1203,6 +1435,7 @@ operation LoadNodeLabelsForNamespace {
 
 structure LoadNodeLabelsForNamespaceInput {
     namespace: MemoryNamespace
+    includeSuppressed: Boolean
 }
 
 structure LoadNodeLabelsForNamespaceOutput {
@@ -1217,6 +1450,7 @@ operation LoadNodePropertiesForNamespace {
 
 structure LoadNodePropertiesForNamespaceInput {
     namespace: MemoryNamespace
+    includeSuppressed: Boolean
 }
 
 structure LoadNodePropertiesForNamespaceOutput {
@@ -1232,6 +1466,7 @@ operation ListIncidentGraphEdges {
 structure ListIncidentGraphEdgesInput {
     namespace: MemoryNamespace
     memoryKey: String
+    includeSuppressed: Boolean
 }
 
 structure ListIncidentGraphEdgesOutput {
@@ -1287,6 +1522,7 @@ operation LoadGraphEdge {
 structure LoadGraphEdgeInput {
     namespace: MemoryNamespace
     edgeId: String
+    includeSuppressed: Boolean
 }
 
 structure LoadGraphEdgeOutput {
@@ -1307,10 +1543,25 @@ operation LoadGraphNode {
 structure LoadGraphNodeInput {
     namespace: MemoryNamespace
     memoryKey: String
+    includeSuppressed: Boolean
 }
 
 structure LoadGraphNodeOutput {
     result: LoadGraphNodeResult
+}
+
+@documentation("Node memory keys in `namespace` that are currently suppressed.")
+operation ListSuppressedNodeKeysForNamespace {
+    input: ListSuppressedNodeKeysForNamespaceInput
+    output: ListSuppressedNodeKeysForNamespaceOutput
+}
+
+structure ListSuppressedNodeKeysForNamespaceInput {
+    namespace: MemoryNamespace
+}
+
+structure ListSuppressedNodeKeysForNamespaceOutput {
+    keys: StringList
 }
 
 @documentation("""
@@ -1396,16 +1647,42 @@ structure AppendProvenanceEventOutput {
 }
 
 @documentation("""
-Write raw content to the append-only outbox so point-in-time reconstruction is possible.
+Write content (+ typically graph/vector facets via adapter orchestration) to the tip outbox
+so point-in-time reconstruction is possible.
 Must run in the same transaction as **AppendProvenanceEvent**, immediately after.
-For `MERGE_MEMORY` pass one entry per user content item; for `DELETE_MEMORY` / `SUPPRESS_MEMORY` / `UNSUPPRESS_MEMORY` pass empty `entries`.
-Optional on implementors (`appendContentOutbox?` in TS).
+**TS:** `event_type` is only `MERGE_MEMORY` | `DELETE_MEMORY`. For suppress/unsuppress use
+**AppendGraphFacetOutbox** instead. Optional (`appendContentOutbox?`).
+Content facet stores text; `vector` on entries is accepted for hash/orchestration and may be
+written to the vector facet by the adapter.
 """)
 operation AppendContentOutbox {
     input: AppendContentOutboxInput
     output: AppendContentOutboxOutput
 }
 
+enum ContentOutboxEventType {
+    @enumValue("MERGE_MEMORY")
+    MERGE_MEMORY
+
+    @enumValue("DELETE_MEMORY")
+    DELETE_MEMORY
+}
+
+enum GraphFacetOutboxEventType {
+    @enumValue("MERGE_MEMORY")
+    MERGE_MEMORY
+
+    @enumValue("DELETE_MEMORY")
+    DELETE_MEMORY
+
+    @enumValue("SUPPRESS_MEMORY")
+    SUPPRESS_MEMORY
+
+    @enumValue("UNSUPPRESS_MEMORY")
+    UNSUPPRESS_MEMORY
+}
+
+/// Full provenance event_type vocabulary (chain rows / facet provenance).
 enum ProvenanceEventType {
     @enumValue("MERGE_MEMORY")
     MERGE_MEMORY
@@ -1432,6 +1709,7 @@ enum ProvenanceEventType {
 structure ContentOutboxEntry {
     sourceKey: String
     text: String
+    vector: DoubleList
 }
 
 list ContentOutboxEntryList {
@@ -1441,13 +1719,34 @@ list ContentOutboxEntryList {
 structure AppendContentOutboxInput {
     op: MemoryOpContext
     rootHex: String
-    eventType: ProvenanceEventType
+    eventType: ContentOutboxEventType
     namespace: String
     memoryKey: String
     entries: ContentOutboxEntryList
 }
 
 structure AppendContentOutboxOutput {}
+
+@documentation("""
+Append a graph facet snapshot at the current provenance tip (merge/delete/suppress/unsuppress).
+Optional on implementors (`appendGraphFacetOutbox?` in TS). Suppress/unsuppress call this
+directly without **AppendContentOutbox**.
+""")
+operation AppendGraphFacetOutbox {
+    input: AppendGraphFacetOutboxInput
+    output: AppendGraphFacetOutboxOutput
+}
+
+structure AppendGraphFacetOutboxInput {
+    op: MemoryOpContext
+    rootHex: String
+    eventType: GraphFacetOutboxEventType
+    namespace: String
+    memoryKey: String
+    edgeId: String
+}
+
+structure AppendGraphFacetOutboxOutput {}
 
 @documentation("""
 Persist **content_hash** for one source map after lexical and/or vector features exist (`SHA-256(MEMORIES_SOURCE_BODY_v1 …)` over a canonical descriptor). Merge pipelines call this once per content item in the same transaction. `text` and `vector` are both optional (at least the parts that exist for that content item).
