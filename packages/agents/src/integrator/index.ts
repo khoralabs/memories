@@ -1,4 +1,8 @@
 export {
+  applyIntegratorPlanToMerge,
+  filterMergeSliceEdgesToExistingMemories,
+} from "./apply-plan.js";
+export {
   buildMemoryIntegratorAgentId,
   type DefineMemoryIntegratorIdentityOptions,
   defineMemoryIntegratorIdentity,

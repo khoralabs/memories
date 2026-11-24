@@ -29,6 +29,7 @@ export const PUBLISH_ORDER: PublishablePackage[] = [
   { name: "@khoralabs/memories-otel", dir: "packages/otel" },
   { name: "@khoralabs/memories-service", dir: "packages/service" },
   { name: "@khoralabs/memories-agents", dir: "packages/agents" },
+  { name: "@khoralabs/memories-cli", dir: "packages/cli", noBuild: true },
   { name: "@khoralabs/memories-spec", dir: "packages/spec", noBuild: true },
 ];
 

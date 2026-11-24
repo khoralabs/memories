@@ -20,6 +20,7 @@ The design keeps a **single-database node** (`@khoralabs/memories-node`) indepen
 | [`@khoralabs/memories-node`](packages/node) | `packages/node` | Single memory node: client, ontology, persistence contracts, backends, projections, attestation, autolink |
 | [`@khoralabs/memories-service`](packages/service) | `packages/service` | Multi-tenant service: lifecycle, placement, HTTP, auth, storage stacks |
 | [`@khoralabs/memories-agents`](packages/agents) | `packages/agents` | Agent toolkit + adapter / integrator / investigator |
+| [`@khoralabs/memories-cli`](packages/cli) | `packages/cli` | `memories` Bun CLI + agent skills for local stores |
 | [`@khoralabs/memories-spec`](packages/spec) | `packages/spec` | Smithy IDL for persistence + public API capability modules |
 
 React UI: install from the [`khoralabs/react`](https://github.com/khoralabs/react) registry (`bunx shadcn@latest add khoralabs/react/memories`). Host port: `@khoralabs/memories-service/react-client` (factory: `…/react-client/service`).
