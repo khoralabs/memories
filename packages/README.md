@@ -100,7 +100,7 @@ ids.vectorFeature(sourceMapId)// vf_*
 7. `appendProvenanceEvent` — advances the linear hash chain; returns `{ root_hex }`
 8. Optional `appendContentOutbox` — raw text alongside the provenance row for point-in-time reconstruction (SQLite implements this)
 
-**Scale direction (ADR 0002):** Spec models optional `stateRootHex` (Prolly/MST), `auditCommitDag`, and `asyncSearchProjection`. Shipped merge still uses the linear chain + in-tx search-meta; see [`../docs/adr/0002-prolly-state-root-and-audit.md`](../docs/adr/0002-prolly-state-root-and-audit.md).
+**Scale direction (ADR 0002):** Spec models optional `stateRootHex` (Prolly/MST), `auditCommitDag`, and `asyncSearchProjection`. sqlite/libsql/turso ship these at schema 0.11.0 (merge enqueues search projection, drains after commit; `root_hex` is the audit commit id); see [`../docs/adr/0002-prolly-state-root-and-audit.md`](../docs/adr/0002-prolly-state-root-and-audit.md).
 
 ---
 
@@ -157,6 +157,7 @@ Reference backend: [`node/src/persistence/sqlite/`](node/src/persistence/sqlite/
 | `0.8.0-0.9.0/001-add-tip-outbox` | Unified `memory_tip_outbox` / `memory_tip_blobs`; migrate content → tip |
 | `0.9.0-0.9.1/001-resync-content-to-tip-outbox` | Idempotent re-sync of content tables into tip |
 | `0.9.1-0.10.0/001-drop-content-outbox` | DROP legacy `memory_content_outbox` / `memory_content_blobs` |
+| `0.10.0-0.11.0/001-add-scale-tables` | `memory_search_index_outbox`, state-tree tables, `memory_audit_commits` (ADR 0002) |
 
 ---
 

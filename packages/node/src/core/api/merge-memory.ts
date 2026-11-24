@@ -9,6 +9,7 @@ import { propsSchemaToJson } from "../../ontology/ontology.ts";
 import type { NamespacePath, NamespacePathPolicy } from "../../persistence/core";
 import { assertNamespacePath, ids, MEMORY_SEARCH_META_SOURCE_KEY } from "../../persistence/core";
 import {
+  drainSearchIndexOutboxFully,
   type MemoriesPersistence,
   type MemoryOpContext,
   resolveMemoriesBackendCapabilities,
@@ -179,6 +180,63 @@ function validateContentAndMetaVector(
   }
 }
 
+type SearchRef = { namespace: NamespacePath; key: string };
+
+/** Inline search-meta + label-props rebuild for each ref (sync projection). */
+function syncSearchRefs(
+  persistence: MemoriesPersistence,
+  op: MemoryOpContext,
+  refs: Iterable<SearchRef>,
+  primary: { memoryId: string; metaVector: Float32Array | undefined },
+): void {
+  for (const ref of refs) {
+    persistence.syncMemorySearchMeta(op, {
+      namespace: ref.namespace,
+      memoryKey: ref.key,
+      metaVector:
+        ids.memory(ref.namespace, ref.key) === primary.memoryId ? primary.metaVector : undefined,
+    });
+    persistence.syncLabelPropsSearchFeatures?.(op, {
+      namespace: ref.namespace,
+      memoryKey: ref.key,
+    });
+  }
+}
+
+/** ADR 0002: queue refs in the mutation tx (`asyncSearchProjection`). */
+function enqueueSearchRefs(
+  persistence: MemoriesPersistence,
+  op: MemoryOpContext,
+  refs: Iterable<SearchRef>,
+  causeId: string,
+): void {
+  for (const ref of refs) {
+    persistence.enqueueSearchIndexOutbox?.(op, {
+      namespace: ref.namespace,
+      memoryKey: ref.key,
+      causeId,
+      kinds: ["memory_search_meta", "label_props"],
+    });
+  }
+}
+
+/** After commit: drain the outbox so search is fresh before merge returns, then store the primary meta vector. */
+function finishSearchProjection(
+  persistence: MemoriesPersistence,
+  op: MemoryOpContext,
+  primary: SearchRef,
+  metaVector: Float32Array | undefined,
+): void {
+  drainSearchIndexOutboxFully(persistence, op);
+  if (metaVector !== undefined) {
+    persistence.upsertMemorySearchMetaVector(op, {
+      namespace: primary.namespace,
+      memoryKey: primary.key,
+      vector: metaVector,
+    });
+  }
+}
+
 function insertContentItems(
   persistence: MemoriesPersistence,
   op: MemoryOpContext,
@@ -270,6 +328,12 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
   validateContentAndMetaVector(persistence, params.content, params.searchMetaVector);
 
   let metaSyncedMemoryKeys: string[] = [];
+  const caps = resolveMemoriesBackendCapabilities(persistence);
+  const asyncSearch = caps.asyncSearchProjection === true;
+  const primaryMetaVec =
+    params.searchMetaVector !== undefined && params.searchMetaVector.length > 0
+      ? new Float32Array(params.searchMetaVector)
+      : undefined;
 
   persistence.withTransaction(() => {
     const oldNeighbors = persistence.listNeighborMemoriesForNode(op, namespace, nodeId);
@@ -365,21 +429,8 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
         ? (a.namespace as string).localeCompare(b.namespace as string)
         : a.key.localeCompare(b.key),
     );
-    const primaryMetaVec =
-      params.searchMetaVector !== undefined && params.searchMetaVector.length > 0
-        ? new Float32Array(params.searchMetaVector)
-        : undefined;
-    for (const ref of syncRefs) {
-      const refMemoryId = ids.memory(ref.namespace, ref.key);
-      persistence.syncMemorySearchMeta(op, {
-        namespace: ref.namespace,
-        memoryKey: ref.key,
-        metaVector: refMemoryId === memoryId ? primaryMetaVec : undefined,
-      });
-      persistence.syncLabelPropsSearchFeatures?.(op, {
-        namespace: ref.namespace,
-        memoryKey: ref.key,
-      });
+    if (!asyncSearch) {
+      syncSearchRefs(persistence, op, syncRefs, { memoryId, metaVector: primaryMetaVec });
     }
     metaSyncedMemoryKeys = [...syncByMid.keys()].sort((a, b) => a.localeCompare(b));
 
@@ -387,6 +438,11 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       Object.keys(contentHashes).length > 0
         ? Object.fromEntries(Object.entries(contentHashes).sort(([a], [b]) => a.localeCompare(b)))
         : undefined;
+    if (caps.stateRootHex) {
+      persistence.applyStateTreeMutations?.(op, [
+        { namespace, memoryKey: params.key, contentHashes, replace: true },
+      ]);
+    }
     const { root_hex } = persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "MERGE_MEMORY",
@@ -405,7 +461,11 @@ function mergeMemoryNode<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       memoryKey: params.key,
       entries: textEntries,
     });
+    if (asyncSearch) enqueueSearchRefs(persistence, op, syncRefs, root_hex);
   });
+  if (asyncSearch) {
+    finishSearchProjection(persistence, op, { namespace, key: params.key }, primaryMetaVec);
+  }
 
   return metaSyncedMemoryKeys;
 }
@@ -450,6 +510,12 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
   );
 
   let metaSyncedMemoryKeys: string[] = [];
+  const caps = resolveMemoriesBackendCapabilities(persistence);
+  const asyncSearch = caps.asyncSearchProjection === true;
+  const primaryMetaVec =
+    params.searchMetaVector !== undefined && params.searchMetaVector.length > 0
+      ? new Float32Array(params.searchMetaVector)
+      : undefined;
 
   persistence.withTransaction(() => {
     persistence.clearMemorySubtree(op, { memoryKind: "edge", memoryId, edgeId });
@@ -506,21 +572,9 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       namespace: toRef.namespace as NamespacePath,
       key: toRef.key,
     });
-    const primaryMetaVec =
-      params.searchMetaVector !== undefined && params.searchMetaVector.length > 0
-        ? new Float32Array(params.searchMetaVector)
-        : undefined;
-    for (const ref of syncByMid.values()) {
-      const refMid = ids.memory(ref.namespace, ref.key);
-      persistence.syncMemorySearchMeta(op, {
-        namespace: ref.namespace,
-        memoryKey: ref.key,
-        metaVector: refMid === memoryId ? primaryMetaVec : undefined,
-      });
-      persistence.syncLabelPropsSearchFeatures?.(op, {
-        namespace: ref.namespace,
-        memoryKey: ref.key,
-      });
+    const syncRefs = [...syncByMid.values()];
+    if (!asyncSearch) {
+      syncSearchRefs(persistence, op, syncRefs, { memoryId, metaVector: primaryMetaVec });
     }
     metaSyncedMemoryKeys = [...syncByMid.keys()].sort((a, b) => a.localeCompare(b));
 
@@ -528,6 +582,11 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       Object.keys(contentHashes).length > 0
         ? Object.fromEntries(Object.entries(contentHashes).sort(([a], [b]) => a.localeCompare(b)))
         : undefined;
+    if (caps.stateRootHex) {
+      persistence.applyStateTreeMutations?.(op, [
+        { namespace, memoryKey: params.key, contentHashes, replace: true },
+      ]);
+    }
     const { root_hex } = persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "MERGE_MEMORY",
@@ -546,7 +605,11 @@ function mergeMemoryEdge<TNode extends LabelSchemaMap, TEdge extends LabelSchema
       memoryKey: params.key,
       entries: textEntries,
     });
+    if (asyncSearch) enqueueSearchRefs(persistence, op, syncRefs, root_hex);
   });
+  if (asyncSearch) {
+    finishSearchProjection(persistence, op, { namespace, key: params.key }, primaryMetaVec);
+  }
 
   return metaSyncedMemoryKeys;
 }

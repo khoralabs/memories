@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { SCALE_SCHEMA_STATEMENTS } from "../../core/scale-schema-sql";
 import {
   DROP_CONTENT_OUTBOX_TABLES_SQL,
   MIGRATE_CONTENT_TO_TIP_OUTBOX_SQL,
@@ -22,7 +23,7 @@ import {
   TURSO_PRAGMAS_SQL,
 } from "./turso-schema";
 
-export const MEMORIES_SCHEMA_VERSION = "0.10.0";
+export const MEMORIES_SCHEMA_VERSION = "0.11.0";
 
 const NS_PREFIX_COLUMNS = [
   "ns_prefix_1",
@@ -204,6 +205,11 @@ const migrations: Migration[] = [
         await execSql(db.write, stmt);
       }
     },
+  },
+  {
+    to: "0.11.0",
+    name: "001-add-scale-tables",
+    statements: SCALE_SCHEMA_STATEMENTS,
   },
 ];
 

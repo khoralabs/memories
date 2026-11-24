@@ -1,3 +1,4 @@
+import { resolveMemoriesBackendCapabilities } from "../../persistence/core/persistence";
 import { runWithOpTelemetryAsync } from "../../telemetry/index.js";
 import { buildMemoryOpContext, type MemoryMutationAttribution } from "../api/merge-memory";
 import type { MutationCtxAsync } from "../api/merge-memory-async";
@@ -51,6 +52,11 @@ export async function deleteMemoryAsync(
             memoryKind: "edge",
             edgeId: assoc.edgeId,
           });
+        }
+        if (resolveMemoriesBackendCapabilities(persistence).stateRootHex) {
+          await persistence.applyStateTreeMutations?.(op, [
+            { namespace: params.namespace, memoryKey: params.key, contentHashes: {} },
+          ]);
         }
         const { root_hex } = await persistence.appendProvenanceEvent(op, {
           v: 1,

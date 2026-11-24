@@ -14,12 +14,14 @@ import type {
   OntologyLabelInstance,
   SearchAsOf,
   SearchNamespaceScope,
+  StateTreeMutation,
 } from "../../../persistence/core";
-import { sqlNamespaceEqualsOrUnderPrefix } from "../../../persistence/core";
+import { ids, sqlNamespaceEqualsOrUnderPrefix } from "../../../persistence/core";
 import {
   namespacePath,
   resolveNamespacePathPolicy,
 } from "../../../persistence/core/models/namespace-path";
+import { SQL_PROVENANCE_HEAD } from "../../../persistence/core/models/provenance-list-sql";
 import type {
   MemoriesPersistenceAsync,
   SourceMap,
@@ -27,11 +29,15 @@ import type {
 } from "../../../persistence/core/persistence";
 import type { ContentBlobColdStore } from "../../../persistence/core/persistence/content-blob-cold-store";
 import { DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS } from "../../../persistence/core/persistence/content-blob-cold-store";
-import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
+import {
+  GENESIS_PARENT_HEX,
+  type MemoryProvenanceEvent,
+} from "../../../persistence/core/provenance";
+import { SQL_STATE_SOURCE_MAP_HASH } from "../../../persistence/core/state-tree";
 import { createTursoClients, execSql, queryAll, queryOne, type TursoCredentials } from "./client";
 import { type DbCtx, readCtx, writeCtx } from "./context";
 import type { TursoDatabase } from "./db";
-import { ctxExec } from "./db";
+import { ctxExec, ctxQueryOne } from "./db";
 import { migrateMemoriesTursoServerless } from "./migrations";
 import { clearSourceMapFeatures as clearSourceMapFeaturesQuery } from "./models/clear-source-map-features";
 import {
@@ -94,6 +100,7 @@ import { insertNodeLabelAssignment } from "./models/node-label-assignments";
 import { ensureNodeLabel } from "./models/node-labels";
 import { nodeExists, upsertNodeForMemoryKey } from "./models/nodes";
 import { renameNamespacePaths as renameNamespacePathsQuery } from "./models/rename-namespace";
+import * as scale from "./models/scale";
 import {
   linkScopes as linkScopesRow,
   listScopesForMemory as listScopesForMemoryRow,
@@ -171,6 +178,9 @@ export class MemoriesTursoServerlessPersistence {
       unscopedSearch: true,
       asOfTimestampMsSearch: true,
       tipReplayAtRootHex: true,
+      stateRootHex: true,
+      auditCommitDag: true,
+      asyncSearchProjection: true,
     };
   }
 
@@ -364,7 +374,87 @@ export class MemoriesTursoServerlessPersistence {
     op: MemoryOpContext,
     event: MemoryProvenanceEvent,
   ): Promise<{ root_hex: string }> {
-    return insertProvenanceRow(this.activeCtx(op), event);
+    const ctx = this.activeCtx(op);
+    if (!this.capabilities.auditCommitDag) return insertProvenanceRow(ctx, event);
+    const head = (await ctxQueryOne<{ root_hex: string }>(ctx, SQL_PROVENANCE_HEAD))?.root_hex;
+    const { commitId } = await this.appendAuditCommit(op, {
+      parents: head ? [head] : [],
+      stateRootHex: (await this.getStateRootHex()) ?? GENESIS_PARENT_HEX,
+      event,
+    });
+    return insertProvenanceRow(ctx, event, commitId);
+  }
+
+  async enqueueSearchIndexOutbox(
+    op: MemoryOpContext,
+    input: { namespace: string; memoryKey: string; causeId?: string; kinds: readonly string[] },
+  ) {
+    return scale.enqueueSearchIndexOutbox(this.activeCtx(op), input);
+  }
+
+  async drainSearchIndexOutbox(op: MemoryOpContext, input?: { limit?: number }) {
+    return scale.drainSearchIndexOutbox(this.activeCtx(op), input?.limit, (item) =>
+      item.kind === "label_props"
+        ? this.syncLabelPropsSearchFeatures(op, item)
+        : this.syncMemorySearchMeta(op, item),
+    );
+  }
+
+  async applyStateTreeMutations(op: MemoryOpContext, mutations: readonly StateTreeMutation[]) {
+    return scale.applyStateTreeMutations(this.activeCtx(op), mutations);
+  }
+
+  /** Tx-aware read ctx (state tree rows written in the open tx must be visible). */
+  private get stateCtx(): DbCtx {
+    return this.txCtx ?? this.readDbCtx();
+  }
+
+  async getStateRootHex(): Promise<string | undefined> {
+    return scale.getStateRootHex(this.stateCtx);
+  }
+
+  async getMemoryContentAtStateRootHex(
+    stateRootHex: string,
+    namespace?: string,
+    memoryKey?: string,
+  ) {
+    const entries = await scale.listStateEntriesAtStateRootHex(
+      this.stateCtx,
+      stateRootHex,
+      namespace,
+      memoryKey,
+    );
+    const out: Array<{ sourceKey: string; text: string }> = [];
+    for (const e of entries) {
+      const smId = ids.sourceMap(ids.memory(e.namespace, e.memoryKey), e.sourceKey);
+      const row = await ctxQueryOne<{ contentHash: string | null }>(
+        this.stateCtx,
+        SQL_STATE_SOURCE_MAP_HASH,
+        [smId],
+      );
+      const text = row?.contentHash === e.valueHash ? await this.getSourceMapText(smId) : null;
+      if (text !== null) out.push({ sourceKey: e.sourceKey, text });
+    }
+    return out;
+  }
+
+  async diffStateRoots(fromStateRootHex: string, toStateRootHex: string) {
+    return scale.diffStateRoots(this.stateCtx, fromStateRootHex, toStateRootHex);
+  }
+
+  async appendAuditCommit(
+    op: MemoryOpContext,
+    input: { parents: readonly string[]; stateRootHex: string; event: MemoryProvenanceEvent },
+  ) {
+    return scale.appendAuditCommit(this.activeCtx(op), input);
+  }
+
+  async getAuditCommit(commitId: string) {
+    return scale.getAuditCommit(this.stateCtx, commitId);
+  }
+
+  async listAuditCommitChildren(parentCommitId: string) {
+    return scale.listAuditCommitChildren(this.stateCtx, parentCommitId);
   }
 
   async appendContentOutbox(
@@ -585,6 +675,14 @@ export class MemoriesTursoServerlessPersistence {
     op: MemoryOpContext,
     input: { namespace: string; memoryKey: string; vector: Float32Array },
   ): Promise<void> {
+    if (
+      await scale.hasPendingSearchIndexOutbox(this.activeCtx(op), input.namespace, input.memoryKey)
+    ) {
+      for (;;) {
+        const { drained, remaining } = await this.drainSearchIndexOutbox(op);
+        if (remaining === 0 || drained.length === 0) break;
+      }
+    }
     await upsertMemorySearchMetaVector(this.activeCtx(op), input);
   }
 

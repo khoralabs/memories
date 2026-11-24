@@ -39,3 +39,27 @@ export async function upsertMemorySearchMetaVectorAsync(
 ): Promise<void> {
   await persistence.upsertMemorySearchMetaVector(op, input);
 }
+
+/** Drain the search-index outbox until empty (no-op when the backend has no outbox). */
+export function drainSearchIndexOutboxFully(
+  persistence: MemoriesPersistence,
+  op: MemoryOpContext,
+): void {
+  if (!persistence.drainSearchIndexOutbox) return;
+  for (;;) {
+    const { drained, remaining } = persistence.drainSearchIndexOutbox(op);
+    if (remaining === 0 || drained.length === 0) return;
+  }
+}
+
+/** Async persistence variant of {@link drainSearchIndexOutboxFully}. */
+export async function drainSearchIndexOutboxFullyAsync(
+  persistence: MemoriesPersistenceAsync,
+  op: MemoryOpContext,
+): Promise<void> {
+  if (!persistence.drainSearchIndexOutbox) return;
+  for (;;) {
+    const { drained, remaining } = await persistence.drainSearchIndexOutbox(op);
+    if (remaining === 0 || drained.length === 0) return;
+  }
+}

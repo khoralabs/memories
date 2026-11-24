@@ -124,15 +124,15 @@ All tip-bound replay (content, graph, vectors, provenance payloads) uses one **`
 
 Upgrade path: **0.9.0** / **0.9.1** copy `memory_content_*` into TipOutbox `content` facet rows; **0.10.0** drops the legacy tables.
 
-### Future / scale direction (ADR 0002)
+### Scale features (ADR 0002) — shipped in schema 0.11.0
 
-**Accepted direction** (Spec shapes landed; TS adapters not yet):
+sqlite, libsql, and turso-serverless advertise `stateRootHex`, `auditCommitDag`, and `asyncSearchProjection`. Tables: `memory_search_index_outbox`, `memory_state_{entries,bucket_roots,buckets,snapshots}`, `memory_audit_commits`.
 
-1. **`stateRootHex`** — Prolly/MST over `source_maps.content_hash` (+ canonical graph digests) for order-independent snapshot identity, reconstruct, and structural diff.
-2. **Audit commit DAG** — `{ parents[], stateRootHex, event }` instead of a sync global linear `H_n` head for new writes; keep event kinds / attribution.
-3. **Async search projection** — `__mem_search_meta__` / label-props / FTS / vectors via a search-index outbox (not TipOutbox facets).
+1. **`stateRootHex`** (`applyStateTreeMutations?`, `getStateRootHex?`, `getMemoryContentAtStateRootHex?`, `diffStateRoots?`) — bucketed Merkle map (MST-lite): 256 buckets by the first byte of `sha256(namespace NUL memoryKey NUL sourceKey)`, leaf = `source_maps.content_hash` for **user content only** (search-meta / label-props and suppress state are not leaves). Bucket bodies are content-addressed, so diff skips equal buckets and any snapshot's leaves can be listed. `getMemoryContentAtStateRootHex` only returns arms whose body still matches live storage; use tip replay for older bodies.
+2. **Audit commit DAG** (`appendAuditCommit?`, `getAuditCommit?`, `listAuditCommitChildren?`) — `commitId = SHA-256(MEMORIES_AUDIT_COMMIT_v1 NUL canonical({ parents, stateRootHex, event }))`. Adapters route `appendProvenanceEvent` through it, so merge/delete/suppress/rename all produce commits; the commit id is the `root_hex` for tip outbox and `memory_provenance` (parent = previous head). Parent is still the latest head; the write lock still serializes writers (no multi-parent forks yet).
+3. **Async search projection** (`enqueueSearchIndexOutbox?`, `drainSearchIndexOutbox?`) — merge enqueues `memory_search_meta` / `label_props` per touched key in the tx (cause = commit id) and drains after commit, so search is fresh when merge returns. `upsertMemorySearchMetaVector` drains pending work for its key first.
 
-Shipped path remains the linear `memory_provenance` chain + in-tx search-meta sync until capabilities `stateRootHex` / `auditCommitDag` / `asyncSearchProjection` are advertised.
+Backends without these capabilities keep the linear `memory_provenance` chain + in-tx search-meta sync.
 
 Still out of scope: Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG. Do **not** treat a Merkle rollup of linear partition heads as the public snapshot root.
 
