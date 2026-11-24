@@ -160,8 +160,13 @@ When a flag is false, the logic layer:
 - **unscopedSearch:** rejects `searchEntireDatabase` on SearchParams; unscoped scope is not used.
 - **asOfTimestampMsSearch:** when true, `SearchParams.asOf` is applied; when omitted/false, as-of search is rejected.
 - **tipReplayAtRootHex:** when true, graph/vector/provenance replay at a provenance tip is available; when omitted/false, those replay ops are unavailable (content facet replay is separate).
+- **stateRootHex:** when true, Prolly/MST state-tree ops (**GetStateRootHex**, **GetMemoryContentAtStateRootHex**, **DiffStateRoots**) are available (ADR 0002).
+- **auditCommitDag:** when true, **AppendAuditCommit** / **GetAuditCommit** / **ListAuditCommitChildren** replace sync global linear-head semantics for new writes.
+- **asyncSearchProjection:** when true, merge may enqueue search-index work; **DrainSearchIndexOutbox** advances derived FTS/meta/vector projections.
 
 Thin single-namespace adapters should set **multiNamespaceSearch** false; core still works via fallback.
+
+**Scale direction (ADR 0002):** snapshot identity moves to **stateRootHex**; audit becomes commit objects with `parents` + `stateRootHex`; linear **AppendProvenanceEvent** remains the shipped path until adapters advertise the new flags. See `docs/adr/0002-prolly-state-root-and-audit.md`.
 """)
 structure MemoriesBackendCapabilities {
     /// When false, logic skips lexical arm.
@@ -184,6 +189,12 @@ structure MemoriesBackendCapabilities {
     asOfTimestampMsSearch: Boolean
     /// When true, graph/vector/provenance TipOutbox replay at a provenance tip is available.
     tipReplayAtRootHex: Boolean
+    /// When true, Prolly/MST state-tree snapshot ops are available (`stateRootHex`).
+    stateRootHex: Boolean
+    /// When true, audit uses commit DAG objects instead of a sync global linear head.
+    auditCommitDag: Boolean
+    /// When true, derived search indexes may lag merge until DrainSearchIndexOutbox.
+    asyncSearchProjection: Boolean
 }
 
 enum VectorSearchMethod {
@@ -309,7 +320,12 @@ list MergeMemoryEdgeList {
 
 structure MergeMemoryOutput {
     /// Stable memory ids touched by the merge (primary + any neighbors whose search-meta was synced).
+    /// When `asyncSearchProjection` is true, neighbor ids may be those **enqueued** for meta sync rather than already searchable.
     memoryIds: StringList
+    /// Prolly/MST state root after the mutation (when `stateRootHex` capability is true).
+    stateRootHex: String
+    /// Audit commit id for this mutation (when `auditCommitDag` is true); distinct from `stateRootHex`.
+    auditCommitId: String
 }
 
 structure DeleteMemoryParams {
@@ -333,7 +349,12 @@ structure ReplaceMemoryFeatureParams {
 
 structure ReplaceMemoryFeatureOutput {
     sourceMapId: String
+    /// Linear provenance tip (shipped path) or omitted when only audit-commit DAG is used.
     rootHex: String
+    /// Prolly/MST state root after the mutation (when `stateRootHex` capability is true).
+    stateRootHex: String
+    /// Audit commit id (when `auditCommitDag` is true).
+    auditCommitId: String
 }
 
 structure SuppressMemoryParams {
@@ -732,4 +753,79 @@ structure InsertEdgeIdParts {
     label: String
     fromMemoryId: String
     toMemoryId: String
+}
+
+// --- Scale target (ADR 0002): state roots, audit commits, search projection ---
+
+@documentation("""
+Append-only audit commit (git/Dolt-light). Distinct from Prolly `stateRootHex`.
+`commitId` is typically `SHA-256` over canonical commit payload (parents + stateRootHex + event).
+""")
+structure MemoryAuditCommit {
+    @required
+    commitId: String
+    /// Zero or more parent commit ids (empty at genesis; >1 after a merge).
+    parents: StringList
+    @required
+    stateRootHex: String
+    @required
+    event: MemoryProvenanceEvent
+    /// Wall-clock ms for listing/UI; not part of the commit hash unless an impl documents otherwise.
+    tsCreatedMs: Long
+}
+
+@documentation("""
+One changed leaf when diffing two state roots. `contentHash` omitted on delete.
+""")
+structure StateRootDiffEntry {
+    namespace: MemoryNamespace
+    memoryKey: String
+    sourceKey: String
+    /// Absent or empty when the leaf was removed.
+    contentHash: String
+    change: StateRootDiffChange
+}
+
+enum StateRootDiffChange {
+    @enumValue("upsert")
+    UPSERT
+
+    @enumValue("delete")
+    DELETE
+}
+
+list StateRootDiffEntryList {
+    member: StateRootDiffEntry
+}
+
+@documentation("""
+Work item for derived search indexes (`__mem_search_meta__`, label-props, FTS, vectors).
+Not a TipOutbox facet — tip outbox remains tip reconstruction.
+""")
+structure SearchIndexOutboxItem {
+    @required
+    id: String
+    namespace: MemoryNamespace
+    memoryKey: String
+    /// Optional audit commit or linear tip that triggered the enqueue.
+    causeId: String
+    kind: SearchIndexOutboxKind
+}
+
+enum SearchIndexOutboxKind {
+    @enumValue("memory_search_meta")
+    MEMORY_SEARCH_META
+
+    @enumValue("label_props")
+    LABEL_PROPS
+
+    @enumValue("user_content_fts")
+    USER_CONTENT_FTS
+
+    @enumValue("user_content_vector")
+    USER_CONTENT_VECTOR
+}
+
+list SearchIndexOutboxItemList {
+    member: SearchIndexOutboxItem
 }

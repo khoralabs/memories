@@ -190,6 +190,19 @@ export type MemoriesBackendCapabilities = {
    * (`getMemoryGraphAtRootHexAsync`, etc.). Content replay is always via unified TipOutbox.
    */
   tipReplayAtRootHex?: boolean;
+  /**
+   * When `true`, Prolly/MST state-tree snapshot ops are available (`stateRootHex`; ADR 0002).
+   * Shipped adapters leave this unset/false until the tree lands.
+   */
+  stateRootHex?: boolean;
+  /**
+   * When `true`, audit uses commit-DAG objects instead of a sync global linear head (ADR 0002).
+   */
+  auditCommitDag?: boolean;
+  /**
+   * When `true`, derived search indexes may lag merge until a search-index outbox drain (ADR 0002).
+   */
+  asyncSearchProjection?: boolean;
 };
 
 /** Vector retrieval algorithm: exact (`knn`) or approximate index (`ann`). */
@@ -241,6 +254,9 @@ export const DEFAULT_MEMORIES_BACKEND_CAPABILITIES: MemoriesBackendCapabilities 
   multiNamespaceSearch: true,
   unscopedSearch: false,
   tipReplayAtRootHex: false,
+  stateRootHex: false,
+  auditCommitDag: false,
+  asyncSearchProjection: false,
 };
 
 /** Resolve effective capabilities for merge/search logic. */

@@ -41,6 +41,9 @@ describe("resolveStrategyCapabilities", () => {
       multiNamespaceSearch: true,
       unscopedSearch: false,
       tipReplayAtRootHex: false,
+      stateRootHex: false,
+      auditCommitDag: false,
+      asyncSearchProjection: false,
     });
   });
 
@@ -61,6 +64,9 @@ describe("resolveStrategyCapabilities", () => {
       multiNamespaceSearch: true,
       unscopedSearch: false,
       tipReplayAtRootHex: false,
+      stateRootHex: false,
+      auditCommitDag: false,
+      asyncSearchProjection: false,
     });
   });
 });

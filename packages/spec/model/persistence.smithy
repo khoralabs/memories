@@ -14,7 +14,7 @@ Also includes suppress flag setters/readers (public Suppress*/Unsuppress*), Clea
 **TS binding:** clear/delete subtree targets use `memoryKind: "node" | "edge"` instead of Smithy unions.
 """)
 service MemoriesPersistenceCore {
-    version: "2026-10-28"
+    version: "2026-11-24"
     operations: [
         WithTransaction
         ListNeighborMemoriesForNode
@@ -101,7 +101,7 @@ TipReplay reads (**GetMemoryGraphAtRootHex**, **GetMemoryVectorAtRootHex**, **Ge
 are optional and gated by `tipReplayAtRootHex` (TS method names end in `Async`).
 """)
 service MemoriesPersistenceReads {
-    version: "2026-10-28"
+    version: "2026-11-24"
     operations: [
         ListMemoryNamespaces
         ListNamespacesWithMetadata
@@ -145,6 +145,9 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 - **MemoriesPersistenceReads** — prefetch/export; commonly implemented with Core.
 - **AppendContentOutbox** / **AppendGraphFacetOutbox** / **GetProvenanceTimestampMsForRootHex** / **ListProvenanceEvents** / **ListProvenanceChain** / **GetMemoryContentAtRootHex** / tipReplay reads — optional methods in TS (`?`).
 - **tipReplayAtRootHex** — when true, **GetMemoryGraphAtRootHex**, **GetMemoryVectorAtRootHex**, **GetProvenanceEventJsonAtRootHex** are available (TS `*Async` names).
+- **stateRootHex** — when true, **GetStateRootHex**, **GetMemoryContentAtStateRootHex**, **DiffStateRoots** (Prolly/MST snapshot identity; ADR 0002).
+- **auditCommitDag** — when true, **AppendAuditCommit**, **GetAuditCommit**, **ListAuditCommitChildren** (non-linear audit; replaces sync global `H_n` for new writes).
+- **asyncSearchProjection** — when true, **EnqueueSearchIndexOutbox** / **DrainSearchIndexOutbox**; merge need not sync `__mem_search_meta__` inline.
 
 `multiNamespaceSearch`, `unscopedSearch`, and `asOfTimestampMsSearch` constrain search **behavior**, not operation membership.
 
@@ -160,10 +163,12 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 
 **Read helpers:** **ListMemoryNamespaces**, **ListNamespacesWithMetadata**, **GetNamespaceMetadata**, **ListSourceMapsForMemory**, **ListTextFeatureExportRowsForMemory**, **GetSourceMapTextPreview**, **GetSourceMapText**, **GetSourceMapVector**, **ResolveSourceMapMemory**. **ListVectorEmbeddingIndexDimensions** returns empty when dimension metadata is unavailable or not applicable. Public **ReplaceMemoryFeature** (sibling-arm preserve) is modeled on `MemoriesPublic` and implemented in `@khoralabs/memories-node` / HTTP `POST /databases/source-map/replace`; provenance is recorded as **MERGE_MEMORY** (no separate event kind).
 
-**Provenance + source-map digests:** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox** (merge/delete), optional **AppendGraphFacetOutbox** (merge/delete/suppress), tipReplay reads, **GetProvenanceTimestampMsForRootHex**, **ListProvenanceEvents**, **ListProvenanceChain**, **GetMemoryContentAtRootHex**, and **UpdateSourceMapContentHash** back the linear SHA-256 mutation log (`memory_provenance`, merge + delete + suppress/unsuppress + rename + namespace suppress) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** with required in-JSON `kind`. Normative hashing lives in `@khoralabs/memories-node/provenance` (see SQLite implementors guide). Content-at-root is per-arm LWW (not a full tip snapshot); cold-evacuated bodies are resolved when a cold store is configured.
+**Provenance + source-map digests (shipped):** **GetProvenanceHeadRootHex**, **AppendProvenanceEvent** (returns new `rootHex`), optional **AppendContentOutbox** (merge/delete), optional **AppendGraphFacetOutbox** (merge/delete/suppress), tipReplay reads, **GetProvenanceTimestampMsForRootHex**, **ListProvenanceEvents**, **ListProvenanceChain**, **GetMemoryContentAtRootHex**, and **UpdateSourceMapContentHash** back the **linear** SHA-256 mutation log (`memory_provenance`) and nullable **`source_maps.content_hash`** body commitments. Event shapes are **MemoryProvenanceEvent** with required in-JSON `kind`. Normative leaf/link hashing lives in `@khoralabs/memories-node/provenance`. Content-at-root is per-arm LWW; cold-evacuated bodies resolve when a cold store is configured.
+
+**Scale target (ADR 0002):** Prolly/MST **stateRootHex** for order-independent snapshot identity, diff, and reconstruct; **audit commit DAG** (`parents[]` + `stateRootHex` + event) instead of a sync global linear head; **async search-index outbox** for `__mem_search_meta__` / FTS / vectors. Linear **AppendProvenanceEvent** remains until adapters advertise `stateRootHex` / `auditCommitDag` / `asyncSearchProjection`. Do not treat a Merkle rollup of linear partition heads as the public snapshot root.
 """)
 service MemoriesPersistenceService {
-    version: "2026-10-28"
+    version: "2026-11-24"
     operations: [
         WithTransaction
         ListNeighborMemoriesForNode
@@ -244,6 +249,49 @@ service MemoriesPersistenceService {
         ListSuppressedNodeKeysForNamespace
         CountGraphForNamespace
         StatsGraphForNamespace
+        GetStateRootHex
+        GetMemoryContentAtStateRootHex
+        DiffStateRoots
+        AppendAuditCommit
+        GetAuditCommit
+        ListAuditCommitChildren
+        EnqueueSearchIndexOutbox
+        DrainSearchIndexOutbox
+    ]
+}
+
+@documentation("""
+Prolly/MST state-tree snapshot ops. Omit unless `stateRootHex` capability is true (ADR 0002).
+""")
+service MemoriesPersistenceStateRoot {
+    version: "2026-11-24"
+    operations: [
+        GetStateRootHex
+        GetMemoryContentAtStateRootHex
+        DiffStateRoots
+    ]
+}
+
+@documentation("""
+Non-linear audit commits (`parents` + `stateRootHex` + event). Omit unless `auditCommitDag` is true.
+""")
+service MemoriesPersistenceAuditCommits {
+    version: "2026-11-24"
+    operations: [
+        AppendAuditCommit
+        GetAuditCommit
+        ListAuditCommitChildren
+    ]
+}
+
+@documentation("""
+Derived search-index outbox (not TipOutbox). Omit unless `asyncSearchProjection` is true.
+""")
+service MemoriesPersistenceSearchProjection {
+    version: "2026-11-24"
+    operations: [
+        EnqueueSearchIndexOutbox
+        DrainSearchIndexOutbox
     ]
 }
 
@@ -1629,8 +1677,12 @@ structure GetProvenanceHeadRootHexOutput {
 }
 
 @documentation("""
-Append one row advancing the linear chain. Must run inside **WithTransaction**. `event` is stored as canonical JSON in `memory_provenance.event_json`; implementations derive `root_hex` per `@khoralabs/memories-node/provenance`.
-Returns the new chain head.
+Append one row advancing the **linear** chain (shipped path). Must run inside **WithTransaction**.
+`event` is stored as canonical JSON in `memory_provenance.event_json`; implementations derive `root_hex`
+per `@khoralabs/memories-node/provenance`. Returns the new chain head.
+
+When `auditCommitDag` is true, prefer **AppendAuditCommit** for new writes; linear append may remain
+for migration dual-write only.
 """)
 operation AppendProvenanceEvent {
     input: AppendProvenanceEventInput
@@ -1764,3 +1816,163 @@ structure UpdateSourceMapContentHashInput {
 }
 
 structure UpdateSourceMapContentHashOutput {}
+
+@documentation("""
+Latest Prolly/MST state root for the store, or absent when empty. Gated by `stateRootHex`.
+""")
+operation GetStateRootHex {
+    input: GetStateRootHexInput
+    output: GetStateRootHexOutput
+}
+
+structure GetStateRootHexInput {}
+
+structure GetStateRootHexOutput {
+    stateRootHex: String
+}
+
+@documentation("""
+Per-arm content at a **state** root (tree materialization), not linear tip-outbox LWW.
+Gated by `stateRootHex`. Optional `namespace` + `memoryKey` scope the read.
+""")
+operation GetMemoryContentAtStateRootHex {
+    input: GetMemoryContentAtStateRootHexInput
+    output: GetMemoryContentAtStateRootHexOutput
+}
+
+structure GetMemoryContentAtStateRootHexInput {
+    @required
+    stateRootHex: String
+    namespace: String
+    memoryKey: String
+}
+
+structure GetMemoryContentAtStateRootHexOutput {
+    content: MemoryContentAtRootItemList
+}
+
+@documentation("""
+Structural diff between two state roots (skip equal subtrees). Gated by `stateRootHex`.
+""")
+operation DiffStateRoots {
+    input: DiffStateRootsInput
+    output: DiffStateRootsOutput
+}
+
+structure DiffStateRootsInput {
+    @required
+    fromStateRootHex: String
+    @required
+    toStateRootHex: String
+}
+
+structure DiffStateRootsOutput {
+    entries: StateRootDiffEntryList
+}
+
+@documentation("""
+Append an audit commit with zero or more parents and a committed `stateRootHex`.
+Must run inside **WithTransaction** with the KG mutation. Gated by `auditCommitDag`.
+""")
+operation AppendAuditCommit {
+    input: AppendAuditCommitInput
+    output: AppendAuditCommitOutput
+}
+
+structure AppendAuditCommitInput {
+    op: MemoryOpContext
+    /// Empty at genesis; concurrent tips use the observed parent set.
+    parents: StringList
+    @required
+    stateRootHex: String
+    @required
+    event: MemoryProvenanceEvent
+}
+
+structure AppendAuditCommitOutput {
+    commitId: String
+}
+
+@documentation("""
+Load one audit commit by id. Gated by `auditCommitDag`.
+""")
+operation GetAuditCommit {
+    input: GetAuditCommitInput
+    output: GetAuditCommitOutput
+}
+
+structure GetAuditCommitInput {
+    @required
+    commitId: String
+}
+
+structure GetAuditCommitOutput {
+    commit: MemoryAuditCommit
+}
+
+@documentation("""
+List direct child commits of a parent (DAG edges). Gated by `auditCommitDag`.
+""")
+operation ListAuditCommitChildren {
+    input: ListAuditCommitChildrenInput
+    output: ListAuditCommitChildrenOutput
+}
+
+structure ListAuditCommitChildrenInput {
+    @required
+    parentCommitId: String
+}
+
+structure ListAuditCommitChildrenOutput {
+    children: MemoryAuditCommitList
+}
+
+list MemoryAuditCommitList {
+    member: MemoryAuditCommit
+}
+
+@documentation("""
+Enqueue derived search-index work for one memory key. Same transaction as the mutation when possible.
+Gated by `asyncSearchProjection`.
+""")
+operation EnqueueSearchIndexOutbox {
+    input: EnqueueSearchIndexOutboxInput
+    output: EnqueueSearchIndexOutboxOutput
+}
+
+structure EnqueueSearchIndexOutboxInput {
+    op: MemoryOpContext
+    @required
+    namespace: String
+    @required
+    memoryKey: String
+    causeId: String
+    kinds: SearchIndexOutboxKindList
+}
+
+list SearchIndexOutboxKindList {
+    member: SearchIndexOutboxKind
+}
+
+structure EnqueueSearchIndexOutboxOutput {
+    enqueuedIds: StringList
+}
+
+@documentation("""
+Drain up to `limit` search-index outbox items (rebuild meta/FTS/vector projections).
+Gated by `asyncSearchProjection`. Hosts may call after merge or from a worker.
+""")
+operation DrainSearchIndexOutbox {
+    input: DrainSearchIndexOutboxInput
+    output: DrainSearchIndexOutboxOutput
+}
+
+structure DrainSearchIndexOutboxInput {
+    op: MemoryOpContext
+    limit: Integer
+}
+
+structure DrainSearchIndexOutboxOutput {
+    drained: SearchIndexOutboxItemList
+    remaining: Integer
+}

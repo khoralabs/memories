@@ -100,6 +100,8 @@ ids.vectorFeature(sourceMapId)// vf_*
 7. `appendProvenanceEvent` — advances the linear hash chain; returns `{ root_hex }`
 8. Optional `appendContentOutbox` — raw text alongside the provenance row for point-in-time reconstruction (SQLite implements this)
 
+**Scale direction (ADR 0002):** Spec models optional `stateRootHex` (Prolly/MST), `auditCommitDag`, and `asyncSearchProjection`. Shipped merge still uses the linear chain + in-tx search-meta; see [`../docs/adr/0002-prolly-state-root-and-audit.md`](../docs/adr/0002-prolly-state-root-and-audit.md).
+
 ---
 
 ## 2. SQLite schema and search
