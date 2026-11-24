@@ -1,0 +1,41 @@
+{
+  "name": "@khoralabs/memories-cli",
+  "version": "0.13.0",
+  "description": "Agent-facing CLI for local memories stores (search, get, write, integrate-plan, skills).",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/memories.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/khoralabs/memories/tree/main/packages/cli#readme",
+  "bugs": "https://github.com/khoralabs/memories/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "memories": "./src/cli.ts"
+  },
+  "files": [
+    "src",
+    "scripts/install-agent-skill.ts",
+    "assets",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "bun run ./src/cli.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@khoralabs/memories-agents": "workspace:*",
+    "@khoralabs/memories-node": "workspace:*",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

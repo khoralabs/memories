@@ -13,6 +13,8 @@ Memory agents built on `@khoralabs/memories-node` and [`@khoralabs/agent-capabil
 | `./investigator` | Zod answer wire, identity, instructions, message builders | No |
 | `./ai-sdk` | ToolLoop clients/sessions, `Output` wrappers, `toolLoopMemorySearchExecutor`, AI-shaped specs | **Yes** (optional peers) |
 
+For agent ops from a shell (search, write, apply an integrator plan, install skills), use [`@khoralabs/memories-cli`](../cli). `applyIntegratorPlanToMerge` on `./integrator` applies a plan without the AI SDK.
+
 Layout mirrors [`memories-node` persistence](../node/src/persistence/IMPLEMENTORS.md): core contracts on the first entrypoints; optional runtime adapter on `./ai-sdk`.
 
 **Optional peers** (install when importing `./ai-sdk`): `ai` ^7, `@khoralabs/agent-capabilities-ai-sdk` ^0.2.

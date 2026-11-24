@@ -11,6 +11,8 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ### Added
 
+- **@khoralabs/memories-cli** — New package: `memories` Bun CLI (`search`, `get`, `namespaces`, `provenance`, `write`, `integrate-plan`, `skills install`) with bundled `memories` agent skills.
+- **@khoralabs/memories-agents** — `./integrator` exports `applyIntegratorPlanToMerge` and `filterMergeSliceEdgesToExistingMemories` (plan → merge without ToolLoop / AI SDK).
 - **@khoralabs/memories-service** — DID principal agent path: X-Agent-* wire, `createDidKeyPrincipalVerifier`, `createDidSignedRequestAuthProvider`, agent clients with optional `signer` (no required admin Bearer). See `packages/service/docs/adr/0001-did-principal-agent-path.md`.
 - **@khoralabs/memories-service** — Under `did-principal`, unscoped authorize allowed; `GET /databases` filtered to caller’s `ownerKey`.
 - **@khoralabs/memories-node** — libsql and turso-serverless advertise `tipReplayAtRootHex` and implement tip graph/vector/provenance-json readers (parity with sqlite).
