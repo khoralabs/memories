@@ -24,8 +24,13 @@ Use modules to see what a minimal backend can omit; use the aggregate `MemoriesP
 | `MemoriesPersistenceNeighbors` | `MemoriesNeighborIndex` |
 | `MemoriesPersistenceLabelProps` | `syncLabelPropsSearchFeatures` |
 | `MemoriesPersistenceReads` | Prefetch / export reads + optional tipReplay ops (`GetMemoryGraph/Vector/ProvenanceEventJsonAtRootHex`) |
+| `MemoriesPersistenceStateRoot` | Prolly/MST `stateRootHex` snapshot ops (capability `stateRootHex`; ADR 0002) |
+| `MemoriesPersistenceAuditCommits` | Non-linear audit commits (capability `auditCommitDag`) |
+| `MemoriesPersistenceSearchProjection` | Search-index outbox drain (capability `asyncSearchProjection`) |
 
 **`tipReplayAtRootHex`:** when true, Reads tip graph/vector/provenance-json ops are available (TS names end in `Async`). Reference SQL adapters (sqlite, libsql, turso-serverless) all set this and implement the readers.
+
+**Scale target (ADR 0002):** Spec models optional `stateRootHex`, `auditCommitDag`, and `asyncSearchProjection` modules. Shipped TypeScript still uses the linear provenance chain + sync search-meta until adapters advertise those flags. See [`../../docs/adr/0002-prolly-state-root-and-audit.md`](../../docs/adr/0002-prolly-state-root-and-audit.md) and [`../../docs/explanation/state-root-and-audit.md`](../../docs/explanation/state-root-and-audit.md).
 
 **Encoding note:** Spec uses Smithy tagged unions for request discriminants; TypeScript uses `kind` / `memoryKind` fields. Provenance `event_json` always includes an explicit `kind` (hashed).
 

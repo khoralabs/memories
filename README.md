@@ -129,6 +129,8 @@ A **memory** is keyed by `(namespace, key)` with `kind: "node" | "edge"`. Each m
 
 Search fuses BM25 and KNN with **RRF**; arm weights are tunable. Graph neighbors can be expanded per query. The SQL backends (sqlite, libsql, turso-serverless) append tip content to `memory_tip_outbox` / `memory_tip_blobs` (`facet='content'`) for point-in-time reconstruction (`getMemoryContentAtRootHex` / `reconstructStoreAtRootHex`).
 
+**Scale direction (proposed):** split snapshot identity (`stateRootHex` via Prolly/MST) from audit (commit DAG) and move derived search indexes off the write path — [ADR 0002](docs/adr/0002-prolly-state-root-and-audit.md), [explanation](docs/explanation/state-root-and-audit.md).
+
 **Deeper guide** — mental model, schema, merge/search pipelines, and file map: [`packages/README.md`](packages/README.md).
 
 **Service design** — multi-tenant ids, placement, ontology registry, HTTP: [`packages/service/spec.md`](packages/service/spec.md).

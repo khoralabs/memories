@@ -124,9 +124,17 @@ All tip-bound replay (content, graph, vectors, provenance payloads) uses one **`
 
 Upgrade path: **0.9.0** / **0.9.1** copy `memory_content_*` into TipOutbox `content` facet rows; **0.10.0** drops the legacy tables.
 
-### Future (out of scope here)
+### Future / scale direction (ADR 0002)
 
-Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG are not part of this schema; only the linear mutation log + per-map digests are specified today.
+**Accepted direction** (Spec shapes landed; TS adapters not yet):
+
+1. **`stateRootHex`** — Prolly/MST over `source_maps.content_hash` (+ canonical graph digests) for order-independent snapshot identity, reconstruct, and structural diff.
+2. **Audit commit DAG** — `{ parents[], stateRootHex, event }` instead of a sync global linear `H_n` head for new writes; keep event kinds / attribution.
+3. **Async search projection** — `__mem_search_meta__` / label-props / FTS / vectors via a search-index outbox (not TipOutbox facets).
+
+Shipped path remains the linear `memory_provenance` chain + in-tx search-meta sync until capabilities `stateRootHex` / `auditCommitDag` / `asyncSearchProjection` are advertised.
+
+Still out of scope: Verkle trees, sparse Merkle non-membership proofs, and ZK reasoning over the KG. Do **not** treat a Merkle rollup of linear partition heads as the public snapshot root.
 
 ## Edges
 
