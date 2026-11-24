@@ -2,6 +2,7 @@ import { ids, stableId } from "../../../../persistence/core";
 import type { DbCtx } from "../context";
 import { ctxExec, ctxQueryAll, ctxQueryOne } from "../db";
 import { placeholders } from "../sql";
+import { remapStateTreeNamespaces } from "./scale";
 
 type MemoryRow = {
   _id: string;
@@ -160,6 +161,7 @@ export async function renameNamespacePaths(
   }
 
   await moveNamespaceMetadata(ctx, nsMap, now);
+  await remapStateTreeNamespaces(ctx, nsMap);
 
   return { renamedMemories: memories.length };
 }

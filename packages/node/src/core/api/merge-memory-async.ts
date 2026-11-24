@@ -2,6 +2,7 @@ import type { NamespacePath, NamespacePathPolicy } from "../../persistence/core"
 import { assertNamespacePath, ids } from "../../persistence/core";
 import type { MemoriesPersistenceAsync, MemoryOpContext } from "../../persistence/core/persistence";
 import {
+  drainSearchIndexOutboxFullyAsync,
   resolveMemoriesBackendCapabilities,
   zVectorPayload,
 } from "../../persistence/core/persistence";
@@ -82,6 +83,63 @@ export async function mergeMemoryAsync(
   });
 }
 
+type SearchRef = { namespace: NamespacePath; key: string };
+
+/** Inline search-meta + label-props rebuild for each ref (sync projection). */
+async function syncSearchRefs(
+  persistence: MemoriesPersistenceAsync,
+  op: MemoryOpContext,
+  refs: Iterable<SearchRef>,
+  primary: { memoryId: string; metaVector: Float32Array | undefined },
+): Promise<void> {
+  for (const ref of refs) {
+    await persistence.syncMemorySearchMeta(op, {
+      namespace: ref.namespace,
+      memoryKey: ref.key,
+      metaVector:
+        ids.memory(ref.namespace, ref.key) === primary.memoryId ? primary.metaVector : undefined,
+    });
+    await persistence.syncLabelPropsSearchFeatures?.(op, {
+      namespace: ref.namespace,
+      memoryKey: ref.key,
+    });
+  }
+}
+
+/** ADR 0002: queue refs in the mutation tx (`asyncSearchProjection`). */
+async function enqueueSearchRefs(
+  persistence: MemoriesPersistenceAsync,
+  op: MemoryOpContext,
+  refs: Iterable<SearchRef>,
+  causeId: string,
+): Promise<void> {
+  for (const ref of refs) {
+    await persistence.enqueueSearchIndexOutbox?.(op, {
+      namespace: ref.namespace,
+      memoryKey: ref.key,
+      causeId,
+      kinds: ["memory_search_meta", "label_props"],
+    });
+  }
+}
+
+/** After commit: drain the outbox so search is fresh before merge returns, then store the primary meta vector. */
+async function finishSearchProjection(
+  persistence: MemoriesPersistenceAsync,
+  op: MemoryOpContext,
+  primary: SearchRef,
+  metaVector: Float32Array | undefined,
+): Promise<void> {
+  await drainSearchIndexOutboxFullyAsync(persistence, op);
+  if (metaVector !== undefined) {
+    await persistence.upsertMemorySearchMetaVector(op, {
+      namespace: primary.namespace,
+      memoryKey: primary.key,
+      vector: metaVector,
+    });
+  }
+}
+
 async function mergeMemoryAsyncNode(
   ctx: MutationCtxAsync,
   params: MergeMemoryParamsNode,
@@ -93,6 +151,12 @@ async function mergeMemoryAsyncNode(
   const nodeId = ids.node(namespace, params.key);
 
   let metaSyncedMemoryKeys: string[] = [];
+  const caps = resolveMemoriesBackendCapabilities(persistence);
+  const asyncSearch = caps.asyncSearchProjection === true;
+  const primaryMetaVec =
+    params.searchMetaVector !== undefined && params.searchMetaVector.length > 0
+      ? new Float32Array(params.searchMetaVector)
+      : undefined;
 
   await persistence.withTransaction(async () => {
     const oldNeighbors = await persistence.listNeighborMemoriesForNode(op, namespace, nodeId);
@@ -213,24 +277,9 @@ async function mergeMemoryAsyncNode(
       }
     }
 
-    const primaryMetaVec =
-      params.searchMetaVector !== undefined && params.searchMetaVector.length > 0
-        ? new Float32Array(params.searchMetaVector)
-        : undefined;
-    for (const ref of syncByMid.values()) {
-      const refMemoryId = ids.memory(ref.namespace, ref.key);
-      await persistence.syncMemorySearchMeta(op, {
-        namespace: ref.namespace,
-        memoryKey: ref.key,
-        metaVector: refMemoryId === memoryId ? primaryMetaVec : undefined,
-      });
-      const syncLabelProps = persistence.syncLabelPropsSearchFeatures;
-      if (syncLabelProps !== undefined) {
-        await syncLabelProps(op, {
-          namespace: ref.namespace,
-          memoryKey: ref.key,
-        });
-      }
+    const syncRefs = [...syncByMid.values()];
+    if (!asyncSearch) {
+      await syncSearchRefs(persistence, op, syncRefs, { memoryId, metaVector: primaryMetaVec });
     }
     metaSyncedMemoryKeys = [...syncByMid.keys()].sort((a, b) => a.localeCompare(b));
 
@@ -241,6 +290,11 @@ async function mergeMemoryAsyncNode(
       Object.keys(contentHashes).length > 0
         ? Object.fromEntries(Object.entries(contentHashes).sort(([a], [b]) => a.localeCompare(b)))
         : undefined;
+    if (caps.stateRootHex) {
+      await persistence.applyStateTreeMutations?.(op, [
+        { namespace, memoryKey: params.key, contentHashes, replace: true },
+      ]);
+    }
     const { root_hex } = await persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "MERGE_MEMORY",
@@ -259,7 +313,11 @@ async function mergeMemoryAsyncNode(
       memoryKey: params.key,
       entries: textEntries,
     });
+    if (asyncSearch) await enqueueSearchRefs(persistence, op, syncRefs, root_hex);
   });
+  if (asyncSearch) {
+    await finishSearchProjection(persistence, op, { namespace, key: params.key }, primaryMetaVec);
+  }
 
   return metaSyncedMemoryKeys;
 }
@@ -303,6 +361,12 @@ async function mergeMemoryAsyncEdge(
   );
 
   let metaSyncedMemoryKeys: string[] = [];
+  const caps = resolveMemoriesBackendCapabilities(persistence);
+  const asyncSearch = caps.asyncSearchProjection === true;
+  const primaryMetaVec =
+    params.searchMetaVector !== undefined && params.searchMetaVector.length > 0
+      ? new Float32Array(params.searchMetaVector)
+      : undefined;
 
   await persistence.withTransaction(async () => {
     await persistence.clearMemorySubtree(op, { memoryKind: "edge", memoryId, edgeId });
@@ -387,24 +451,9 @@ async function mergeMemoryAsyncEdge(
       namespace: toRef.namespace as NamespacePath,
       key: toRef.key,
     });
-    const primaryMetaVec =
-      params.searchMetaVector !== undefined && params.searchMetaVector.length > 0
-        ? new Float32Array(params.searchMetaVector)
-        : undefined;
-    for (const ref of syncByMid.values()) {
-      const refMid = ids.memory(ref.namespace, ref.key);
-      await persistence.syncMemorySearchMeta(op, {
-        namespace: ref.namespace,
-        memoryKey: ref.key,
-        metaVector: refMid === memoryId ? primaryMetaVec : undefined,
-      });
-      const syncLabelProps = persistence.syncLabelPropsSearchFeatures;
-      if (syncLabelProps !== undefined) {
-        await syncLabelProps(op, {
-          namespace: ref.namespace,
-          memoryKey: ref.key,
-        });
-      }
+    const syncRefs = [...syncByMid.values()];
+    if (!asyncSearch) {
+      await syncSearchRefs(persistence, op, syncRefs, { memoryId, metaVector: primaryMetaVec });
     }
     metaSyncedMemoryKeys = [...syncByMid.keys()].sort((a, b) => a.localeCompare(b));
 
@@ -415,6 +464,11 @@ async function mergeMemoryAsyncEdge(
       Object.keys(contentHashes).length > 0
         ? Object.fromEntries(Object.entries(contentHashes).sort(([a], [b]) => a.localeCompare(b)))
         : undefined;
+    if (caps.stateRootHex) {
+      await persistence.applyStateTreeMutations?.(op, [
+        { namespace, memoryKey: params.key, contentHashes, replace: true },
+      ]);
+    }
     const { root_hex } = await persistence.appendProvenanceEvent(op, {
       v: 1,
       kind: "MERGE_MEMORY",
@@ -433,7 +487,11 @@ async function mergeMemoryAsyncEdge(
       memoryKey: params.key,
       entries: textEntries,
     });
+    if (asyncSearch) await enqueueSearchRefs(persistence, op, syncRefs, root_hex);
   });
+  if (asyncSearch) {
+    await finishSearchProjection(persistence, op, { namespace, key: params.key }, primaryMetaVec);
+  }
 
   return metaSyncedMemoryKeys;
 }

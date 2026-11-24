@@ -94,10 +94,13 @@ export function toMemoryContentAtRootItems(
 export function appendProvenanceEvent(
   ctx: DbCtx,
   event: MemoryProvenanceEvent,
+  /** Audit-commit id to use as `root_hex` instead of the linear chain link (ADR 0002). */
+  commitId?: string,
 ): { root_hex: string } {
   const { db, now, stmts } = ctx;
   const head = getProvenanceHeadRootHex(db);
-  const { parent_root_hex, root_hex } = nextProvenanceRoot(head, event);
+  const { parent_root_hex, root_hex: linearRoot } = nextProvenanceRoot(head, event);
+  const root_hex = commitId ?? linearRoot;
   const eventJson = canonicalJson(event);
   const event_type = event.kind;
   const intent_snapshot_id = event.intent_snapshot_id;

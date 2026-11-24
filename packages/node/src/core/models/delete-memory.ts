@@ -1,3 +1,4 @@
+import { resolveMemoriesBackendCapabilities } from "../../persistence/core/persistence";
 import { runWithOpTelemetrySync } from "../../telemetry/index.js";
 import {
   buildMemoryOpContext,
@@ -53,6 +54,11 @@ export function deleteMemory(ctx: MutationCtx, params: DeleteMemoryParams): void
             memoryKind: "edge",
             edgeId: assoc.edgeId,
           });
+        }
+        if (resolveMemoriesBackendCapabilities(persistence).stateRootHex) {
+          persistence.applyStateTreeMutations?.(op, [
+            { namespace: params.namespace, memoryKey: params.key, contentHashes: {} },
+          ]);
         }
         const { root_hex } = persistence.appendProvenanceEvent(op, {
           v: 1,

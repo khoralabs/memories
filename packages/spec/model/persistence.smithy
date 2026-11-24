@@ -145,7 +145,7 @@ optional **MemoriesBackendCapabilities** alongside operations (not modeled as RP
 - **MemoriesPersistenceReads** — prefetch/export; commonly implemented with Core.
 - **AppendContentOutbox** / **AppendGraphFacetOutbox** / **GetProvenanceTimestampMsForRootHex** / **ListProvenanceEvents** / **ListProvenanceChain** / **GetMemoryContentAtRootHex** / tipReplay reads — optional methods in TS (`?`).
 - **tipReplayAtRootHex** — when true, **GetMemoryGraphAtRootHex**, **GetMemoryVectorAtRootHex**, **GetProvenanceEventJsonAtRootHex** are available (TS `*Async` names).
-- **stateRootHex** — when true, **GetStateRootHex**, **GetMemoryContentAtStateRootHex**, **DiffStateRoots** (Prolly/MST snapshot identity; ADR 0002).
+- **stateRootHex** — when true, **GetStateRootHex**, **ApplyStateTreeMutations**, **GetMemoryContentAtStateRootHex**, **DiffStateRoots** (Prolly/MST snapshot identity; ADR 0002).
 - **auditCommitDag** — when true, **AppendAuditCommit**, **GetAuditCommit**, **ListAuditCommitChildren** (non-linear audit; replaces sync global `H_n` for new writes).
 - **asyncSearchProjection** — when true, **EnqueueSearchIndexOutbox** / **DrainSearchIndexOutbox**; merge need not sync `__mem_search_meta__` inline.
 
@@ -250,6 +250,7 @@ service MemoriesPersistenceService {
         CountGraphForNamespace
         StatsGraphForNamespace
         GetStateRootHex
+        ApplyStateTreeMutations
         GetMemoryContentAtStateRootHex
         DiffStateRoots
         AppendAuditCommit
@@ -267,6 +268,7 @@ service MemoriesPersistenceStateRoot {
     version: "2026-11-24"
     operations: [
         GetStateRootHex
+        ApplyStateTreeMutations
         GetMemoryContentAtStateRootHex
         DiffStateRoots
     ]
@@ -1829,6 +1831,39 @@ structure GetStateRootHexInput {}
 
 structure GetStateRootHexOutput {
     stateRootHex: String
+}
+
+@documentation("""
+Replace/upsert user-content leaves (`source_key` → `content_hash`) in the state tree and return the new root.
+`replace` (default true) drops the memory's leaves not listed. Must run inside **WithTransaction**. Gated by `stateRootHex`.
+""")
+operation ApplyStateTreeMutations {
+    input: ApplyStateTreeMutationsInput
+    output: ApplyStateTreeMutationsOutput
+}
+
+structure ApplyStateTreeMutationsInput {
+    op: MemoryOpContext
+    mutations: StateTreeMutationList
+}
+
+structure ApplyStateTreeMutationsOutput {
+    /// Absent when the tree is empty after the mutations.
+    stateRootHex: String
+}
+
+list StateTreeMutationList {
+    member: StateTreeMutation
+}
+
+structure StateTreeMutation {
+    @required
+    namespace: MemoryNamespace
+    @required
+    memoryKey: String
+    @required
+    contentHashes: StringStringMap
+    replace: Boolean
 }
 
 @documentation("""

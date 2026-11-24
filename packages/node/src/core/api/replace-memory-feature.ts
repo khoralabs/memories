@@ -93,6 +93,16 @@ export function replaceMemoryFeature(
           ...(parsed.vector !== undefined ? { vector: new Float32Array(parsed.vector) } : {}),
         });
 
+        if (caps.stateRootHex) {
+          persistence.applyStateTreeMutations?.(op, [
+            {
+              namespace,
+              memoryKey: params.key,
+              contentHashes: { [parsed.sourceKey]: arms.contentHash },
+              replace: false,
+            },
+          ]);
+        }
         const { root_hex } = persistence.appendProvenanceEvent(op, {
           v: 1,
           kind: "MERGE_MEMORY",

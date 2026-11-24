@@ -4,8 +4,8 @@ import {
   canonicalJson,
   computeSourceMapContentHash,
   GENESIS_PARENT_HEX,
-  nextProvenanceRoot,
 } from "../../../../persistence/core/provenance";
+import { expectedProvenanceRoot } from "../../../testing/persistence";
 import { queryOne } from "../client";
 import {
   createMemoriesTursoServerlessPersistence,
@@ -58,7 +58,7 @@ describe.skipIf(!integration)("memory provenance SQL (turso smoke)", () => {
       },
     };
     const head = await persistence.getProvenanceHeadRootHex();
-    expect(head).toBe(nextProvenanceRoot(parentBefore, event).root_hex);
+    expect(head).toBe(await expectedProvenanceRoot(persistence, parentBefore, event));
 
     const row = await queryOne<{
       parent_root_hex: string;

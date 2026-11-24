@@ -12,10 +12,8 @@ import type {
   MemoryOpContext,
 } from "../../../persistence/core/persistence";
 import { resolveMemoriesBackendCapabilities } from "../../../persistence/core/persistence";
-import {
-  computeSourceMapContentHash,
-  nextProvenanceRoot,
-} from "../../../persistence/core/provenance";
+import { computeSourceMapContentHash } from "../../../persistence/core/provenance";
+import { expectedProvenanceRoot } from "./expected-provenance-root";
 
 export type MemoriesPersistenceContractFactory = () =>
   | MemoriesPersistenceAsync
@@ -249,7 +247,7 @@ export function runMemoriesPersistenceContractTests(
             alpha: computeSourceMapContentHash({ text: "hello" }),
           },
         };
-        expect(head).toBe(nextProvenanceRoot(parent, event).root_hex);
+        expect(head).toBe(await expectedProvenanceRoot(persistence, parent, event));
       });
 
       test("delete advances chain; duplicate delete does not change head", async () => {
@@ -279,7 +277,9 @@ export function runMemoriesPersistenceContractTests(
           memory_id: ids.memory(namespace, key),
         };
         const afterDelete = await persistence.getProvenanceHeadRootHex();
-        expect(afterDelete).toBe(nextProvenanceRoot(afterMerge, deleteEvent).root_hex);
+        expect(afterDelete).toBe(
+          await expectedProvenanceRoot(persistence, afterMerge, deleteEvent),
+        );
 
         await deleteMemoryAsync({ persistence }, { namespace, key });
         expect(await persistence.getProvenanceHeadRootHex()).toBe(afterDelete);
@@ -322,7 +322,9 @@ export function runMemoriesPersistenceContractTests(
           memory_id: ids.memory(namespace, key),
         };
         const afterSuppress = await persistence.getProvenanceHeadRootHex();
-        expect(afterSuppress).toBe(nextProvenanceRoot(afterMerge, suppressEvent).root_hex);
+        expect(afterSuppress).toBe(
+          await expectedProvenanceRoot(persistence, afterMerge, suppressEvent),
+        );
         expect(await persistence.isMemorySuppressed(ids.memory(namespace, key))).toBe(true);
         expect(await persistence.findMemoryIdByKey(namespace, key)).toBeDefined();
 
@@ -344,7 +346,9 @@ export function runMemoriesPersistenceContractTests(
           memory_id: ids.memory(namespace, key),
         };
         const afterUnsuppress = await persistence.getProvenanceHeadRootHex();
-        expect(afterUnsuppress).toBe(nextProvenanceRoot(afterSuppress, unsuppressEvent).root_hex);
+        expect(afterUnsuppress).toBe(
+          await expectedProvenanceRoot(persistence, afterSuppress, unsuppressEvent),
+        );
         expect(await persistence.isMemorySuppressed(ids.memory(namespace, key))).toBe(false);
 
         const restoredHits = await searchAsync(
@@ -427,7 +431,7 @@ export function runMemoriesPersistenceContractTests(
         });
 
         expect(await persistence.getProvenanceHeadRootHex()).toBe(
-          nextProvenanceRoot(parent, event).root_hex,
+          await expectedProvenanceRoot(persistence, parent, event),
         );
       });
 
@@ -549,6 +553,92 @@ export function runMemoriesPersistenceContractTests(
           beforeRootHex: "0".repeat(64),
         });
         expect(unknown).toEqual([]);
+      });
+    });
+
+    describe("scale (ADR 0002)", () => {
+      const mergeAlpha = (
+        persistence: MemoriesPersistenceAsync,
+        namespace: string,
+        key: string,
+        text = "hello",
+      ) =>
+        mergeMemoryAsync(
+          { persistence },
+          {
+            key,
+            namespace: namespacePath(namespace),
+            content: [{ key: "alpha", text }],
+            labels: [],
+          },
+        );
+
+      test("state root diffs, reconstructs, and returns to the prior root on delete", async () => {
+        const persistence = await create();
+        if (!resolveMemoriesBackendCapabilities(persistence).stateRootHex) return;
+        const namespace = uniqueNs("contract/state");
+        await mergeAlpha(persistence, namespace, "seed", "seed");
+        const seedRoot = await persistence.getStateRootHex?.();
+        expect(seedRoot).toBeDefined();
+
+        await mergeAlpha(persistence, namespace, "mem");
+        const root = (await persistence.getStateRootHex?.()) as string;
+        expect(root).not.toBe(seedRoot);
+        expect(await persistence.diffStateRoots?.(seedRoot as string, root)).toEqual([
+          {
+            namespace,
+            memoryKey: "mem",
+            sourceKey: "alpha",
+            contentHash: computeSourceMapContentHash({ text: "hello" }),
+            change: "upsert",
+          },
+        ]);
+        expect(await persistence.getMemoryContentAtStateRootHex?.(root, namespace, "mem")).toEqual([
+          { sourceKey: "alpha", text: "hello" },
+        ]);
+
+        await deleteMemoryAsync({ persistence }, { namespace, key: "mem" });
+        expect(await persistence.getStateRootHex?.()).toBe(seedRoot);
+      });
+
+      test("audit commits link parents and carry the committed state root", async () => {
+        const persistence = await create();
+        if (!resolveMemoriesBackendCapabilities(persistence).auditCommitDag) return;
+        const namespace = uniqueNs("contract/audit");
+        await mergeAlpha(persistence, namespace, "a");
+        const first = (await persistence.getProvenanceHeadRootHex()) as string;
+        await mergeAlpha(persistence, namespace, "b");
+        const second = (await persistence.getProvenanceHeadRootHex()) as string;
+
+        const commit = await persistence.getAuditCommit?.(second);
+        expect(commit?.parents).toEqual([first]);
+        expect(commit?.stateRootHex).toBe(await persistence.getStateRootHex?.());
+        expect(commit?.event.kind).toBe("MERGE_MEMORY");
+        const children = await persistence.listAuditCommitChildren?.(first);
+        expect(children?.map((c) => c.commitId)).toEqual([second]);
+      });
+
+      test("search index outbox is drained after merge; enqueue + drain round-trips", async () => {
+        const persistence = await create();
+        if (!resolveMemoriesBackendCapabilities(persistence).asyncSearchProjection) return;
+        const namespace = uniqueNs("contract/outbox");
+        await mergeAlpha(persistence, namespace, "mem");
+        const op = { now: Date.now() };
+        expect(await persistence.drainSearchIndexOutbox?.(op)).toEqual({
+          drained: [],
+          remaining: 0,
+        });
+
+        await persistence.enqueueSearchIndexOutbox?.(op, {
+          namespace: namespacePath(namespace),
+          memoryKey: "mem",
+          causeId: "cause",
+          kinds: ["memory_search_meta", "label_props"],
+        });
+        const first = await persistence.drainSearchIndexOutbox?.(op, { limit: 1 });
+        expect(first?.drained).toHaveLength(1);
+        expect(first?.remaining).toBe(1);
+        expect((await persistence.drainSearchIndexOutbox?.(op))?.remaining).toBe(0);
       });
     });
 

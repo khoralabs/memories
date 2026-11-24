@@ -8,6 +8,7 @@ import {
   vectorVecTableName,
 } from "../search-indexes";
 import type { DbCtx } from "./context";
+import { remapStateTreeNamespaces } from "./scale";
 
 type MemoryRow = {
   _id: string;
@@ -158,6 +159,7 @@ export function renameNamespacePaths(
   }
 
   moveNamespaceMetadata(db, nsMap, now);
+  remapStateTreeNamespaces(ctx, nsMap);
 
   return { renamedMemories: memories.length };
 }

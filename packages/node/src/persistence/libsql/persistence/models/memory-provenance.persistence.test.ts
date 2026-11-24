@@ -4,8 +4,8 @@ import {
   canonicalJson,
   computeSourceMapContentHash,
   GENESIS_PARENT_HEX,
-  nextProvenanceRoot,
 } from "../../../../persistence/core/provenance";
+import { expectedProvenanceRoot } from "../../../testing/persistence";
 import { queryOne } from "../client";
 import type { MemoriesLibsqlPersistence } from "../persistence";
 import { openLibsqlTestPersistence } from "../test-harness";
@@ -44,7 +44,7 @@ describe("memory provenance SQL (libsql)", () => {
       },
     };
     expect(await persistence.getProvenanceHeadRootHex()).toBe(
-      nextProvenanceRoot(undefined, event).root_hex,
+      await expectedProvenanceRoot(persistence, undefined, event),
     );
 
     const row = await queryOne<{
@@ -95,7 +95,7 @@ describe("memory provenance SQL (libsql)", () => {
       libsql.db.client,
       `SELECT root_hex, event_json, intent_snapshot_id FROM memory_provenance ORDER BY _ts_created ASC LIMIT 1`,
     );
-    expect(row?.root_hex).toBe(nextProvenanceRoot(undefined, event).root_hex);
+    expect(row?.root_hex).toBe(await expectedProvenanceRoot(persistence, undefined, event));
     expect(row?.event_json).toBe(canonicalJson(event));
     expect(row?.intent_snapshot_id).toBe("agent-run-1");
   });

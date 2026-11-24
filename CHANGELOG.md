@@ -11,6 +11,9 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ### Added
 
+- **@khoralabs/memories-node** — Schema **0.11.0** (sqlite, libsql, turso-serverless): `memory_search_index_outbox`, state-tree tables, `memory_audit_commits`. Adapters advertise `asyncSearchProjection` (merge enqueues search-meta/label-props and drains after commit), `stateRootHex` (256-bucket Merkle map over user content hashes; `getStateRootHex`, `applyStateTreeMutations`, `getMemoryContentAtStateRootHex`, `diffStateRoots`), and `auditCommitDag` (`appendAuditCommit`, `getAuditCommit`, `listAuditCommitChildren`; commit id replaces the linear chain link as `root_hex`).
+- **@khoralabs/memories-spec** — `ApplyStateTreeMutations` op and `StateTreeMutation` shape in the `stateRootHex` module.
+
 - **docs** — ADR 0002 (Prolly `stateRootHex`, audit commit DAG, async search projection) and Diátaxis explanation `docs/explanation/state-root-and-audit.md`.
 - **@khoralabs/memories-spec** — Optional scale modules/capabilities: `stateRootHex`, `auditCommitDag`, `asyncSearchProjection` (ops + shapes); public merge/replace outputs may carry `stateRootHex` / `auditCommitId` when advertised. Service `version` dates bumped to `2026-11-24`.
 - **@khoralabs/memories-service** — DID principal agent path: X-Agent-* wire, `createDidKeyPrincipalVerifier`, `createDidSignedRequestAuthProvider`, agent clients with optional `signer` (no required admin Bearer). See `packages/service/docs/adr/0001-did-principal-agent-path.md`.
@@ -19,7 +22,8 @@ Package tags on each entry (`**@khoralabs/memories-***`) name which published pa
 
 ### Changed
 
-- **@khoralabs/memories-spec** — Documents linear provenance as the shipped path; ADR 0002 dual-root / async-search as the scale target (TS adapters not yet advertising the new flags).
+- **@khoralabs/memories-node** — Provenance `root_hex` on adapters is now the audit commit id (not `nextProvenanceRoot`); `mergeMemory` search projection is eventual-in-tx, drained before return.
+- **@khoralabs/memories-spec** — Documents linear provenance as the fallback path; ADR 0002 scale features are shipped on sqlite/libsql/turso.
 - **@khoralabs/memories-service** — `MemoriesServiceClientAuthProvider.applyAuth` accepts optional `{ path }` for request signing.
 - **@khoralabs/memories-spec** — Rebased logical Spec on TypeScript: public rename/delete namespace, suppress flag persistence ops, tipReplay reads on Reads/aggregate, `includeSuppressed` / `suppressed` fields, provenance `kind` in event shapes, content/graph facet outbox split.
 - **@khoralabs/memories-node** — Graph snapshot capture on libsql/turso uses the write transaction (`DbCtx`) so tip graph facets are populated during merge.

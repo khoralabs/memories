@@ -11,7 +11,30 @@ import type {
   SourceMapBodyParts,
 } from "../provenance/index";
 import type { SearchAsOf } from "../search-asof";
+import type { StateRootDiffEntry, StateTreeMutation } from "../state-tree";
 import type { MemoryKind, SourceMap, TextFeatureExportRow } from "./row-schemas";
+
+export type { StateRootDiffEntry, StateTreeMutation };
+
+/** Derived projections queued by {@link MemoriesMutationCore.enqueueSearchIndexOutbox}. */
+export type SearchIndexOutboxKind = "memory_search_meta" | "label_props";
+
+export type SearchIndexOutboxItem = {
+  id: string;
+  namespace: NamespacePath;
+  memoryKey: string;
+  causeId?: string;
+  kind: SearchIndexOutboxKind;
+};
+
+/** Audit commit object (ADR 0002); `commitId` is distinct from `stateRootHex`. */
+export type MemoryAuditCommit = {
+  commitId: string;
+  parents: string[];
+  stateRootHex: string;
+  event: MemoryProvenanceEvent;
+  tsCreatedMs: number;
+};
 
 /** Timestamp context for writes and validators that use `_ts_created`. */
 export type MemoryOpContext = {
@@ -192,7 +215,6 @@ export type MemoriesBackendCapabilities = {
   tipReplayAtRootHex?: boolean;
   /**
    * When `true`, Prolly/MST state-tree snapshot ops are available (`stateRootHex`; ADR 0002).
-   * Shipped adapters leave this unset/false until the tree lands.
    */
   stateRootHex?: boolean;
   /**
@@ -416,6 +438,35 @@ export interface MemoriesMutationCore {
     op: MemoryOpContext,
     input: { namespace: NamespacePath; suppressed: boolean },
   ): void;
+
+  /** Queue search projection work (needs `asyncSearchProjection`). Same tx as the mutation. */
+  enqueueSearchIndexOutbox?(
+    op: MemoryOpContext,
+    input: {
+      namespace: NamespacePath;
+      memoryKey: string;
+      causeId?: string;
+      kinds: readonly SearchIndexOutboxKind[];
+    },
+  ): { enqueuedIds: string[] };
+
+  /** Apply up to `limit` queued projections; `remaining` counts what is still queued. */
+  drainSearchIndexOutbox?(
+    op: MemoryOpContext,
+    input?: { limit?: number },
+  ): { drained: SearchIndexOutboxItem[]; remaining: number };
+
+  /** Replace/upsert user-content leaves in the state tree; returns the new root (needs `stateRootHex`). */
+  applyStateTreeMutations?(
+    op: MemoryOpContext,
+    mutations: readonly StateTreeMutation[],
+  ): { stateRootHex?: string };
+
+  /** Append an audit commit row (needs `auditCommitDag`). Same tx as the mutation. */
+  appendAuditCommit?(
+    op: MemoryOpContext,
+    input: { parents: readonly string[]; stateRootHex: string; event: MemoryProvenanceEvent },
+  ): { commitId: string };
 
   /** Latest provenance chain head (`root_hex`), or `undefined` if empty. */
   getProvenanceHeadRootHex(): string | undefined;
@@ -749,6 +800,23 @@ export interface MemoriesPersistenceReads {
     namespace: string,
     memoryKey: string,
   ): MemoryContentAtRootItem[];
+
+  /** Current state-tree root, or `undefined` when empty (needs `stateRootHex`). */
+  getStateRootHex?(): string | undefined;
+
+  /** User content arms at a state root whose bodies still match live storage. */
+  getMemoryContentAtStateRootHex?(
+    stateRootHex: string,
+    namespace?: string,
+    memoryKey?: string,
+  ): MemoryContentAtRootItem[];
+
+  /** Leaf diff between two state roots; equal buckets are skipped. */
+  diffStateRoots?(fromStateRootHex: string, toStateRootHex: string): StateRootDiffEntry[];
+
+  getAuditCommit?(commitId: string): MemoryAuditCommit | undefined;
+
+  listAuditCommitChildren?(parentCommitId: string): MemoryAuditCommit[];
 
   /** Graph snapshot as of a provenance tip (TipOutbox `graph` facet). */
   getMemoryGraphAtRootHexAsync?(

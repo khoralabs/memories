@@ -45,6 +45,7 @@ describe("memories sqlite migrations", () => {
     expect(rows).toEqual([
       { from_version: "0.0.0", to_version: "0.1.0", name: "001-initial" },
       { from_version: "0.1.0", to_version: "0.2.0", name: "001-add-content-outbox" },
+      { from_version: "0.10.0", to_version: "0.11.0", name: "001-add-scale-tables" },
       { from_version: "0.2.0", to_version: "0.3.0", name: "001-add-namespace-metadata" },
       { from_version: "0.3.0", to_version: "0.4.0", name: "001-drop-ns-prefix-columns" },
       { from_version: "0.4.0", to_version: "0.5.0", name: "001-add-memory-suppressed" },
@@ -76,6 +77,10 @@ describe("memories sqlite migrations", () => {
       )
       .get();
     expect(contentBlobsGone).toBeNull();
+
+    expect(tableColumns(db, "memory_search_index_outbox").has("cause_id")).toBe(true);
+    expect(tableColumns(db, "memory_state_bucket_roots").has("root_hex")).toBe(true);
+    expect(tableColumns(db, "memory_audit_commits").has("parents_json")).toBe(true);
 
     const tipOutbox = tableColumns(db, "memory_tip_outbox");
     expect(tipOutbox.has("facet")).toBe(true);

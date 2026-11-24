@@ -12,6 +12,21 @@ type PromisifyMethodMap<T> = {
     : T[K];
 };
 
+type ScaleOptionalMethods =
+  | "enqueueSearchIndexOutbox"
+  | "drainSearchIndexOutbox"
+  | "applyStateTreeMutations"
+  | "appendAuditCommit"
+  | "getStateRootHex"
+  | "getMemoryContentAtStateRootHex"
+  | "diffStateRoots"
+  | "getAuditCommit"
+  | "listAuditCommitChildren";
+
+type AsyncOptional<F> = F extends (...args: infer A) => infer R
+  ? (...args: A) => Promise<Awaited<R>>
+  : never;
+
 /** Sync methods whose generics are lost if naively promisified; declared explicitly below. */
 type MemoriesPersistenceAsyncCore = Omit<
   MemoriesPersistence,
@@ -20,6 +35,7 @@ type MemoriesPersistenceAsyncCore = Omit<
   | "hydrateSourceMapHits"
   | "listNeighborsForMemory"
   | "syncLabelPropsSearchFeatures"
+  | ScaleOptionalMethods
 >;
 
 /**
@@ -27,6 +43,8 @@ type MemoriesPersistenceAsyncCore = Omit<
  * `withTransaction` accepts an async callback.
  */
 export type MemoriesPersistenceAsync = PromisifyMethodMap<MemoriesPersistenceAsyncCore> & {
+  [K in ScaleOptionalMethods]?: AsyncOptional<NonNullable<MemoriesPersistence[K]>>;
+} & {
   withTransaction<T>(fn: () => Promise<T>): Promise<T>;
   capabilities?: MemoriesBackendCapabilities;
   /**

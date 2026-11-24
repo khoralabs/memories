@@ -13,12 +13,18 @@ import type {
   NeighborFilter,
   SearchAsOf,
   SearchNamespaceScope,
+  StateTreeMutation,
 } from "../../../persistence/core";
-import { resolveNamespacePathPolicy } from "../../../persistence/core";
+import { ids, resolveNamespacePathPolicy } from "../../../persistence/core";
 import type { SourceMap, TextFeatureExportRow } from "../../../persistence/core/persistence";
 import type { ContentBlobColdStore } from "../../../persistence/core/persistence/content-blob-cold-store";
 import { DEFAULT_CONTENT_OUTBOX_RETENTION_TIPS } from "../../../persistence/core/persistence/content-blob-cold-store";
-import type { MemoryProvenanceEvent } from "../../../persistence/core/provenance";
+import { drainSearchIndexOutboxFully } from "../../../persistence/core/persistence/facade";
+import {
+  GENESIS_PARENT_HEX,
+  type MemoryProvenanceEvent,
+} from "../../../persistence/core/provenance";
+import { SQL_STATE_SOURCE_MAP_HASH } from "../../../persistence/core/state-tree";
 import { blobToVector } from "./connection";
 import {
   type BunS3ContentBlobColdStoreOptions,
@@ -97,6 +103,7 @@ import { ensureNodeLabel } from "./models/node-labels";
 import { nodeExists, upsertNodeForMemoryKey } from "./models/nodes";
 import { type MemoriesSqliteStmts, prepareMemoriesSqliteStmts } from "./models/prepared-stmts";
 import { renameNamespacePaths as renameNamespacePathsQuery } from "./models/rename-namespace";
+import * as scale from "./models/scale";
 import {
   linkScopes as linkScopesRow,
   listScopesForMemory as listScopesForMemoryRow,
@@ -161,6 +168,9 @@ export class MemoriesPersistence implements IMemoriesPersistence {
       unscopedSearch: true,
       asOfTimestampMsSearch: true,
       tipReplayAtRootHex: true,
+      stateRootHex: true,
+      auditCommitDag: true,
+      asyncSearchProjection: true,
     };
     this.stmts = prepareMemoriesSqliteStmts(db);
   }
@@ -330,7 +340,71 @@ export class MemoriesPersistence implements IMemoriesPersistence {
   }
 
   appendProvenanceEvent(op: MemoryOpContext, event: MemoryProvenanceEvent): { root_hex: string } {
-    return insertProvenanceRow(this.ctx(op), event);
+    if (!this.capabilities.auditCommitDag) return insertProvenanceRow(this.ctx(op), event);
+    const head = this.getProvenanceHeadRootHex();
+    const { commitId } = this.appendAuditCommit(op, {
+      parents: head ? [head] : [],
+      stateRootHex: this.getStateRootHex() ?? GENESIS_PARENT_HEX,
+      event,
+    });
+    return insertProvenanceRow(this.ctx(op), event, commitId);
+  }
+
+  enqueueSearchIndexOutbox(
+    op: MemoryOpContext,
+    input: { namespace: string; memoryKey: string; causeId?: string; kinds: readonly string[] },
+  ) {
+    return scale.enqueueSearchIndexOutbox(this.ctx(op), input);
+  }
+
+  drainSearchIndexOutbox(op: MemoryOpContext, input?: { limit?: number }) {
+    return this.db.transaction(() =>
+      scale.drainSearchIndexOutbox(this.ctx(op), input?.limit, (item) =>
+        item.kind === "label_props"
+          ? this.syncLabelPropsSearchFeatures(op, item)
+          : this.syncMemorySearchMeta(op, item),
+      ),
+    )();
+  }
+
+  applyStateTreeMutations(op: MemoryOpContext, mutations: readonly StateTreeMutation[]) {
+    return scale.applyStateTreeMutations(this.ctx(op), mutations);
+  }
+
+  getStateRootHex(): string | undefined {
+    return scale.getStateRootHex(this.readCtx());
+  }
+
+  getMemoryContentAtStateRootHex(stateRootHex: string, namespace?: string, memoryKey?: string) {
+    return scale
+      .listStateEntriesAtStateRootHex(this.readCtx(), stateRootHex, namespace, memoryKey)
+      .flatMap((e) => {
+        const smId = ids.sourceMap(ids.memory(e.namespace, e.memoryKey), e.sourceKey);
+        const row = this.db
+          .query<{ contentHash: string | null }, [string]>(SQL_STATE_SOURCE_MAP_HASH)
+          .get(smId);
+        const text = row?.contentHash === e.valueHash ? this.getSourceMapText(smId) : null;
+        return text === null ? [] : [{ sourceKey: e.sourceKey, text }];
+      });
+  }
+
+  diffStateRoots(fromStateRootHex: string, toStateRootHex: string) {
+    return scale.diffStateRoots(this.readCtx(), fromStateRootHex, toStateRootHex);
+  }
+
+  appendAuditCommit(
+    op: MemoryOpContext,
+    input: { parents: readonly string[]; stateRootHex: string; event: MemoryProvenanceEvent },
+  ) {
+    return scale.appendAuditCommit(this.ctx(op), input);
+  }
+
+  getAuditCommit(commitId: string) {
+    return scale.getAuditCommit(this.readCtx(), commitId);
+  }
+
+  listAuditCommitChildren(parentCommitId: string) {
+    return scale.listAuditCommitChildren(this.readCtx(), parentCommitId);
   }
 
   appendContentOutbox(
@@ -574,6 +648,9 @@ export class MemoriesPersistence implements IMemoriesPersistence {
     op: MemoryOpContext,
     input: { namespace: string; memoryKey: string; vector: Float32Array },
   ): void {
+    if (scale.hasPendingSearchIndexOutbox(this.ctx(op), input.namespace, input.memoryKey)) {
+      drainSearchIndexOutboxFully(this, op);
+    }
     upsertMemorySearchMetaVector(this.ctx(op), input);
   }
 

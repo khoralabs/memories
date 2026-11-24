@@ -16,6 +16,8 @@ export {
 export {
   buildCanonicalMemorySearchMetaText,
   buildCanonicalMemorySearchMetaTextAsync,
+  drainSearchIndexOutboxFully,
+  drainSearchIndexOutboxFullyAsync,
   upsertMemorySearchMetaVector,
   upsertMemorySearchMetaVectorAsync,
 } from "./facade";
@@ -55,14 +57,19 @@ export type {
   MemoriesPersistenceReads,
   MemoriesRetrieval,
   MemoriesRuntimeCtx,
+  MemoryAuditCommit,
   MemoryContentAtRootItem,
   MemoryOpContext,
   NamespaceMetadataInfo,
   ProvenanceChainLink,
   ProvenanceEventListItem,
+  SearchIndexOutboxItem,
+  SearchIndexOutboxKind,
   SearchNamespaceScope,
   SearchVectorSourceMapIdsResult,
   SourceMapInventoryItem,
+  StateRootDiffEntry,
+  StateTreeMutation,
   VectorSearchMethod,
 } from "./types";
 export {

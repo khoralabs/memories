@@ -4,8 +4,8 @@ import {
   canonicalJson,
   computeSourceMapContentHash,
   GENESIS_PARENT_HEX,
-  nextProvenanceRoot,
 } from "../../../../persistence/core/provenance";
+import { expectedProvenanceRoot } from "../../../testing/persistence";
 import { createMemoriesPersistence, openTestMemoriesDatabase } from "../index";
 
 /**
@@ -13,7 +13,7 @@ import { createMemoriesPersistence, openTestMemoriesDatabase } from "../index";
  * Chain / rollback / idempotent-delete behavior lives in the shared contract suite.
  */
 describe("memory provenance SQL (SQLite)", () => {
-  test("first provenance row links genesis parent and stores canonical event_json", () => {
+  test("first provenance row links genesis parent and stores canonical event_json", async () => {
     const db = openTestMemoriesDatabase();
     const persistence = createMemoriesPersistence(db);
     const namespace = "ns";
@@ -42,7 +42,7 @@ describe("memory provenance SQL (SQLite)", () => {
       },
     };
     expect(persistence.getProvenanceHeadRootHex()).toBe(
-      nextProvenanceRoot(undefined, event).root_hex,
+      await expectedProvenanceRoot(persistence, undefined, event),
     );
 
     const row = db
@@ -55,7 +55,7 @@ describe("memory provenance SQL (SQLite)", () => {
     expect(row?.event_json).toBe(canonicalJson(event));
   });
 
-  test("appendProvenanceEvent stores contributor in event_json and intent snapshot column", () => {
+  test("appendProvenanceEvent stores contributor in event_json and intent snapshot column", async () => {
     const db = openTestMemoriesDatabase();
     const persistence = createMemoriesPersistence(db);
     const op = { now: Date.now() };
@@ -87,7 +87,7 @@ describe("memory provenance SQL (SQLite)", () => {
         `SELECT root_hex, event_json, intent_snapshot_id FROM memory_provenance ORDER BY _ts_created ASC LIMIT 1`,
       )
       .get();
-    expect(row?.root_hex).toBe(nextProvenanceRoot(undefined, event).root_hex);
+    expect(row?.root_hex).toBe(await expectedProvenanceRoot(persistence, undefined, event));
     expect(row?.event_json).toBe(canonicalJson(event));
     expect(row?.intent_snapshot_id).toBe("agent-run-1");
   });

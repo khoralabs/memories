@@ -73,8 +73,8 @@ CREATE TABLE memory_content_blobs (
   });
 
   test("libsql and turso migrations register schema 0.10.0 tip outbox and content drop", () => {
-    expect(LIBSQL_VERSION).toBe("0.10.0");
-    expect(TURSO_VERSION).toBe("0.10.0");
+    expect(LIBSQL_VERSION).toBe("0.11.0");
+    expect(TURSO_VERSION).toBe("0.11.0");
     expect(libsqlMigrations.some((m) => m.to === "0.9.0" && m.name === "001-add-tip-outbox")).toBe(
       true,
     );
@@ -97,5 +97,10 @@ CREATE TABLE memory_content_blobs (
     expect(
       tursoMigrations.some((m) => m.to === "0.10.0" && m.name === "001-drop-content-outbox"),
     ).toBe(true);
+    for (const migrations of [libsqlMigrations, tursoMigrations]) {
+      expect(migrations.some((m) => m.to === "0.11.0" && m.name === "001-add-scale-tables")).toBe(
+        true,
+      );
+    }
   });
 });
